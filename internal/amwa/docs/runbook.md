@@ -108,6 +108,32 @@ applied. A device that serves no bulk endpoint (IS-05 requires one) is
 routed entry by entry instead, with `nmos_is05_bulk_unsupported` on the
 record.
 
+### A route the receiver cannot take is refused before it is sent
+
+IS-05 does not make a device check what it is pointed at: a receiver
+accepts a sender id that exists nowhere, or a stream it cannot decode,
+and reports success. `connect` checks first, with what IS-04 already
+says (BCP-004-01), and refuses with the reason:
+
+```
+nmos connect: receiver … cannot take sender …: the flow is video/raw,
+the receiver takes video/jxsv (--force sends it anyway)
+```
+
+It checks, in order: the sender exists (this catalogue or
+`--sender-node`); both ends share a transport (`rtp` takes `rtp.mcast`
+and `rtp.ucast`; `rtp.ucast` does not take `rtp.mcast`); the flow's
+format is the receiver's; its media type is in the receiver's
+`caps.media_types`; and, when the receiver declares
+`caps.constraint_sets`, at least one enabled set admits the stream
+(frame size, rate, depth, channel count, …).
+
+Only what is **declared** and **known** refuses: a receiver that
+declares nothing takes anything, and a parameter the flow does not
+state is not held against it. `--force` sends the route regardless and
+records `nmos_bcp00401_route_forced` with the reasons. In a salvo one
+such route refuses the whole request.
+
 ### Two failures worth knowing about
 
 - **`master_enable=false` after a successful-looking connect.** The

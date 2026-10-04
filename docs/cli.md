@@ -496,6 +496,8 @@ Usage of connect:
     	unicast DNS-SD discovery domain (default "by-systems.arpa")
   -dry-run
     	resolve and print the endpoint, the exact PATCH body and the receiver's current route — send nothing
+  -force
+    	send a route the capability check refuses — the sender is not in the catalogue, or its stream is outside what the receiver declares it takes (BCP-004-01); the override is recorded
   -mdns
     	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
   -mode string

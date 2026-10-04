@@ -170,9 +170,11 @@ func TestChooseMulti(t *testing.T) {
 
 // TestPerformActionRoutes: the same metadata shape is a connect on
 // IS-05-03 test_02 and a disconnect on test_03; only the prose says
-// which, and the PATCH the Device receives is the proof.
+// which, and the PATCH the Device receives is the proof. The pair is
+// one the Receiver can take (rcvA declares JPEG XS; rcvB is raw-only
+// and the controller refuses to point a JPEG XS sender at it).
 func TestPerformActionRoutes(t *testing.T) {
-	meta := &Metadata{Sender: &Resource{ID: sndAID}, Receiver: &Resource{ID: rcvBID}}
+	meta := &Metadata{Sender: &Resource{ID: sndAID}, Receiver: &Resource{ID: rcvAID}}
 	cases := []struct {
 		name       string
 		question   string
@@ -197,8 +199,8 @@ func TestPerformActionRoutes(t *testing.T) {
 			}
 			select {
 			case call := <-p.patches:
-				if call.receiverID != rcvBID {
-					t.Errorf("PATCHed receiver %s, want %s", call.receiverID, rcvBID)
+				if call.receiverID != rcvAID {
+					t.Errorf("PATCHed receiver %s, want %s", call.receiverID, rcvAID)
 				}
 				if call.body["sender_id"] != tc.wantSender || call.body["master_enable"] != tc.wantMaster {
 					t.Errorf("staged %v, want sender_id=%v master_enable=%v", call.body, tc.wantSender, tc.wantMaster)
@@ -529,5 +531,26 @@ func TestPhrasingHelpers(t *testing.T) {
 				t.Errorf("%q -> %v, want %v", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+// The facade is the controller under test, check included: asked to
+// connect a JPEG XS sender to a raw-only receiver, it refuses with the
+// reason and the Device receives nothing — the answer a controller
+// that reads BCP-004-01 owes, whoever asks.
+func TestPerformActionRefusesWhatTheReceiverCannotTake(t *testing.T) {
+	p := stdPlant(t)
+	s, _ := facadeFor(t, p.controller("v1.3"))
+	err := s.performAction(context.Background(), Question{
+		TestType: "action", Question: "Perform an 'immediate' activation between sender and receiver",
+		Metadata: &Metadata{Sender: &Resource{ID: sndAID}, Receiver: &Resource{ID: rcvBID}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "the flow is video/jxsv, the receiver takes video/raw") {
+		t.Fatalf("err = %v, want the capability refusal", err)
+	}
+	select {
+	case call := <-p.patches:
+		t.Errorf("the Device was PATCHed for a refused route: %+v", call)
+	default:
 	}
 }

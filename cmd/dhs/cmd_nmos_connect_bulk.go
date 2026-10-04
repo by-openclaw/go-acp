@@ -57,7 +57,7 @@ func readRoutes(r io.Reader) ([][2]string, error) {
 }
 
 // bulkRequests assembles the salvo from both sources, flags first.
-func bulkRequests(routeFlags []string, routesFile, senderNode, mode, when string) ([]consumer.ConnectRequest, error) {
+func bulkRequests(routeFlags []string, routesFile, senderNode, mode, when string, force bool) ([]consumer.ConnectRequest, error) {
 	var pairs [][2]string
 	for _, arg := range routeFlags {
 		receiver, sender, err := parseRoute(arg)
@@ -86,6 +86,7 @@ func bulkRequests(routeFlags []string, routesFile, senderNode, mode, when string
 			SenderNode: senderNode,
 			Mode:       is05.ActivationMode(mode),
 			When:       when,
+			Force:      force,
 		}
 	}
 	return reqs, nil
