@@ -405,6 +405,8 @@ Usage of mirror:
     	serve the mirrored catalogue as a read-only IS-04 Query API (REST + WS subscriptions) on this address, e.g. :8335 — controllers read the plant THROUGH the audited mirror; registration attempts are refused and audited
   -serve-advertise-host string
     	identity minted into the served face's ws_href and mDNS announce, as host or host:port (a bare host takes the bound --serve port). Precedence: this flag wins; empty derives from the bound address (concrete IP, else OS hostname — which off-link controllers may not resolve). Setting it also enables the _nmos-query._tcp announce of the served face
+  -serve-instance-name string
+    	DNS-SD instance label the served face announces under (default dhs-nmos-mirror). Instance names are unique per link: give a second mirror on it its own, or its announce is refused as a name collision
   -serve-pri int
     	DNS-SD pri TXT for the served face's announce (with --serve-advertise-host). Defaults into the 100+ dev range so the mirror never wins a production Registry election against its own source registry at pri 0 (default 100)
   -serve-tls-cert value

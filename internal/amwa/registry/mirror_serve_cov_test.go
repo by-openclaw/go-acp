@@ -54,7 +54,7 @@ func TestServeAdvertiseFollowsTheBind(t *testing.T) {
 // registration target. A negative priority clamps to 0 and an unset
 // protocol reads as plain http.
 func TestServeAnnounceInstance(t *testing.T) {
-	ins := serveAnnounceInstance("mirror-host", 8335, []string{"v1.2", "v1.3"}, -5, true, "")
+	ins := serveAnnounceInstance("", "mirror-host", 8335, []string{"v1.2", "v1.3"}, -5, true, "")
 	if ins.Service != codec.ServiceQuery {
 		t.Errorf("service = %q, want the Query face alone", ins.Service)
 	}
@@ -321,4 +321,51 @@ func TestScheduleServeReplayNeedsALiveRun(t *testing.T) {
 		time.Sleep(2 * time.Millisecond)
 	}
 	t.Error("the debounced replay never fired")
+}
+
+// DNS-SD instance names are unique per link, so a second mirror on it
+// must be able to announce under its own; with none given the served
+// face keeps the label the plant mirror has always used.
+func TestServeAnnounceInstanceName(t *testing.T) {
+	if ins := serveAnnounceInstance("", "mirror-host", 8335, []string{"v1.3"}, 100, false, ""); ins.Name != "dhs-nmos-mirror" {
+		t.Errorf("default instance name = %q, want dhs-nmos-mirror", ins.Name)
+	}
+	if ins := serveAnnounceInstance("dhs-nmos-mirror-blue", "mirror-host", 8336, []string{"v1.3"}, 100, false, ""); ins.Name != "dhs-nmos-mirror-blue" {
+		t.Errorf("named instance = %q, want the operator's label", ins.Name)
+	}
+}
+
+// The operator's label reaches the wire: a mirror started with
+// ServeInstanceName announces its served face under it — the one thing
+// that lets a second mirror share a link with the first.
+func TestMirrorServeAnnouncesUnderTheNamedInstance(t *testing.T) {
+	fr := stubServeResponder(t)
+	plant := &fakePlant{}
+	target := httptest.NewServer(plant.targetHandler())
+	t.Cleanup(target.Close)
+	push := newPushSource()
+	src := httptest.NewServer(stdhttp.NotFoundHandler())
+	src.Config.Handler = push.handler(t, func() string { return src.URL })
+	t.Cleanup(src.Close)
+
+	m, err := NewMirror(MirrorOptions{
+		Source: src.URL, Target: target.URL, APIVer: "v1.3",
+		ServeAddr: "127.0.0.1:0", ServeAdvertiseHost: "mirror-b.test:8336", ServePri: 100,
+		ServeInstanceName: "dhs-nmos-mirror-b",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go func() { _ = m.Run(ctx) }()
+
+	select {
+	case ins := <-fr.announced:
+		if ins.Name != "dhs-nmos-mirror-b" || ins.Port != 8336 {
+			t.Errorf("announced %q on port %d, want dhs-nmos-mirror-b on 8336", ins.Name, ins.Port)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("nothing was announced")
+	}
 }

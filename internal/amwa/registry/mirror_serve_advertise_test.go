@@ -161,7 +161,7 @@ func TestMirrorServeAnnounce(t *testing.T) {
 // TestServeAnnounceInstanceTXT pins the pure instance builder both
 // auth ways — the mirror twin of TestPickRegistryServices.
 func TestServeAnnounceInstanceTXT(t *testing.T) {
-	armed := serveAnnounceInstance("h.test", 8335, []string{"v1.2", "v1.3"}, 100, true, "https")
+	armed := serveAnnounceInstance("", "h.test", 8335, []string{"v1.2", "v1.3"}, 100, true, "https")
 	if armed.TXT[codec.TXTKeyAPIAuth] != "true" {
 		t.Errorf("armed api_auth = %q, want true", armed.TXT[codec.TXTKeyAPIAuth])
 	}
@@ -174,7 +174,7 @@ func TestServeAnnounceInstanceTXT(t *testing.T) {
 	if armed.Service != codec.ServiceQuery {
 		t.Errorf("service = %q, want %q", armed.Service, codec.ServiceQuery)
 	}
-	disarmed := serveAnnounceInstance("h.test", 8335, []string{"v1.3"}, -3, false, "")
+	disarmed := serveAnnounceInstance("", "h.test", 8335, []string{"v1.3"}, -3, false, "")
 	if disarmed.TXT[codec.TXTKeyAPIAuth] != "false" {
 		t.Errorf("disarmed api_auth = %q, want false", disarmed.TXT[codec.TXTKeyAPIAuth])
 	}

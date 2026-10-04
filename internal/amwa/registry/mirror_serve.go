@@ -278,15 +278,19 @@ func (m *Mirror) announceServe(ctx context.Context, advertise string, apiVers []
 	if m.opts.ServeTLSCert != "" {
 		proto = "https"
 	}
-	ins := serveAnnounceInstance(host, port, apiVers, m.opts.ServePri, m.opts.ServeAuthURL != "", proto)
+	ins := serveAnnounceInstance(m.opts.ServeInstanceName, host, port, apiVers, m.opts.ServePri, m.opts.ServeAuthURL != "", proto)
 	if err := resp.Announce(ctx, ins); err != nil {
 		m.logger.Warn("registry/mirror: serve announce failed", "err", err)
 		return
 	}
 	m.logger.Info("registry/mirror: mDNS announce active for served Query API",
-		"host", host, "port", port, "pri", m.opts.ServePri)
+		"instance", ins.Name, "host", host, "port", port, "pri", m.opts.ServePri)
 	<-ctx.Done()
 }
+
+// defaultServeInstanceName is the label a mirror announces its served
+// face under when the operator named none.
+const defaultServeInstanceName = "dhs-nmos-mirror"
 
 // serveAnnounceInstance builds the served face's one DNS-SD instance:
 // _nmos-query._tcp ONLY — the mirror's Query face is real, and there
@@ -296,8 +300,12 @@ func (m *Mirror) announceServe(ctx context.Context, advertise string, apiVers []
 // armed), api_ver per served minor, api_auth tracking the Bearer
 // gate (#946), and pri — CLI-defaulted to 100, the dev range, so the
 // plant mirror never wins a production Registry election against its
-// own source registry at pri 0.
-func serveAnnounceInstance(host string, port uint16, apiVers []string, pri int, auth bool, proto string) codec.Instance {
+// own source registry at pri 0. The instance label defaults to
+// "dhs-nmos-mirror"; a second mirror on the link names its own.
+func serveAnnounceInstance(name, host string, port uint16, apiVers []string, pri int, auth bool, proto string) codec.Instance {
+	if name == "" {
+		name = defaultServeInstanceName
+	}
 	if pri < 0 {
 		pri = 0
 	}
@@ -305,7 +313,7 @@ func serveAnnounceInstance(host string, port uint16, apiVers []string, pri int, 
 		proto = "http"
 	}
 	return codec.Instance{
-		Name:    "dhs-nmos-mirror",
+		Name:    name,
 		Service: codec.ServiceQuery,
 		Domain:  codec.DefaultDomain,
 		Host:    host,

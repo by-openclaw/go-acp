@@ -115,6 +115,12 @@ type MirrorOptions struct {
 	// range — because the plant mirror must never win a production
 	// Registry election against its own source registry (pri 0).
 	ServePri int
+	// ServeInstanceName is the DNS-SD instance label the served face
+	// announces under. Instance names are unique per link, so a second
+	// mirror on it — a backup, one per plane — must be given its own or
+	// its announce is refused as a name collision and controllers that
+	// discover by mDNS never find it. Empty means "dhs-nmos-mirror".
+	ServeInstanceName string
 	// ServeTLSCert / ServeTLSKey, when both set, make the served face
 	// HTTPS/WSS-only (BCP-003-01: a secured server SHALL NOT accept
 	// plain HTTP) using these manually installed pairs — the same
