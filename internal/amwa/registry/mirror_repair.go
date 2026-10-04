@@ -238,22 +238,96 @@ func (c catalogue) nodeOf(topic, id string) (string, bool) {
 	return "", false
 }
 
-// scope turns owed work into the set of resources to send. bounded is
-// false when the work cannot be scoped from the catalogue.
-func (c catalogue) scope(work owedWork) (want scopeSet, bounded bool) {
-	want = scopeSet{}
+// scope turns owed work into the set of resources to send. orphans are
+// the owed resources whose chain of ancestors is not whole in the
+// catalogue: they cannot be sent behind their parents yet.
+func (c catalogue) scope(work owedWork) (want, orphans scopeSet) {
+	want, orphans = scopeSet{}, scopeSet{}
 	c.subtree(work.nodes, want)
 	for topic, ids := range work.refused {
 		for id := range ids {
 			if _, cached := c[topic][id]; !cached {
 				continue // gone from the source since: nothing to repair
 			}
-			if !c.chain(topic, id, want) {
-				return nil, false
+			chain := scopeSet{}
+			if !c.chain(topic, id, chain) {
+				orphans.add(topic, id)
+				continue
+			}
+			for t, members := range chain {
+				for member := range members {
+					want.add(t, member)
+				}
 			}
 		}
 	}
-	return want, true
+	return want, orphans
+}
+
+// mirrorOrphanTries is how many times a resource whose parent the
+// mirror has not seen is waited for before the catalogue is read again
+// from the source. A parent ordinarily follows within the second — the
+// collections stream side by side, and a Node that restarts sends its
+// device after its receivers have been seen leaving and coming back.
+// Reading and sending the whole catalogue for that cost the plant's
+// target twelve thousand requests (#1346); it is kept for a parent that
+// does not come, which is a subscription that lost an event.
+const mirrorOrphanTries = 3
+
+// waitForParents holds orphans for a later pass. It reports true when
+// the wait is over — one of them has been waited for long enough, or
+// there is no run to wait in — and the whole catalogue is owed.
+func (m *Mirror) waitForParents(orphans scopeSet) (giveUp bool) {
+	m.mu.Lock()
+	running := m.runCtx != nil
+	if orphans.size() == 0 {
+		m.orphanTries = nil
+		m.mu.Unlock()
+		return false
+	}
+	if m.orphanTries == nil {
+		m.orphanTries = map[string]int{}
+	}
+	for topic, ids := range orphans {
+		for id := range ids {
+			m.orphanTries[topic+"/"+id]++
+			if m.orphanTries[topic+"/"+id] > mirrorOrphanTries {
+				giveUp = true
+			}
+		}
+	}
+	if giveUp || !running {
+		m.orphanTries = nil
+		m.mu.Unlock()
+		return true
+	}
+	m.mu.Unlock()
+	m.audit.event("waiting_for_parent", map[string]any{"resources": orphans.size()})
+	m.retryLater(owedWork{refused: orphans, held: orphans})
+	return false
+}
+
+// stale reports a resource of a pass's snapshot that must not be sent
+// now: it has left the catalogue since (gone), or — in a run — the
+// target does not hold its parent, which left and has not come back
+// yet (waiting). A pass plans from a snapshot and a plant's pass takes
+// a minute; a Node that restarts meanwhile takes its device away under
+// it, and the receivers sent after that were refused (#1346).
+func (m *Mirror) stale(topic, id string, doc json.RawMessage) (gone, waiting bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, cached := m.cache[topic][id]; !cached {
+		return true, false
+	}
+	if m.runCtx == nil {
+		return false, false
+	}
+	for _, p := range parentsOf(topic, doc) {
+		if _, cached := m.cache[p.topic][p.id]; cached && !m.landed[p.topic][p.id] {
+			return false, true
+		}
+	}
+	return false, false
 }
 
 // snapshot copies the cache's index — not the documents — so a pass is
@@ -384,8 +458,9 @@ func (m *Mirror) pass(ctx context.Context, work owedWork) {
 	docs, vers := m.snapshot()
 	var want scopeSet // nil = everything
 	if !work.all {
-		var bounded bool
-		if want, bounded = docs.scope(work); !bounded {
+		var orphans scopeSet
+		want, orphans = docs.scope(work)
+		if m.waitForParents(orphans) {
 			work = wholeCatalogue("resync")
 		}
 	}
@@ -407,6 +482,7 @@ func (m *Mirror) pass(ctx context.Context, work owedWork) {
 	refused := map[string]bool{} // ids the target said no to in this pass
 	skipped := 0
 	unanswered := scopeSet{} // sent, and no usable answer came back
+	waiting := scopeSet{}    // not sent: the target does not hold the parent yet
 	silent := 0              // how many of those in a row
 send:
 	for _, topic := range mirrorTopics {
@@ -422,6 +498,12 @@ send:
 				return
 			}
 			doc := docs[topic][id]
+			if gone, wait := m.stale(topic, id, doc); gone {
+				continue
+			} else if wait && !underRefused(parentsOf(topic, doc), refused) && !underUnanswered(parentsOf(topic, doc), unanswered) {
+				waiting.add(topic, id)
+				continue
+			}
 			if underRefused(parentsOf(topic, doc), refused) {
 				refused[id] = true // and so are its own children
 				skipped++
@@ -456,6 +538,9 @@ send:
 		m.retryLater(owedWork{refused: unanswered})
 	default:
 		m.answered()
+	}
+	if waiting.size() > 0 {
+		m.scheduleRepair(owedWork{refused: waiting, held: waiting})
 	}
 	if skipped > 0 {
 		m.logger.Warn("registry/mirror: children not sent — the target refused their parent", "skipped", skipped)
@@ -515,6 +600,18 @@ func (m *Mirror) answered() {
 func underRefused(parents []parentRef, refused map[string]bool) bool {
 	for _, p := range parents {
 		if refused[p.id] {
+			return true
+		}
+	}
+	return false
+}
+
+// underUnanswered reports a resource one of whose parents was sent in
+// this pass and got no usable answer: the target may hold it or not, so
+// the child is sent as it always was and the target says.
+func underUnanswered(parents []parentRef, unanswered scopeSet) bool {
+	for _, p := range parents {
+		if unanswered.has(p.topic, p.id) {
 			return true
 		}
 	}
