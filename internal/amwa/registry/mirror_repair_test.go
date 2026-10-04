@@ -345,6 +345,7 @@ func TestMirrorResendsARefusedChildBehindItsAncestors(t *testing.T) {
 func TestMirrorHoldsALiveChildUntilTheTargetHoldsItsParents(t *testing.T) {
 	target := &orderTarget{}
 	m, _ := repairMirror(t, target)
+	m.audit, _ = newAuditor("", 0)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m.mu.Lock()
@@ -365,6 +366,17 @@ func TestMirrorHoldsALiveChildUntilTheTargetHoldsItsParents(t *testing.T) {
 	}
 	if st := m.Stats(); st.Resyncs != 1 || st.Failures != 0 {
 		t.Errorf("stats = %+v, want one ordered pass and nothing refused", st)
+	}
+	// The audit trail is evidence about the target: a child that was
+	// held is not one the target refused.
+	var pass map[string]any
+	for _, ev := range m.audit.recent() {
+		if ev.Kind == "resync_scoped" {
+			pass = ev.Detail
+		}
+	}
+	if pass == nil || pass["held"] != 1 || pass["refused"] != 0 {
+		t.Errorf("the pass is audited as %v, want held=1 refused=0", pass)
 	}
 
 	// Its parents have landed now: a change to it is forwarded at once.

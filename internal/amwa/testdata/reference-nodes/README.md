@@ -25,7 +25,8 @@ the realistic node is the better exerciser for the tools themselves.
 
 ## Version-mismatch matrix
 Asserted deterministically in `internal/amwa/registry/version_matrix_test.go`
-(`versionAllowed`), both directions incl. the one-way wall: a registry
-presents a lower-registered resource at a higher query, never the
-reverse — an old controller is permanently blind to new nodes, and the
-only lever is the minor the node registers at.
+(`versionAllowed`), both directions, as IS-04 "Upgrade Path" words
+them: a resource registered at a later minor is shown at an earlier
+query, translated (keys removed) — an old controller sees new nodes;
+one registered at an earlier minor is shown at a later query only
+under `query.downgrade`.

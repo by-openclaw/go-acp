@@ -52,7 +52,13 @@ type Change struct {
 	APIVer       string          // wire version this resource was registered at
 	Pre          json.RawMessage // nil on create
 	Post         json.RawMessage // nil on delete
-	Timestamp    time.Time
+	// RawPre and RawPost are the documents as they were registered,
+	// when the resource came in through the Registration API: what a
+	// subscriber is sent. Pre and Post are the typed values' encoding,
+	// which filters are matched against.
+	RawPre    json.RawMessage
+	RawPost   json.RawMessage
+	Timestamp time.Time
 }
 
 // changeListener is the internal callback shape registered by the
@@ -119,11 +125,21 @@ type Store struct {
 	lastUpdateTS string
 
 	// apiVerByType tracks the IS-04 wire version each resource was
-	// registered at. Drives the no-downgrade-by-default Query
+	// registered at. Drives the Query API's version rule (query.go
+	// versionAllowed) — later minors shown translated, earlier ones
+	// only under query.downgrade: the no-downgrade-by-default Query
 	// semantics IS-04 §6.1.5 (and AMWA test_22 / test_32) — a Node
 	// posted at /registration/v1.0 doesn't appear at /query/v1.3
 	// unless the client opts in via `?query.downgrade=v1.0`.
 	apiVerByType map[is04.ResourceType]map[string]string
+
+	// documents holds each resource as it was registered: the body a
+	// Node sent, key for key. The typed values above are what the
+	// registry reasons with; this is what it hands back (documents.go).
+	documents map[is04.ResourceType]map[string]json.RawMessage
+	// arriving is the document of a registration on its way through
+	// the typed Put; fanOut files it under documents.
+	arriving map[is04.ResourceType]map[string]json.RawMessage
 
 	listeners []changeListener
 }
@@ -138,6 +154,8 @@ func NewStore() *Store {
 		flows:          make(map[string]is04.Flow),
 		senders:        make(map[string]is04.Sender),
 		receivers:      make(map[string]is04.Receiver),
+		documents:      make(map[is04.ResourceType]map[string]json.RawMessage),
+		arriving:       make(map[is04.ResourceType]map[string]json.RawMessage),
 		health:         make(map[string]time.Time),
 		encoded:        newEncodedForms(),
 		pageIdx:        newPageIndexes(),
@@ -255,6 +273,7 @@ func (s *Store) fanOut(c Change) {
 	if c.Kind == ChangeDeleted {
 		s.encoded.forget(c.ResourceType, c.ID)
 	}
+	s.fileDocument(&c)
 	for _, fn := range s.listeners {
 		if fn != nil {
 			fn(c)
@@ -799,6 +818,7 @@ func (s *Store) SnapshotChangesFor(wireVer string, t is04.ResourceType) []Change
 		id     string
 		apiVer string
 		v      any
+		doc    json.RawMessage
 	}
 	s.mu.RLock()
 	var items []item
@@ -806,42 +826,45 @@ func (s *Store) SnapshotChangesFor(wireVer string, t is04.ResourceType) []Change
 	case is04.ResourceNode:
 		items = make([]item, 0, len(s.nodes))
 		for _, v := range s.nodes {
-			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v, s.documents[t][v.ID]})
 		}
 	case is04.ResourceDevice:
 		items = make([]item, 0, len(s.devices))
 		for _, v := range s.devices {
-			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v, s.documents[t][v.ID]})
 		}
 	case is04.ResourceSource:
 		items = make([]item, 0, len(s.sources))
 		for _, v := range s.sources {
-			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v, s.documents[t][v.ID]})
 		}
 	case is04.ResourceFlow:
 		items = make([]item, 0, len(s.flows))
 		for _, v := range s.flows {
-			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v, s.documents[t][v.ID]})
 		}
 	case is04.ResourceSender:
 		items = make([]item, 0, len(s.senders))
 		for _, v := range s.senders {
-			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v, s.documents[t][v.ID]})
 		}
 	case is04.ResourceReceiver:
 		items = make([]item, 0, len(s.receivers))
 		for _, v := range s.receivers {
-			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v})
+			items = append(items, item{v.ID, s.apiVerOfLocked(t, v.ID), v, s.documents[t][v.ID]})
 		}
 	}
 	s.mu.RUnlock()
 
 	// The wire form at wireVer, from the cache when the resource is
 	// what it was last time (encoded.go).
-	encode := func(id string, v any) []byte { return s.encoded.get(t, id, v, wireVer) }
 	out := make([]Change, 0, len(items))
 	for _, it := range items {
-		out = append(out, Change{Kind: ChangeSync, ResourceType: t, ID: it.id, APIVer: it.apiVer, Post: encode(it.id, it.v), Timestamp: now})
+		post := documentAt(t, it.doc, it.apiVer, wireVer)
+		if post == nil {
+			post = s.encoded.get(t, it.id, it.v, wireVer)
+		}
+		out = append(out, Change{Kind: ChangeSync, ResourceType: t, ID: it.id, APIVer: it.apiVer, Post: post, Timestamp: now})
 	}
 	return out
 }
@@ -890,7 +913,9 @@ func (s *Store) IngestRegistrationVersioned(env *is04.RegistrationRequest, apiVe
 		s.markAPIVer(env.Type, id, apiVer)
 		s.mu.Unlock()
 	}
+	s.documentArrives(env.Type, id, env.Data)
 	if err := s.ingestTyped(env); err != nil {
+		s.documentWithdrawn(env.Type, id)
 		// Roll back the api_ver stamp on failure so we don't end up
 		// with an api_ver entry pointing at a resource that doesn't
 		// exist.
@@ -903,6 +928,7 @@ func (s *Store) IngestRegistrationVersioned(env *is04.RegistrationRequest, apiVe
 		}
 		return err
 	}
+	s.documentSettled(env.Type, id)
 	return nil
 }
 

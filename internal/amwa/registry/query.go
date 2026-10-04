@@ -56,9 +56,15 @@ func installQueryRoutes(srv *httpsession.Server, store *Store, mgr *Subscription
 			if !ok {
 				return stdhttp.StatusNotFound, httpsession.ErrorBody{Code: 404, Error: "Not Found", Debug: id}, nil
 			}
-			// Encode via the URL's wire codec so v1.0 GETs don't
-			// leak v1.1+ fields like `device_id` (Flow). Falls back
-			// to canonical marshal when no codec is registered.
+			// The document as it was registered, as this minor shows
+			// it (documents.go).
+			if doc := store.Document(typeCopy, id, apiVer); doc != nil {
+				return 0, &httpsession.RawBody{ContentType: "application/json", Body: doc}, nil
+			}
+			// No document on file: encode via the URL's wire codec so
+			// v1.0 GETs don't leak v1.1+ fields like `device_id`
+			// (Flow). Falls back to canonical marshal when no codec
+			// is registered.
 			if raw, ok := encodeForVersion(typeCopy, body, apiVer); ok {
 				return 0, &httpsession.RawBody{ContentType: "application/json", Body: raw}, nil
 			}
@@ -210,7 +216,7 @@ func servePagedList(store *Store, t is04.ResourceType, base, plural, apiVer stri
 		return true
 	}
 	page := store.ListPaged(t, opts)
-	body := page.Items
+	body := store.documentsOf(t, page.Items, apiVer)
 	// limit=0 explicitly: server returns no items but still emits
 	// paging cursors. AMWA test_21_4 verifies that with limit=0 both
 	// X-Paging-Since and X-Paging-Until collapse onto the explicit
@@ -372,6 +378,9 @@ func encodeForVersion(t is04.ResourceType, body any, apiVer string) ([]byte, boo
 // `resourceVer` should be visible at the URL's `urlVer`. IS-04 §6.1.5:
 //
 //   - exact match always visible
+//   - a resource registered at a LATER minor is visible too, translated
+//     (IS-04 "Upgrade Path": a Query API MUST show it, with the keys
+//     this minor does not know removed — translate.go)
 //   - if the client opts in via `query.downgrade=vX`, resources
 //     registered at versions in [vX, urlVer] become visible
 //   - resourceVer == "" (unstamped) is treated as "any version" so
@@ -380,7 +389,7 @@ func versionAllowed(resourceVer, urlVer, downgrade string) bool {
 	if resourceVer == "" || urlVer == "" {
 		return true
 	}
-	if resourceVer == urlVer {
+	if resourceVer == urlVer || minorLess(urlVer, resourceVer) {
 		return true
 	}
 	if downgrade == "" {

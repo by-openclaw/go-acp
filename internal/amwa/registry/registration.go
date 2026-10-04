@@ -91,6 +91,10 @@ func installRegistrationRoutes(srv *httpsession.Server, store *Store, base, apiV
 			if !ok {
 				return stdhttp.StatusNotFound, httpsession.ErrorBody{Code: 404, Error: "Not Found", Debug: id}, nil
 			}
+			// What was registered, as it was registered (documents.go).
+			if doc := store.Document(t, id, ""); doc != nil {
+				return 0, &httpsession.RawBody{ContentType: "application/json", Body: doc}, nil
+			}
 			return 0, body, nil
 		})
 	srv.HandlePrefix(resourcePrefix, stdhttp.MethodDelete,

@@ -55,6 +55,11 @@ type owedWork struct {
 	// refused are resources the target refused on the live path: each
 	// is owed together with the ancestors it names.
 	refused scopeSet
+	// held are the ones among them the target never refused: children
+	// kept back until it held their parent. They are owed the same way
+	// and told apart in the audit trail, which is evidence about the
+	// target — "refused" there has to mean the target said no.
+	held scopeSet
 }
 
 func wholeCatalogue(why string) owedWork { return owedWork{all: true, why: why} }
@@ -63,6 +68,12 @@ func subtreeOf(node string) owedWork { return owedWork{nodes: map[string]bool{no
 
 func refusedResource(topic, id string) owedWork {
 	return owedWork{refused: scopeSet{topic: {id: true}}}
+}
+
+// heldResource is a child kept back for its parent: owed like a refused
+// one, and not one.
+func heldResource(topic, id string) owedWork {
+	return owedWork{refused: scopeSet{topic: {id: true}}, held: scopeSet{topic: {id: true}}}
 }
 
 func (o *owedWork) empty() bool {
@@ -89,6 +100,14 @@ func (o *owedWork) add(more owedWork) {
 				o.refused = scopeSet{}
 			}
 			o.refused.add(topic, id)
+		}
+	}
+	for topic, ids := range more.held {
+		for id := range ids {
+			if o.held == nil {
+				o.held = scopeSet{}
+			}
+			o.held.add(topic, id)
 		}
 	}
 }
@@ -380,7 +399,8 @@ func (m *Mirror) pass(ctx context.Context, work owedWork) {
 		return
 	default:
 		m.audit.event("resync_scoped", map[string]any{
-			"resources": want.size(), "evicted_nodes": len(work.nodes), "refused": work.refused.size(),
+			"resources": want.size(), "evicted_nodes": len(work.nodes),
+			"refused": work.refused.size() - work.held.size(), "held": work.held.size(),
 		})
 	}
 
