@@ -1,0 +1,119 @@
+Frame 1: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 0, Len: 0
+
+Frame 2: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 18700, Dst Port: 53564, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 265 bytes on wire (2120 bits), 265 bytes captured (2120 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 1, Ack: 1, Len: 193
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: health/nodes/1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+    [Detail: POST heartbeat node=1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+
+Frame 5: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 18700, Dst Port: 53564, Seq: 1, Ack: 194, Len: 0
+
+Frame 6: 325 bytes on wire (2600 bits), 325 bytes captured (2600 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 18700, Dst Port: 53564, Seq: 1, Ack: 194, Len: 253
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: health/nodes/1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+    [Detail: 200 heartbeat node=1a03472f-6fd7-5a3a-b525-71017a4cfd22 health=1791151407]
+
+Frame 7: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 194, Ack: 254, Len: 0
+
+Frame 8: 265 bytes on wire (2120 bits), 265 bytes captured (2120 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 194, Ack: 254, Len: 193
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: health/nodes/1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+    [Detail: POST heartbeat node=1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+
+Frame 9: 325 bytes on wire (2600 bits), 325 bytes captured (2600 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 18700, Dst Port: 53564, Seq: 254, Ack: 387, Len: 253
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: health/nodes/1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+    [Detail: 200 heartbeat node=1a03472f-6fd7-5a3a-b525-71017a4cfd22 health=1791151412]
+
+Frame 10: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 387, Ack: 507, Len: 0
+
+Frame 11: 265 bytes on wire (2120 bits), 265 bytes captured (2120 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 387, Ack: 507, Len: 193
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: health/nodes/1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+    [Detail: POST heartbeat node=1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+
+Frame 12: 325 bytes on wire (2600 bits), 325 bytes captured (2600 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 18700, Dst Port: 53564, Seq: 507, Ack: 580, Len: 253
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: health/nodes/1a03472f-6fd7-5a3a-b525-71017a4cfd22]
+    [Detail: 200 heartbeat node=1a03472f-6fd7-5a3a-b525-71017a4cfd22 health=1791151417]
+
+Frame 13: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 580, Ack: 760, Len: 0
+
+Frame 14: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 580, Ack: 760, Len: 0
+
+Frame 15: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 18700, Dst Port: 53564, Seq: 760, Ack: 581, Len: 0
+
+Frame 16: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 53564, Dst Port: 18700, Seq: 581, Ack: 761, Len: 0
+

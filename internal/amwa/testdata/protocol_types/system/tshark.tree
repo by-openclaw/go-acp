@@ -1,0 +1,74 @@
+Frame 1: 74 bytes on wire (592 bits), 74 bytes captured (592 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 0, Len: 0
+
+Frame 2: 74 bytes on wire (592 bits), 74 bytes captured (592 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 57434, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 215 bytes on wire (1720 bits), 215 bytes captured (1720 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 1, Ack: 1, Len: 149
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-09 System]
+    [Version: v1.0]
+    [Resource: global]
+    [Detail: GET global]
+
+Frame 5: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 57434, Seq: 1, Ack: 150, Len: 0
+
+Frame 6: 354 bytes on wire (2832 bits), 354 bytes captured (2832 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 57434, Seq: 1, Ack: 150, Len: 288
+
+Frame 7: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 150, Ack: 289, Len: 0
+
+Frame 8: 271 bytes on wire (2168 bits), 271 bytes captured (2168 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 57434, Seq: 289, Ack: 150, Len: 205
+[2 Reassembled TCP Segments (493 bytes): #6(288), #8(205)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-09 System]
+    [Version: v1.0]
+    [Resource: global]
+    [Detail: 200 global]
+
+Frame 9: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 150, Ack: 494, Len: 0
+
+Frame 10: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 150, Ack: 494, Len: 0
+
+Frame 11: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 57434, Seq: 494, Ack: 151, Len: 0
+
+Frame 12: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: ProxmoxS_c1:92:ff (bc:24:11:c1:92:ff)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 57434, Dst Port: 8110, Seq: 151, Ack: 495, Len: 0
+

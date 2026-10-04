@@ -1,0 +1,2568 @@
+{
+  "APIVer": "v1.3",
+  "Nodes": [
+    {
+      "id": "1a7740be-1338-5f65-b639-263b508cfa62",
+      "version": "1791062084:843803415",
+      "label": "dhs-amwa-reference-node",
+      "description": "",
+      "tags": {},
+      "href": "http://10.6.250.104:8120/",
+      "hostname": "nmos-virtnode.local",
+      "caps": {},
+      "api": {
+        "versions": [
+          "v1.0",
+          "v1.1",
+          "v1.2",
+          "v1.3"
+        ],
+        "endpoints": [
+          {
+            "host": "10.6.250.104",
+            "port": 8120,
+            "protocol": "http",
+            "authorization": false
+          }
+        ]
+      },
+      "services": [],
+      "clocks": [
+        {
+          "name": "clk0",
+          "ref_type": "internal"
+        }
+      ],
+      "interfaces": [
+        {
+          "chassis_id": "bc-24-11-c1-92-ff",
+          "port_id": "bc-24-11-c1-92-ff",
+          "name": "eth0"
+        }
+      ]
+    }
+  ],
+  "Devices": [
+    {
+      "id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "version": "1791151521:213144815",
+      "label": "dhs-amwa-reference-node",
+      "description": "",
+      "tags": {},
+      "type": "urn:x-nmos:device:generic",
+      "node_id": "1a7740be-1338-5f65-b639-263b508cfa62",
+      "senders": [
+        "f78538ed-3e4e-568b-86d7-14be702ceaf2",
+        "b0ae2969-2132-5ec2-ba68-4ad91c26000d",
+        "b365450f-d097-525f-a7ef-8b74422e1691",
+        "40af44c4-3dd3-53c0-9c54-e2aec5c7f1fd",
+        "81c8b3c1-3828-5077-9def-788905439231",
+        "851fdecc-1866-5804-905d-780db8f5b939",
+        "e3051d85-2631-55a3-85c2-de9976a9d9e8",
+        "8672a1f2-4d07-5079-9e7f-04292a928f04",
+        "645b71bc-02bc-5d4b-a133-f22b53e0e171",
+        "5b9bf274-39ba-5d73-81d8-4441c44da793",
+        "365f9637-c3cf-5ec4-a66e-99d64ee3b68f",
+        "aea81527-9e46-56c3-b6d5-b9b276be35f9",
+        "0700cc27-7542-5b9e-8ad2-9f98512b676f",
+        "4d5d4c80-2cf5-5c80-bd7d-aa862ea0a18e",
+        "8c324e03-e9b2-5162-b64b-d970efb2aacb",
+        "b783aaf0-8672-5268-994c-e8adf16da779",
+        "6b3dd76e-fdb4-5be4-a245-6d8cce5da772",
+        "590c7cd6-8da7-5fc2-861f-019f688ce7bc",
+        "051ff694-744c-51cb-bc48-3f824f84cd12",
+        "9ffbfd02-e3c5-5b20-881c-310bba23c6b8",
+        "418f54bb-32e5-5f7d-aa15-d054a24e533b",
+        "add9634a-983d-5f12-b785-527b88b131df"
+      ],
+      "receivers": [
+        "18916411-705a-50ab-82ed-19fbe8b75ecf",
+        "46436c1f-85ba-537e-b323-f500012a04a9",
+        "6fbe0f69-9f18-5697-82c4-8e1299d7cd5a",
+        "abe36c6b-ccea-5371-8490-e767c39722cd",
+        "98d6676e-8f4f-58e7-894b-4f95413742b0",
+        "a160e6e1-de53-5733-b693-94541c9b4cbe",
+        "a5096999-4a62-5ebf-90bd-a46cb9912695",
+        "7e05fb30-d585-5a89-8001-63c42d86b83f",
+        "1f73d08d-8ec5-544d-bd98-0172f297078d",
+        "4ad1ff0a-bc3c-57d2-a8fb-2272382b577c",
+        "da9bf24d-e533-5f5c-886c-6989f8c0d34c",
+        "e8f76757-3600-505a-8525-15137d0d6ae9",
+        "68a4f6ae-c758-50ad-b4dc-db476e91db75",
+        "94acdf22-4a43-5cd2-821f-6bbf6f2bff92",
+        "fc2cbc7d-1d1c-5542-8fa2-941a83fa3bfa",
+        "d1fa1e6b-2f04-5fd6-bfe2-5b14f7b140dd",
+        "0c357af2-069b-59ea-af8e-831069a29c7f",
+        "bcca9bf9-2d61-541b-905b-a0e883986ee8",
+        "991c65e7-359d-53c3-b5ca-37efa24d854f",
+        "7ed4f9d1-a7a5-5f13-859a-728a7805a5c3",
+        "9ef36e87-ad31-59a9-bf2d-66aab97e67ab",
+        "56ee24a6-358a-5cdc-b6ad-636393300921"
+      ],
+      "controls": [
+        {
+          "href": "http://10.6.250.104:8120/x-nmos/connection/v1.0",
+          "type": "urn:x-nmos:control:sr-ctrl/v1.0",
+          "authorization": false
+        },
+        {
+          "href": "http://10.6.250.104:8120/x-nmos/connection/v1.1",
+          "type": "urn:x-nmos:control:sr-ctrl/v1.1",
+          "authorization": false
+        },
+        {
+          "href": "http://10.6.250.104:8120/x-nmos/connection/v1.2",
+          "type": "urn:x-nmos:control:sr-ctrl/v1.2",
+          "authorization": false
+        },
+        {
+          "href": "http://10.6.250.104:8120/x-nmos/events/v1.0",
+          "type": "urn:x-nmos:control:events/v1.0",
+          "authorization": false
+        },
+        {
+          "href": "http://10.6.250.104:8120/x-nmos/channelmapping/v1.0",
+          "type": "urn:x-nmos:control:cm-ctrl/v1.0",
+          "authorization": false
+        },
+        {
+          "href": "http://10.6.250.104:8120/x-manifest/",
+          "type": "urn:x-nmos:control:manifest-base/v1.0",
+          "authorization": false
+        },
+        {
+          "href": "ws://10.6.250.104:8122/x-nmos/ncp/v1.0",
+          "type": "urn:x-nmos:control:ncp/v1.0",
+          "authorization": false
+        },
+        {
+          "href": "http://10.6.250.104:8120/x-nmos/configuration/v1.0",
+          "type": "urn:x-nmos:control:configuration/v1.0",
+          "authorization": false
+        }
+      ]
+    }
+  ],
+  "Sources": [
+    {
+      "id": "d3df980b-3b2e-5ae4-9660-302a482dc0b5",
+      "version": "1791062084:858464216",
+      "label": "dhs-amwa-reference-node/source/b1",
+      "description": "source/b1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "boolean"
+    },
+    {
+      "id": "d02a5d8c-9c11-514a-afa0-b7fda7ed742d",
+      "version": "1791062084:846955201",
+      "label": "dhs-amwa-reference-node/source/m0",
+      "description": "source/m0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:mux"
+    },
+    {
+      "id": "cb521e53-a1a2-57ab-9ad2-43b6f745ce62",
+      "version": "1791062084:860137857",
+      "label": "dhs-amwa-reference-node/source/c1",
+      "description": "source/c1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number/enum/caterwaul"
+    },
+    {
+      "id": "5667b9ab-4219-574c-9428-317799aed734",
+      "version": "1791062084:847813865",
+      "label": "dhs-amwa-reference-node/source/v1",
+      "description": "source/v1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "2654ff95-28db-5e49-a428-aec636734fc2"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video"
+    },
+    {
+      "id": "b692f9f1-1a5a-53b3-bdb3-c5f8b5bece75",
+      "version": "1791062084:854669540",
+      "label": "dhs-amwa-reference-node/source/t0",
+      "description": "source/t0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number/temperature/C"
+    },
+    {
+      "id": "9bb8752f-fcf6-5ae9-ba8a-3fdfa0d83de2",
+      "version": "1791062084:855406161",
+      "label": "dhs-amwa-reference-node/source/b0",
+      "description": "source/b0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "boolean"
+    },
+    {
+      "id": "6a63f3f0-bf0f-5d97-ae5e-2df195578b74",
+      "version": "1791062084:850507571",
+      "label": "dhs-amwa-reference-node/source/m1",
+      "description": "source/m1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "d02a5d8c-9c11-514a-afa0-b7fda7ed742d"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:mux"
+    },
+    {
+      "id": "85fb55a5-0f03-5908-8b0a-86e254b3db68",
+      "version": "1791062084:849551320",
+      "label": "dhs-amwa-reference-node/source/d1",
+      "description": "source/d1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "ac93fa96-4d8e-5935-9b94-0f22965a39e6"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data"
+    },
+    {
+      "id": "791159a4-5ab9-50a6-a997-ac9a2ca85b7f",
+      "version": "1791062084:848681538",
+      "label": "dhs-amwa-reference-node/source/a1",
+      "description": "source/a1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "f990e9e0-ab74-5b53-886d-73d83ae30874"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "Left Channel",
+          "symbol": "L"
+        },
+        {
+          "label": "Right Channel",
+          "symbol": "R"
+        },
+        {
+          "label": "Center Channel",
+          "symbol": "C"
+        },
+        {
+          "label": "Low Frequency Effects Channel",
+          "symbol": "LFE"
+        }
+      ]
+    },
+    {
+      "id": "fcf9617b-578e-5795-a5c9-29936d2f68ea",
+      "version": "1791062084:856138728",
+      "label": "dhs-amwa-reference-node/source/s0",
+      "description": "source/s0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "string"
+    },
+    {
+      "id": "fb2295e9-8376-54fb-9c9a-2bb4bff0485d",
+      "version": "1791062084:864142693",
+      "label": "dhs-amwa-reference-node/source/xa0",
+      "description": "source/xa0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "Left Channel",
+          "symbol": "L"
+        },
+        {
+          "label": "Right Channel",
+          "symbol": "R"
+        },
+        {
+          "label": "Center Channel",
+          "symbol": "C"
+        },
+        {
+          "label": "Low Frequency Effects Channel",
+          "symbol": "LFE"
+        }
+      ]
+    },
+    {
+      "id": "9cb022d8-be4b-560e-a4ac-2e3d7e690090",
+      "version": "1791062084:856945597",
+      "label": "dhs-amwa-reference-node/source/c0",
+      "description": "source/c0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number/enum/caterwaul"
+    },
+    {
+      "id": "cca8b8fc-29ba-541d-bc85-751921692fd5",
+      "version": "1791062084:865386187",
+      "label": "dhs-amwa-reference-node/source/xd0",
+      "description": "source/xd0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data"
+    },
+    {
+      "id": "ac93fa96-4d8e-5935-9b94-0f22965a39e6",
+      "version": "1791062084:846095625",
+      "label": "dhs-amwa-reference-node/source/d0",
+      "description": "source/d0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data"
+    },
+    {
+      "id": "9fa74b97-ee1c-51b3-b908-4b2f3dbee723",
+      "version": "1791062084:857704509",
+      "label": "dhs-amwa-reference-node/source/t1",
+      "description": "source/t1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "number/temperature/C"
+    },
+    {
+      "id": "f990e9e0-ab74-5b53-886d-73d83ae30874",
+      "version": "1791151521:212912284",
+      "label": "dhs-amwa-reference-node/source/a0",
+      "description": "source/a0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "Left Channel",
+          "symbol": "L"
+        },
+        {
+          "label": "Right Channel",
+          "symbol": "R"
+        },
+        {
+          "label": "Center Channel",
+          "symbol": "C"
+        },
+        {
+          "label": "Low Frequency Effects Channel",
+          "symbol": "LFE"
+        }
+      ]
+    },
+    {
+      "id": "2654ff95-28db-5e49-a428-aec636734fc2",
+      "version": "1791062084:844179202",
+      "label": "dhs-amwa-reference-node/source/v0",
+      "description": "source/v0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video"
+    },
+    {
+      "id": "f563958f-efda-55da-8f63-423be52484d0",
+      "version": "1791062084:859284768",
+      "label": "dhs-amwa-reference-node/source/s1",
+      "description": "source/s1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": null,
+      "format": "urn:x-nmos:format:data",
+      "event_type": "string"
+    },
+    {
+      "id": "5c0aae21-d118-5e15-8281-92b581f6278b",
+      "version": "1791062084:867704182",
+      "label": "dhs-amwa-reference-node/source/xd1",
+      "description": "source/xd1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "cca8b8fc-29ba-541d-bc85-751921692fd5"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data"
+    },
+    {
+      "id": "ea0cd918-9490-52c9-ab6f-108e46f83ed2",
+      "version": "1791062084:863490655",
+      "label": "dhs-amwa-reference-node/source/xv0",
+      "description": "source/xv0",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video"
+    },
+    {
+      "id": "ee666ce3-1844-5910-8fb1-029eddc8cf75",
+      "version": "1791062084:866111417",
+      "label": "dhs-amwa-reference-node/source/xv1",
+      "description": "source/xv1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "ea0cd918-9490-52c9-ab6f-108e46f83ed2"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video"
+    },
+    {
+      "id": "8d2c4e70-0dd2-5872-b1ed-318cbe31b53c",
+      "version": "1791062084:866883359",
+      "label": "dhs-amwa-reference-node/source/xa1",
+      "description": "source/xa1",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "fb2295e9-8376-54fb-9c9a-2bb4bff0485d"
+      ],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "Left Channel",
+          "symbol": "L"
+        },
+        {
+          "label": "Right Channel",
+          "symbol": "R"
+        },
+        {
+          "label": "Center Channel",
+          "symbol": "C"
+        },
+        {
+          "label": "Low Frequency Effects Channel",
+          "symbol": "LFE"
+        }
+      ]
+    },
+    {
+      "id": "0eb954f8-f9d9-51ab-8228-8dd631e350b2",
+      "version": "1791062084:871549787",
+      "label": "dhs-amwa-reference-node/source/a2",
+      "description": "source/a2",
+      "tags": {},
+      "caps": {},
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "clock_name": "clk0",
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "channels": [
+        {
+          "label": "",
+          "symbol": "U01"
+        },
+        {
+          "label": "",
+          "symbol": "U02"
+        },
+        {
+          "label": "",
+          "symbol": "U03"
+        },
+        {
+          "label": "",
+          "symbol": "U04"
+        },
+        {
+          "label": "",
+          "symbol": "U05"
+        },
+        {
+          "label": "",
+          "symbol": "U06"
+        },
+        {
+          "label": "",
+          "symbol": "U07"
+        },
+        {
+          "label": "",
+          "symbol": "U08"
+        }
+      ]
+    }
+  ],
+  "Flows": [
+    {
+      "id": "a2fac72a-06df-5ff1-bde9-9e278bc2b551",
+      "version": "1791062084:858506594",
+      "label": "dhs-amwa-reference-node/flow/b1",
+      "description": "flow/b1",
+      "tags": {},
+      "source_id": "d3df980b-3b2e-5ae4-9660-302a482dc0b5",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "boolean"
+    },
+    {
+      "id": "141e17c2-f887-5e80-ad61-b9c0d26819c2",
+      "version": "1791062084:856992208",
+      "label": "dhs-amwa-reference-node/flow/c0",
+      "description": "flow/c0",
+      "tags": {},
+      "source_id": "9cb022d8-be4b-560e-a4ac-2e3d7e690090",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number/enum/caterwaul"
+    },
+    {
+      "id": "00fe651d-7553-519a-af5b-69ecbc8611c1",
+      "version": "1791062084:855439225",
+      "label": "dhs-amwa-reference-node/flow/b0",
+      "description": "flow/b0",
+      "tags": {},
+      "source_id": "9bb8752f-fcf6-5ae9-ba8a-3fdfa0d83de2",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "boolean"
+    },
+    {
+      "id": "dd3b9c7b-c827-51fb-8249-cf6d284456a5",
+      "version": "1791062084:854719296",
+      "label": "dhs-amwa-reference-node/flow/t0",
+      "description": "flow/t0",
+      "tags": {},
+      "source_id": "b692f9f1-1a5a-53b3-bdb3-c5f8b5bece75",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number/temperature/C"
+    },
+    {
+      "id": "975f4e78-8c7b-5d65-8c70-420c53dbe471",
+      "version": "1791062084:857737812",
+      "label": "dhs-amwa-reference-node/flow/t1",
+      "description": "flow/t1",
+      "tags": {},
+      "source_id": "9fa74b97-ee1c-51b3-b908-4b2f3dbee723",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number/temperature/C"
+    },
+    {
+      "id": "c1ea7ee0-9175-5896-befa-3120be69ff45",
+      "version": "1791062084:866915926",
+      "label": "dhs-amwa-reference-node/flow/xa1",
+      "description": "flow/xa1",
+      "tags": {},
+      "source_id": "8d2c4e70-0dd2-5872-b1ed-318cbe31b53c",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "81e3110e-d7b2-5fd5-b0e1-3478ece46f5f"
+      ],
+      "format": "urn:x-nmos:format:audio",
+      "media_type": "audio/float32",
+      "sample_rate": {
+        "numerator": 48000,
+        "denominator": 1
+      },
+      "bit_depth": 32
+    },
+    {
+      "id": "4ab38a04-a67d-51cf-bb1b-5fb7ab3f81dc",
+      "version": "1791062084:859330529",
+      "label": "dhs-amwa-reference-node/flow/s1",
+      "description": "flow/s1",
+      "tags": {},
+      "source_id": "f563958f-efda-55da-8f63-423be52484d0",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "string"
+    },
+    {
+      "id": "3aaf20c7-5999-523b-84cf-6a68a8a24cbc",
+      "version": "1791062084:847831673",
+      "label": "dhs-amwa-reference-node/flow/v1",
+      "description": "flow/v1",
+      "tags": {},
+      "source_id": "5667b9ab-4219-574c-9428-317799aed734",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "0f02e8cf-39d5-583a-9a35-c3a47994f8c1"
+      ],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/raw",
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "interlaced_tff",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "components": [
+        {
+          "name": "Y",
+          "width": 1920,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cb",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cr",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        }
+      ]
+    },
+    {
+      "id": "137cecc7-80f6-56cc-84da-02909f8f3bc8",
+      "version": "1791062084:848705496",
+      "label": "dhs-amwa-reference-node/flow/a1",
+      "description": "flow/a1",
+      "tags": {},
+      "source_id": "791159a4-5ab9-50a6-a997-ac9a2ca85b7f",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "f4aabfb0-27c1-501b-bbfa-a1d5cc280e77"
+      ],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "media_type": "audio/L24",
+      "sample_rate": {
+        "numerator": 48000,
+        "denominator": 1
+      },
+      "bit_depth": 24
+    },
+    {
+      "id": "5b10a2de-c5b4-5a13-9c18-33b3d0245811",
+      "version": "1791062084:856182706",
+      "label": "dhs-amwa-reference-node/flow/s0",
+      "description": "flow/s0",
+      "tags": {},
+      "source_id": "fcf9617b-578e-5795-a5c9-29936d2f68ea",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "string"
+    },
+    {
+      "id": "63ff0d85-0c4f-5169-85e4-10a64f6f0540",
+      "version": "1791062084:846969749",
+      "label": "dhs-amwa-reference-node/flow/m0",
+      "description": "flow/m0",
+      "tags": {},
+      "source_id": "d02a5d8c-9c11-514a-afa0-b7fda7ed742d",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:mux",
+      "media_type": "video/SMPTE2022-6"
+    },
+    {
+      "id": "97eec808-def9-537f-bc43-4aeae53411f0",
+      "version": "1791062084:850532390",
+      "label": "dhs-amwa-reference-node/flow/m1",
+      "description": "flow/m1",
+      "tags": {},
+      "source_id": "6a63f3f0-bf0f-5d97-ae5e-2df195578b74",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "63ff0d85-0c4f-5169-85e4-10a64f6f0540"
+      ],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:mux",
+      "media_type": "video/SMPTE2022-6"
+    },
+    {
+      "id": "755addcf-50f0-59d2-81d2-7e0f685c7960",
+      "version": "1791062084:849571975",
+      "label": "dhs-amwa-reference-node/flow/d1",
+      "description": "flow/d1",
+      "tags": {},
+      "source_id": "85fb55a5-0f03-5908-8b0a-86e254b3db68",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "7a40a2a7-e67f-55b0-986d-8fb5b2ce88f2"
+      ],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data",
+      "media_type": "video/smpte291",
+      "DID_SDID": [
+        {
+          "DID": "0x60",
+          "SDID": "0x60"
+        }
+      ]
+    },
+    {
+      "id": "7a40a2a7-e67f-55b0-986d-8fb5b2ce88f2",
+      "version": "1791062084:846112862",
+      "label": "dhs-amwa-reference-node/flow/d0",
+      "description": "flow/d0",
+      "tags": {},
+      "source_id": "ac93fa96-4d8e-5935-9b94-0f22965a39e6",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data",
+      "media_type": "video/smpte291",
+      "DID_SDID": [
+        {
+          "DID": "0x60",
+          "SDID": "0x60"
+        }
+      ]
+    },
+    {
+      "id": "f4aabfb0-27c1-501b-bbfa-a1d5cc280e77",
+      "version": "1791062084:844968322",
+      "label": "dhs-amwa-reference-node/flow/a0",
+      "description": "flow/a0",
+      "tags": {},
+      "source_id": "f990e9e0-ab74-5b53-886d-73d83ae30874",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:audio",
+      "media_type": "audio/L24",
+      "sample_rate": {
+        "numerator": 48000,
+        "denominator": 1
+      },
+      "bit_depth": 24
+    },
+    {
+      "id": "0f02e8cf-39d5-583a-9a35-c3a47994f8c1",
+      "version": "1791062084:844196602",
+      "label": "dhs-amwa-reference-node/flow/v0",
+      "description": "flow/v0",
+      "tags": {},
+      "source_id": "2654ff95-28db-5e49-a428-aec636734fc2",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/raw",
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "interlaced_tff",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "components": [
+        {
+          "name": "Y",
+          "width": 1920,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cb",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cr",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        }
+      ]
+    },
+    {
+      "id": "73dd2c6b-8e63-520a-bd05-b16208445400",
+      "version": "1791062084:860175361",
+      "label": "dhs-amwa-reference-node/flow/c1",
+      "description": "flow/c1",
+      "tags": {},
+      "source_id": "cb521e53-a1a2-57ab-9ad2-43b6f745ce62",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:data",
+      "media_type": "application/json",
+      "event_type": "number/enum/caterwaul"
+    },
+    {
+      "id": "519f6910-45ac-5541-a5d9-4e0ce7b9aabc",
+      "version": "1791062084:865415992",
+      "label": "dhs-amwa-reference-node/flow/xd0",
+      "description": "flow/xd0",
+      "tags": {},
+      "source_id": "cca8b8fc-29ba-541d-bc85-751921692fd5",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data",
+      "media_type": "video/smpte291",
+      "DID_SDID": [
+        {
+          "DID": "0x60",
+          "SDID": "0x60"
+        }
+      ]
+    },
+    {
+      "id": "e92e0db5-062d-519f-a9c7-e29e2de07bcc",
+      "version": "1791062084:863509602",
+      "label": "dhs-amwa-reference-node/flow/xv0",
+      "description": "flow/xv0",
+      "tags": {},
+      "source_id": "ea0cd918-9490-52c9-ab6f-108e46f83ed2",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/v210",
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "interlaced_tff",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "components": [
+        {
+          "name": "Y",
+          "width": 1920,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cb",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cr",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        }
+      ]
+    },
+    {
+      "id": "81e3110e-d7b2-5fd5-b0e1-3478ece46f5f",
+      "version": "1791062084:864166140",
+      "label": "dhs-amwa-reference-node/flow/xa0",
+      "description": "flow/xa0",
+      "tags": {},
+      "source_id": "fb2295e9-8376-54fb-9c9a-2bb4bff0485d",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [],
+      "format": "urn:x-nmos:format:audio",
+      "media_type": "audio/float32",
+      "sample_rate": {
+        "numerator": 48000,
+        "denominator": 1
+      },
+      "bit_depth": 32
+    },
+    {
+      "id": "7ddcc165-ca88-5178-b60c-249cdc675180",
+      "version": "1791062084:866143012",
+      "label": "dhs-amwa-reference-node/flow/xv1",
+      "description": "flow/xv1",
+      "tags": {},
+      "source_id": "ee666ce3-1844-5910-8fb1-029eddc8cf75",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "e92e0db5-062d-519f-a9c7-e29e2de07bcc"
+      ],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:video",
+      "media_type": "video/v210",
+      "frame_width": 1920,
+      "frame_height": 1080,
+      "interlace_mode": "interlaced_tff",
+      "colorspace": "BT709",
+      "transfer_characteristic": "SDR",
+      "components": [
+        {
+          "name": "Y",
+          "width": 1920,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cb",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        },
+        {
+          "name": "Cr",
+          "width": 960,
+          "height": 1080,
+          "bit_depth": 10
+        }
+      ]
+    },
+    {
+      "id": "8bde2a35-2a2b-583c-a869-2dcd6d365c90",
+      "version": "1791062084:867722717",
+      "label": "dhs-amwa-reference-node/flow/xd1",
+      "description": "flow/xd1",
+      "tags": {},
+      "source_id": "5c0aae21-d118-5e15-8281-92b581f6278b",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "parents": [
+        "519f6910-45ac-5541-a5d9-4e0ce7b9aabc"
+      ],
+      "grain_rate": {
+        "numerator": 25,
+        "denominator": 1
+      },
+      "format": "urn:x-nmos:format:data",
+      "media_type": "video/smpte291",
+      "DID_SDID": [
+        {
+          "DID": "0x60",
+          "SDID": "0x60"
+        }
+      ]
+    }
+  ],
+  "Senders": [
+    {
+      "id": "6b3dd76e-fdb4-5be4-a245-6d8cce5da772",
+      "version": "1791062084:864366751",
+      "label": "dhs-amwa-reference-node/sender/xv0",
+      "description": "sender/xv0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender xv0"
+        ]
+      },
+      "flow_id": "e92e0db5-062d-519f-a9c7-e29e2de07bcc",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "5b9bf274-39ba-5d73-81d8-4441c44da793",
+      "version": "1791062084:857853438",
+      "label": "dhs-amwa-reference-node/sender/t1",
+      "description": "sender/t1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender t1"
+        ]
+      },
+      "flow_id": "975f4e78-8c7b-5d65-8c70-420c53dbe471",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "b783aaf0-8672-5268-994c-e8adf16da779",
+      "version": "1791062084:860323344",
+      "label": "dhs-amwa-reference-node/sender/c1",
+      "description": "sender/c1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender c1"
+        ]
+      },
+      "flow_id": "73dd2c6b-8e63-520a-bd05-b16208445400",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "8c324e03-e9b2-5162-b64b-d970efb2aacb",
+      "version": "1791062084:857100801",
+      "label": "dhs-amwa-reference-node/sender/c0",
+      "description": "sender/c0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender c0"
+        ]
+      },
+      "flow_id": "141e17c2-f887-5e80-ad61-b9c0d26819c2",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "0700cc27-7542-5b9e-8ad2-9f98512b676f",
+      "version": "1791062084:856326999",
+      "label": "dhs-amwa-reference-node/sender/s0",
+      "description": "sender/s0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender s0"
+        ]
+      },
+      "flow_id": "5b10a2de-c5b4-5a13-9c18-33b3d0245811",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "645b71bc-02bc-5d4b-a133-f22b53e0e171",
+      "version": "1791062084:854826946",
+      "label": "dhs-amwa-reference-node/sender/t0",
+      "description": "sender/t0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender t0"
+        ]
+      },
+      "flow_id": "dd3b9c7b-c827-51fb-8249-cf6d284456a5",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "365f9637-c3cf-5ec4-a66e-99d64ee3b68f",
+      "version": "1791062084:855531396",
+      "label": "dhs-amwa-reference-node/sender/b0",
+      "description": "sender/b0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender b0"
+        ]
+      },
+      "flow_id": "00fe651d-7553-519a-af5b-69ecbc8611c1",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "851fdecc-1866-5804-905d-780db8f5b939",
+      "version": "1791062084:850578383",
+      "label": "dhs-amwa-reference-node/sender/d1",
+      "description": "sender/d1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender d1"
+        ]
+      },
+      "flow_id": "755addcf-50f0-59d2-81d2-7e0f685c7960",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/851fdecc-1866-5804-905d-780db8f5b939/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "b0ae2969-2132-5ec2-ba68-4ad91c26000d",
+      "version": "1791062084:848786303",
+      "label": "dhs-amwa-reference-node/sender/v1",
+      "description": "sender/v1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender v1"
+        ]
+      },
+      "flow_id": "3aaf20c7-5999-523b-84cf-6a68a8a24cbc",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/b0ae2969-2132-5ec2-ba68-4ad91c26000d/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "40af44c4-3dd3-53c0-9c54-e2aec5c7f1fd",
+      "version": "1791151497:79116764",
+      "label": "dhs-amwa-reference-node/sender/a1",
+      "description": "sender/a1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender a1"
+        ]
+      },
+      "flow_id": "137cecc7-80f6-56cc-84da-02909f8f3bc8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/40af44c4-3dd3-53c0-9c54-e2aec5c7f1fd/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "8672a1f2-4d07-5079-9e7f-04292a928f04",
+      "version": "1791062084:851653712",
+      "label": "dhs-amwa-reference-node/sender/m1",
+      "description": "sender/m1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender m1"
+        ]
+      },
+      "flow_id": "97eec808-def9-537f-bc43-4aeae53411f0",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/8672a1f2-4d07-5079-9e7f-04292a928f04/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "e3051d85-2631-55a3-85c2-de9976a9d9e8",
+      "version": "1791062084:847936260",
+      "label": "dhs-amwa-reference-node/sender/m0",
+      "description": "sender/m0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender m0"
+        ]
+      },
+      "flow_id": "63ff0d85-0c4f-5169-85e4-10a64f6f0540",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/e3051d85-2631-55a3-85c2-de9976a9d9e8/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "f78538ed-3e4e-568b-86d7-14be702ceaf2",
+      "version": "1791062084:845249254",
+      "label": "dhs-amwa-reference-node/sender/v0",
+      "description": "sender/v0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender v0"
+        ]
+      },
+      "flow_id": "0f02e8cf-39d5-583a-9a35-c3a47994f8c1",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/f78538ed-3e4e-568b-86d7-14be702ceaf2/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "81c8b3c1-3828-5077-9def-788905439231",
+      "version": "1791062084:847045504",
+      "label": "dhs-amwa-reference-node/sender/d0",
+      "description": "sender/d0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender d0"
+        ]
+      },
+      "flow_id": "7a40a2a7-e67f-55b0-986d-8fb5b2ce88f2",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/81c8b3c1-3828-5077-9def-788905439231/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "051ff694-744c-51cb-bc48-3f824f84cd12",
+      "version": "1791062084:865575029",
+      "label": "dhs-amwa-reference-node/sender/xa0",
+      "description": "sender/xa0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender xa0"
+        ]
+      },
+      "flow_id": "81e3110e-d7b2-5fd5-b0e1-3478ece46f5f",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "b365450f-d097-525f-a7ef-8b74422e1691",
+      "version": "1791062084:846229958",
+      "label": "dhs-amwa-reference-node/sender/a0",
+      "description": "sender/a0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender a0"
+        ]
+      },
+      "flow_id": "f4aabfb0-27c1-501b-bbfa-a1d5cc280e77",
+      "transport": "urn:x-nmos:transport:rtp",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": "http://10.6.250.104:8120/x-manifest/senders/b365450f-d097-525f-a7ef-8b74422e1691/manifest",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "590c7cd6-8da7-5fc2-861f-019f688ce7bc",
+      "version": "1791062084:867090130",
+      "label": "dhs-amwa-reference-node/sender/xv1",
+      "description": "sender/xv1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender xv1"
+        ]
+      },
+      "flow_id": "7ddcc165-ca88-5178-b60c-249cdc675180",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "aea81527-9e46-56c3-b6d5-b9b276be35f9",
+      "version": "1791062084:858605599",
+      "label": "dhs-amwa-reference-node/sender/b1",
+      "description": "sender/b1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender b1"
+        ]
+      },
+      "flow_id": "a2fac72a-06df-5ff1-bde9-9e278bc2b551",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "9ffbfd02-e3c5-5b20-881c-310bba23c6b8",
+      "version": "1791062084:867854883",
+      "label": "dhs-amwa-reference-node/sender/xa1",
+      "description": "sender/xa1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender xa1"
+        ]
+      },
+      "flow_id": "c1ea7ee0-9175-5896-befa-3120be69ff45",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "4d5d4c80-2cf5-5c80-bd7d-aa862ea0a18e",
+      "version": "1791062084:859490744",
+      "label": "dhs-amwa-reference-node/sender/s1",
+      "description": "sender/s1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender s1"
+        ]
+      },
+      "flow_id": "4ab38a04-a67d-51cf-bb1b-5fb7ab3f81dc",
+      "transport": "urn:x-nmos:transport:websocket",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [
+        "eth0"
+      ],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "418f54bb-32e5-5f7d-aa15-d054a24e533b",
+      "version": "1791062084:866318669",
+      "label": "dhs-amwa-reference-node/sender/xd0",
+      "description": "sender/xd0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender xd0"
+        ]
+      },
+      "flow_id": "519f6910-45ac-5541-a5d9-4e0ce7b9aabc",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    },
+    {
+      "id": "add9634a-983d-5f12-b785-527b88b131df",
+      "version": "1791062084:868501508",
+      "label": "dhs-amwa-reference-node/sender/xd1",
+      "description": "sender/xd1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:sender xd1"
+        ]
+      },
+      "flow_id": "8bde2a35-2a2b-583c-a869-2dcd6d365c90",
+      "transport": "urn:x-nmos:transport:mxl",
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "manifest_href": null,
+      "interface_bindings": [],
+      "subscription": {
+        "receiver_id": null,
+        "active": true
+      }
+    }
+  ],
+  "Receivers": [
+    {
+      "id": "4ad1ff0a-bc3c-57d2-a8fb-2272382b577c",
+      "version": "1791062084:862243929",
+      "label": "dhs-amwa-reference-node/receiver/t1",
+      "description": "receiver/t1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver t1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "number/temperature/*"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "6fbe0f69-9f18-5697-82c4-8e1299d7cd5a",
+      "version": "1791151517:522841398",
+      "label": "dhs-amwa-reference-node/receiver/a0",
+      "description": "receiver/a0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver a0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:audio",
+      "caps": {
+        "media_types": [
+          "audio/L24"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:channel_count": {
+              "maximum": 4,
+              "minimum": 1
+            },
+            "urn:x-nmos:cap:format:sample_depth": {
+              "enum": [
+                16,
+                24
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 48000
+                }
+              ]
+            },
+            "urn:x-nmos:cap:transport:packet_time": {
+              "enum": [
+                0.125
+              ]
+            }
+          },
+          {
+            "urn:x-nmos:cap:format:channel_count": {
+              "maximum": 4,
+              "minimum": 1
+            },
+            "urn:x-nmos:cap:format:sample_depth": {
+              "enum": [
+                16,
+                24
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 48000
+                }
+              ]
+            },
+            "urn:x-nmos:cap:meta:preference": -1,
+            "urn:x-nmos:cap:transport:packet_time": {
+              "enum": [
+                1
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:852135260"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "d1fa1e6b-2f04-5fd6-bfe2-5b14f7b140dd",
+      "version": "1791062084:863160380",
+      "label": "dhs-amwa-reference-node/receiver/c1",
+      "description": "receiver/c1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver c1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "number/enum/caterwaul"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "991c65e7-359d-53c3-b5ca-37efa24d854f",
+      "version": "1791062084:868916208",
+      "label": "dhs-amwa-reference-node/receiver/xa0",
+      "description": "receiver/xa0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver xa0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:audio",
+      "caps": {
+        "media_types": [
+          "audio/float32"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:channel_count": {
+              "maximum": 4,
+              "minimum": 1
+            },
+            "urn:x-nmos:cap:format:media_type": {
+              "enum": [
+                "audio/float32"
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_depth": {
+              "enum": [
+                32
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 48000
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:868916208"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "98d6676e-8f4f-58e7-894b-4f95413742b0",
+      "version": "1791151496:811055426",
+      "label": "dhs-amwa-reference-node/receiver/d0",
+      "description": "receiver/d0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver d0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "video/smpte291"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:852439155"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "68a4f6ae-c758-50ad-b4dc-db476e91db75",
+      "version": "1791062084:861606314",
+      "label": "dhs-amwa-reference-node/receiver/s0",
+      "description": "receiver/s0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver s0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "string/*"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "46436c1f-85ba-537e-b323-f500012a04a9",
+      "version": "1791062084:853177139",
+      "label": "dhs-amwa-reference-node/receiver/v1",
+      "description": "receiver/v1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver v1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:video",
+      "caps": {
+        "media_types": [
+          "video/raw"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:color_sampling": {
+              "enum": [
+                "YCbCr-4:2:2"
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_height": {
+              "enum": [
+                1080
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_width": {
+              "enum": [
+                1920
+              ]
+            },
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            },
+            "urn:x-nmos:cap:format:interlace_mode": {
+              "enum": [
+                "interlaced_bff",
+                "interlaced_tff",
+                "interlaced_psf"
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:853177139"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "56ee24a6-358a-5cdc-b6ad-636393300921",
+      "version": "1791062084:870253062",
+      "label": "dhs-amwa-reference-node/receiver/xd1",
+      "description": "receiver/xd1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver xd1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "video/smpte291"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:870253062"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "18916411-705a-50ab-82ed-19fbe8b75ecf",
+      "version": "1791095773:713296962",
+      "label": "dhs-amwa-reference-node/receiver/v0",
+      "description": "receiver/v0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver v0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:video",
+      "caps": {
+        "media_types": [
+          "video/raw"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:color_sampling": {
+              "enum": [
+                "YCbCr-4:2:2"
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_height": {
+              "enum": [
+                1080
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_width": {
+              "enum": [
+                1920
+              ]
+            },
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            },
+            "urn:x-nmos:cap:format:interlace_mode": {
+              "enum": [
+                "interlaced_bff",
+                "interlaced_tff",
+                "interlaced_psf"
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:851537672"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "a160e6e1-de53-5733-b693-94541c9b4cbe",
+      "version": "1791062084:853899070",
+      "label": "dhs-amwa-reference-node/receiver/d1",
+      "description": "receiver/d1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver d1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "video/smpte291"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:853899070"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "a5096999-4a62-5ebf-90bd-a46cb9912695",
+      "version": "1791062084:852813035",
+      "label": "dhs-amwa-reference-node/receiver/m0",
+      "description": "receiver/m0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver m0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:mux",
+      "caps": {
+        "media_types": [
+          "video/SMPTE2022-6"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:852813035"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "fc2cbc7d-1d1c-5542-8fa2-941a83fa3bfa",
+      "version": "1791062084:861928779",
+      "label": "dhs-amwa-reference-node/receiver/c0",
+      "description": "receiver/c0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver c0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "number/enum/caterwaul"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "7e05fb30-d585-5a89-8001-63c42d86b83f",
+      "version": "1791062084:854273451",
+      "label": "dhs-amwa-reference-node/receiver/m1",
+      "description": "receiver/m1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver m1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:mux",
+      "caps": {
+        "media_types": [
+          "video/SMPTE2022-6"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:854273451"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "abe36c6b-ccea-5371-8490-e767c39722cd",
+      "version": "1791062084:853581137",
+      "label": "dhs-amwa-reference-node/receiver/a1",
+      "description": "receiver/a1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver a1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:rtp",
+      "interface_bindings": [
+        "eth0",
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:audio",
+      "caps": {
+        "media_types": [
+          "audio/L24"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:channel_count": {
+              "maximum": 4,
+              "minimum": 1
+            },
+            "urn:x-nmos:cap:format:sample_depth": {
+              "enum": [
+                16,
+                24
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 48000
+                }
+              ]
+            },
+            "urn:x-nmos:cap:transport:packet_time": {
+              "enum": [
+                0.125
+              ]
+            }
+          },
+          {
+            "urn:x-nmos:cap:format:channel_count": {
+              "maximum": 4,
+              "minimum": 1
+            },
+            "urn:x-nmos:cap:format:sample_depth": {
+              "enum": [
+                16,
+                24
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 48000
+                }
+              ]
+            },
+            "urn:x-nmos:cap:meta:preference": -1,
+            "urn:x-nmos:cap:transport:packet_time": {
+              "enum": [
+                1
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:853581137"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "1f73d08d-8ec5-544d-bd98-0172f297078d",
+      "version": "1791062084:860905671",
+      "label": "dhs-amwa-reference-node/receiver/t0",
+      "description": "receiver/t0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver t0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "number/temperature/*"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "da9bf24d-e533-5f5c-886c-6989f8c0d34c",
+      "version": "1791062084:861297049",
+      "label": "dhs-amwa-reference-node/receiver/b0",
+      "description": "receiver/b0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver b0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "boolean/*"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "e8f76757-3600-505a-8525-15137d0d6ae9",
+      "version": "1791062084:862556774",
+      "label": "dhs-amwa-reference-node/receiver/b1",
+      "description": "receiver/b1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver b1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "boolean/*"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "94acdf22-4a43-5cd2-821f-6bbf6f2bff92",
+      "version": "1791062084:862848533",
+      "label": "dhs-amwa-reference-node/receiver/s1",
+      "description": "receiver/s1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver s1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:websocket",
+      "interface_bindings": [
+        "eth0"
+      ],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "application/json"
+        ],
+        "event_types": [
+          "string/*"
+        ]
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "0c357af2-069b-59ea-af8e-831069a29c7f",
+      "version": "1791062084:868420524",
+      "label": "dhs-amwa-reference-node/receiver/xv0",
+      "description": "receiver/xv0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver xv0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:video",
+      "caps": {
+        "media_types": [
+          "video/v210"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:color_sampling": {
+              "enum": [
+                "YCbCr-4:2:2"
+              ]
+            },
+            "urn:x-nmos:cap:format:component_depth": {
+              "enum": [
+                10
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_height": {
+              "enum": [
+                1080
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_width": {
+              "enum": [
+                1920
+              ]
+            },
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            },
+            "urn:x-nmos:cap:format:interlace_mode": {
+              "enum": [
+                "interlaced_bff",
+                "interlaced_tff",
+                "interlaced_psf"
+              ]
+            },
+            "urn:x-nmos:cap:format:media_type": {
+              "enum": [
+                "video/v210"
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:868420524"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "9ef36e87-ad31-59a9-bf2d-66aab97e67ab",
+      "version": "1791062084:869236034",
+      "label": "dhs-amwa-reference-node/receiver/xd0",
+      "description": "receiver/xd0",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver xd0"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:data",
+      "caps": {
+        "media_types": [
+          "video/smpte291"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:869236034"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "bcca9bf9-2d61-541b-905b-a0e883986ee8",
+      "version": "1791062084:869574314",
+      "label": "dhs-amwa-reference-node/receiver/xv1",
+      "description": "receiver/xv1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver xv1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:video",
+      "caps": {
+        "media_types": [
+          "video/v210"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:color_sampling": {
+              "enum": [
+                "YCbCr-4:2:2"
+              ]
+            },
+            "urn:x-nmos:cap:format:component_depth": {
+              "enum": [
+                10
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_height": {
+              "enum": [
+                1080
+              ]
+            },
+            "urn:x-nmos:cap:format:frame_width": {
+              "enum": [
+                1920
+              ]
+            },
+            "urn:x-nmos:cap:format:grain_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 25
+                }
+              ]
+            },
+            "urn:x-nmos:cap:format:interlace_mode": {
+              "enum": [
+                "interlaced_bff",
+                "interlaced_tff",
+                "interlaced_psf"
+              ]
+            },
+            "urn:x-nmos:cap:format:media_type": {
+              "enum": [
+                "video/v210"
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:869574314"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    },
+    {
+      "id": "7ed4f9d1-a7a5-5f13-859a-728a7805a5c3",
+      "version": "1791062084:869924874",
+      "label": "dhs-amwa-reference-node/receiver/xa1",
+      "description": "receiver/xa1",
+      "tags": {
+        "urn:x-nmos:tag:grouphint/v1.0": [
+          "example:receiver xa1"
+        ]
+      },
+      "device_id": "8b13b278-6b39-58ae-ba1e-2b9115d5d3d8",
+      "transport": "urn:x-nmos:transport:mxl",
+      "interface_bindings": [],
+      "format": "urn:x-nmos:format:audio",
+      "caps": {
+        "media_types": [
+          "audio/float32"
+        ],
+        "constraint_sets": [
+          {
+            "urn:x-nmos:cap:format:channel_count": {
+              "maximum": 4,
+              "minimum": 1
+            },
+            "urn:x-nmos:cap:format:media_type": {
+              "enum": [
+                "audio/float32"
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_depth": {
+              "enum": [
+                32
+              ]
+            },
+            "urn:x-nmos:cap:format:sample_rate": {
+              "enum": [
+                {
+                  "denominator": 1,
+                  "numerator": 48000
+                }
+              ]
+            }
+          }
+        ],
+        "version": "1791062084:869924874"
+      },
+      "subscription": {
+        "sender_id": null,
+        "active": false
+      }
+    }
+  ]
+}

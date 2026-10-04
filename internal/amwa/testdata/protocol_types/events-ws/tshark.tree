@@ -1,0 +1,227 @@
+Frame 1: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 0, Len: 0
+
+Frame 2: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 291 bytes on wire (2328 bits), 291 bytes captured (2328 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 1, Ack: 1, Len: 219
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-07 Events]
+    [Version: v1.0]
+    [Resource: devices/8b13b278-6b39-58ae-ba1e-2b9115d5d3d8]
+    [Detail: GET devices/8b13b278-6b39-58ae-ba1e-2b9115d5d3d8]
+
+Frame 5: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1, Ack: 220, Len: 0
+
+Frame 6: 228 bytes on wire (1824 bits), 228 bytes captured (1824 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1, Ack: 220, Len: 156
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-07 Events]
+    [Version: v1.0]
+    [Resource: devices/8b13b278-6b39-58ae-ba1e-2b9115d5d3d8]
+    [Detail: 101 devices/8b13b278-6b39-58ae-ba1e-2b9115d5d3d8]
+
+Frame 7: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 220, Ack: 157, Len: 0
+
+Frame 8: 78 bytes on wire (624 bits), 78 bytes captured (624 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 220, Ack: 157, Len: 6
+
+Frame 9: 166 bytes on wire (1328 bits), 166 bytes captured (1328 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 226, Ack: 157, Len: 94
+[2 Reassembled TCP Segments (100 bytes): #8(6), #9(94)]
+WebSocket
+Line-based text data (6 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 command subscription]
+    [Detail: IS-07 command subscription sources=1]
+
+Frame 10: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 157, Ack: 320, Len: 0
+
+Frame 11: 339 bytes on wire (2712 bits), 339 bytes captured (2712 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 157, Ack: 320, Len: 267
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 state]
+    [Detail: IS-07 state source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 event_type=number/temperature/C value=219]
+
+Frame 12: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 320, Ack: 424, Len: 0
+
+Frame 13: 339 bytes on wire (2712 bits), 339 bytes captured (2712 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 424, Ack: 320, Len: 267
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 state]
+    [Detail: IS-07 state source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 event_type=number/temperature/C value=223]
+
+Frame 14: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 320, Ack: 691, Len: 0
+
+Frame 15: 339 bytes on wire (2712 bits), 339 bytes captured (2712 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 691, Ack: 320, Len: 267
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 state]
+    [Detail: IS-07 state source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 event_type=number/temperature/C value=224]
+
+Frame 16: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 320, Ack: 958, Len: 0
+
+Frame 17: 339 bytes on wire (2712 bits), 339 bytes captured (2712 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 958, Ack: 320, Len: 267
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 state]
+    [Detail: IS-07 state source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 event_type=number/temperature/C value=224]
+
+Frame 18: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 320, Ack: 1225, Len: 0
+
+Frame 19: 78 bytes on wire (624 bits), 78 bytes captured (624 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 320, Ack: 1225, Len: 6
+
+Frame 20: 136 bytes on wire (1088 bits), 136 bytes captured (1088 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 326, Ack: 1225, Len: 64
+[2 Reassembled TCP Segments (70 bytes): #19(6), #20(64)]
+WebSocket
+Line-based text data (4 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 command health]
+    [Detail: IS-07 command health]
+
+Frame 21: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1225, Ack: 390, Len: 0
+
+Frame 22: 196 bytes on wire (1568 bits), 196 bytes captured (1568 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1225, Ack: 390, Len: 124
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 health]
+    [Detail: IS-07 health]
+
+Frame 23: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 390, Ack: 1349, Len: 0
+
+Frame 24: 339 bytes on wire (2712 bits), 339 bytes captured (2712 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1349, Ack: 390, Len: 267
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 state]
+    [Detail: IS-07 state source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 event_type=number/temperature/C value=222]
+
+Frame 25: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 390, Ack: 1616, Len: 0
+
+Frame 26: 339 bytes on wire (2712 bits), 339 bytes captured (2712 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1616, Ack: 390, Len: 267
+WebSocket
+Line-based text data (1 lines)
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [Message kind: IS-07 state]
+    [Detail: IS-07 state source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 event_type=number/temperature/C value=218]
+
+Frame 27: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 390, Ack: 1883, Len: 0
+
+Frame 28: 78 bytes on wire (624 bits), 78 bytes captured (624 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 390, Ack: 1883, Len: 6
+
+Frame 29: 74 bytes on wire (592 bits), 74 bytes captured (592 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 396, Ack: 1883, Len: 2
+[2 Reassembled TCP Segments (8 bytes): #28(6), #29(2)]
+WebSocket
+
+Frame 30: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1883, Ack: 398, Len: 0
+
+Frame 31: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 398, Ack: 1883, Len: 0
+
+Frame 32: 76 bytes on wire (608 bits), 76 bytes captured (608 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8121, Dst Port: 42938, Seq: 1883, Ack: 399, Len: 4
+WebSocket
+
+Frame 33: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 42938, Dst Port: 8121, Seq: 399, Len: 0
+

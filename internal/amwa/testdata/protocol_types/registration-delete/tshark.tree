@@ -1,0 +1,74 @@
+Frame 1: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 0, Len: 0
+
+Frame 2: 80 bytes on wire (640 bits), 80 bytes captured (640 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 47038, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 251 bytes on wire (2008 bits), 251 bytes captured (2008 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 1, Ack: 1, Len: 179
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource/senders/bbb8b741-0253-50a4-ad53-0936945c2d04]
+    [Detail: DELETE senders id=bbb8b741-0253-50a4-ad53-0936945c2d04]
+
+Frame 5: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 47038, Seq: 1, Ack: 180, Len: 0
+
+Frame 6: 359 bytes on wire (2872 bits), 359 bytes captured (2872 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 47038, Seq: 1, Ack: 180, Len: 287
+
+Frame 7: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 180, Ack: 288, Len: 0
+
+Frame 8: 164 bytes on wire (1312 bits), 164 bytes captured (1312 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 47038, Seq: 288, Ack: 180, Len: 92
+[2 Reassembled TCP Segments (379 bytes): #6(287), #8(92)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Registration]
+    [Version: v1.3]
+    [Resource: resource/senders/bbb8b741-0253-50a4-ad53-0936945c2d04]
+    [Detail: 404 senders id=bbb8b741-0253-50a4-ad53-0936945c2d04 error=Not Found; resource has recently expired or been deleted]
+
+Frame 9: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 180, Ack: 380, Len: 0
+
+Frame 10: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 180, Ack: 380, Len: 0
+
+Frame 11: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.104, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 8110, Dst Port: 47038, Seq: 380, Ack: 181, Len: 0
+
+Frame 12: 72 bytes on wire (576 bits), 72 bytes captured (576 bits) on interface unknown, id 0
+Linux cooked capture v2
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.104
+Transmission Control Protocol, Src Port: 47038, Dst Port: 8110, Seq: 181, Ack: 381, Len: 0
+

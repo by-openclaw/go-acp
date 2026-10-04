@@ -1,0 +1,64 @@
+Frame 1: 76 bytes on wire (608 bits), 76 bytes captured (608 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 58070, Dst Port: 18700, Seq: 0, Len: 0
+
+Frame 2: 76 bytes on wire (608 bits), 76 bytes captured (608 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 18700, Dst Port: 58070, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 58070, Dst Port: 18700, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 328 bytes on wire (2624 bits), 328 bytes captured (2624 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 58070, Dst Port: 18700, Seq: 1, Ack: 1, Len: 260
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Query]
+    [Version: v1.0]
+    [Resource: subscriptions]
+    [Detail: POST subscription resource_path=/nodes persist=false max_update_rate_ms=0]
+
+Frame 5: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 18700, Dst Port: 58070, Seq: 1, Ack: 261, Len: 0
+
+Frame 6: 614 bytes on wire (4912 bits), 614 bytes captured (4912 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 18700, Dst Port: 58070, Seq: 1, Ack: 261, Len: 546
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Query]
+    [Version: v1.0]
+    [Resource: subscriptions]
+    [Detail: 201 subscription resource_path=/nodes persist=false max_update_rate_ms=0 id=e86df065-bb4c-49d0-86a9-03060b8cdd30]
+
+Frame 7: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 58070, Dst Port: 18700, Seq: 261, Ack: 547, Len: 0
+
+Frame 8: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 58070, Dst Port: 18700, Seq: 261, Ack: 547, Len: 0
+
+Frame 9: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 18700, Dst Port: 58070, Seq: 547, Ack: 262, Len: 0
+
+Frame 10: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface any, id 0
+Linux cooked capture v1
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 58070, Dst Port: 18700, Seq: 262, Ack: 548, Len: 0
+

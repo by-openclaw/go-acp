@@ -39,3 +39,20 @@ func TestPlantFixtureValidates(t *testing.T) {
 		t.Error("plant fixture lost its boot_map (the boot activation record the AMWA auto rows read)")
 	}
 }
+
+// ADR-0025 deliverable 4 for the Node: the committed fixture the node is
+// built from, with nothing but the repository. An NMOS Node has no
+// DM + manifest — its fixture is its bundle, the resource graph it
+// serves (internal/amwa/testdata/integration-test/README.md). Never
+// skipped: a missing or invalid fixture is a failure.
+func TestCommittedNodeFixtureBuildsTheNode(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "tests", "integration", "nmos", "amwa", "amwa-test-node.json")
+	cfg, err := LoadNodeConfigFromFile(path)
+	if err != nil {
+		t.Fatalf("the committed node fixture does not build a node: %v", err)
+	}
+	if cfg.Node.ID == "" || len(cfg.Devices) == 0 || len(cfg.Senders) == 0 || len(cfg.Receivers) == 0 {
+		t.Fatalf("the fixture is not a whole node: node %q, %d devices, %d senders, %d receivers",
+			cfg.Node.ID, len(cfg.Devices), len(cfg.Senders), len(cfg.Receivers))
+	}
+}

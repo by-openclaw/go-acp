@@ -1,0 +1,108 @@
+Frame 1: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 0, Len: 0
+
+Frame 2: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 79 bytes on wire (632 bits), 79 bytes captured (632 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 1, Ack: 1, Len: 25
+MQ Telemetry Transport Protocol, Connect Command
+
+Frame 5: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 1, Ack: 26, Len: 0
+
+Frame 6: 58 bytes on wire (464 bits), 58 bytes captured (464 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 1, Ack: 26, Len: 4
+MQ Telemetry Transport Protocol, Connect Ack
+
+Frame 7: 181 bytes on wire (1448 bits), 181 bytes captured (1448 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 26, Ack: 5, Len: 127
+MQ Telemetry Transport Protocol, Publish Message
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-07 Events (MQTT)]
+    [Resource: x-nmos/events/v1.0/connection_status/9fa74b97-ee1c-51b3-b908-4b2f3dbee723]
+    [Detail: IS-07 MQTT message=connection_status]
+
+Frame 8: 377 bytes on wire (3016 bits), 377 bytes captured (3016 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 153, Ack: 5, Len: 323
+MQ Telemetry Transport Protocol, Publish Message
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-07 Events (MQTT)]
+    [Resource: x-nmos/events/v1.0/sources/9fa74b97-ee1c-51b3-b908-4b2f3dbee723]
+    [Detail: IS-07 MQTT source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 message=state event_type=number/temperature/C value=215]
+
+Frame 9: 181 bytes on wire (1448 bits), 181 bytes captured (1448 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 476, Ack: 5, Len: 127
+MQ Telemetry Transport Protocol, Publish Message
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-07 Events (MQTT)]
+    [Resource: x-nmos/events/v1.0/connection_status/9fa74b97-ee1c-51b3-b908-4b2f3dbee723]
+    [Detail: IS-07 MQTT message=connection_status]
+
+Frame 10: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 5, Ack: 603, Len: 0
+
+Frame 11: 377 bytes on wire (3016 bits), 377 bytes captured (3016 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 603, Ack: 5, Len: 323
+MQ Telemetry Transport Protocol, Publish Message
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-07 Events (MQTT)]
+    [Resource: x-nmos/events/v1.0/sources/9fa74b97-ee1c-51b3-b908-4b2f3dbee723]
+    [Detail: IS-07 MQTT source=9fa74b97-ee1c-51b3-b908-4b2f3dbee723 message=state event_type=number/temperature/C value=215]
+
+Frame 12: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 5, Ack: 926, Len: 0
+
+Frame 13: 56 bytes on wire (448 bits), 56 bytes captured (448 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 926, Ack: 5, Len: 2
+MQ Telemetry Transport Protocol, Disconnect Req
+
+Frame 14: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 5, Ack: 928, Len: 0
+
+Frame 15: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 928, Ack: 5, Len: 0
+
+Frame 16: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac), Dst: IETF-VRRP-VRID_01 (00:00:5e:00:01:01)
+Internet Protocol Version 4, Src: 10.6.250.101, Dst: 10.6.239.107
+Transmission Control Protocol, Src Port: 1883, Dst Port: 51927, Seq: 5, Ack: 929, Len: 0
+
+Frame 17: 54 bytes on wire (432 bits), 54 bytes captured (432 bits) on interface eth0, id 0
+Ethernet II, Src: ProxmoxS_9f:4e:fa (bc:24:11:9f:4e:fa), Dst: ProxmoxS_80:e3:ac (bc:24:11:80:e3:ac)
+Internet Protocol Version 4, Src: 10.6.239.107, Dst: 10.6.250.101
+Transmission Control Protocol, Src Port: 51927, Dst Port: 1883, Seq: 929, Ack: 6, Len: 0
+
