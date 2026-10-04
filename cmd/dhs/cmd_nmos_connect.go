@@ -30,8 +30,11 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	apiVer := fs.String("api-ver", "", "force a specific IS-04 wire minor; empty = highest mutual")
 	timeout := fs.Duration("timeout", 5*time.Second, "DNS-SD discovery timeout")
 
-	receiver := fs.String("receiver", "", "IS-04 Receiver UUID to drive (required)")
+	receiver := fs.String("receiver", "", "IS-04 Receiver UUID to drive (required unless --route / --routes)")
 	sender := fs.String("sender", "", "IS-04 Sender UUID to route to it; omit to DISCONNECT the receiver")
+	var routes multiFlag
+	fs.Var(&routes, "route", "repeatable `<receiver-uuid>=<sender-uuid>`: a salvo, sent as ONE IS-05 bulk request per device (an empty sender disconnects that receiver)")
+	routesFile := fs.String("routes", "", "`file` of receiver,sender lines (blank lines and # comments skipped) — the same salvo from a file")
 	senderNode := fs.String("sender-node", "", "the Sender's own Node (http://host:port) when it lives on another device than --node and no Registry knows it — the SDP is fetched from THAT Node's IS-05")
 	disconnect := fs.Bool("disconnect", false, "explicitly disconnect --receiver (same as omitting --sender)")
 	mode := fs.String("mode", "activate_immediate",
@@ -46,7 +49,18 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	// --debug like every other verb (epic #987).
 	logger, _, logClean, _ := consumerLogger(ctx, "nmos", "session", "connect")
 	defer logClean()
-	if *receiver == "" {
+	bulk := len(routes) > 0 || *routesFile != ""
+	if bulk && (*receiver != "" || *sender != "" || *disconnect) {
+		return fmt.Errorf("nmos connect: --route / --routes name every receiver themselves; " +
+			"do not combine them with --receiver / --sender / --disconnect")
+	}
+	var bulkReqs []consumer.ConnectRequest
+	if bulk {
+		var err error
+		if bulkReqs, err = bulkRequests(routes, *routesFile, *senderNode, *mode, *when); err != nil {
+			return fmt.Errorf("nmos connect: %w", err)
+		}
+	} else if *receiver == "" {
 		return fmt.Errorf("nmos connect: --receiver <uuid> is required " +
 			"(run `dhs consumer nmos walk -l` to list them)")
 	}
@@ -78,6 +92,12 @@ func runNMOSConnect(ctx context.Context, args []string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("nmos connect: %w", err)
+	}
+
+	if bulk {
+		err := runNMOSConnectBulk(ctx, c, bulkReqs, *dryRun)
+		printComplianceSummary(rep.Snapshot())
+		return err
 	}
 
 	res, err := c.Connect(ctx, consumer.ConnectRequest{

@@ -157,6 +157,41 @@ func (c *Client) Bulk(ctx context.Context) bool {
 	return err == nil
 }
 
+// BulkReceivers stages — and, per each entry's activation, activates —
+// many Receivers in one request. The verdicts come back per id: a
+// bulk request can partially succeed, and the error return is for the
+// request as a whole (the Device refused it, or answered something
+// that is not a bulk response). Deviations are the response's
+// departures from AMWA's bulk-response schema, for the caller to
+// report; the verdicts that could be read are returned regardless.
+func (c *Client) BulkReceivers(ctx context.Context, items []is05.BulkItem) (results []is05.BulkResult, deviations []string, err error) {
+	return c.bulk(ctx, "receivers", items)
+}
+
+// BulkSenders is [Client.BulkReceivers] for Senders.
+func (c *Client) BulkSenders(ctx context.Context, items []is05.BulkItem) (results []is05.BulkResult, deviations []string, err error) {
+	return c.bulk(ctx, "senders", items)
+}
+
+func (c *Client) bulk(ctx context.Context, kind string, items []is05.BulkItem) ([]is05.BulkResult, []string, error) {
+	body, err := is05.EncodeBulkRequest(items)
+	if err != nil {
+		return nil, nil, err
+	}
+	rest := "bulk/" + kind
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Base+"/"+rest, bytes.NewReader(body))
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	raw, err := c.do(req, rest)
+	if err != nil {
+		return nil, nil, err
+	}
+	return is05.DecodeBulkResponse(raw)
+}
+
 func (c *Client) get(ctx context.Context, rest string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.Base+"/"+rest, nil)
 	if err != nil {
@@ -193,8 +228,20 @@ func (c *Client) do(req *http.Request, what string) ([]byte, error) {
 	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("nmos/connection: %s: HTTP %d: %s",
-			what, resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, &StatusError{What: what, Code: resp.StatusCode, Body: strings.TrimSpace(string(body))}
 	}
 	return body, nil
+}
+
+// StatusError is a non-2xx answer from the Device, kept typed so a
+// caller can tell "this Device has no such endpoint" from "this Device
+// refused the request" with errors.As instead of reading the message.
+type StatusError struct {
+	What string // the request path, relative to the Connection API base
+	Code int
+	Body string // the Device's own explanation
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("nmos/connection: %s: HTTP %d: %s", e.What, e.Code, e.Body)
 }

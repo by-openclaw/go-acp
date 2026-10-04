@@ -85,6 +85,29 @@ UTC + 37 leap seconds):
 dhs consumer nmos connect ... --mode activate_scheduled_absolute --when 1800000037:0
 ```
 
+A salvo — several receivers in one step. Each `--route` is
+`<receiver>=<sender>` (an empty sender disconnects that receiver);
+`--routes <file>` reads the same pairs as `receiver,sender` lines.
+`--mode`, `--when`, `--sender-node` and `--dry-run` apply to every
+route:
+
+```bash
+dhs consumer nmos connect --registry http://127.0.0.1:8235 \
+  --route 03c525d7-c27b-4ba0-8a12-2e25b50e99f7=00c466fc-23bf-43b9-8139-4d7c0179af7c \
+  --route 7d1c0d52-8c1e-4a43-9a40-0c3c5a3b9f11= \
+  --dry-run
+```
+
+It goes out as **one IS-05 bulk request per device** (`POST
+bulk/receivers`), so a device applies its entries together. The salvo
+is refused whole, before anything is sent, if any route is malformed,
+names a receiver the catalogue does not have, or routes a receiver
+twice. Once sent, the outcome is per route — one line each with the
+device's status — and the command exits non-zero if any route was not
+applied. A device that serves no bulk endpoint (IS-05 requires one) is
+routed entry by entry instead, with `nmos_is05_bulk_unsupported` on the
+record.
+
 ### Two failures worth knowing about
 
 - **`master_enable=false` after a successful-looking connect.** The

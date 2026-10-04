@@ -271,3 +271,89 @@ func deadBase(t *testing.T) string {
 	srv.Close()
 	return url
 }
+
+// --- bulk requests ---
+
+const (
+	bulkRxA = "2c47bf5e-1b2c-4abc-9def-deadbeef0103"
+	bulkRxB = "2c47bf5e-1b2c-4abc-9def-deadbeef0006"
+)
+
+// One POST carries every entry to bulk/<kind>, and the per-id verdicts
+// come back as the Device gave them — a partial success included.
+func TestBulkPostsOnceAndReadsEveryVerdict(t *testing.T) {
+	for _, kind := range []string{"receivers", "senders"} {
+		var gotPath, gotMethod, gotCT, gotBody string
+		c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+			gotPath, gotMethod, gotCT = r.URL.Path, r.Method, r.Header.Get("Content-Type")
+			b, _ := io.ReadAll(r.Body)
+			gotBody = string(b)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `[{"id":"`+bulkRxA+`","code":200},{"id":"`+bulkRxB+`","code":400,"error":"bad sdp","debug":null}]`)
+		})
+		items := []is05.BulkItem{
+			{ID: bulkRxA, Params: map[string]any{"master_enable": true}},
+			{ID: bulkRxB, Params: map[string]any{"master_enable": false}},
+		}
+		call := c.BulkReceivers
+		if kind == "senders" {
+			call = c.BulkSenders
+		}
+		results, deviations, err := call(context.Background(), items)
+		if err != nil || len(deviations) != 0 {
+			t.Fatalf("%s: err=%v deviations=%v", kind, err, deviations)
+		}
+		if gotMethod != http.MethodPost || !strings.HasSuffix(gotPath, "/bulk/"+kind) || gotCT != "application/json" {
+			t.Errorf("%s: request = %s %s (%s)", kind, gotMethod, gotPath, gotCT)
+		}
+		if !strings.Contains(gotBody, `"id":"`+bulkRxA+`"`) || !strings.Contains(gotBody, `"params":{"master_enable":false}`) {
+			t.Errorf("%s: body = %s", kind, gotBody)
+		}
+		if len(results) != 2 || !results[0].OK() || results[1].OK() || results[1].Error != "bad sdp" {
+			t.Errorf("%s: results = %+v", kind, results)
+		}
+	}
+}
+
+// What can go wrong around the request: a body the codec refuses is
+// never sent, a Device that refuses the whole request is an error with
+// its message, a response outside the schema is reported beside the
+// verdicts, and the transport and request-construction failures
+// surface.
+func TestBulkRefusalsAndDeviations(t *testing.T) {
+	ctx := context.Background()
+	sent := 0
+	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		sent++
+		http.Error(w, `{"code":400,"error":"Invalid bulk body"}`, http.StatusBadRequest)
+	})
+	if _, _, err := c.BulkReceivers(ctx, nil); err == nil || sent != 0 {
+		t.Errorf("an empty request: err=%v, sent=%d — it must not reach the Device", err, sent)
+	}
+	item := []is05.BulkItem{{ID: bulkRxA, Params: map[string]any{}}}
+	if _, _, err := c.BulkReceivers(ctx, item); err == nil || !strings.Contains(err.Error(), "Invalid bulk body") {
+		t.Errorf("a refused request: err=%v, want the Device's message", err)
+	}
+
+	odd := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `[{"id":"`+bulkRxA+`","code":302}]`)
+	})
+	results, deviations, err := odd.BulkReceivers(ctx, item)
+	if err != nil || len(deviations) != 1 || len(results) != 1 || results[0].Code != 302 {
+		t.Errorf("an out-of-schema response: results=%+v deviations=%v err=%v", results, deviations, err)
+	}
+
+	notBulk := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `{"ok":true}`) })
+	if _, _, err := notBulk.BulkSenders(ctx, item); err == nil {
+		t.Error("a response that is not an array must be an error")
+	}
+
+	dead := &Client{HTTP: http.DefaultClient, Base: deadBase(t), APIVer: "v1.1"}
+	if _, _, err := dead.BulkReceivers(ctx, item); err == nil {
+		t.Error("want a network error against a closed server")
+	}
+	bad := &Client{HTTP: http.DefaultClient, Base: "http://h/\x7f", APIVer: "v1.1"}
+	if _, _, err := bad.BulkReceivers(ctx, item); err == nil {
+		t.Error("a control char must fail request construction")
+	}
+}

@@ -501,11 +501,15 @@ Usage of connect:
   -node string
     	drive ONE Node directly (http://host:port) — no Registry in the path
   -receiver string
-    	IS-04 Receiver UUID to drive (required)
+    	IS-04 Receiver UUID to drive (required unless --route / --routes)
   -registry string
     	Registry origin (http://host:port); when empty, --mdns discovers one
   -resolver string
     	unicast DNS resolver IP (implies unicast discovery)
+  -route <receiver-uuid>=<sender-uuid>
+    	repeatable <receiver-uuid>=<sender-uuid>: a salvo, sent as ONE IS-05 bulk request per device (an empty sender disconnects that receiver)
+  -routes file
+    	file of receiver,sender lines (blank lines and # comments skipped) — the same salvo from a file
   -sender string
     	IS-04 Sender UUID to route to it; omit to DISCONNECT the receiver
   -sender-node string
