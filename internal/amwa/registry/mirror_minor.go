@@ -33,62 +33,69 @@ func (m *Mirror) sourceMinors() []string {
 }
 
 // sourceDoc reads one resource from the source's Query API at one
-// minor. Anything but exactly that resource — a minor with no client,
-// a source that does not answer, an empty list — is "not there".
-func (m *Mirror) sourceDoc(ctx context.Context, topic, ver, id string, extra map[string]string) (json.RawMessage, bool) {
+// minor. found is false when that minor does not list it; err is a
+// source that did not answer, which says nothing either way.
+func (m *Mirror) sourceDoc(ctx context.Context, topic, ver, id string, extra map[string]string) (doc json.RawMessage, found bool, err error) {
 	qc, ok := m.sourceClients[ver]
 	if !ok {
-		return nil, false
+		return nil, false, nil
 	}
 	filter := map[string]string{"id": id}
 	for k, v := range extra {
 		filter[k] = v
 	}
 	docs, err := qc.ListRaw(ctx, topic, filter)
-	if err != nil || len(docs) != 1 {
-		return nil, false
+	if err != nil {
+		return nil, false, err
 	}
-	return docs[0], true
+	if len(docs) != 1 {
+		return nil, false, nil
+	}
+	return docs[0], true, nil
 }
 
 // registeredAt returns the minor a resource first seen on the ver
 // subscription is registered at, and its document there: the highest
-// minor above ver that lists it, or ver itself when none does.
-func (m *Mirror) registeredAt(ctx context.Context, topic, ver, id string, doc json.RawMessage) (string, json.RawMessage) {
+// minor above ver that lists it, or ver itself when none does. known is
+// false when the source did not answer: the row is then not enough to
+// place the resource — placed at ver it could go to the target as a
+// lower minor's view of itself.
+func (m *Mirror) registeredAt(ctx context.Context, topic, ver, id string, doc json.RawMessage) (reg string, at json.RawMessage, known bool) {
 	for _, higher := range m.sourceMinors() {
 		if !minorLess(ver, higher) {
 			break
 		}
-		if found, ok := m.sourceDoc(ctx, topic, higher, id, nil); ok {
-			return higher, found
+		found, ok, err := m.sourceDoc(ctx, topic, higher, id, nil)
+		if err != nil {
+			return "", nil, false
+		}
+		if ok {
+			return higher, found, true
 		}
 	}
-	return ver, doc
+	return ver, doc, true
 }
 
-// registeredBelow looks for a resource that left the minor it was
-// registered at while a lower minor went on showing it. A Node that
-// changes minor deletes its resources and registers them again, and the
-// two subscriptions race: the lower one's row can come first and be
-// taken for a view. One question settles the ordinary case, a resource
-// that is simply gone — is it registered at any minor below? — and only
-// a yes is followed down to the minor.
-func (m *Mirror) registeredBelow(ctx context.Context, topic, ver, id string) (string, json.RawMessage, bool) {
+// registeredNow says where a resource is registered at this moment: the
+// highest minor that lists it. It is asked when a resource leaves the
+// minor it was tracked at while a lower minor showed it too — it may be
+// gone, registered again at the same minor (a Node that restarted), or
+// registered at another one. A lower minor that still shows it proves
+// nothing by itself: a source that translates shows there a resource
+// registered above.
+//
+// One question settles the ordinary case, a resource that is simply
+// gone: does the highest minor list it when asked to include every
+// earlier one? Only a yes is followed down, minor by minor.
+func (m *Mirror) registeredNow(ctx context.Context, topic, id string) (string, json.RawMessage, bool) {
 	minors := m.sourceMinors()
-	asked := false
-	for _, lower := range minors {
-		if !minorLess(lower, ver) {
-			continue
-		}
-		if !asked {
-			asked = true
-			anyBelow := map[string]string{"query.downgrade": minors[len(minors)-1]}
-			if _, there := m.sourceDoc(ctx, topic, lower, id, anyBelow); !there {
-				return "", nil, false
-			}
-		}
-		if doc, ok := m.sourceDoc(ctx, topic, lower, id, nil); ok {
-			return lower, doc, true
+	anywhere := map[string]string{"query.downgrade": minors[len(minors)-1]}
+	if _, there, _ := m.sourceDoc(ctx, topic, minors[0], id, anywhere); !there {
+		return "", nil, false
+	}
+	for _, ver := range minors {
+		if doc, ok, _ := m.sourceDoc(ctx, topic, ver, id, nil); ok {
+			return ver, doc, true
 		}
 	}
 	return "", nil, false

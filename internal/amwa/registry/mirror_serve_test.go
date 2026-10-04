@@ -86,6 +86,11 @@ func (p *pushSource) handler(t *testing.T, srvURL func() string) stdhttp.Handler
 					return
 				}
 			}
+		case r.URL.Query().Get("id") != "":
+			// The mirror asking whether a minor lists one resource: this
+			// source shows a resource on the subscription of its own minor
+			// only, so no other minor does.
+			_, _ = w.Write([]byte("[]"))
 		default:
 			w.WriteHeader(stdhttp.StatusNotFound)
 		}
