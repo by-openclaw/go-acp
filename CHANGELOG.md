@@ -7,6 +7,15 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.36.1](https://github.com/by-openclaw/go-acp/compare/v0.36.0...v0.36.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **amwa/mirror:** the audit tells a child that was held from one the target refused ([#1346](https://github.com/by-openclaw/go-acp/issues/1346)) ([9b384b0](https://github.com/by-openclaw/go-acp/commit/9b384b025c04ea006e9aed46abdb02529dd1118a))
+* **amwa/registry:** serve the registered document; show later minors translated ([#1338](https://github.com/by-openclaw/go-acp/issues/1338), [#1337](https://github.com/by-openclaw/go-acp/issues/1337)) ([63fc67e](https://github.com/by-openclaw/go-acp/commit/63fc67e2e70f933daf8d81b134345712915acd8b))
+* **amwa/registry:** the Query API serves the document that was registered, and shows later minors translated ([#1338](https://github.com/by-openclaw/go-acp/issues/1338), [#1337](https://github.com/by-openclaw/go-acp/issues/1337)) ([9fea376](https://github.com/by-openclaw/go-acp/commit/9fea376ad82dccd7b7cb4c23428de38eaab3b721))
+
 ## [0.36.0](https://github.com/by-openclaw/go-acp/compare/v0.35.0...v0.36.0) (2026-10-04)
 
 
