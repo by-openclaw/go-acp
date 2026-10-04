@@ -1,0 +1,202 @@
+---
+# Unicast DNS-SD CuT window (issue #1291): the rounds every other tool
+# instance self-disables — IS-04-01 test_02/test_02_01 and IS-09-02's
+# unicast pair run only when the tool is in DNS_SD_MODE 'unicast',
+# where it serves its mock Registries / System API from its OWN DNS
+# server (:53 on its default address, zone testsuite.nmos.tv) instead
+# of announcing them by mDNS.
+#
+# Same shape as the isolated window, for the same reason: a private
+# docker bridge holding nothing but a tool instance and a fresh node.
+# Here it also keeps the tool's DNS server off the tooling host's own
+# :53 and off the lab VLAN. The node is told what a node in a
+# multicast-blocked plant is told — the DNS server and the search
+# domain (--unicast --resolver --domain) — and nothing else: no
+# --registry, no mDNS.
+
+- name: Unicast bridge exists
+  ansible.builtin.command: docker network create {{ dhs_amwa_validate_unicast_net }}
+  register: _uni_net
+  changed_when: _uni_net.rc == 0
+  failed_when: _uni_net.rc != 0 and 'already exists' not in _uni_net.stderr
+
+# Staged exactly as the isolated window stages them (plant ->
+# controller -> tooling), so a run of either leaves the other current.
+- name: Current node binary + fixture pulled from the plant
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: /tmp/dhs-validate-stage/
+    flat: true
+  delegate_to: "{{ groups['plant'][0] }}"
+  loop:
+    - "{{ dhs_amwa_validate_plant_bin }}"
+    - "{{ dhs_amwa_validate_plant_config }}"
+
+- name: Current node binary + fixture staged on the tooling host
+  ansible.builtin.copy:
+    src: "/tmp/dhs-validate-stage/{{ item | basename }}"
+    dest: /opt/dhs-validate/
+    mode: "0755"
+  loop:
+    - "{{ dhs_amwa_validate_plant_bin }}"
+    - "{{ dhs_amwa_validate_plant_config }}"
+
+- name: Unicast tool instance is running
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} {{ dhs_amwa_validate_unicast_tool }}
+  register: _uni_tool
+  changed_when: false
+  failed_when: false
+
+- name: Clear any dead unicast tool instance
+  ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_unicast_tool }}
+  when: "'true' not in _uni_tool.stdout"
+  changed_when: true
+  failed_when: false
+
+# docker CREATE, then config, then first start — the tool must never
+# run with default config (tooling.yml's PULL_REPOS note), and here a
+# first start in multicast mode would also never bind the DNS server.
+- name: Create the unicast tool instance (stopped)
+  ansible.builtin.command: >-
+    docker create --name {{ dhs_amwa_validate_unicast_tool }}
+    --network {{ dhs_amwa_validate_unicast_net }}
+    -p 127.0.0.1:{{ dhs_amwa_validate_unicast_tool_port }}:5000
+    {{ dhs_amwa_validate_tool_image }}
+  when: "'true' not in _uni_tool.stdout"
+  changed_when: true
+
+- name: Pin the unicast tool's UserConfig
+  ansible.builtin.shell: >-
+    printf 'PULL_REPOS = False\nfrom . import Config as CONFIG\nCONFIG.GARBAGE_COLLECTION_TIMEOUT = 30\nCONFIG.DNS_SD_MODE = "unicast"\n'
+    > /tmp/validate-userconfig-unicast.py
+    && docker cp /tmp/validate-userconfig-unicast.py {{ dhs_amwa_validate_unicast_tool }}:/config/UserConfig.py
+    && docker start {{ dhs_amwa_validate_unicast_tool }}
+  when: "'true' not in _uni_tool.stdout"
+  changed_when: true
+
+- name: The unicast tool API answers
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ dhs_amwa_validate_unicast_tool_port }}/api"
+    method: GET
+    status_code: [200, 405]
+  register: _uni_api
+  retries: 20
+  delay: 3
+  until: _uni_api.status in [200, 405]
+
+# The tool binds its DNS server on its default address — on this
+# bridge, the container's own. That address is the node's resolver.
+- name: Resolve the unicast tool's bridge address (its DNS server)
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+    {{ dhs_amwa_validate_unicast_tool }}
+  register: _uni_tool_ip
+  changed_when: false
+
+# ---- node exams (IS-04-01, IS-09-02) --------------------------------
+# A FRESH node per attempt: one that registered in a previous attempt
+# would skip the discovery the suite exists to score.
+- name: Node CuT on the bridge, discovering by unicast DNS-SD only
+  when: suite.scope != 'controller'
+  block:
+    - name: Remove any previous CuT node container
+      ansible.builtin.command: docker rm -f dhs-validate-node
+      changed_when: true
+      failed_when: false
+
+    - name: Start the CuT node
+      ansible.builtin.command: >-
+        docker run -d --name dhs-validate-node --hostname dhs-validate-node
+        --network {{ dhs_amwa_validate_unicast_net }}
+        -v /opt/dhs-validate:/dv:ro
+        --entrypoint /dv/{{ dhs_amwa_validate_plant_bin | basename }}
+        {{ dhs_amwa_validate_tool_image }}
+        producer nmos serve
+        --bind 0.0.0.0:{{ dhs_amwa_validate_node_port }}
+        --advertise-host dhs-validate-node:{{ dhs_amwa_validate_node_port }}
+        --api-ver v1.3
+        --config /dv/{{ dhs_amwa_validate_plant_config | basename }}
+        --no-mdns
+        --unicast
+        --resolver {{ _uni_tool_ip.stdout | trim }}:53
+        --domain {{ dhs_amwa_validate_unicast_domain }}
+      changed_when: true
+
+    - name: Resolve the CuT node's bridge address
+      ansible.builtin.command: >-
+        docker inspect -f
+        {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+        dhs-validate-node
+      register: _uni_node_ip
+      changed_when: false
+
+    - name: Let the node boot and settle
+      ansible.builtin.wait_for:
+        timeout: 5
+
+    - name: The CuT node is alive
+      ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} dhs-validate-node
+      register: _uni_node_alive
+      changed_when: false
+      failed_when: "'true' not in _uni_node_alive.stdout"
+
+    - name: Point this suite at the node on the bridge
+      ansible.builtin.set_fact:
+        _suite_host_override: "{{ _uni_node_ip.stdout | trim }}"
+        _suite_port_override: "{{ dhs_amwa_validate_node_port }}"
+
+# ---- controller exam (IS-04-04) -------------------------------------
+# The CuT is our testing facade, told only where the DNS server is —
+# no --registry: test_01 passes when the tool's DNS server saw the
+# controller ask for the Registry. Its catalogue row carries no host
+# (the facade's bridge address is only known here).
+- name: Facade CuT on the bridge, finding the Registry by unicast DNS-SD
+  when: suite.scope == 'controller'
+  block:
+    - name: Remove any previous facade container
+      ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_facade_container }}
+      changed_when: true
+      failed_when: false
+
+    - name: Start the facade CuT
+      ansible.builtin.command: >-
+        docker run -d --name {{ dhs_amwa_validate_facade_container }}
+        --network {{ dhs_amwa_validate_unicast_net }}
+        -v /opt/dhs-validate:/dv:ro
+        --entrypoint /dv/{{ dhs_amwa_validate_plant_bin | basename }}
+        {{ dhs_amwa_validate_tool_image }}
+        consumer nmos facade
+        --bind 0.0.0.0:{{ dhs_amwa_validate_facade_port }}
+        --resolver {{ _uni_tool_ip.stdout | trim }}:53
+        --domain {{ dhs_amwa_validate_unicast_domain }}
+        --api-ver {{ (suite.rows[1].ver | default('v1.3')) if (suite.rows | length) > 1 else 'v1.3' }}
+      changed_when: true
+
+    - name: Resolve the facade's bridge address
+      ansible.builtin.command: >-
+        docker inspect -f
+        {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+        {{ dhs_amwa_validate_facade_container }}
+      register: _uni_facade_ip
+      changed_when: false
+
+    # The facade's only route is the question POST — a GET answering
+    # 405 IS the readiness signal (listening, wrong method).
+    - name: Wait for the facade
+      ansible.builtin.uri:
+        url: "http://{{ _uni_facade_ip.stdout | trim }}:{{ dhs_amwa_validate_facade_port }}/"
+        status_code: [405]
+      register: _uni_facade_up
+      retries: 10
+      delay: 2
+      until: _uni_facade_up.status == 405
+
+    - name: Point this suite at the facade on the bridge
+      ansible.builtin.set_fact:
+        _suite_host_override: "{{ _uni_facade_ip.stdout | trim }}"
+        _suite_port_override: "{{ dhs_amwa_validate_facade_port }}"
+
+- name: Score this suite with the unicast tool instance
+  ansible.builtin.set_fact:
+    _tool_url_override: "http://127.0.0.1:{{ dhs_amwa_validate_unicast_tool_port }}/api"
