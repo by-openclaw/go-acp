@@ -2508,6 +2508,7 @@ Usage:
   dhs consumer nmos set      [flags]
   dhs consumer nmos map      [flags]
   dhs consumer nmos compat   [flags]
+  dhs consumer nmos config   [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -2574,6 +2575,23 @@ Device's own words; hold a Sender to what the far end takes.
                         before sending if the Sender does not support them
   --release             remove --sender's active constraints
   --dry-run             read and check, change nothing
+  (any of walk's --node / --registry / discovery flags)
+
+config — read and set a Device's model over IS-14 (MS-05-02 over REST),
+back it up and restore it. With only --device it lists the role paths;
+with --role-path it describes that object: that is where the property and
+method ids come from.
+  --device UUID         required
+  --role-path P         the object (root, root.gain, ...)
+  --get ID              read a property (3p1)
+  --set ID=JSON         write a property; read back from the Device
+  --invoke ID --args J  call a method with its arguments object
+  --backup FILE         bulk properties of --role-path (- for stdout)
+  --restore FILE        the Device validates first; nothing is applied
+                        unless every object validates
+  --validate-only       with --restore: what would happen, apply nothing
+  --rebuild             with --restore: Rebuild mode instead of Modify
+  --dry-run             read and validate, change nothing
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
@@ -2869,6 +2887,48 @@ Usage of compat:
     	IS-04 Sender UUID to read or constrain
   -timeout duration
     	DNS-SD discovery timeout (default 5s)
+
+========== consumer/nmos/config ==========
+$ dhs consumer nmos config --help
+Usage of config:
+  -api-ver string
+    	force a specific IS-04 wire minor; empty = highest mutual
+  -args string
+    	the method's arguments, as a JSON object
+  -backup file
+    	write the bulk properties of --role-path to this file (- for stdout)
+  -device string
+    	IS-04 Device UUID whose model is read or changed (required)
+  -domain string
+    	unicast DNS-SD discovery domain (default "by-systems.arpa")
+  -dry-run
+    	read and validate, change nothing
+  -get id
+    	read this property id (e.g. 3p1)
+  -invoke id
+    	call this method id (e.g. 3m1)
+  -mdns
+    	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
+  -node string
+    	drive ONE Node directly (http://host:port) — no Registry in the path
+  -rebuild
+    	with --restore: Rebuild mode (structural changes allowed) instead of Modify
+  -recurse
+    	with --backup / --restore: include everything under --role-path (default true)
+  -registry string
+    	Registry origin (http://host:port); when empty, --mdns discovers one
+  -resolver string
+    	unicast DNS resolver IP (implies unicast discovery)
+  -restore file
+    	restore the bulk properties in this file onto --role-path; the Device validates first and nothing is applied unless every object validates
+  -role-path string
+    	the object to address (root, root.gain, …); empty lists every role path
+  -set id=json
+    	write a property: id=json (e.g. 3p1=-6.0, 1p6='"label"')
+  -timeout duration
+    	DNS-SD discovery timeout (default 5s)
+  -validate-only
+    	with --restore: ask the Device what it would do, apply nothing
 
 ========== consumer/nmos/facade ==========
 $ dhs consumer nmos facade --help

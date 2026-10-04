@@ -59,6 +59,7 @@ var matrix = []helpEntry{
 	{"NMOS controller: set", []string{"consumer", "nmos", "set", "--help"}},
 	{"NMOS controller: map (IS-08)", []string{"consumer", "nmos", "map", "--help"}},
 	{"NMOS controller: compat (IS-11)", []string{"consumer", "nmos", "compat", "--help"}},
+	{"NMOS controller: config (IS-14)", []string{"consumer", "nmos", "config", "--help"}},
 	{"NMOS controller: events (IS-07)", []string{"consumer", "nmos", "events", "--help"}},
 	{"NMOS plant export", []string{"consumer", "nmos", "export", "--help"}},
 	{"NMOS plant audit", []string{"consumer", "nmos", "audit", "--help"}},

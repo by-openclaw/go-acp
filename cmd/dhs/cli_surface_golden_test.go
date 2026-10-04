@@ -108,7 +108,7 @@ var perProtocolVerbs = map[string][]string{
 	"tsl-v40": {"listen", "watch", "validate"},
 	"tsl-v50": {"listen", "watch", "validate"},
 	"nmos": {
-		"discover", "system", "walk", "watch", "connect", "set", "map", "compat", "facade",
+		"discover", "system", "walk", "watch", "connect", "set", "map", "compat", "config", "facade",
 		"events", "export", "audit", "probe", "registers",
 	},
 	"ccm": {"walk", "export"},

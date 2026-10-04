@@ -23,6 +23,7 @@ Ansible templates render the same shape.
 - [NMOS controller: set](#nmos-controller-set)
 - [NMOS controller: map (IS-08)](#nmos-controller-map-is-08)
 - [NMOS controller: compat (IS-11)](#nmos-controller-compat-is-11)
+- [NMOS controller: config (IS-14)](#nmos-controller-config-is-14)
 - [NMOS controller: events (IS-07)](#nmos-controller-events-is-07)
 - [NMOS plant export](#nmos-plant-export)
 - [NMOS plant audit](#nmos-plant-audit)
@@ -636,6 +637,52 @@ Usage of compat:
     	IS-04 Sender UUID to read or constrain
   -timeout duration
     	DNS-SD discovery timeout (default 5s)
+```
+
+## NMOS controller: config (IS-14)
+
+`dhs consumer nmos config --help`
+
+```text
+Usage of config:
+  -api-ver string
+    	force a specific IS-04 wire minor; empty = highest mutual
+  -args string
+    	the method's arguments, as a JSON object
+  -backup file
+    	write the bulk properties of --role-path to this file (- for stdout)
+  -device string
+    	IS-04 Device UUID whose model is read or changed (required)
+  -domain string
+    	unicast DNS-SD discovery domain (default "by-systems.arpa")
+  -dry-run
+    	read and validate, change nothing
+  -get id
+    	read this property id (e.g. 3p1)
+  -invoke id
+    	call this method id (e.g. 3m1)
+  -mdns
+    	discover the Registry via mDNS; ignored if --registry or --node is set (default true)
+  -node string
+    	drive ONE Node directly (http://host:port) — no Registry in the path
+  -rebuild
+    	with --restore: Rebuild mode (structural changes allowed) instead of Modify
+  -recurse
+    	with --backup / --restore: include everything under --role-path (default true)
+  -registry string
+    	Registry origin (http://host:port); when empty, --mdns discovers one
+  -resolver string
+    	unicast DNS resolver IP (implies unicast discovery)
+  -restore file
+    	restore the bulk properties in this file onto --role-path; the Device validates first and nothing is applied unless every object validates
+  -role-path string
+    	the object to address (root, root.gain, …); empty lists every role path
+  -set id=json
+    	write a property: id=json (e.g. 3p1=-6.0, 1p6='"label"')
+  -timeout duration
+    	DNS-SD discovery timeout (default 5s)
+  -validate-only
+    	with --restore: ask the Device what it would do, apply nothing
 ```
 
 ## NMOS controller: events (IS-07)

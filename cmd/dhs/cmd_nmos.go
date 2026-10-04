@@ -66,6 +66,8 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 		return runNMOSMap(ctx, rest)
 	case "compat":
 		return runNMOSCompat(ctx, rest)
+	case "config":
+		return runNMOSConfig(ctx, rest)
 	case "facade":
 		return runNMOSFacade(ctx, rest)
 	case "events":
@@ -79,7 +81,7 @@ func runNMOSConsumer(ctx context.Context, args []string) error {
 	case "registers":
 		return runNMOSRegisters(ctx, rest)
 	}
-	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, map, compat, facade, events, export, audit, probe, registers)", verb)
+	return fmt.Errorf("consumer nmos: unknown verb %q (expected: discover, system, walk, watch, connect, set, map, compat, config, facade, events, export, audit, probe, registers)", verb)
 }
 
 // runNMOSProducer dispatches `dhs producer nmos <verb> [args]`.
@@ -725,6 +727,7 @@ func printNMOSConsumerHelp() {
   dhs consumer nmos set      [flags]
   dhs consumer nmos map      [flags]
   dhs consumer nmos compat   [flags]
+  dhs consumer nmos config   [flags]
   dhs consumer nmos system   [flags]
   dhs consumer nmos events   [flags]
 
@@ -791,6 +794,23 @@ Device's own words; hold a Sender to what the far end takes.
                         before sending if the Sender does not support them
   --release             remove --sender's active constraints
   --dry-run             read and check, change nothing
+  (any of walk's --node / --registry / discovery flags)
+
+config — read and set a Device's model over IS-14 (MS-05-02 over REST),
+back it up and restore it. With only --device it lists the role paths;
+with --role-path it describes that object: that is where the property and
+method ids come from.
+  --device UUID         required
+  --role-path P         the object (root, root.gain, ...)
+  --get ID              read a property (3p1)
+  --set ID=JSON         write a property; read back from the Device
+  --invoke ID --args J  call a method with its arguments object
+  --backup FILE         bulk properties of --role-path (- for stdout)
+  --restore FILE        the Device validates first; nothing is applied
+                        unless every object validates
+  --validate-only       with --restore: what would happen, apply nothing
+  --rebuild             with --restore: Rebuild mode instead of Modify
+  --dry-run             read and validate, change nothing
   (any of walk's --node / --registry / discovery flags)
 
 discover — print every NMOS instance the configured discovery mode reveals.
