@@ -7,6 +7,32 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.34.0](https://github.com/by-openclaw/go-acp/compare/v0.33.0...v0.34.0) (2026-10-04)
+
+
+### Features
+
+* **amwa/controller:** a salvo goes out as one IS-05 bulk request per device ([#1294](https://github.com/by-openclaw/go-acp/issues/1294)) ([0023f6f](https://github.com/by-openclaw/go-acp/commit/0023f6f114653988a6fb239304cc027e4e9d0105))
+* **amwa/controller:** a salvo goes out as one IS-05 bulk request per device ([#1294](https://github.com/by-openclaw/go-acp/issues/1294)) ([b7d9899](https://github.com/by-openclaw/go-acp/commit/b7d9899ac4187f592991d98db6407b2891a31712))
+
+
+### Bug Fixes
+
+* **amwa/mirror:** the served face announces under a name the operator can set ([#1299](https://github.com/by-openclaw/go-acp/issues/1299)) ([9e413e6](https://github.com/by-openclaw/go-acp/commit/9e413e60dc63364bec3229e94ae0b8b445cb01e9))
+* **amwa/mirror:** the served face announces under a name the operator can set ([#1299](https://github.com/by-openclaw/go-acp/issues/1299)) ([cf6d812](https://github.com/by-openclaw/go-acp/commit/cf6d812a1f872d281dd0b33698a624b8b49c17da))
+* **amwa/node:** a failover passes over the twin name of the Registry that just failed ([#1291](https://github.com/by-openclaw/go-acp/issues/1291)) ([f804f2f](https://github.com/by-openclaw/go-acp/commit/f804f2f2b0c65a82ed2c45be0210b96eee787e50))
+* **amwa/node:** a unicast Node re-asks an empty zone on a backoff, not once a minute ([#1291](https://github.com/by-openclaw/go-acp/issues/1291)) ([6ed7ef6](https://github.com/by-openclaw/go-acp/commit/6ed7ef64e02148f30b3806c22613b431965952ef))
+* **amwa/node:** a unicast Node reads its System API from the zone, not from mDNS ([#1291](https://github.com/by-openclaw/go-acp/issues/1291)) ([16d1bbd](https://github.com/by-openclaw/go-acp/commit/16d1bbda841cb64f01b15ff7c8e73e8d26288bc3))
+* **amwa/node:** unicast DNS-SD — System API from the zone, re-ask backoff, twin-name failover; the tool's unicast rounds scored ([#1291](https://github.com/by-openclaw/go-acp/issues/1291)) ([3418d4e](https://github.com/by-openclaw/go-acp/commit/3418d4e5b4091ce782a41df05f332986365a9111))
+* **ansible/dhs_amwa_validate:** a controller exam starts on a tool that holds no leaked subscription sockets ([#1304](https://github.com/by-openclaw/go-acp/issues/1304)) ([a6adb8c](https://github.com/by-openclaw/go-acp/commit/a6adb8c0dba539781f495fb624becb54fa655bc5))
+* **ansible/dhs_amwa_validate:** a controller exam starts on a tool that holds no leaked subscription sockets ([#1304](https://github.com/by-openclaw/go-acp/issues/1304)) ([bb74748](https://github.com/by-openclaw/go-acp/commit/bb747489da59b78bd3d3d7e9024c971c5f34e660))
+* **ansible/dhs_amwa_validate:** the mirror exam sits a transient source and mirror; plant parity counts what the mirror mirrors ([#1298](https://github.com/by-openclaw/go-acp/issues/1298)) ([baa98df](https://github.com/by-openclaw/go-acp/commit/baa98dfdd78c13dc4e196440fea892540486299a))
+* **ansible/dhs_amwa_validate:** the mirror exam sits a transient source and mirror; the plant parity counts what the mirror mirrors ([#1298](https://github.com/by-openclaw/go-acp/issues/1298)) ([e8ee2e8](https://github.com/by-openclaw/go-acp/commit/e8ee2e8d76a0f0e1cb664cf4473f47d6858befa4))
+* **ansible/dhs_amwa_validate:** the registry exam sits a registry of its own, not the loaded plant ([#1292](https://github.com/by-openclaw/go-acp/issues/1292)) ([1a18aaa](https://github.com/by-openclaw/go-acp/commit/1a18aaa1ecf4de52b87b9ebd42d9cff6b9ebad3f))
+* **ansible/dhs_amwa_validate:** the registry exam sits a registry of its own, not the loaded plant ([#1292](https://github.com/by-openclaw/go-acp/issues/1292)) ([a09e666](https://github.com/by-openclaw/go-acp/commit/a09e6660a24565dae13f0d76af8d9642f5d8cba7))
+* **ansible/dhs_amwa_validate:** the TLS tool instance gets a port range of its own, and the CuT can reach the tool's OCSP responder ([#1301](https://github.com/by-openclaw/go-acp/issues/1301)) ([5b3b922](https://github.com/by-openclaw/go-acp/commit/5b3b922f8f808037619907dbb6959c8900220212))
+* **ansible/dhs_amwa_validate:** TLS tool instance port range + the CuT reaches the tool's OCSP responder ([#1301](https://github.com/by-openclaw/go-acp/issues/1301)) ([3409944](https://github.com/by-openclaw/go-acp/commit/340994403f399c690b12d70dfcb0935a08d4f427))
+
 ## [0.33.0](https://github.com/by-openclaw/go-acp/compare/v0.32.0...v0.33.0) (2026-10-04)
 
 
