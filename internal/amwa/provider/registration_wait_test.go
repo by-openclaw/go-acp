@@ -6,8 +6,11 @@ package provider
 
 import (
 	"context"
+	"errors"
 	stdhttp "net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -67,5 +70,72 @@ func TestHeartbeatGivesUpWithinAHeartbeatPeriod(t *testing.T) {
 	}
 	if took < time.Second || took > 4*time.Second {
 		t.Errorf("gave up after %v, want about the 1.2 s heartbeat period (and nowhere near the old 10 s)", took)
+	}
+}
+
+// A Node owes its heartbeats from the moment its node resource is
+// registered. With a Registry that takes its time over each resource,
+// the heartbeats start while the rest is still being registered; and a
+// Registry that has lost the Node meanwhile ends the registration.
+func TestHeartbeatsStartWhileTheRestIsStillBeingRegistered(t *testing.T) {
+	var mu sync.Mutex
+	var calls []string // "POST resource" / "POST health"
+	lose := false
+	srv := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		mu.Lock()
+		health := strings.Contains(r.URL.Path, "/health/nodes/")
+		if health {
+			calls = append(calls, "health")
+		} else {
+			calls = append(calls, "resource")
+		}
+		gone := lose && health
+		mu.Unlock()
+		switch {
+		case gone:
+			w.WriteHeader(stdhttp.StatusNotFound)
+		case health:
+			_, _ = w.Write([]byte(`{"health":"1"}`))
+		default:
+			time.Sleep(40 * time.Millisecond) // a Registry that takes its time
+			w.WriteHeader(stdhttp.StatusCreated)
+		}
+	}))
+	defer srv.Close()
+
+	// The committed fixture: a node with some thirty resources.
+	bundle, err := LoadNodeConfigFromFile(filepath.Join("..", "..", "..", "tests", "integration", "nmos", "amwa", "amwa-test-node.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := NewRegistrationClient(nil, srv.URL, "v1.3", bundle)
+	c.SetDefaultHeartbeatInterval(100 * time.Millisecond)
+	c.base = srv.URL + "/x-nmos/registration/v1.3"
+	if err := c.registerAll(context.Background()); err != nil {
+		t.Fatalf("registerAll: %v", err)
+	}
+	mu.Lock()
+	first, last := -1, -1
+	for i, call := range calls {
+		if call == "health" && first < 0 {
+			first = i
+		}
+		if call == "resource" {
+			last = i
+		}
+	}
+	total := len(calls)
+	mu.Unlock()
+	if first < 0 || first > last {
+		t.Fatalf("of %d requests the first heartbeat is number %d and the last resource number %d — no heartbeat went out during the registration", total, first, last)
+	}
+
+	// The Registry forgets the Node mid-registration: the heartbeat's
+	// 404 ends it, and the caller registers afresh.
+	mu.Lock()
+	lose = true
+	mu.Unlock()
+	if err := c.registerAll(context.Background()); !errors.Is(err, ErrRegistryNotFound) {
+		t.Errorf("a Registry that lost the Node mid-registration: err = %v, want ErrRegistryNotFound", err)
 	}
 }

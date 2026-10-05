@@ -652,28 +652,54 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 	if err := c.postResource(ctx, is04.ResourceNode, &c.bundle.Node); err != nil {
 		return err
 	}
+	// The Node is registered from here, and owes the Registry its
+	// heartbeats from here — not from when its last receiver has been
+	// POSTed. Registration is one request per resource: a node of a few
+	// hundred resources, or a Registry that validates a token on each
+	// (the AMWA tool's does, and IS-04-01 test_05 then found the first
+	// heartbeat six seconds after the registration), outlasts the
+	// interval, and one that outlasts the Registry's expiry would lose
+	// the Node before it had sent a single one.
+	beat := time.Now()
+	keepAlive := func() error {
+		cadence := c.heartbeatInterval()
+		if time.Since(beat) < cadence-heartbeatSlack(cadence) {
+			return nil
+		}
+		if err := c.sendHeartbeat(ctx); err != nil {
+			return err
+		}
+		beat = time.Now()
+		return nil
+	}
+	post := func(t is04.ResourceType, data any) error {
+		if err := keepAlive(); err != nil {
+			return err
+		}
+		return c.postResource(ctx, t, data)
+	}
 	for i := range c.bundle.Devices {
-		if err := c.postResource(ctx, is04.ResourceDevice, &c.bundle.Devices[i]); err != nil {
+		if err := post(is04.ResourceDevice, &c.bundle.Devices[i]); err != nil {
 			return err
 		}
 	}
 	for i := range c.bundle.Sources {
-		if err := c.postResource(ctx, is04.ResourceSource, &c.bundle.Sources[i]); err != nil {
+		if err := post(is04.ResourceSource, &c.bundle.Sources[i]); err != nil {
 			return err
 		}
 	}
 	for i := range c.bundle.Flows {
-		if err := c.postResource(ctx, is04.ResourceFlow, &c.bundle.Flows[i]); err != nil {
+		if err := post(is04.ResourceFlow, &c.bundle.Flows[i]); err != nil {
 			return err
 		}
 	}
 	for i := range c.bundle.Senders {
-		if err := c.postResource(ctx, is04.ResourceSender, &c.bundle.Senders[i]); err != nil {
+		if err := post(is04.ResourceSender, &c.bundle.Senders[i]); err != nil {
 			return err
 		}
 	}
 	for i := range c.bundle.Receivers {
-		if err := c.postResource(ctx, is04.ResourceReceiver, &c.bundle.Receivers[i]); err != nil {
+		if err := post(is04.ResourceReceiver, &c.bundle.Receivers[i]); err != nil {
 			return err
 		}
 	}
