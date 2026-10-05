@@ -269,16 +269,16 @@ func isEndOfTree(err error) bool {
 // WalkAll is Walk collecting the result, for a caller that wants the
 // subtree rather than a callback.
 //
-// It is bounded: a device with a table that grows while it is walked
-// would otherwise fill memory, and an agent that never says endOfMibView
-// is a real failure mode rather than a hypothetical one.
+// limit bounds it when the caller asks for a bound; zero or less walks
+// the whole subtree, however large. A walk does not need a count to
+// end: Walk refuses an agent that answers with an OID that is not after
+// the one it was asked about, which is what an agent that never says
+// endOfMibView does. A default cap only truncated real devices — an
+// IRD's programme tables alone pass twenty thousand objects.
 func (s *Session) WalkAll(ctx context.Context, root codec.OID, limit int) ([]codec.VarBind, error) {
-	if limit <= 0 {
-		limit = DefaultWalkLimit
-	}
 	var out []codec.VarBind
 	err := s.Walk(ctx, root, func(vb codec.VarBind) error {
-		if len(out) >= limit {
+		if limit > 0 && len(out) >= limit {
 			return fmt.Errorf("snmp: walk of %s exceeded %d objects", root, limit)
 		}
 		out = append(out, vb)
@@ -289,11 +289,6 @@ func (s *Session) WalkAll(ctx context.Context, root codec.OID, limit int) ([]cod
 	}
 	return out, nil
 }
-
-// DefaultWalkLimit bounds WalkAll. The largest tree in docs/testbed.md
-// is the Snell frame's 842 objects, so this leaves room for a device an
-// order of magnitude larger before it is in the way.
-const DefaultWalkLimit = 20000
 
 // Deadline exists so the timeout is visible to a caller composing its
 // own: a poller that gives a session two seconds and itself one is a

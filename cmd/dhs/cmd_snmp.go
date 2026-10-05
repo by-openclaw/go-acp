@@ -268,7 +268,7 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	var f snmpFlags
 	f.register(fs)
 	root := fs.String("oid", "1.3.6.1.2.1", "subtree root, by standard name or dotted number")
-	limit := fs.Int("limit", snmpcons.DefaultWalkLimit, "stop after this many objects; a device whose table grows while it is walked would otherwise never end")
+	limit := fs.Int("limit", 0, "stop after this many objects (0 = no limit: the whole subtree is walked)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	walkErr := s.Walk(ctx, start, func(vb codec.VarBind) error {
 		n++
 		writeBind(w, vb, prefer)
-		if n >= *limit {
+		if *limit > 0 && n >= *limit {
 			return fmt.Errorf("snmp: stopped at the --limit of %d objects", *limit)
 		}
 		return nil

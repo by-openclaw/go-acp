@@ -228,15 +228,23 @@ func TestACallerCanStopAWalk(t *testing.T) {
 	}
 }
 
-// WalkAll is bounded, because an agent that never says endOfMibView is a
-// real failure mode and not a hypothetical one.
-func TestWalkAllIsBounded(t *testing.T) {
+// WalkAll is bounded when the caller gives a bound, and only then: with
+// none it returns the whole subtree. A default cap truncated real
+// devices, and a walk does not need one to end — an agent whose answers
+// stop advancing is refused by Walk itself.
+func TestWalkAllIsBoundedOnlyWhenAsked(t *testing.T) {
 	addr := agentUnder(t, provider.Communities{Read: "public"})
 	s := dial(t, addr, Options{Version: codec.Version2c})
 
 	_, err := s.WalkAll(context.Background(), mib.Internet, 3)
 	if err == nil || !strings.Contains(err.Error(), "exceeded 3 objects") {
 		t.Fatalf("= %v, want the bound enforced", err)
+	}
+	for _, none := range []int{0, -1} {
+		got, err := s.WalkAll(context.Background(), mib.Internet, none)
+		if err != nil || len(got) != 10 {
+			t.Fatalf("limit %d: %d objects, %v — want the whole tree of 10", none, len(got), err)
+		}
 	}
 }
 

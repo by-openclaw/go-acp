@@ -25,7 +25,7 @@ answers those five with no SNMP in the command line at all.
 | Verb | What it does | Key flags |
 |---|---|---|
 | `get` | read named objects (default: the RFC 1213 system group) | `--oid a,b,c` |
-| `walk` | discover a subtree — GETBULK under v2c, GETNEXT under v1 | `--oid ROOT`, `--limit N` |
+| `walk` | discover a subtree — GETBULK under v2c, GETNEXT under v1. The whole subtree, however large; `--limit N` stops after N objects when a bound is wanted | `--oid ROOT`, `--limit N` |
 | `set` | write one object | `--oid`, `--type i\|s\|o\|a\|u\|t`, `--value` |
 | `trap-listen` | receive notifications, in any version | `--bind :1162`, `--community`, v3 USM flags |
 | `validate` | decode a captured `frames.jsonl` offline | — |
