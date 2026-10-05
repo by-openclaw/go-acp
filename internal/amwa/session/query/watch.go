@@ -88,6 +88,13 @@ func (c *Client) Subscribe(ctx context.Context, req SubscribeRequest) (*Subscrip
 		return nil, fmt.Errorf("query: build subscription request: %w", err)
 	}
 	hreq.Header.Set("Content-Type", "application/json")
+	if c.HTTP != nil && c.HTTP.TokenSource != nil {
+		tok, err := c.HTTP.TokenSource(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("query: obtain access token: %w", err)
+		}
+		hreq.Header.Set("Authorization", "Bearer "+tok)
+	}
 
 	resp, err := http.DefaultClient.Do(hreq)
 	if err != nil {
@@ -138,6 +145,13 @@ type WatchOptions struct {
 	// still there on a quiet subscription. Zero takes DefaultKeepAlive;
 	// negative disables pinging.
 	KeepAlive time.Duration
+
+	// TokenSource, when non-nil, supplies the BCP-003-02 Bearer token
+	// the WebSocket handshake carries in its Authorization header — a
+	// Registry that guards its Query API guards the subscription
+	// socket too. Asked once per dial, so a reconnect takes a fresh
+	// token.
+	TokenSource func(context.Context) (string, error)
 }
 
 // resolve expands the zero/negative sentinels into concrete durations.
@@ -175,7 +189,15 @@ func Watch(ctx context.Context, wsHref string, fn GrainFunc, opts WatchOptions) 
 		return errors.New("query: Watch needs a GrainFunc")
 	}
 
-	ws, err := amwahttp.DialWebSocket(ctx, wsHref, nil)
+	var hdr http.Header
+	if opts.TokenSource != nil {
+		tok, err := opts.TokenSource(ctx)
+		if err != nil {
+			return fmt.Errorf("query: obtain access token: %w", err)
+		}
+		hdr = http.Header{"Authorization": {"Bearer " + tok}}
+	}
+	ws, err := amwahttp.DialWebSocket(ctx, wsHref, hdr)
 	if err != nil {
 		return fmt.Errorf("query: dial %s: %w", wsHref, err)
 	}

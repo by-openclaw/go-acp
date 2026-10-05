@@ -234,8 +234,11 @@ func TestOCSPStapleReachesTheHandshake(t *testing.T) {
 	rs, rsLeaf := issueLeaf(t, ca, caKey, "node.test", r.srv.URL, true)
 	m := managerWith(t, rs, ec)
 
+	// The manager reads the clock once, before it asks; the responder
+	// stamps nextUpdate when it answers, a moment later. Half of that
+	// moment is on top of the half hour — a second covers it.
 	wait := m.refreshStaples(context.Background())
-	if wait < ocspRefreshFloor || wait > time.Hour/2 {
+	if wait < ocspRefreshFloor || wait > time.Hour/2+time.Second {
 		t.Fatalf("refresh in %s, want half of the hour-long validity (floored)", wait)
 	}
 	for _, p := range m.manualPairs {
