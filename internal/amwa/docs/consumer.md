@@ -167,9 +167,18 @@ dhs consumer nmos compat --node|--registry … --receiver <uuid>
 dhs consumer nmos compat … --sender <uuid> [--constraints <file> | --release] [--dry-run]
 ```
 
-Prints the state with the Device's own reason. Since v0.36.0. No
-third-party IS-11 peer is on the fleet: on the nmos-cpp node the verb
-refuses, naming the control the Device does not advertise.
+Prints the state with the Device's own reason. Since v0.36.0. On the
+nmos-cpp node, which has no IS-11, the verb refuses, naming the control
+the Device does not advertise.
+
+Proven against a Node somebody else wrote: the open NMOS-Reference Node
+(github.com/alabou/NMOS-Reference), started on a private bridge on the
+tooling host by `ansible/playbooks/amwa-interop-is11.yml`. On the
+released v0.37.1 the verb read a Sender and a Receiver, dry-ran,
+constrained the Sender to 1920x1080, was refused on a parameter the
+Sender does not offer and released — each step as that Node's own IS-11
+API reports it (`integration` `TestCompat…ThirdParty…`; second run of
+the play changed nothing).
 
 ## config — a Device's model, backup and restore (IS-14)
 
