@@ -406,7 +406,7 @@ Usage of mirror:
   -audit-max-mb int
     	size in MiB at which --audit-log is rotated to <file>.1, one previous generation kept (0 = default 64)
   -auth-url string
-    	BCP-003-02 Authorization Server base (scheme://host[:port]). When set with --serve, the served Query face validates Bearer tokens (WS upgrades included) exactly like the registry's own --auth-url; the mirror's outbound source/target legs are untouched. Requires --serve
+    	BCP-003-02 Authorization Server base (scheme://host[:port]). When set with --serve, the served Query face validates Bearer tokens (WS upgrades included) exactly like the registry's own --auth-url; the mirror's outbound legs are untouched (--source-auth-url arms the source ones). Requires --serve
   -serve string
     	serve the mirrored catalogue as a read-only IS-04 Query API (REST + WS subscriptions) on this address, e.g. :8335 — controllers read the plant THROUGH the audited mirror; registration attempts are refused and audited
   -serve-advertise-host string
@@ -421,6 +421,12 @@ Usage of mirror:
     	private key for --serve-tls-cert (repeatable, one per certificate, same order)
   -source string
     	source Registry origin (http://host:port) — Query API side
+  -source-auth-client-id string
+    	OAuth client id for the client_credentials grant (with --source-auth-url)
+  -source-auth-client-secret string
+    	OAuth client secret for the client_credentials grant (with --source-auth-url)
+  -source-auth-url string
+    	BCP-003-02 Authorization Server base (scheme://host[:port]) the mirror is a client of: every read of the source's Query API (subscriptions, their sockets, REST) carries a Bearer token with the query scope — for a source registry that guards its Query API. Requires --source-auth-client-id and --source-auth-client-secret; the target legs are untouched
   -status-addr string
     	serve /status.json (counters, per-collection cache sizes for parity checks, recent audit ring) on this address, e.g. :9101
   -target string
