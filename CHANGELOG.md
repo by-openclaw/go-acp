@@ -7,6 +7,14 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.39.0](https://github.com/by-openclaw/go-acp/compare/v0.38.2...v0.39.0) (2026-10-05)
+
+
+### Features
+
+* **amwa:** a Node before v1.3 keeps its announce while registered, without ver_* records ([f20bea7](https://github.com/by-openclaw/go-acp/commit/f20bea7ab862c8a52fd5a4c3c850b683711085e7))
+* **amwa:** a Node before v1.3 keeps its announce while registered, without ver_* records ([4be33b3](https://github.com/by-openclaw/go-acp/commit/4be33b3b76415bb4d6816637f167ccd82f02224a))
+
 ## [0.38.2](https://github.com/by-openclaw/go-acp/compare/v0.38.1...v0.38.2) (2026-10-05)
 
 
