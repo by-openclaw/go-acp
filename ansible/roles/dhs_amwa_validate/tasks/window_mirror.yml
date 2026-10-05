@@ -92,7 +92,7 @@
 # the served face.
 - name: The companion node is readable THROUGH the mirror
   ansible.builtin.uri:
-    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/v1.3/nodes"
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/{{ suite.rows[0].ver | default('v1.3') }}/nodes"
     headers: "{{ _cut_headers }}"
     return_content: true
   register: _mirror_up
@@ -106,7 +106,7 @@
 # resource.
 - name: Seed a persistent subscription on the mirror's served face
   ansible.builtin.uri:
-    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/v1.3/subscriptions"
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/{{ suite.rows[0].ver | default('v1.3') }}/subscriptions"
     headers: "{{ _cut_headers }}"
     method: POST
     body_format: json
