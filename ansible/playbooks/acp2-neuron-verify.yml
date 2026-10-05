@@ -329,7 +329,8 @@
         DHS_BIN: "{{ a2_bin }}"
       register: a2_suite
       changed_when: false
-      failed_when: a2_suite.rc != 0 or '--- PASS: TestACP2CLIRoundTrip' not in a2_suite.stdout
+      failed_when: >-
+        a2_suite.rc != 0 or '--- PASS: TestACP2CLIRoundTrip' not in a2_suite.stdout
       when: acp2_suite_dir is defined
 
     - name: Go suite — verdicts
