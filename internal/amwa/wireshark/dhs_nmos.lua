@@ -692,3 +692,10 @@ function nmos_http.dissector(buf, pinfo, tree)
 end
 
 register_postdissector(nmos_http)
+
+-- IS-07 over MQTT on the port the lab broker listens on. 1883 is
+-- Wireshark's own; the tooling host's mosquitto sits on 1884 (the
+-- nmos-cpp registry container holds 1883), so the built-in MQTT
+-- dissector is pointed at that port too. A build without it leaves
+-- the port alone.
+pcall(function() DissectorTable.get("tcp.port"):add(1884, Dissector.get("mqtt")) end)
