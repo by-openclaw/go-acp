@@ -7,6 +7,29 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.40.0](https://github.com/by-openclaw/go-acp/compare/v0.39.0...v0.40.0) (2026-10-05)
+
+
+### Features
+
+* **amwa:** the TLS server offers every recommended BCP-003-01 suite Go implements ([67b6943](https://github.com/by-openclaw/go-acp/commit/67b6943820693e8667a40c731fcb3087cf2a462b))
+* **amwa:** the TLS server offers every recommended BCP-003-01 suite Go implements ([a226d17](https://github.com/by-openclaw/go-acp/commit/a226d17b0f5cf879eb7df8753aac83aae00d905a))
+
+
+### Bug Fixes
+
+* **amwa:** narrowing a Node to an older minor keeps what no Sender ever carried ([1832384](https://github.com/by-openclaw/go-acp/commit/183238412de87d1eeb81b233a472182539887406))
+* **amwa:** narrowing a Node to an older minor keeps what no Sender ever carried ([86d8c2d](https://github.com/by-openclaw/go-acp/commit/86d8c2d3442fe30c44d2bd14f149ba2a2bbd59c7))
+* **amwa:** narrowing a Node to v1.0 drops what is built on a format v1.0 does not define ([352cddc](https://github.com/by-openclaw/go-acp/commit/352cddc046bcaad7381ecdf2d03e86b3dd385bc1))
+* **amwa:** the Node's announce carries an address record for the host it names ([e0e763d](https://github.com/by-openclaw/go-acp/commit/e0e763dbad66b8f7945a5260c1854dc58f308a50))
+* **amwa:** the Node's announce carries an address record for the host it names ([7e6217e](https://github.com/by-openclaw/go-acp/commit/7e6217efddcdcf49e7f4357a68796ca2b63f3271))
+* **ansible:** a guest keeps no network config for an interface the inventory does not declare ([0ccac99](https://github.com/by-openclaw/go-acp/commit/0ccac990146ad52fb2917f818b516b639c7075d4))
+* **ansible:** a guest keeps no network config for an interface the inventory does not declare ([6719aee](https://github.com/by-openclaw/go-acp/commit/6719aee6c067cfc6655098013053bc8bc1a2758c))
+* **snmp:** a walk has no default object limit — the whole tree is walked ([0073e02](https://github.com/by-openclaw/go-acp/commit/0073e020dbfec31211006bae8ca163cb260e7f60))
+* **snmp:** a walk has no default object limit — the whole tree is walked ([43157d4](https://github.com/by-openclaw/go-acp/commit/43157d4145566c3a4454f30136567ffd9896651b))
+* **snmp:** a walk prints as it goes, with a running count ([92776ec](https://github.com/by-openclaw/go-acp/commit/92776ec06c4402f91299f457d3b654a141976225))
+* **snmp:** a walk prints as it goes, with a running count ([bd0d93c](https://github.com/by-openclaw/go-acp/commit/bd0d93c425eaf6632e3bee873e9b572278c73944))
+
 ## [0.39.0](https://github.com/by-openclaw/go-acp/compare/v0.38.2...v0.39.0) (2026-10-05)
 
 
