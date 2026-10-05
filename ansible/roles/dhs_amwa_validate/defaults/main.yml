@@ -236,6 +236,8 @@ dhs_amwa_validate_mock_registry_port: 5102
 #   label         optional; appended to the receipt stem
 #                 (<SUITE>-<label>.json) so one suite id can be scored
 #                 at several minors in one run without overwriting
+#   config        optional, window p2p: a node fixture of this role's files/
+#                 served instead of the plant's
 #   enabled: false + note          suites we cannot yet drive here
 dhs_amwa_validate_suites:
   # ---- node scope, plant node :18080 ----
@@ -470,6 +472,24 @@ dhs_amwa_validate_suites:
   - { id: IS-11-01, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
       baseline_pass: 128, baseline_cnt: 0 }
+  # The four reference-sender rounds, scored: the tool pairs its
+  # reference sender with ONE receiver of a format and reports every
+  # other as "no compatible senders" (IS1101Test: the loop breaks after
+  # the first), so on the plant fixture — two video, three audio
+  # receivers — they can only be Warning. The same node with one video
+  # and one audio receiver (files/amwa-test-node-is11-single.json, the
+  # plant fixture less three receivers) gives them a verdict. The
+  # entries above keep the full fixture and its Warnings.
+  # Baselines from the 2026-10-05 fleet run on v0.38.0: the full
+  # fixture's score plus the four rounds (107 + 4, 128 + 4), no Warning.
+  - { id: IS-11-01, scope: node, target: cut, window: p2p, label: single,
+      config: amwa-test-node-is11-single.json,
+      rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
+      baseline_pass: 111, baseline_cnt: 0 }
+  - { id: IS-11-01, scope: node, target: cut, window: p2p, label: single, auth: true,
+      config: amwa-test-node-is11-single.json,
+      rows: [{ver: v1.0}, {ver: v1.3}, {ver: v1.2}],
+      baseline_pass: 132, baseline_cnt: 0 }
   - { id: IS-14-01, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.3}, {ver: v1.0}, {ver: v1.0}, {ver: v1.0}],
       baseline_pass: 174, baseline_cnt: 0 }
