@@ -30,7 +30,7 @@ unit tests, or only on a build nobody runs, says so.
 | `set` | IS-05 (Sender) | yes | v0.37.0: a Sender's two legs moved on the nmos-cpp node and moved back, each read from its IS-05 | — |
 | `events` | IS-07 | yes | v0.37.0: a subscription on the nmos-cpp node delivers the Source's state, of the type its Events API reports | MQTT |
 | `map` | IS-08 | yes | v0.37.0: a channel routed and unrouted on the nmos-cpp node, read from its own active map | a scheduled activation; a device |
-| `compat` | IS-11 | yes | v0.37.1: read, dry-run, constrain, refuse, release against the NMOS-Reference Node (`amwa-interop-is11.yml`); refused by name on the nmos-cpp node, which has no IS-11 | its conversation is not in the replay set yet |
+| `compat` | IS-11 | yes | v0.37.1: read, dry-run, constrain, refuse, release against the NMOS-Reference Node (`amwa-interop-is11.yml`); refused by name on the nmos-cpp node, which has no IS-11 | — |
 | `config` | IS-14 | yes | v0.37.0: get, set and back on the nmos-cpp node; a backup the node validates for a restore | a restore applied; a device |
 | `control` | IS-12 / MS-05-02 | yes | v0.37.0: the model listed is the nmos-cpp node's IS-14 role paths (38 objects); a set read back through its IS-14; a watch prints a change made through its IS-14 | invoke; a device |
 | `facade` | AMWA testing façade | yes | v0.37.0: the AMWA tool's controller suites (see the sweep) | — |

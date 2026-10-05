@@ -30,6 +30,7 @@ released dhs v0.36.2, against the nmos-cpp reference registry and node.
 | `events-mqtt` | IS-07 Events API, MQTT | CONNECT, then the retained connection-status and state PUBLISHes on `x-nmos/events/v1.0/…` |
 | `channelmapping` | IS-08 Channel Mapping API | the map read and a channel routed: `POST /map/activations` |
 | `system` | IS-09 System API | `GET /global` |
+| `streamcompatibility` | IS-11 Stream Compatibility Management API | a Sender constrained: `PUT …/constraints/active`, its status and active constraints read back |
 | `control-ws` | IS-12 Control Protocol, WebSocket | commands and their responses, a subscription and a property-changed notification |
 | `configuration` | IS-14 Configuration API | a property read and set: `GET` / `PUT …/properties/{id}/value/` |
 | `configuration-bulk` | IS-14 Configuration API | a backup and a validated restore: `GET` / `PATCH …/bulkProperties/` |
