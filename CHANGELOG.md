@@ -7,6 +7,23 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.38.0](https://github.com/by-openclaw/go-acp/compare/v0.37.1...v0.38.0) (2026-10-05)
+
+
+### Features
+
+* **amwa:** the mirror reads a guarded source registry as an OAuth client ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([383fcca](https://github.com/by-openclaw/go-acp/commit/383fccae8427fd97a8db54c68e716d9f4c82e15a))
+* **amwa:** the mirror reads a guarded source registry as an OAuth client ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([f1f6c57](https://github.com/by-openclaw/go-acp/commit/f1f6c57eff8fa03e934487ea306a710975892719))
+
+
+### Bug Fixes
+
+* **amwa:** a Registry seen under its other service name is not a better Registry ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([2f0ad0d](https://github.com/by-openclaw/go-acp/commit/2f0ad0d3463a6b69c5a7e6216107e5bc24b5059d))
+* **amwa:** the capabilities register holds every published parameter ([#1328](https://github.com/by-openclaw/go-acp/issues/1328)) ([e60bc98](https://github.com/by-openclaw/go-acp/commit/e60bc9817544fb4157a3ce89a91384de44ee94a9))
+* **amwa:** the capabilities register holds every published parameter ([#1328](https://github.com/by-openclaw/go-acp/issues/1328)) ([a9533e0](https://github.com/by-openclaw/go-acp/commit/a9533e098e80b737fe43524157e70939c456015a))
+* **amwa:** the heartbeat loop continues from the last heartbeat the registration sent ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([ba2a556](https://github.com/by-openclaw/go-acp/commit/ba2a5561449eccdc0f3e963c0e8b0bbfe52ea28b))
+* **amwa:** the heartbeat loop continues from the last heartbeat the registration sent ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([ba63cae](https://github.com/by-openclaw/go-acp/commit/ba63cae5dc8332608c352e7253f1af088846f267))
+
 ## [0.37.1](https://github.com/by-openclaw/go-acp/compare/v0.37.0...v0.37.1) (2026-10-05)
 
 
