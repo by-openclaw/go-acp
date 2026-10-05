@@ -7,6 +7,14 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.37.1](https://github.com/by-openclaw/go-acp/compare/v0.37.0...v0.37.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **amwa/mirror:** what the target dropped with a deleted parent is no longer taken to be held ([#1346](https://github.com/by-openclaw/go-acp/issues/1346)) ([b89b47e](https://github.com/by-openclaw/go-acp/commit/b89b47eff75ffff42fa4285ec91ab29ab99e4b3d))
+* **amwa/node:** heartbeats start when the node is registered, not when its last resource is ([#1312](https://github.com/by-openclaw/go-acp/issues/1312)) ([165fec0](https://github.com/by-openclaw/go-acp/commit/165fec0802a2c31debc7a2704ce75847dd91a839))
+
 ## [0.37.0](https://github.com/by-openclaw/go-acp/compare/v0.36.2...v0.37.0) (2026-10-04)
 
 
