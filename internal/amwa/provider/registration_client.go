@@ -92,6 +92,9 @@ type RegistrationClient struct {
 	// currentRegistry is the FullName of the watcher pick the loop is
 	// currently registered against — used for Disqualify on failure.
 	currentRegistry string
+	// currentServer is that pick's URL: the server, whichever of its
+	// advertised names it was reached under (shouldSwitchToBetter).
+	currentServer string
 
 	http *stdhttp.Client
 
@@ -135,6 +138,11 @@ type RegistrationClient struct {
 	reregister     uint64
 	deletions      uint64
 	failures       uint64
+
+	// registrationBeat is when registerAll last sent a heartbeat while
+	// it was still registering (UnixNano), 0 when it sent none — see
+	// beatDuringRegistration.
+	registrationBeat atomic.Int64
 
 	// closed signals the heartbeat loop to exit + DELETE has finished.
 	closed chan struct{}
@@ -305,6 +313,7 @@ func (c *RegistrationClient) pickBase() (string, bool) {
 	cand, ok := c.watcher.Best()
 	if !ok {
 		c.currentRegistry = ""
+		c.currentServer = ""
 		c.base = ""
 		return "", false
 	}
@@ -315,6 +324,7 @@ func (c *RegistrationClient) pickBase() (string, bool) {
 	url := strings.TrimRight(cand.URL, "/") + "/x-nmos/registration/" + apiVer
 	c.base = url
 	c.currentRegistry = cand.FullName
+	c.currentServer = cand.URL
 	return url, true
 }
 
@@ -358,7 +368,23 @@ func (c *RegistrationClient) shouldSwitchToBetter() bool {
 	if !ok {
 		return false
 	}
-	return cand.FullName != c.currentRegistry
+	if cand.FullName == c.currentRegistry {
+		return false
+	}
+	// Another name is not another Registry. One server advertises
+	// under both service names (_nmos-register and the legacy
+	// _nmos-registration); when the name we registered under was the
+	// stand-in for a disqualified twin, the twin comes back as the best
+	// name once its penalty expires — for the server we are already
+	// registered with. Switching there deregistered every resource from
+	// it and registered them again (AMWA IS-04-01 test_21 in the
+	// unicast window: "Node DELETEd more than just its 'node'
+	// resource"). The name is followed, the registration is kept.
+	if cand.URL != "" && cand.URL == c.currentServer {
+		c.currentRegistry = cand.FullName
+		return false
+	}
+	return true
 }
 
 // SetHeartbeatIntervalFn installs the live heartbeat-cadence source
@@ -457,7 +483,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 	curTick := heartbeatTick(c.heartbeatInterval())
 	ticker := time.NewTicker(curTick)
 	defer ticker.Stop()
-	lastHeartbeat := time.Time{}
+	lastHeartbeat := c.beatDuringRegistration()
 
 	for {
 		// A tick, a republish and a cancellation can all be ready in
@@ -525,7 +551,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 						c.everRegistered = true
 						// Force a heartbeat to the new Registry on the
 						// next tick — the test framework counts those.
-						lastHeartbeat = time.Time{}
+						lastHeartbeat = c.beatDuringRegistration()
 						break
 					}
 					c.logger.Warn("provider/node: re-register attempt failed", "step", i, "err", err)
@@ -602,7 +628,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 					}
 					regErr := c.rejoinOrRegister(loopCtx)
 					if regErr == nil {
-						lastHeartbeat = time.Time{}
+						lastHeartbeat = c.beatDuringRegistration()
 						break
 					}
 					c.logger.Warn("provider/node: cascade rejoin/register failed", "step", i, "err", regErr)
@@ -641,6 +667,20 @@ func (c *RegistrationClient) Stats() map[string]uint64 {
 	}
 }
 
+// beatDuringRegistration is where the heartbeat loop takes over from
+// a registration: the time of the last heartbeat registerAll sent
+// while it was still POSTing, or the zero time when it sent none — the
+// loop then beats on its next tick, as it always did. Without it the
+// loop beat again a second after a registration that had just sent
+// one, and the Registry saw two heartbeats 1.5 s apart (IS-04-01
+// test_05 under authorization: "Heartbeats are too frequent").
+func (c *RegistrationClient) beatDuringRegistration() time.Time {
+	if ns := c.registrationBeat.Load(); ns != 0 {
+		return time.Unix(0, ns)
+	}
+	return time.Time{}
+}
+
 // registerAll POSTs every owned resource in dependency order.
 //
 // IS-04 v1.3.3 §4 distinguishes 201 Created (fresh registration) from
@@ -661,6 +701,7 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 	// interval, and one that outlasts the Registry's expiry would lose
 	// the Node before it had sent a single one.
 	beat := time.Now()
+	c.registrationBeat.Store(0)
 	keepAlive := func() error {
 		cadence := c.heartbeatInterval()
 		if time.Since(beat) < cadence-heartbeatSlack(cadence) {
@@ -670,6 +711,7 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 			return err
 		}
 		beat = time.Now()
+		c.registrationBeat.Store(beat.UnixNano())
 		return nil
 	}
 	post := func(t is04.ResourceType, data any) error {

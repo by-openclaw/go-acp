@@ -335,3 +335,40 @@ func TestCloseGivesUpOnADeregistrationThatNeverFinishes(t *testing.T) {
 		t.Fatalf("= %v, want the timeout reported", err)
 	}
 }
+
+// One Registry, two advertised names. Registered under the legacy name
+// while the modern one sat out a penalty, the Node sees the modern name
+// come back as the best pick: the same server. That is nothing to
+// switch to — switching deregistered every resource from the Registry
+// it was already on (AMWA IS-04-01 test_21, unicast window). A
+// different server at the top is still switched to.
+func TestNoSwitchToTheSameRegistryUnderItsOtherName(t *testing.T) {
+	legacy := RegistryCandidate{FullName: "reg-1._nmos-registration._tcp.example", URL: "http://10.0.0.1:8235"}
+	modern := RegistryCandidate{FullName: "reg-1._nmos-register._tcp.example", URL: "http://10.0.0.1:8235"}
+	other := RegistryCandidate{FullName: "reg-0._nmos-register._tcp.example", URL: "http://10.0.0.9:8235"}
+
+	src := &scriptedRegistries{candidates: []RegistryCandidate{legacy}}
+	c := NewRegistrationClient(newLogTap().logger(), "", "v1.3", validBundle())
+	c.SetWatcher(src)
+	if _, ok := c.pickBase(); !ok {
+		t.Fatal("no registry picked")
+	}
+
+	src.set(func(s *scriptedRegistries) { s.candidates = []RegistryCandidate{modern, legacy} })
+	if c.shouldSwitchToBetter() {
+		t.Fatal("the same server under its other name is not a better registry")
+	}
+	// The name is followed, so a failure is charged to the one in use.
+	c.disqualifyCurrent()
+	src.mu.Lock()
+	charged := append([]string(nil), src.disqualified...)
+	src.mu.Unlock()
+	if len(charged) != 1 || charged[0] != modern.FullName {
+		t.Errorf("failure charged to %v, want the name now in use (%s)", charged, modern.FullName)
+	}
+
+	src.set(func(s *scriptedRegistries) { s.candidates = []RegistryCandidate{other, legacy} })
+	if !c.shouldSwitchToBetter() {
+		t.Error("another server at the top is a better registry")
+	}
+}
