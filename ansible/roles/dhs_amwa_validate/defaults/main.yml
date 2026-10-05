@@ -85,6 +85,10 @@ dhs_amwa_validate_isolated_tool_port: 5001
 dhs_amwa_validate_unicast_net: dhs-validate-unicast
 dhs_amwa_validate_unicast_tool: nmos-testing-unicast
 dhs_amwa_validate_unicast_tool_port: 5002
+# The armed (IS-10) side of a bridge window publishes its tool API this
+# far above the plain one's: 15001 isolated, 15002 unicast (#1312). The
+# host-network instances hold 5000-5020 and 5500-5520.
+dhs_amwa_validate_bridge_auth_port_offset: 10000
 dhs_amwa_validate_unicast_domain: testsuite.nmos.tv
 
 # Auth-mode windows (issue #942): every upgrade is proven WITHOUT and
@@ -467,6 +471,16 @@ dhs_amwa_validate_suites:
       rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 69, baseline_cnt: 0 }
   - { id: IS-04-03, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.3}], baseline_pass: 24, baseline_cnt: 0 }
+  # IS-04-01 WITH authorization (#1312), on the bridges: the node
+  # obtains a token from the armed tool's mock Authorization Server and
+  # registers into its token-checking mock registries. The host-network
+  # armed instance cannot sit this suite — on the lab link the node
+  # finds the plant registry first — so each bridge window brings an
+  # armed instance of its own. Baselines from the first fleet run.
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, auth: true,
+      rows: [{ver: v1.3}], baseline_pass: 67, baseline_cnt: 0 }
+  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast, auth: true,
+      rows: [{ver: v1.3}], baseline_pass: 67, baseline_cnt: 0 }
   # Armed baselines (2026-09-01, #944): the token-bearing companion
   # node + seeded persistent subscription give every Query round a
   # resource, so the armed window sits the SAME exam shape as the

@@ -39,9 +39,19 @@ func TestDissectorReplayGivesTheCommittedTrees(t *testing.T) {
 	if len(captures) < 10 {
 		t.Fatalf("FAIL-real: the replay set holds %d captures", len(captures))
 	}
+	// The dissector under test is the repository's. A copy deployed to
+	// this host's personal plugin directory would be loaded as well —
+	// the same protocol twice is a load error, and the deployed copy is
+	// then the one that answers — so tshark is given a home with none.
+	home := t.TempDir()
+	run := func(args ...string) ([]byte, error) {
+		cmd := exec.Command(tshark, append([]string{"-X", "lua_script:" + lua}, args...)...)
+		cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+home, "APPDATA="+home)
+		return cmd.Output()
+	}
 	// A tshark built without Lua, or one that refuses scripts, does not
-	// know our fields and says so.
-	if out, err := exec.Command(tshark, "-X", "lua_script:"+lua, "-r", captures[0], "-T", "fields", "-e", "dhs_nmos_http.api").CombinedOutput(); err != nil || bytes.Contains(out, []byte("aren't valid")) {
+	// know our fields and prints nothing for them.
+	if out, err := run("-r", captures[0], "-T", "fields", "-e", "dhs_nmos_http.api"); err != nil || len(bytes.TrimSpace(out)) == 0 {
 		t.Skip("this tshark does not load Lua dissectors")
 	}
 
@@ -56,7 +66,7 @@ func TestDissectorReplayGivesTheCommittedTrees(t *testing.T) {
 			t.Errorf("FAIL-real: %v", err)
 			continue
 		}
-		got, err := exec.Command(tshark, "-X", "lua_script:"+lua, "-r", capture, "-O", "dhs_nmos,dhs_nmos_http").Output()
+		got, err := run("-r", capture, "-O", "dhs_nmos,dhs_nmos_http")
 		if err != nil {
 			t.Errorf("FAIL-real: tshark on %s: %v", capture, err)
 			continue

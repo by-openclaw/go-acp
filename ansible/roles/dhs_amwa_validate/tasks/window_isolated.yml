@@ -39,8 +39,20 @@
     - "{{ dhs_amwa_validate_plant_bin }}"
     - "{{ dhs_amwa_validate_plant_config }}"
 
+# auth: true entries (issue #1312) sit this window WITH IS-10: an armed
+# tool instance of its own on the same private bridge — its mock
+# Authorization Server and its token-checking mock registries — and a
+# node armed against it. The plain instance stays as it is; the two
+# never share a container, a port or a UserConfig.
+- name: This window's tool instance — plain or armed
+  ansible.builtin.set_fact:
+    _w_armed: "{{ suite.auth | default(false) }}"
+    _w_tool: "{{ dhs_amwa_validate_isolated_tool ~ ('-auth' if suite.auth | default(false) else '') }}"
+    _w_tool_port: "{{ (dhs_amwa_validate_isolated_tool_port | int) + (dhs_amwa_validate_bridge_auth_port_offset | int if suite.auth | default(false) else 0) }}"
+    _w_userconfig: "{{ 'PULL_REPOS = False\\nfrom . import Config as CONFIG\\nCONFIG.GARBAGE_COLLECTION_TIMEOUT = 30\\n' ~ ('CONFIG.ENABLE_AUTH = True\\n' if suite.auth | default(false) else '') }}"
+
 - name: Isolated tool instance is running
-  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} {{ dhs_amwa_validate_isolated_tool }}
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} {{ _w_tool }}
   register: _iso_tool
   changed_when: false
   failed_when: false
@@ -48,38 +60,84 @@
 # Remove-then-run rather than start: a half-created corpse (e.g. from
 # a docker-daemon fault mid-create) holds the name but cannot run.
 - name: Clear any dead isolated tool instance
-  ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_isolated_tool }}
+  ansible.builtin.command: docker rm -f {{ _w_tool }}
   when: "'true' not in _iso_tool.stdout"
   changed_when: true
   failed_when: false
 
 - name: Start the isolated tool instance
   ansible.builtin.command: >-
-    docker run -d --name {{ dhs_amwa_validate_isolated_tool }}
+    docker run -d --name {{ _w_tool }}
     --network {{ dhs_amwa_validate_isolated_net }}
-    -p 127.0.0.1:{{ dhs_amwa_validate_isolated_tool_port }}:5000
+    -p 127.0.0.1:{{ _w_tool_port }}:5000
     {{ dhs_amwa_validate_tool_image }}
   when: "'true' not in _iso_tool.stdout"
   changed_when: true
 
 - name: Pin the isolated tool's UserConfig
   ansible.builtin.shell: >-
-    printf 'PULL_REPOS = False\nfrom . import Config as CONFIG\nCONFIG.GARBAGE_COLLECTION_TIMEOUT = 30\n'
-    > /tmp/validate-userconfig.py
-    && docker cp /tmp/validate-userconfig.py {{ dhs_amwa_validate_isolated_tool }}:/config/UserConfig.py
-    && docker restart {{ dhs_amwa_validate_isolated_tool }}
+    printf '{{ _w_userconfig }}'
+    > /tmp/validate-userconfig{{ '-auth' if _w_armed else '' }}.py
+    && docker cp /tmp/validate-userconfig{{ '-auth' if _w_armed else '' }}.py {{ _w_tool }}:/config/UserConfig.py
+    && docker restart {{ _w_tool }}
   when: "'true' not in _iso_tool.stdout"
   changed_when: true
 
 - name: The isolated tool API answers
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ dhs_amwa_validate_isolated_tool_port }}/api"
+    url: "http://127.0.0.1:{{ _w_tool_port }}/api"
     method: GET
     status_code: [200, 405]
   register: _iso_api
   retries: 20
   delay: 3
   until: _iso_api.status in [200, 405]
+
+# Armed: the node is a client of the tool's mock Authorization Server.
+# Its credentials come from that server's own RFC 7591 registration
+# endpoint, asked from inside the bridge (the mock's port is not
+# published), as the registry window's companion node gets its own.
+- name: Resolve the armed tool's bridge address (its Authorization Server)
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+    {{ _w_tool }}
+  register: _w_tool_ip
+  changed_when: false
+  when: _w_armed
+
+- name: Register the node as an OAuth client of the armed tool
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ _w_tool }}"
+      - python3
+      - -c
+      - |
+        import json, urllib.request
+        base = "http://{{ _w_tool_ip.stdout | trim }}:5010"
+        meta = json.load(urllib.request.urlopen(base + "/.well-known/oauth-authorization-server", timeout=10))
+        req = urllib.request.Request(meta["registration_endpoint"], data=json.dumps({
+            "client_name": "dhs-validate-node", "grant_types": ["client_credentials"],
+            "token_endpoint_auth_method": "client_secret_basic", "scope": "registration query node"}).encode(),
+            headers={"Content-Type": "application/json"})
+        print(urllib.request.urlopen(req, timeout=10).read().decode())
+  register: _w_dcr
+  changed_when: false
+  no_log: true
+  retries: 10
+  delay: 3
+  until: _w_dcr.rc == 0
+  when: _w_armed
+
+- name: The node's authorization arguments
+  ansible.builtin.set_fact:
+    _w_node_auth: >-
+      {{ ('--auth-url http://' ~ (_w_tool_ip.stdout | trim) ~ ':5010'
+          ~ ' --auth-client-id ' ~ (_w_dcr.stdout | from_json).client_id
+          ~ ' --auth-client-secret ' ~ (_w_dcr.stdout | from_json).client_secret) if _w_armed else '' }}
+  no_log: true
 
 # A FRESH node per attempt, like the proven pre-plant role: a node
 # that registered in a previous attempt would skip the discovery
@@ -101,6 +159,7 @@
     --advertise-host dhs-validate-node:{{ dhs_amwa_validate_node_port }}
     --api-ver v1.3
     --config /dv/{{ dhs_amwa_validate_plant_config | basename }}
+    {{ _w_node_auth }}
   changed_when: true
 
 - name: Resolve the CuT node's bridge address
@@ -125,4 +184,4 @@
   ansible.builtin.set_fact:
     _suite_host_override: "{{ _iso_node_ip.stdout | trim }}"
     _suite_port_override: "{{ dhs_amwa_validate_node_port }}"
-    _tool_url_override: "http://127.0.0.1:{{ dhs_amwa_validate_isolated_tool_port }}/api"
+    _tool_url_override: "http://127.0.0.1:{{ _w_tool_port }}/api"

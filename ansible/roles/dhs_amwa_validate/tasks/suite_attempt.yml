@@ -24,13 +24,16 @@
       when: suite.window is defined
 
     # Auth suites are scored by the ARMED tool instance (issue #942).
-    # After the window include on purpose: no auth suite runs in the
-    # isolated window today, but if one ever does, the armed URL must
-    # win over the isolated instance's override.
+    # After the window include on purpose, so the armed URL wins over
+    # a window's own. The bridge windows are the exception: isolated
+    # and unicast bring an armed instance of their own (#1312), on
+    # their bridge, and point the suite at it themselves.
     - name: "{{ suite.id }} — score with the armed tool instance"
       ansible.builtin.set_fact:
         _tool_url_override: "{{ dhs_amwa_validate_auth_tool_url }}"
-      when: suite.auth | default(false)
+      when:
+        - suite.auth | default(false)
+        - suite.window | default('') not in ['isolated', 'unicast']
 
     # TLS suites are scored by the TLS tool instance (issue #948):
     # ENABLE_HTTPS there flips the tool's scheme globally (its API
