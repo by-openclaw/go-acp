@@ -732,3 +732,51 @@ func TestMirrorForgetsWhatTheTargetDroppedWithItsParent(t *testing.T) {
 		t.Error("nothing had landed before the delete: the test proves nothing")
 	}
 }
+
+// A Node registers again at another minor, and its flow is shown at the
+// new minor while its source is still tracked — and held by the target —
+// at the old one. The flow is not sent ahead to be refused (Cerebrum
+// answers 409 for a child at another minor than its Node's): it is owed
+// to the ordered pass. Behind parents that are at its minor it goes at
+// once.
+func TestMirrorHoldsAChildWhoseParentIsStillAtAnotherMinor(t *testing.T) {
+	arrive := func(parentsAt string) (*orderTarget, *Mirror) {
+		target := &orderTarget{}
+		m, _ := repairMirror(t, target)
+		m.audit, _ = newAuditor("", 0)
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+		m.mu.Lock()
+		m.runCtx = ctx
+		for _, at := range []struct{ topic, id string }{{"nodes", "n1"}, {"devices", "d1"}, {"sources", "s1"}} {
+			m.landed[at.topic][at.id] = true // the target holds the chain
+			m.cacheVer[at.topic][at.id] = parentsAt
+		}
+		doc := m.cache["flows"]["f1"]
+		delete(m.cache["flows"], "f1")
+		delete(m.cacheVer["flows"], "f1")
+		m.mu.Unlock()
+		// The flow arrives registered at v1.2.
+		m.land(ctx, "flows", "v1.2", "v1.2", is04.GrainDataRow{Path: "f1", Post: doc})
+		return target, m
+	}
+
+	target, m := arrive("v1.3")
+	if got := target.sent(); len(got) != 0 {
+		t.Fatalf("the flow went out at v1.2 under parents the target holds at v1.3: %v", got)
+	}
+	m.mu.Lock()
+	owed := m.pending.held["flows"]["f1"] || m.owed.held["flows"]["f1"]
+	m.mu.Unlock()
+	if !owed {
+		t.Error("the held flow is not owed to the ordered pass")
+	}
+
+	target, m = arrive("v1.2")
+	if got := target.sent(); len(got) != 1 || got[0] != "flow:f1" {
+		t.Errorf("behind parents at its own minor the flow goes at once; target saw %v", got)
+	}
+	if st := m.Stats(); st.Failures != 0 {
+		t.Errorf("failures = %d, want 0", st.Failures)
+	}
+}

@@ -602,7 +602,7 @@ func (m *Mirror) land(ctx context.Context, topic, ver, reg string, row is04.Grai
 	}
 	m.mu.Unlock()
 	m.applyServeRow(topic, reg, row, true)
-	if m.heldForParents(topic, row.Path, row.Post) {
+	if m.heldForParents(topic, reg, row.Path, row.Post) {
 		return
 	}
 	// A 400 here is a parent the target has lost since it accepted
@@ -620,12 +620,23 @@ func (m *Mirror) land(ctx context.Context, topic, ver, reg string, row is04.Grai
 // target for one Node). It is owed to the ordered pass instead, which
 // sends it behind its ancestors. With no run there is no pass to owe it
 // to, and it is sent.
-func (m *Mirror) heldForParents(topic, id string, doc json.RawMessage) bool {
+//
+// A parent the target holds at another minor is not that parent yet. A
+// Node that registers again at another minor leaves and arrives one
+// resource at a time, on six subscriptions: its sender can be shown at
+// the new minor while the Node and the device are still tracked — and
+// held by the target — at the old one. A target that keeps a Node's
+// resources at the Node's minor refuses the child (Cerebrum: 409; one
+// request in the v0.38.1 sweep, when a plant Node moved from v1.3 to
+// v1.2). reg is the minor the child is registered at.
+func (m *Mirror) heldForParents(topic, reg, id string, doc json.RawMessage) bool {
 	m.mu.Lock()
 	wait := false
 	if m.runCtx != nil {
 		for _, p := range parentsOf(topic, doc) {
 			if !m.landed[p.topic][p.id] {
+				wait = true
+			} else if at := m.cacheVer[p.topic][p.id]; at != "" && at != reg {
 				wait = true
 			}
 		}
