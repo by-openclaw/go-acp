@@ -1,0 +1,19 @@
+---
+# IS-04-02 through a mirror WITH IS-10 (#1312): the mirror-scope
+# entries flagged auth: true, scored by the armed tool instance. The
+# window arms the transient source registry, and the transient mirror
+# on both of its Query sides — an OAuth client of the tool's mock
+# Authorization Server towards the source (--source-auth-url), a
+# Bearer gate on the face it serves (--auth-url). The plant registry
+# and the plant mirror are not touched.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-validate-mirror-auth.yml
+
+- name: AMWA validate — mirror (auth)
+  hosts: tooling
+  gather_facts: true
+  roles:
+    - role: dhs_amwa_validate
+      vars:
+        dhs_amwa_validate_scope: mirror
+        dhs_amwa_validate_auth_mode: true
