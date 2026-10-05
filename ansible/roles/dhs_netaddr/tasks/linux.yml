@@ -40,3 +40,48 @@
     - dhs_netaddr_reboot_ct | bool
     - pve_vmid is defined
     - dhs_netaddr_proxmox_enabled | bool
+
+# ---- leftovers: guest config for an interface the inventory does not declare.
+#
+# Proxmox renders the interfaces of the CT config and leaves alone whatever
+# else the guest's files hold. A NIC removed from the CT (the parked mgmt-B
+# port, the retired 10.100.0.0/24 rig network) therefore stays configured in
+# the guest for ever: an `auto eth1` stanza for a device that no longer
+# exists. On Debian that costs five minutes at every boot —
+# ifupdown-wait-online waits for it, times out and fails, and everything
+# ordered after network-online starts late: on dhs-debian the plant registry
+# and the mirror, 5 min 10 s after a reboot that took 18 s (2026-10-05).
+- name: Interfaces the guest's ifupdown file configures
+  ansible.builtin.command: grep -oE '^iface (eth[0-9]+) ' /etc/network/interfaces
+  register: dhs_netaddr_ifupdown
+  changed_when: false
+  failed_when: false
+
+- name: Remove ifupdown stanzas of interfaces the inventory does not declare
+  ansible.builtin.replace:
+    path: /etc/network/interfaces
+    regexp: '(?m)^(?:auto {{ item }}\n)?iface {{ item }} inet[^\n]*\n(?:[ \t]+[^\n]*\n)*(?:\n)?'
+    replace: ''
+  loop: >-
+    {{ dhs_netaddr_ifupdown.stdout_lines | map('regex_replace', '^iface (eth[0-9]+) $', '\1')
+       | unique | difference(nics | default([]) | map(attribute='name') | list) }}
+  when:
+    - dhs_netaddr_ifupdown.rc == 0
+    - nics is defined
+
+- name: systemd-networkd files of interfaces the guest has
+  ansible.builtin.find:
+    paths: /etc/systemd/network
+    patterns: 'eth*.network'
+  register: dhs_netaddr_networkd
+
+- name: Remove networkd files of interfaces the inventory does not declare
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ dhs_netaddr_networkd.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - nics is defined
+    - (item.path | basename | regex_replace('\.network$', '')) not in (nics | map(attribute='name') | list)
