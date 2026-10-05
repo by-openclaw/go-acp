@@ -30,12 +30,13 @@ const Name = "snmp"
 // staleAfter is how long a polled value is treated as current.
 const staleAfter = 30 * time.Second
 
-// walkLimit caps one Walk: a device whose table grows while it is
-// being walked would otherwise never end. It is deliberately far above
-// what any device here publishes — a DR5000's 4096-row programme
-// stream table alone is 20 000 objects, and a cap that truncates the
-// model silently is worse than a slow walk. Truncation is logged.
-var walkLimit = 200000
+// walkLimit caps one Walk when it is above zero. It is zero: the model
+// of a device is all of its tree, and a cap that truncates it is worse
+// than a slow walk — a DR5000's 4096-row programme stream table alone
+// is 20 000 objects. A walk ends by itself: the session refuses an
+// agent whose answers stop advancing. A variable so a test can bound
+// one; truncation, when a bound is set, is logged.
+var walkLimit = 0
 
 func init() {
 	dhsc.Register(&Factory{})
@@ -313,7 +314,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		// device model that is 20 000 objects deep is still a model,
 		// and an IRD's programme tables are that deep.
 		werr := sess.Walk(ctx, root, func(b codec.VarBind) error {
-			if len(objs) >= walkLimit {
+			if walkLimit > 0 && len(objs) >= walkLimit {
 				return errStop
 			}
 			objs = append(objs, p.objectFor(b))
@@ -931,7 +932,7 @@ func (p *Plugin) walkUnder(ctx context.Context, root codec.OID) ([]dhsc.Object, 
 	var objs []dhsc.Object
 	errStop := fmt.Errorf("snmp: walk limit")
 	werr := sess.Walk(ctx, root, func(b codec.VarBind) error {
-		if len(objs) >= walkLimit {
+		if walkLimit > 0 && len(objs) >= walkLimit {
 			return errStop
 		}
 		objs = append(objs, p.objectFor(b))

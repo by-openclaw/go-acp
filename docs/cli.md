@@ -1088,7 +1088,7 @@ Usage of walk:
   -context string
     	v3 context name; empty is the agent's default context
   -limit int
-    	stop after this many objects; a device whose table grows while it is walked would otherwise never end (default 20000)
+    	stop after this many objects (0 = no limit: the whole subtree is walked)
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
