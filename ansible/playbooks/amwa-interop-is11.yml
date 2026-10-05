@@ -1,0 +1,240 @@
+---
+# AMWA NMOS interop — the compat verb (IS-11) against a Node somebody
+# else wrote (#1328, ADR-0025 deliverable 3, ADR-0034).
+#
+# nmos-cpp serves no IS-11 and the IS-11 Nodes on the plant are our own,
+# so neither is an oracle for the Stream Compatibility client. The peer
+# here is the open NMOS-Reference Node (github.com/alabou/NMOS-Reference,
+# Apache-2.0), pinned to one commit: it serves the Stream Compatibility
+# Management API on its Senders and Receivers.
+#
+# Nothing of it is on the lab link:
+#   - the Node has no DNS-SD at all — it is given its Registry's address;
+#   - that Registry is a transient one of ours (`--no-mdns`), for the
+#     Node to register into and for the verb's --registry leg;
+#   - both sit on a private Docker bridge on the tooling host, no port
+#     published. The suite runs on that host, where the bridge is.
+#
+# The CLI under test is the RELEASED binary the tooling host already
+# runs. The suite — the checks, not the CLI — is cross-compiled where
+# there is a Go toolchain and shipped:
+#
+#   GOOS=linux GOARCH=amd64 go test -c -tags integration \
+#       -o <dir>/amwa-integration.test ./internal/amwa/integration/
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-interop-is11.yml -e amwa_suite_dir=<dir>
+#   ansible-playbook -i inventory/hosts.ini playbooks/amwa-interop-is11.yml -e amwa_suite_dir=<dir>   # -> changed=0
+#
+# Idempotent by construction: the checkout and the image are made once
+# (a second run finds both), the window's containers are transient, and
+# the suite releases every constraint it sets.
+
+- name: AMWA interop — the compat verb against a third-party IS-11 Node
+  hosts: tooling
+  gather_facts: false
+  vars:
+    stage: /opt/dhs-amwa-is11
+    cli: "{{ amwa_dhs_bin | default('/usr/local/bin/dhs') }}"
+    peer_repo: https://github.com/alabou/NMOS-Reference
+    peer_commit: 02b5a56482266fa99d79474ef58fad89c4d54dfc
+    peer_image: "dhs-is11-peer:{{ peer_commit[:12] }}"
+    # Any image that can run the static dhs binary serves the transient
+    # Registry; the tool's own image is already on this host.
+    registry_image: "{{ dhs_amwa_validate_tool_image | default('nmos-testing:cachefix') }}"
+    net: dhs-is11-peer
+    registry_name: dhs-is11-registry
+    node_name: dhs-is11-node
+    registry_port: 8444
+    node_port: 7051
+  tasks:
+    - name: Staging directory
+      ansible.builtin.file:
+        path: "{{ stage }}"
+        state: directory
+        mode: "0755"
+
+    - name: The suite built elsewhere is given (-e amwa_suite_dir=…)
+      ansible.builtin.assert:
+        that: amwa_suite_dir is defined
+        fail_msg: >-
+          Cross-compile the suite on a machine with Go —
+          GOOS=linux GOARCH=amd64 go test -c -tags integration
+          -o amwa-integration.test ./internal/amwa/integration/ — and
+          pass -e amwa_suite_dir=<path holding it>.
+        quiet: true
+
+    - name: Stage the suite
+      ansible.builtin.copy:
+        src: "{{ amwa_suite_dir }}/amwa-integration.test"
+        dest: "{{ stage }}/amwa-integration.test"
+        mode: "0755"
+
+    - name: The CLI under test is the released one
+      ansible.builtin.command: "{{ cli }} version"
+      register: is11_cli
+      changed_when: false
+
+    - name: The peer's source, at the pinned commit
+      ansible.builtin.git:
+        repo: "{{ peer_repo }}"
+        dest: "{{ stage }}/NMOS-Reference"
+        version: "{{ peer_commit }}"
+
+    - name: How the peer is packaged
+      ansible.builtin.copy:
+        dest: "{{ stage }}/Dockerfile"
+        mode: "0644"
+        content: |
+          FROM python:3.12-slim
+          WORKDIR /app
+          COPY NMOS-Reference /app
+          RUN pip install --no-cache-dir -e .
+
+    - name: Is the peer's image built
+      ansible.builtin.command: docker image inspect {{ peer_image }}
+      register: is11_image
+      changed_when: false
+      failed_when: false
+
+    - name: Build the peer's image
+      ansible.builtin.command: docker build -q -t {{ peer_image }} {{ stage }}
+      when: is11_image.rc != 0
+      changed_when: true
+
+    - name: Is the private bridge there
+      ansible.builtin.command: docker network inspect {{ net }}
+      register: is11_net
+      changed_when: false
+      failed_when: false
+
+    - name: The private bridge
+      ansible.builtin.command: docker network create {{ net }}
+      when: is11_net.rc != 0
+      changed_when: true
+
+    - name: The interop window
+      block:
+        - name: Nothing left of an earlier window
+          ansible.builtin.shell: docker rm -f {{ registry_name }} {{ node_name }} >/dev/null 2>&1 || true
+          changed_when: false
+
+        - name: Start the transient Registry
+          ansible.builtin.command: >-
+            docker run -d --name {{ registry_name }} --network {{ net }}
+            -v {{ cli }}:/dhs:ro --entrypoint /dhs {{ registry_image }}
+            registry nmos serve --bind 0.0.0.0:{{ registry_port }} --no-mdns
+          changed_when: false
+
+        - name: The Registry's address on the bridge
+          ansible.builtin.command: >-
+            docker inspect -f
+            {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+            {{ registry_name }}
+          register: is11_registry_ip
+          changed_when: false
+
+        # The Node binds and advertises its own bridge address; its
+        # Registry is named, on both of the ports it asks for.
+        - name: Start the third-party IS-11 Node
+          ansible.builtin.command:
+            argv:
+              - docker
+              - run
+              - -d
+              - --name
+              - "{{ node_name }}"
+              - --network
+              - "{{ net }}"
+              - "{{ peer_image }}"
+              - sh
+              - -c
+              - >-
+                exec python3 nmos_node.py --nodeSerialNumber SNX00001
+                --nodeAddr $(hostname -i) --nodePort {{ node_port }} --nodeControlPort 5050
+                --nodeDisableTLS --controllerAdminPassword admin
+                --rdsHost {{ is11_registry_ip.stdout | trim }}
+                --rdsRegistrationPort {{ registry_port }} --rdsQueryPort {{ registry_port }}
+                --rdsDisableTLS --nodeConfig config10 --ipmx
+          changed_when: false
+
+        - name: The Node's address on the bridge
+          ansible.builtin.command: >-
+            docker inspect -f
+            {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+            {{ node_name }}
+          register: is11_node_ip
+          changed_when: false
+
+        - name: The Node serves IS-11
+          ansible.builtin.uri:
+            url: "http://{{ is11_node_ip.stdout | trim }}:{{ node_port }}/x-nmos/streamcompatibility/v1.0/senders/"
+            return_content: true
+          register: is11_senders
+          retries: 30
+          delay: 2
+          until: is11_senders.status == 200 and (is11_senders.json | length) > 0
+
+        - name: And has registered into the transient Registry
+          ansible.builtin.uri:
+            url: "http://{{ is11_registry_ip.stdout | trim }}:{{ registry_port }}/x-nmos/query/v1.3/senders"
+            return_content: true
+          register: is11_registered
+          retries: 30
+          delay: 2
+          until: is11_registered.status == 200 and (is11_registered.json | length) > 0
+
+        - name: What we are testing with, and against
+          ansible.builtin.debug:
+            msg: >-
+              {{ is11_cli.stdout_lines[0] }} — NMOS-Reference Node at commit {{ peer_commit[:12] }},
+              {{ is11_senders.json | length }} IS-11 Senders, registered at
+              {{ is11_registry_ip.stdout | trim }}:{{ registry_port }}
+
+        - name: Run the suite's IS-11 peer tests
+          ansible.builtin.command:
+            cmd: >-
+              {{ stage }}/amwa-integration.test -test.v -test.count=1 -test.timeout 10m
+              -test.run 'TestCompat.*ThirdParty'
+            chdir: "{{ stage }}"
+          environment:
+            NMOS_TEST_IS11_NODE: "http://{{ is11_node_ip.stdout | trim }}:{{ node_port }}"
+            NMOS_TEST_IS11_REGISTRY: "http://{{ is11_registry_ip.stdout | trim }}:{{ registry_port }}"
+            DHS_BIN: "{{ cli }}"
+          register: is11_suite
+          changed_when: false
+          failed_when: false
+
+        - name: Per-test verdicts
+          ansible.builtin.debug:
+            msg: "{{ is11_suite.stdout_lines | select('match', '^\\s*(--- |ok|FAIL|PASS|\\S+_test.go:\\d+: (PASS|FAIL-expected))') | list }}"
+
+        - name: The whole transcript, when something did not pass
+          when: is11_suite.rc != 0
+          ansible.builtin.debug:
+            msg: "{{ is11_suite.stdout_lines }}"
+
+        - name: Keep the transcript
+          ansible.builtin.copy:
+            dest: "{{ stage }}/interop-is11.txt"
+            mode: "0644"
+            content: |
+              {{ is11_cli.stdout_lines[0] }}
+              NMOS-Reference Node ({{ peer_repo }} at {{ peer_commit }}), {{ is11_senders.json | length }} IS-11 Senders
+
+              {{ is11_suite.stdout }}
+          changed_when: false
+
+        # A skipped test is a test that did not run: both must have.
+        - name: Every check ran and passed
+          ansible.builtin.assert:
+            that:
+              - is11_suite.rc == 0
+              - is11_suite.stdout is search('--- PASS: TestCompatConstrainsAndReleasesAThirdPartySender')
+              - is11_suite.stdout is search('--- PASS: TestCompatReadsAThirdPartyReceiverAndFindsTheSenderByRegistry')
+            fail_msg: "the IS-11 peer tests did not all run and pass (rc={{ is11_suite.rc }}) — the transcript is above"
+            quiet: true
+
+      always:
+        - name: Close the window
+          ansible.builtin.shell: docker rm -f {{ node_name }} {{ registry_name }} >/dev/null 2>&1 || true
+          changed_when: false
