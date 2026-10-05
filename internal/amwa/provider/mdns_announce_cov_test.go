@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -306,5 +307,29 @@ func TestNodeBeforeV13KeepsItsAnnounceWithoutVerRecordsWhileRegistered(t *testin
 		s.stopMDNSAnnounceLocked()
 		s.mu.Unlock()
 		s.onRegistrationStateChanged(false)
+	}
+}
+
+// The announce names a host and says where it is: the advertised
+// address itself, or this host's routable IPv4 when a name is
+// advertised. An announce with no address record cannot be resolved by
+// a browser that starts after it was first sent.
+func TestNodeAnnounceCarriesItsAddress(t *testing.T) {
+	if got := announceIPv4("10.6.250.101"); len(got) != 1 || got[0].String() != "10.6.250.101" {
+		t.Errorf("an advertised address is announced as itself, got %v", got)
+	}
+	if got := announceIPv4("2001:db8::1"); got != nil {
+		t.Errorf("an IPv6 host has no IPv4 record, got %v", got)
+	}
+	prev := interfaceAddrs
+	t.Cleanup(func() { interfaceAddrs = prev })
+	interfaceAddrs = func() ([]net.Addr, error) {
+		return []net.Addr{
+			&net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.CIDRMask(8, 32)},
+			&net.IPNet{IP: net.IPv4(172, 19, 0, 4), Mask: net.CIDRMask(16, 32)},
+		}, nil
+	}
+	if got := announceIPv4("dhs-validate-node"); len(got) != 1 || got[0].String() != "172.19.0.4" {
+		t.Errorf("an advertised name is announced with this host's routable IPv4, got %v", got)
 	}
 }
