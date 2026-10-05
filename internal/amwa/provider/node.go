@@ -378,6 +378,10 @@ type IS04NodeServer struct {
 	// _nmos-node._tcp until registration is lost) and rebuilt
 	// verbatim on lose-registration.
 	announceInstance dnssdcodec.Instance
+	// announceWithoutVer takes the ver_* records out of the announce: a
+	// Node before v1.3, while it is registered (announcesWhileRegistered).
+	// Guarded by mu.
+	announceWithoutVer bool
 	announceCtx      context.Context
 
 	// Per-endpoint hit counters.
@@ -965,7 +969,31 @@ func (s *IS04NodeServer) BumpResourceVersion(t is04.ResourceType) {
 func (s *IS04NodeServer) announceSnapshotLocked() dnssdcodec.Instance {
 	snapshot := s.announceInstance
 	snapshot.TXT = maps.Clone(s.announceInstance.TXT)
+	if s.announceWithoutVer {
+		for _, key := range verTXTKeys {
+			delete(snapshot.TXT, key)
+		}
+	}
 	return snapshot
+}
+
+// verTXTKeys are the six ver_* TXT records of a Node's announce.
+var verTXTKeys = []string{
+	dnssdcodec.TXTKeyVerSlf, dnssdcodec.TXTKeyVerDvc, dnssdcodec.TXTKeyVerSrc,
+	dnssdcodec.TXTKeyVerFlw, dnssdcodec.TXTKeyVerSnd, dnssdcodec.TXTKeyVerRcv,
+}
+
+// announcesWhileRegistered says this Node serves a minor before v1.3,
+// where a registered Node keeps its _nmos-node._tcp announce and takes
+// the ver_* records out of it (IS-04 v1.0 – v1.2, "Discovery:
+// Peer to Peer Operation"; AMWA IS-04-01 test_12). v1.3 changed the
+// rule: a registered Node does not announce at all (test_12_01).
+func (s *IS04NodeServer) announcesWhileRegistered() bool {
+	switch s.cfg.APIVer {
+	case "v1.0", "v1.1", "v1.2":
+		return true
+	}
+	return false
 }
 
 // startMDNSAnnounceLocked opens a fresh Responder + Announces the saved
@@ -1011,14 +1039,30 @@ func (s *IS04NodeServer) stopMDNSAnnounceLocked() {
 		"service", dnssdcodec.ServiceNode)
 }
 
-// onRegistrationStateChanged toggles the _nmos-node._tcp announce on
-// every registration transition. IS-04 v1.3 §4.2.1 (and AMWA test_12_01)
-// require: registered Nodes MUST stop advertising via mDNS until
-// registration is lost. Stub for v1.0/v1.1/v1.2 too — the spec rule
-// is harmless on older minors and keeps behaviour uniform.
+// onRegistrationStateChanged follows every registration transition
+// with the _nmos-node._tcp announce. IS-04 v1.3 §4.2.1 (and AMWA
+// test_12_01): a registered Node MUST stop advertising via mDNS until
+// registration is lost. Before v1.3 the announce stays and loses its
+// ver_* records for as long as the Node is registered (test_12) — the
+// v1.3 rule used to be applied to every minor, which left a v1.2 Node
+// with no announce where its own minor asks for one.
 func (s *IS04NodeServer) onRegistrationStateChanged(registered bool) {
 	if s.cfg.DiscoveryMode != "" && s.cfg.DiscoveryMode != "mdns" {
 		return // static discovery — no responder to toggle
+	}
+	if s.announcesWhileRegistered() {
+		s.mu.Lock()
+		s.announceWithoutVer = registered
+		snapshot := s.announceSnapshotLocked()
+		resp := s.responder
+		s.mu.Unlock()
+		if resp == nil {
+			return
+		}
+		if err := resp.Update(s.announceCtx, snapshot); err != nil {
+			s.logger.Warn("provider/node: republish announce on registration change failed", "registered", registered, "err", err)
+		}
+		return
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

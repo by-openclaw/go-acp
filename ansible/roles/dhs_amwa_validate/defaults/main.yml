@@ -343,6 +343,14 @@ dhs_amwa_validate_suites:
   # 60; a retry here would only hide the next regression.
   - { id: IS-04-01, scope: node, target: cut, window: isolated,
       rows: [{ver: v1.3}], baseline_pass: 60, baseline_cnt: 0 }
+  # The same suite on a Node serving v1.2: test_12 — the announce a
+  # registered Node keeps before v1.3, without its ver_* records — is
+  # `Test Disabled` for a v1.3 Node, and test_12_01 for a v1.2 one. The
+  # window's node takes its minor from the entry's row.
+  # baseline_pass 0 = set from the first fleet run of the release that
+  # carries the pre-v1.3 announce.
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.2,
+      rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
   # own two-row shape with a null first endpoint.

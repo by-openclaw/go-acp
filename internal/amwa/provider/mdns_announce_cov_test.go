@@ -237,3 +237,74 @@ func TestSplitHostPortPrecedence(t *testing.T) {
 		t.Errorf("host without a hostname = %q, want localhost", host)
 	}
 }
+
+// Before v1.3 a registered Node keeps its announce and takes the ver_*
+// records out of it; they come back when the Registry is lost (IS-04
+// v1.0 – v1.2; AMWA IS-04-01 test_12). The v1.3 rule — no announce at
+// all while registered — is for v1.3.
+func TestNodeBeforeV13KeepsItsAnnounceWithoutVerRecordsWhileRegistered(t *testing.T) {
+	for _, minor := range []string{"v1.0", "v1.1", "v1.2"} {
+		r := &scriptedResponder{}
+		useResponder(t, r)
+		s := announcingNode(t, "mdns")
+		s.cfg.APIVer = minor
+		s.mu.Lock()
+		s.announceInstance.TXT = s.buildNodeTXTLocked(minor)
+		if err := s.startMDNSAnnounceLocked(); err != nil {
+			s.mu.Unlock()
+			t.Fatal(err)
+		}
+		s.mu.Unlock()
+		if _, ok := r.lastAnnounce(t).TXT[dnssdcodec.TXTKeyVerSlf]; !ok {
+			t.Fatalf("%s: an unregistered Node announces its ver_* records", minor)
+		}
+
+		last := func() dnssdcodec.Instance {
+			r.mu.Lock()
+			defer r.mu.Unlock()
+			if len(r.updated) == 0 {
+				t.Fatalf("%s: the announce was not republished", minor)
+			}
+			return r.updated[len(r.updated)-1]
+		}
+		s.onRegistrationStateChanged(true)
+		if _, _, closed := r.counts(); closed != 0 {
+			t.Errorf("%s: the announce was withdrawn on registration; before v1.3 it stays", minor)
+		}
+		txt := last().TXT
+		for _, key := range verTXTKeys {
+			if _, there := txt[key]; there {
+				t.Errorf("%s: %s is still announced while registered", minor, key)
+			}
+		}
+		if txt[dnssdcodec.TXTKeyAPIVer] != minor || txt[dnssdcodec.TXTKeyAPIProto] == "" {
+			t.Errorf("%s: the registered announce lost its base records: %v", minor, txt)
+		}
+
+		// A resource changes while registered: the counter moves, the
+		// announce still carries none.
+		s.BumpResourceVersion("receiver")
+		for _, key := range verTXTKeys {
+			if _, there := last().TXT[key]; there {
+				t.Errorf("%s: a change while registered put %s back", minor, key)
+			}
+		}
+
+		s.onRegistrationStateChanged(false)
+		if got := last().TXT[dnssdcodec.TXTKeyVerRcv]; got != "1" {
+			t.Errorf("%s: back to peer-to-peer, ver_rcv = %q, want the counter as it stands (1)", minor, got)
+		}
+
+		// A responder that cannot republish is reported, not fatal.
+		r.mu.Lock()
+		r.updateErr = errors.New("scripted")
+		r.mu.Unlock()
+		s.onRegistrationStateChanged(true)
+
+		// No responder at all (it could not be opened): nothing to do.
+		s.mu.Lock()
+		s.stopMDNSAnnounceLocked()
+		s.mu.Unlock()
+		s.onRegistrationStateChanged(false)
+	}
+}
