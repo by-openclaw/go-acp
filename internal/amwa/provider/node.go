@@ -739,6 +739,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 			Domain:  dnssdcodec.DefaultDomain,
 			Host:    host,
 			Port:    uint16(port),
+			IPv4:    announceIPv4(host),
 			TXT:     s.buildNodeTXTLocked(apiVerTXT),
 		}
 		s.announceInstance = ins
@@ -975,6 +976,28 @@ func (s *IS04NodeServer) announceSnapshotLocked() dnssdcodec.Instance {
 		}
 	}
 	return snapshot
+}
+
+// announceIPv4 is the address a Node's announce carries for its SRV
+// target: the advertised host itself when it is an address, else every
+// routable IPv4 of this host. Without an address record the announce
+// names a host nobody can reach: a browser that was listening when the
+// Node first announced found it by other means or not at all, and one
+// that starts later — AMWA IS-04-01 test_12 looks for the announce of a
+// Node that has been registered for a while — cannot resolve it ("No
+// matching mDNS announcement found").
+func announceIPv4(host string) []net.IP {
+	if ip := net.ParseIP(strings.TrimSuffix(host, ".")); ip != nil {
+		if ip4 := ip.To4(); ip4 != nil {
+			return []net.IP{ip4}
+		}
+		return nil
+	}
+	var out []net.IP
+	for _, a := range localIPv4() {
+		out = append(out, net.ParseIP(a).To4())
+	}
+	return out
 }
 
 // verTXTKeys are the six ver_* TXT records of a Node's announce.
