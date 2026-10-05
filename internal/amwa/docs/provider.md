@@ -36,7 +36,7 @@ registry's 12 s expiry; it is gone within 5 s of stopping.
 dhs registry nmos serve --bind :8235 --advertise-host <ip>:8235 --priority 0
 ```
 
-Scored by a third party's Node on v0.36.2 (`amwa-interop-nmos-cpp.yml`):
+Scored by a third party's Node on v0.37.0 (`amwa-interop-nmos-cpp.yml`):
 an nmos-cpp Node registers into it — its 91 resources are in our Query
 API document for document, it is held by its heartbeats, paged Query and
 the WebSocket's first grain carry its resources, it registers again 5 s
@@ -62,11 +62,14 @@ stand still on a healthy mirror. `resyncs` counts ordered passes: from
 v0.36.0 one is expected when a Node registers (its children are held
 until the target holds their parents, then sent in order), and more
 than that says something was refused or evicted. On the plant after
-the v0.36.2 converge: 11 929 forwarded for 7 266 resources, 0 failures,
+the v0.37.0 converge: 8 101 forwarded for 7 266 resources, 0 failures,
 0 skipped — the registry restarts with the mirror and every node
-registers again, which costs ordered passes (#1346), not refusals.
+registers again, which costs ordered passes, not refusals (11 929
+requests on v0.36.2, before a pass learned to wait for a parent, #1346).
+During a full sweep, with about twenty plant-node restarts, the target
+still refused 2 requests (100 on v0.35.0).
 
-Paired with nmos-cpp on v0.36.2, both ways: our registry mirrored into
+Paired with nmos-cpp on v0.37.0, both ways: our registry mirrored into
 the nmos-cpp registry is level at the fill and after a live
 registration with nothing refused, and the nmos-cpp registry mirrored
 into ours is level document for document (92 resources).
