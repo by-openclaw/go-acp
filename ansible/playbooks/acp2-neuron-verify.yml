@@ -4,8 +4,8 @@
 # and the write verbs.
 #
 # The write verbs (set / ensure / import) are proven on the device too:
-# one harmless object — "Find my Neuron" on the rack controller, the
-# front-panel locate light — is read, written, read back from the
+# one harmless object — "Front Panel LED" on the rack controller
+# (Normal / Heartbeat) — is read, written, read back from the
 # device, converged, re-imported and put back as it was, whatever
 # happens in between (`always`). This play said "read-only by ruling"
 # until 2026-10-06; no such ruling existed, and the write verbs had
@@ -30,12 +30,15 @@
     # thousands of objects, not the toy fixture's dozens.
     a2_slot1_min_objects: 10000
     a2_watch_secs: 20
-    # The object the write verbs use: slot 0 (rack controller), id 21137
-    # "Find my Neuron" — an RW enum that lights the locate LED.
+    # The object the write verbs use: slot 0 (rack controller), id 47427
+    # "Front Panel LED" — an RW enum, Normal or Heartbeat. Not "Find my
+    # Neuron": once that one is switched on, the device refuses writes
+    # to it for about fifteen seconds ("no access") — the device's own
+    # guard, and not something a verb test should be timed around.
     a2_w_slot: 0
-    a2_w_id: 21137
-    a2_w_on: "On"
-    a2_w_off: "Off"
+    a2_w_id: 47427
+    a2_w_on: "Heartbeat"
+    a2_w_off: "Normal"
   tasks:
     # Frozen once — a lazy lookup in vars: re-evaluates per task and
     # every task would compute a different timestamp directory.
@@ -173,7 +176,7 @@
         --slot {{ a2_w_slot }} --id {{ a2_w_id }}
       register: a2_w_before
       changed_when: false
-      failed_when: a2_w_before.rc != 0 or not (a2_w_before.stdout is search('value = "(On|Off)"'))
+      failed_when: a2_w_before.rc != 0 or not (a2_w_before.stdout is search('value = "' ~ a2_w_on ~ '"|value = "' ~ a2_w_off ~ '"'))
 
     - name: write verbs — remember it
       ansible.builtin.set_fact:
