@@ -77,9 +77,9 @@ receiver to an **sdiOutput** wired to an HDMI SFP. See
 
 ## The connector (`consumer/`, package `mnset`) — issue #1110
 
-Consumer only. **The producer is PARKED by the codeowner's decision**
-(2026-09-24) — not missing, not pending discovery, and not to be raised
-again; if a producer is ever wanted it gets built then. See
+Consumer only. **There is no producer at all: ADR-0025's deliverable 2
+is N/A for mnset** (codeowner, 2026-10-06) — not missing, not parked,
+not pending, and not to be raised again. See
 [`docs/scope.md`](docs/scope.md) §5. It bypasses MN SET: `http://<module>/emsfp/node/v1/…`
 directly (every one of the 30 node resources answered on the module itself,
 verified 2026-09-20 on FusioN6 fw 0x68cd783f). MN SET is asked for one thing,

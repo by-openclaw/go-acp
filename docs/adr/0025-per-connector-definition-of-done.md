@@ -116,7 +116,7 @@ truth):
 | OSC | osc-v10 + osc-v11; UDP + TCP-LP (v10) + TCP-SLIP (v11). |
 | TSL UMD | v3.1 + v4 + v5 with per-vendor positional tally mapping (internal/tsl/CLAUDE.md). |
 | Cerebrum NB | XML-over-WS uppercase wire form; consumer 12 verbs; provider deferred. |
-| MN SET (mnset) | **Consumer only — deliverable 2 is PARKED by the codeowner (2026-09-24), not missing.** The module is a REST endpoint we drive; serving an emSFP-shaped API back would emulate a Riedel module nobody asks us to be. Scope recorded in `internal/MNSet/docs/scope.md` since 2026-09-20. The other five deliverables apply in full. |
+| MN SET (mnset) | **Consumer only — deliverable 2 is N/A: this connector has no producer at all.** The module is a REST endpoint we drive; there is nothing for us to serve, and serving an emSFP-shaped API back would emulate a Riedel module nobody asks us to be. It is not parked, deferred or pending — a deliverable that does not apply is not an open one (codeowner, 2026-10-06; it was worded "parked" from 2026-09-24). Scope recorded in `internal/MNSet/docs/scope.md`. The other five deliverables apply in full. |
 | SNMP | Manager AND agent (deliverable 2 is a real agent, `internal/snmp/provider`). v1 + v2c polled; v3 notifications both ways; v3 POLLING and InformRequest are open units per `internal/snmp/CLAUDE.md`. |
 | AMWA NMOS | Every published minor version in scope — no deferrals per root CLAUDE.md "AMWA NMOS strict". **Deliverable 4's form is the Node bundle** (one JSON resource graph), not a DM + manifest: an NMOS Node is not a frame of cards. `internal/amwa/testdata/integration-test/README.md` points at it; the Controller's fixture is `testdata/exports/`. |
 | SNMP | v1, v2c and v3 in both roles — polling, notifications and InformRequest, all three security levels. **v3 is the agent's default** (`serve` answers it with no flags; v1/v2c stay on beside it) and a manager with a credential configured prefers it. MIB source is compiled offline into committed tables (`internal/snmp/mib/tables.tsv.gz`), never parsed at runtime, per `internal/snmp/CLAUDE.md`. |
@@ -165,3 +165,6 @@ truth):
   Node has no DM + manifest; the Controller's is the committed catalogue exports.
   The bar is unchanged — built from the repo alone, tests never `t.Skip` for it
   (#1356). — by-rune
+- 2026-10-06 — mnset: deliverable 2 is N/A, not parked. The connector has no
+  producer at all; "parked" read as work that is waiting, and an audit listed it
+  so. N/A is not partial and not open (codeowner). — by-rune

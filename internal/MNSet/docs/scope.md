@@ -139,11 +139,11 @@ control. **Needs from you:** the NBAPI doc.
 
 1. codec — n/a (HTTP/JSON); session + typed resource models
 2. consumer — the verbs above, 100 % coverage floor like acp2/ccm
-3. producer — **PARKED, by the codeowner's decision** (2026-09-24). Not
-   missing, not deferred pending discovery, not an oversight to be
-   raised again: this connector is consumer-only until somebody asks
-   for a producer, and if that happens it gets built then. ADR-0025's
-   deliverable 2 does not apply to mnset while this stands.
+3. producer — **N/A: this connector has no producer at all** (codeowner,
+   2026-10-06; worded "parked" from 2026-09-24). Not missing, not
+   deferred, not parked and not to be raised again: the module is a
+   REST endpoint we drive, and there is nothing for us to serve.
+   ADR-0025's deliverable 2 does not apply to mnset.
 4. Wireshark — `dhs_mnset.lua` for HTTP/JSON on :80 / 8080 / 9080 (CLAUDE.md
    requires a dissector per plugin; REST is self-describing so it is thin)
 5. testdata — `device.json`, `mnset-dm.csv`, `fusion-nmos-node.json`,
