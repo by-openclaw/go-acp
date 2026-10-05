@@ -372,38 +372,48 @@ func (m *Manager) Roots() *x509.CertPool {
 	return m.rootPool
 }
 
+// bcp00301Suites are the TLS 1.2 cipher suites a BCP-003-01 server
+// offers, in the order it prefers them: the one the spec requires
+// (TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) and every suite of its
+// recommended list that Go's crypto/tls implements — the four AEAD
+// ones first, then the two CBC-SHA256 ones.
+//
+// The CBC pair is off in Go by default; it is on the list because the
+// spec recommends it for peers that have no AEAD suite, and a client
+// that has one never lands on it (the server's order decides).
+//
+// Six suites of the recommended list do not exist in crypto/tls and
+// are not offered: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+// TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 and the four TLS_DHE_RSA_*
+// ones. The AMWA tool's BCP-003-01 test_02 reports them, by name, as
+// recommended and not implemented.
+var bcp00301Suites = []uint16{
+	tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+}
+
 // TLSServerConfig builds the BCP-003-01 serving floor: TLS 1.2
 // minimum (1.3 negotiates automatically and uses its own fixed
-// suites), the mandatory TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 plus
-// the SHOULD-list suites Go implements, server-preference ordering.
+// suites) and bcp00301Suites, server-preference ordering.
 func (m *Manager) TLSServerConfig() *tls.Config {
 	m.mu.RLock()
 	pairs := append([]tls.Certificate(nil), m.manualPairs...)
 	m.mu.RUnlock()
+	get := m.GetCertificate
 	if len(pairs) > 1 {
 		// Multiple manual pairs (RSA + ECDSA): selected per
 		// ClientHello, read live so a refreshed OCSP staple reaches
 		// the next handshake.
-		return &tls.Config{
-			MinVersion:     tls.VersionTLS12,
-			GetCertificate: m.selectCertificate,
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			},
-		}
+		get = m.selectCertificate
 	}
 	return &tls.Config{
 		MinVersion:     tls.VersionTLS12,
-		GetCertificate: m.GetCertificate,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		},
+		GetCertificate: get,
+		CipherSuites:   append([]uint16(nil), bcp00301Suites...),
 	}
 }
 

@@ -650,3 +650,72 @@ func TestSelectCertificate(t *testing.T) {
 	}
 }
 
+
+// Every TLS 1.2 suite the server says it offers completes a handshake —
+// each one alone, against the certificate of its key type — and a suite
+// outside the list does not. A client that also has an AEAD suite is
+// given it, never the CBC one: the server's order decides.
+func TestEveryOfferedCipherSuiteHandshakes(t *testing.T) {
+	ca, caKey := newCA(t, "dhs cipher test CA")
+	r := newResponder(t, ca, caKey)
+	ec, _ := issueLeaf(t, ca, caKey, "node.test", r.srv.URL, false)
+	rs, _ := issueLeaf(t, ca, caKey, "node.test", r.srv.URL, true)
+	m := managerWith(t, rs, ec)
+
+	ln, err := tls.Listen("tcp", "127.0.0.1:0", m.TLSServerConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				_ = c.(*tls.Conn).Handshake()
+				_ = c.Close()
+			}()
+		}
+	}()
+	roots := x509.NewCertPool()
+	roots.AddCert(ca)
+	dial := func(suites ...uint16) (uint16, error) {
+		conn, err := tls.Dial("tcp", ln.Addr().String(), &tls.Config{
+			RootCAs: roots, ServerName: "node.test",
+			MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS12,
+			CipherSuites: suites,
+		})
+		if err != nil {
+			return 0, err
+		}
+		defer func() { _ = conn.Close() }()
+		return conn.ConnectionState().CipherSuite, nil
+	}
+
+	if len(bcp00301Suites) != 6 {
+		t.Fatalf("the server offers %d suites, want the required one and the five recommended ones crypto/tls has", len(bcp00301Suites))
+	}
+	for _, suite := range bcp00301Suites {
+		got, err := dial(suite)
+		if err != nil {
+			t.Errorf("%s: handshake: %v", tls.CipherSuiteName(suite), err)
+			continue
+		}
+		if got != suite {
+			t.Errorf("offered %s alone, negotiated %s", tls.CipherSuiteName(suite), tls.CipherSuiteName(got))
+		}
+	}
+
+	// CBC and AEAD both on the client's list, CBC first: AEAD is chosen.
+	got, err := dial(tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+	if err != nil || got != tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 {
+		t.Errorf("a client with an AEAD suite got %s (%v), want the AEAD one", tls.CipherSuiteName(got), err)
+	}
+
+	// Not on the list: no key exchange without forward secrecy.
+	if _, err := dial(tls.TLS_RSA_WITH_AES_128_GCM_SHA256); err == nil {
+		t.Error("a suite the server does not offer completed a handshake")
+	}
+}
