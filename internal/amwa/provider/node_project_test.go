@@ -156,3 +156,66 @@ func TestProjectKeepsWhatNoSenderEverCarried(t *testing.T) {
 		}
 	}
 }
+
+// A format the minor does not define leaves with everything built on
+// it. mux arrived with IS-04 v1.1: at v1.0 a mux Source, its Flow, the
+// Sender of that Flow and a mux Receiver are not part of the device —
+// a v1.0 Node that kept them could not encode its own Source, and its
+// registration never completed. At v1.1 they are all there.
+func TestProjectDropsTheMuxChainAtV10(t *testing.T) {
+	full := tallyBundle()
+	dev := full.Devices[0].ID
+	const src, flow, snd, rcv = "aaaaaaaa-0000-4000-8000-00000000000a", "bbbbbbbb-0000-4000-8000-00000000000b",
+		"cccccccc-0000-4000-8000-00000000000c", "dddddddd-0000-4000-8000-00000000000d"
+	core := func(id, label string) is04.ResourceCore {
+		return is04.ResourceCore{ID: id, Version: "0:0", Label: label, Tags: map[string][]string{}}
+	}
+	fid := flow
+	full.Sources = append(full.Sources, is04.Source{ResourceCore: core(src, "mux source"), DeviceID: dev, Format: is04.FormatMux})
+	full.Flows = append(full.Flows, is04.Flow{ResourceCore: core(flow, "mux flow"), SourceID: src, DeviceID: dev, Format: is04.FormatMux})
+	full.Senders = append(full.Senders, is04.Sender{ResourceCore: core(snd, "mux sender"), FlowID: &fid,
+		Transport: "urn:x-nmos:transport:rtp", DeviceID: dev, InterfaceBindings: []string{"eth0"}})
+	full.Receivers = append(full.Receivers, is04.Receiver{ResourceCore: core(rcv, "mux receiver"),
+		Transport: "urn:x-nmos:transport:rtp", DeviceID: dev, Format: is04.FormatMux, InterfaceBindings: []string{"eth0"}})
+	full.Devices[0].Senders = append(full.Devices[0].Senders, snd)
+	full.Devices[0].Receivers = append(full.Devices[0].Receivers, rcv)
+
+	has := func(b *NodeConfig) map[string]bool {
+		m := map[string]bool{}
+		for _, x := range b.Sources {
+			m[x.ID] = true
+		}
+		for _, x := range b.Flows {
+			m[x.ID] = true
+		}
+		for _, x := range b.Senders {
+			m[x.ID] = true
+		}
+		for _, x := range b.Receivers {
+			m[x.ID] = true
+		}
+		for _, d := range b.Devices {
+			for _, id := range append(append([]string{}, d.Senders...), d.Receivers...) {
+				m["device lists "+id] = true
+			}
+		}
+		return m
+	}
+
+	at10 := has(projectForMinor(full, "v1.0"))
+	for _, id := range []string{src, flow, snd, rcv, "device lists " + snd, "device lists " + rcv} {
+		if at10[id] {
+			t.Errorf("v1.0 still carries %s — mux is not defined before v1.1", id)
+		}
+	}
+	// What v1.0 does define stays.
+	if n := len(projectForMinor(full, "v1.0").Sources); n != len(full.Sources)-1 {
+		t.Errorf("v1.0 keeps %d of %d sources, want all but the mux one", n, len(full.Sources))
+	}
+	at11 := has(projectForMinor(full, "v1.1"))
+	for _, id := range []string{src, flow, snd, rcv} {
+		if !at11[id] {
+			t.Errorf("v1.1 dropped %s — mux is defined from v1.1", id)
+		}
+	}
+}

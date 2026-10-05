@@ -178,6 +178,17 @@ func IsTransportAtIS04(u, apiVer string) bool {
 	return compareAPIVer(apiVer, min) >= 0
 }
 
+// IsFormatAtIS04 reports whether a Source, Flow or Receiver format may
+// appear in an IS-04 tree served at apiVer. v1.0 defines video, audio
+// and data; mux arrived with v1.1. A format outside the NMOS namespace
+// is not gated.
+func IsFormatAtIS04(format, apiVer string) bool {
+	if format == FormatMux {
+		return compareAPIVer(apiVer, "v1.1") >= 0
+	}
+	return true
+}
+
 // IsNMOSTransport reports whether u is a registered NMOS transport
 // URN, at any version.
 func IsNMOSTransport(u string) bool {

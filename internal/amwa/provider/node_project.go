@@ -34,14 +34,43 @@ func projectForMinor(bundle *NodeConfig, apiVer string) *NodeConfig {
 	if bundle == nil {
 		return nil
 	}
-	keepSender := func(s *is04.Sender) bool { return is04.IsTransportAtIS04(s.Transport, apiVer) }
-	keepReceiver := func(r *is04.Receiver) bool { return is04.IsTransportAtIS04(r.Transport, apiVer) }
+	// What this minor cannot describe at all: a transport it does not
+	// define (WebSocket and MQTT before v1.3), and a format it does not
+	// define (mux before v1.1). A Source in such a format goes, its
+	// Flows with it, and the Senders of those Flows. A v1.0 Node that
+	// kept its mux Source could not encode it: its registration stopped
+	// half-way and started again, for ever, and the Registry showed the
+	// Node arriving and leaving every second (IS-04-02 at v1.0, test_31).
+	goneSource := map[string]bool{}
+	for i := range bundle.Sources {
+		if !is04.IsFormatAtIS04(bundle.Sources[i].Format, apiVer) {
+			goneSource[bundle.Sources[i].ID] = true
+		}
+	}
+	goneFlow := map[string]bool{}
+	for i := range bundle.Flows {
+		f := &bundle.Flows[i]
+		if goneSource[f.SourceID] || !is04.IsFormatAtIS04(f.Format, apiVer) {
+			goneFlow[f.ID] = true
+		}
+	}
+	keepSender := func(s *is04.Sender) bool {
+		if s.FlowID != nil && goneFlow[*s.FlowID] {
+			return false
+		}
+		return is04.IsTransportAtIS04(s.Transport, apiVer)
+	}
+	keepReceiver := func(r *is04.Receiver) bool {
+		return is04.IsTransportAtIS04(r.Transport, apiVer) && is04.IsFormatAtIS04(r.Format, apiVer)
+	}
 
-	dropped := false
-	for i := range bundle.Senders {
-		if !keepSender(&bundle.Senders[i]) {
-			dropped = true
-			break
+	dropped := len(goneSource) > 0 || len(goneFlow) > 0
+	if !dropped {
+		for i := range bundle.Senders {
+			if !keepSender(&bundle.Senders[i]) {
+				dropped = true
+				break
+			}
 		}
 	}
 	if !dropped {
@@ -105,7 +134,7 @@ func projectForMinor(bundle *NodeConfig, apiVer string) *NodeConfig {
 	for i := range bundle.Flows {
 		f := &bundle.Flows[i]
 		encoded[f.SourceID] = true
-		if sent[f.ID] && !stillSent[f.ID] {
+		if goneFlow[f.ID] || (sent[f.ID] && !stillSent[f.ID]) {
 			continue
 		}
 		out.Flows = append(out.Flows, *f)
@@ -114,7 +143,7 @@ func projectForMinor(bundle *NodeConfig, apiVer string) *NodeConfig {
 	out.Sources = nil
 	for i := range bundle.Sources {
 		id := bundle.Sources[i].ID
-		if encoded[id] && !stillEncoded[id] {
+		if goneSource[id] || (encoded[id] && !stillEncoded[id]) {
 			continue
 		}
 		out.Sources = append(out.Sources, bundle.Sources[i])
