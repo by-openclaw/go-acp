@@ -41,14 +41,26 @@
     - "{{ dhs_amwa_validate_plant_bin }}"
     - "{{ dhs_amwa_validate_plant_config }}"
 
+# auth: true entries (issue #1312) sit this window WITH IS-10: an armed
+# tool instance of its own on the same private bridge — its mock
+# Authorization Server and its token-checking mock registries — and a
+# node armed against it. The plain instance stays as it is; the two
+# never share a container, a port or a UserConfig.
+- name: This window's tool instance — plain or armed
+  ansible.builtin.set_fact:
+    _w_armed: "{{ suite.auth | default(false) }}"
+    _w_tool: "{{ dhs_amwa_validate_unicast_tool ~ ('-auth' if suite.auth | default(false) else '') }}"
+    _w_tool_port: "{{ (dhs_amwa_validate_unicast_tool_port | int) + (dhs_amwa_validate_bridge_auth_port_offset | int if suite.auth | default(false) else 0) }}"
+    _w_userconfig: "{{ 'PULL_REPOS = False\\nfrom . import Config as CONFIG\\nCONFIG.GARBAGE_COLLECTION_TIMEOUT = 30\\nCONFIG.DNS_SD_MODE = \"unicast\"\\n' ~ ('CONFIG.ENABLE_AUTH = True\\n' if suite.auth | default(false) else '') }}"
+
 - name: Unicast tool instance is running
-  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} {{ dhs_amwa_validate_unicast_tool }}
+  ansible.builtin.command: docker inspect -f {% raw %}"{{.State.Running}}"{% endraw %} {{ _w_tool }}
   register: _uni_tool
   changed_when: false
   failed_when: false
 
 - name: Clear any dead unicast tool instance
-  ansible.builtin.command: docker rm -f {{ dhs_amwa_validate_unicast_tool }}
+  ansible.builtin.command: docker rm -f {{ _w_tool }}
   when: "'true' not in _uni_tool.stdout"
   changed_when: true
   failed_when: false
@@ -58,25 +70,25 @@
 # first start in multicast mode would also never bind the DNS server.
 - name: Create the unicast tool instance (stopped)
   ansible.builtin.command: >-
-    docker create --name {{ dhs_amwa_validate_unicast_tool }}
+    docker create --name {{ _w_tool }}
     --network {{ dhs_amwa_validate_unicast_net }}
-    -p 127.0.0.1:{{ dhs_amwa_validate_unicast_tool_port }}:5000
+    -p 127.0.0.1:{{ _w_tool_port }}:5000
     {{ dhs_amwa_validate_tool_image }}
   when: "'true' not in _uni_tool.stdout"
   changed_when: true
 
 - name: Pin the unicast tool's UserConfig
   ansible.builtin.shell: >-
-    printf 'PULL_REPOS = False\nfrom . import Config as CONFIG\nCONFIG.GARBAGE_COLLECTION_TIMEOUT = 30\nCONFIG.DNS_SD_MODE = "unicast"\n'
-    > /tmp/validate-userconfig-unicast.py
-    && docker cp /tmp/validate-userconfig-unicast.py {{ dhs_amwa_validate_unicast_tool }}:/config/UserConfig.py
-    && docker start {{ dhs_amwa_validate_unicast_tool }}
+    printf '{{ _w_userconfig }}'
+    > /tmp/validate-userconfig-unicast{{ '-auth' if _w_armed else '' }}.py
+    && docker cp /tmp/validate-userconfig-unicast{{ '-auth' if _w_armed else '' }}.py {{ _w_tool }}:/config/UserConfig.py
+    && docker start {{ _w_tool }}
   when: "'true' not in _uni_tool.stdout"
   changed_when: true
 
 - name: The unicast tool API answers
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ dhs_amwa_validate_unicast_tool_port }}/api"
+    url: "http://127.0.0.1:{{ _w_tool_port }}/api"
     method: GET
     status_code: [200, 405]
   register: _uni_api
@@ -90,13 +102,59 @@
   ansible.builtin.command: >-
     docker inspect -f
     {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
-    {{ dhs_amwa_validate_unicast_tool }}
+    {{ _w_tool }}
   register: _uni_tool_ip
   changed_when: false
 
 # ---- node exams (IS-04-01, IS-09-02) --------------------------------
 # A FRESH node per attempt: one that registered in a previous attempt
 # would skip the discovery the suite exists to score.
+# Armed: the node is a client of the tool's mock Authorization Server.
+# Its credentials come from that server's own RFC 7591 registration
+# endpoint, asked from inside the bridge (the mock's port is not
+# published), as the registry window's companion node gets its own.
+- name: Resolve the armed tool's bridge address (its Authorization Server)
+  ansible.builtin.command: >-
+    docker inspect -f
+    {% raw %}"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"{% endraw %}
+    {{ _w_tool }}
+  register: _w_tool_ip
+  changed_when: false
+  when: _w_armed
+
+- name: Register the node as an OAuth client of the armed tool
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ _w_tool }}"
+      - python3
+      - -c
+      - |
+        import json, urllib.request
+        base = "http://{{ _w_tool_ip.stdout | trim }}:5010"
+        meta = json.load(urllib.request.urlopen(base + "/.well-known/oauth-authorization-server", timeout=10))
+        req = urllib.request.Request(meta["registration_endpoint"], data=json.dumps({
+            "client_name": "dhs-validate-node", "grant_types": ["client_credentials"],
+            "token_endpoint_auth_method": "client_secret_basic", "scope": "registration query node"}).encode(),
+            headers={"Content-Type": "application/json"})
+        print(urllib.request.urlopen(req, timeout=10).read().decode())
+  register: _w_dcr
+  changed_when: false
+  no_log: true
+  retries: 10
+  delay: 3
+  until: _w_dcr.rc == 0
+  when: _w_armed
+
+- name: The node's authorization arguments
+  ansible.builtin.set_fact:
+    _w_node_auth: >-
+      {{ ('--auth-url http://' ~ (_w_tool_ip.stdout | trim) ~ ':5010'
+          ~ ' --auth-client-id ' ~ (_w_dcr.stdout | from_json).client_id
+          ~ ' --auth-client-secret ' ~ (_w_dcr.stdout | from_json).client_secret) if _w_armed else '' }}
+  no_log: true
+
 - name: Node CuT on the bridge, discovering by unicast DNS-SD only
   when: suite.scope != 'controller'
   block:
@@ -121,6 +179,7 @@
         --unicast
         --resolver {{ _uni_tool_ip.stdout | trim }}:53
         --domain {{ dhs_amwa_validate_unicast_domain }}
+        {{ _w_node_auth }}
       changed_when: true
 
     - name: Resolve the CuT node's bridge address
@@ -199,4 +258,4 @@
 
 - name: Score this suite with the unicast tool instance
   ansible.builtin.set_fact:
-    _tool_url_override: "http://127.0.0.1:{{ dhs_amwa_validate_unicast_tool_port }}/api"
+    _tool_url_override: "http://127.0.0.1:{{ _w_tool_port }}/api"
