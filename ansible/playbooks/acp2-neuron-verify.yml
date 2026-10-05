@@ -303,6 +303,41 @@
         mode: "0644"
       changed_when: false
 
+    # ---- the Go suite (internal/acp2/integration), same device, same
+    # released CLI. It is cross-compiled where there is a Go toolchain
+    # and handed over with -e acp2_suite_dir=<dir holding
+    # acp2-integration.test>:
+    #   GOOS=linux GOARCH=amd64 go test -c -tags integration \
+    #       -o <dir>/acp2-integration.test ./internal/acp2/integration/
+    # Without it the CLI checks above still stand; with it, a suite that
+    # does not pass fails the play.
+    - name: Go suite — staged beside the receipts
+      ansible.builtin.copy:
+        src: "{{ acp2_suite_dir }}/acp2-integration.test"
+        dest: "{{ a2_out }}/acp2-integration.test"
+        mode: "0755"
+      changed_when: false
+      when: acp2_suite_dir is defined
+
+    - name: Go suite — against the real Neuron, with the released CLI
+      ansible.builtin.command:
+        cmd: "{{ a2_out }}/acp2-integration.test -test.v -test.count=1 -test.timeout 10m"
+        chdir: "{{ a2_out }}"
+      environment:
+        ACP2_TEST_HOST: "{{ a2_host }}"
+        ACP2_TEST_PORT: "{{ a2_port }}"
+        DHS_BIN: "{{ a2_bin }}"
+      register: a2_suite
+      changed_when: false
+      failed_when: >-
+        a2_suite.rc != 0 or '--- PASS: TestACP2CLIRoundTrip' not in a2_suite.stdout
+      when: acp2_suite_dir is defined
+
+    - name: Go suite — verdicts
+      ansible.builtin.debug:
+        msg: "{{ a2_suite.stdout_lines | select('match', '^\\s*(--- |ok|PASS|FAIL)') | list }}"
+      when: acp2_suite_dir is defined
+
     - name: Verdict
       ansible.builtin.debug:
         msg: >-
