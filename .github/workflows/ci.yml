@@ -70,7 +70,9 @@ jobs:
         # green main on a date nobody chose is the same failure mode
         # this matrix exists to prevent — the difference being that
         # nobody would be looking. Raising this to ubuntu-26.04 is then
-        # a PR, verified on a branch like anything else.
+        # a PR, verified on a branch like anything else. Every other
+        # job of this workflow (the container tests, lint, cross-compile,
+        # release) is pinned to the same image for the same reason.
         #
         # The `if: matrix.os == …` guards below name this exact string:
         # the coverage-floor steps run on Linux only, and a guard that
@@ -353,7 +355,7 @@ jobs:
     # The RHEL-family containers run on every ref too: they re-run the
     # suite in another userland, and a userland difference is exactly
     # the kind of thing a branch must not discover after merging.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -424,7 +426,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -484,7 +486,7 @@ jobs:
 
   build-all:
     name: Cross-compile
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [test, test-rhel, lint]
     # Runs when test-rhel was skipped as well as when it passed. A job whose
     # dependency is skipped is skipped too by default, which would drop the
@@ -556,7 +558,7 @@ jobs:
   # and the release path never waited for CI (#690).
   release-please:
     name: Release Please
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [test, test-rhel, lint, build-all]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
@@ -583,7 +585,7 @@ jobs:
     name: Build release binaries
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
