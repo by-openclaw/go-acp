@@ -13,9 +13,18 @@ ports:
   Ethernet7/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
   Ethernet8/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
   # 2110 endpoints
-  Ethernet10/1: { profile: client_red,  desc: RED-CLIENT }                    # Neuron red (100G)
+  Ethernet10/1: { profile: client_red,  desc: RED-CLIENT,  extra: [error-correction encoding reed-solomon] }   # Neuron CONVERT red (100G SR4)
+  Ethernet12/1: { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }           # Neuron Shuffler red (100G DR)
+  Ethernet14/1: { profile: client_red,  desc: RED-CLIENT,  extra: [error-correction encoding reed-solomon] }   # NeuronView red (100G SR4)
   Ethernet20/1: { profile: client_red,  desc: RED-CLIENT,  extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e1
-  Ethernet22/1: { profile: client_blue, desc: BLUE-CLIENT }                   # Neuron blue (100G)
+  Ethernet22/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [error-correction encoding reed-solomon] }   # Neuron CONVERT blue (100G SR4)
+  Ethernet24/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }           # Neuron Shuffler blue (100G LR4)
+  # FEC is set per optic, and the device end has to agree: SR4 runs
+  # Reed-Solomon on both ends; LR4 runs none; a DR module corrects errors
+  # itself, so the switch runs no host FEC on it and the device's port has
+  # its FEC off too (NeuronView QSFP 2 — with reed-solomon there the switch
+  # saw light and no signal).
+  Ethernet26/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }           # NeuronView blue (100G DR)
   Ethernet32/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e2
   # Uplinks to FABRIC-2 (profile, description and MST costs from site.yml `uplinks`)
   Ethernet33: { uplink: red }
@@ -25,9 +34,7 @@ ports:
 parked:
   - Ethernet9/1
   - Ethernet11/1
-  - Ethernet12/1
   - Ethernet13/1
-  - Ethernet14/1
   - { port: Ethernet15/1, extra: [no error-correction encoding] }
   - Ethernet16/1
   - Ethernet17/1
@@ -38,9 +45,7 @@ parked:
   - { port: Ethernet20/4, extra: [no error-correction encoding] }
   - Ethernet21/1
   - Ethernet23/1
-  - Ethernet24/1
   - Ethernet25/1
-  - Ethernet26/1
   - Ethernet27/1
   - Ethernet28/1
   - Ethernet29/1
