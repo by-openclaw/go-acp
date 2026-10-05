@@ -1,8 +1,8 @@
 # AMWA NMOS Testing Tool — fleet sweep on the released binary
 
 Every scope of `ansible/playbooks/amwa-validate.yml`, run from the
-control node against **dhs v0.36.2** — the binary the fleet and the
-plant run — on 2026-10-04. The tool is the fleet's pinned
+control node against **dhs v0.37.0** — the binary the fleet and the
+plant run — on 2026-10-05. The tool is the fleet's pinned
 `nmos-testing` on the tooling host. One JSON per catalogue entry,
 exactly as the tool wrote it. This folder holds the latest release's
 sweep; a new release replaces it.
@@ -102,12 +102,12 @@ purpose.
 
 ## Against the earlier releases
 
-- **v0.35.0 and v0.36.0** scored the same, entry for entry: 52 entries,
+- **v0.35.0, v0.36.0 and v0.36.2** scored the same, entry for entry: 52 entries,
   2 272 Pass, 0 Fail, the same eight Warnings. What changed underneath
-  between them and v0.36.2 is the registry — it now serves the document
+  between v0.35.0 and v0.37.0 is the registry — it now serves the document
   a Node registered instead of a re-encoding of it (#1338), and shows a
   resource registered at a later minor on its earlier endpoints,
-  translated (#1337) — and the mirror (#1336, #1340, #1351). IS-04-02
+  translated (#1337) — and the mirror (#1336, #1340, #1351, #1346). IS-04-02
   scores the registry, plain, with authorization and through the
   mirror, exactly as before: 74 / 90 / 74.
 - **v0.34.0** scored 40 entries, 1 524 Pass, 86.8 %. v0.35.0 added the
@@ -120,4 +120,4 @@ purpose.
 
 The tool does not exercise what the pairing with nmos-cpp found in
 those releases; that evidence is in
-[`integration-v0.36.2.md`](integration-v0.36.2.md).
+[`integration-v0.37.0.md`](integration-v0.37.0.md).

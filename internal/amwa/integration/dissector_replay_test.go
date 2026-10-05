@@ -11,6 +11,8 @@ package amwa_integration
 // host's does not, and this test then says so rather than passing):
 //
 //	go test -tags integration ./internal/amwa/integration/ -run DissectorReplay
+//
+// NMOS_TEST_REPO names the repository when the test binary runs outside it.
 
 import (
 	"bytes"
@@ -26,7 +28,12 @@ func TestDissectorReplayGivesTheCommittedTrees(t *testing.T) {
 	if err != nil {
 		t.Skip("tshark is not installed on this host")
 	}
-	root := repoRoot(t)
+	// The suite is also run as a shipped binary, outside the tree: the
+	// play then says where the repository is.
+	root := strings.TrimSpace(os.Getenv("NMOS_TEST_REPO"))
+	if root == "" {
+		root = repoRoot(t)
+	}
 	lua := filepath.Join(root, "internal", "amwa", "wireshark", "dhs_nmos.lua")
 	captures, _ := filepath.Glob(filepath.Join(root, "internal", "amwa", "testdata", "protocol_types", "*", "capture.pcapng"))
 	if len(captures) < 10 {

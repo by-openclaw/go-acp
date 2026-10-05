@@ -120,12 +120,12 @@ reference sender and then report every other receiver of that format as
 "no compatible senders". Any node with two video or two audio receivers
 under IS-11 draws them; the fixture keeps its second ones on purpose.
 
-## Full sweep on the released binary (v0.36.2, 2026-10-04)
+## Full sweep on the released binary (v0.37.0, 2026-10-05)
 
 Every scope of `amwa-validate.yml` on the fleet's released binary: 52
 entries, 2 272 Pass, 0 Fail, coverage 90.6 % — the same, entry for
-entry, as on v0.35.0 and v0.36.0. Receipts, the per-entry table, the
+entry, as on v0.35.0, v0.36.0 and v0.36.2. Receipts, the per-entry table, the
 list of what did not reach a verdict and what changed since v0.34.0
 live in [`results-fleet/`](results-fleet/README.md); the pairing with
 nmos-cpp and the integration suite on the same binary are in
-[`results-fleet/integration-v0.36.2.md`](results-fleet/integration-v0.36.2.md).
+[`results-fleet/integration-v0.37.0.md`](results-fleet/integration-v0.37.0.md).

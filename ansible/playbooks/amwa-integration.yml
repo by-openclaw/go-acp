@@ -97,6 +97,8 @@
         NMOS_TEST_MUTATE_NODE: "{{ mutate_node }}"
         NMOS_TEST_NODE_CONFIG: "{{ node_config }}"
         NMOS_TEST_NODE_ADVERTISE: "{{ node_advertise }}"
+        # Where the committed captures and the dissector are, for the replay.
+        NMOS_TEST_REPO: "{{ playbook_dir }}/../.."
         DHS_BIN: "{{ cli }}"
       register: amwa_suite
       changed_when: false
