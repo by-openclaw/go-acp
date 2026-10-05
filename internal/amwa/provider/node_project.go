@@ -34,14 +34,43 @@ func projectForMinor(bundle *NodeConfig, apiVer string) *NodeConfig {
 	if bundle == nil {
 		return nil
 	}
-	keepSender := func(s *is04.Sender) bool { return is04.IsTransportAtIS04(s.Transport, apiVer) }
-	keepReceiver := func(r *is04.Receiver) bool { return is04.IsTransportAtIS04(r.Transport, apiVer) }
+	// What this minor cannot describe at all: a transport it does not
+	// define (WebSocket and MQTT before v1.3), and a format it does not
+	// define (mux before v1.1). A Source in such a format goes, its
+	// Flows with it, and the Senders of those Flows. A v1.0 Node that
+	// kept its mux Source could not encode it: its registration stopped
+	// half-way and started again, for ever, and the Registry showed the
+	// Node arriving and leaving every second (IS-04-02 at v1.0, test_31).
+	goneSource := map[string]bool{}
+	for i := range bundle.Sources {
+		if !is04.IsFormatAtIS04(bundle.Sources[i].Format, apiVer) {
+			goneSource[bundle.Sources[i].ID] = true
+		}
+	}
+	goneFlow := map[string]bool{}
+	for i := range bundle.Flows {
+		f := &bundle.Flows[i]
+		if goneSource[f.SourceID] || !is04.IsFormatAtIS04(f.Format, apiVer) {
+			goneFlow[f.ID] = true
+		}
+	}
+	keepSender := func(s *is04.Sender) bool {
+		if s.FlowID != nil && goneFlow[*s.FlowID] {
+			return false
+		}
+		return is04.IsTransportAtIS04(s.Transport, apiVer)
+	}
+	keepReceiver := func(r *is04.Receiver) bool {
+		return is04.IsTransportAtIS04(r.Transport, apiVer) && is04.IsFormatAtIS04(r.Format, apiVer)
+	}
 
-	dropped := false
-	for i := range bundle.Senders {
-		if !keepSender(&bundle.Senders[i]) {
-			dropped = true
-			break
+	dropped := len(goneSource) > 0 || len(goneFlow) > 0
+	if !dropped {
+		for i := range bundle.Senders {
+			if !keepSender(&bundle.Senders[i]) {
+				dropped = true
+				break
+			}
 		}
 	}
 	if !dropped {
@@ -74,33 +103,50 @@ func projectForMinor(bundle *NodeConfig, apiVer string) *NodeConfig {
 		}
 	}
 
-	// A Flow nothing sends is not carried on this version of the
-	// device, and a Source no Flow encodes is not produced by it.
+	// A Flow whose Senders have all just been dropped is not carried on
+	// this version of the device, and a Source whose Flows have all gone
+	// that way is not produced by it.
 	//
 	// The cascade matters: leaving the orphans behind would publish an
 	// IS-07 event source whose only Sender has just been dropped, so a
 	// controller could read the source's state over REST and have no
 	// way to subscribe to it.
-	usedFlows := map[string]bool{}
-	for i := range out.Senders {
-		if id := out.Senders[i].FlowID; id != nil && *id != "" {
-			usedFlows[*id] = true
+	//
+	// It follows what the projection dropped, and nothing else. A Flow
+	// no Sender ever sent, a Source no Flow ever encoded — an audio
+	// input generated inside the device, which IS-08 routes — were never
+	// reached through a Sender and do not leave with one. They used to:
+	// at v1.2 the device lost such a Source, and the channel map that
+	// routes it was rejected at start ("unknown input").
+	sent := map[string]bool{}      // flows some Sender of the whole device sends
+	stillSent := map[string]bool{} // flows a kept Sender sends
+	for i := range bundle.Senders {
+		if id := bundle.Senders[i].FlowID; id != nil && *id != "" {
+			sent[*id] = true
+			if keptSenders[bundle.Senders[i].ID] {
+				stillSent[*id] = true
+			}
 		}
 	}
 	out.Flows = nil
-	usedSources := map[string]bool{}
+	encoded := map[string]bool{}      // sources some Flow of the whole device encodes
+	stillEncoded := map[string]bool{} // sources a kept Flow encodes
 	for i := range bundle.Flows {
-		if !usedFlows[bundle.Flows[i].ID] {
+		f := &bundle.Flows[i]
+		encoded[f.SourceID] = true
+		if goneFlow[f.ID] || (sent[f.ID] && !stillSent[f.ID]) {
 			continue
 		}
-		out.Flows = append(out.Flows, bundle.Flows[i])
-		usedSources[bundle.Flows[i].SourceID] = true
+		out.Flows = append(out.Flows, *f)
+		stillEncoded[f.SourceID] = true
 	}
 	out.Sources = nil
 	for i := range bundle.Sources {
-		if usedSources[bundle.Sources[i].ID] {
-			out.Sources = append(out.Sources, bundle.Sources[i])
+		id := bundle.Sources[i].ID
+		if goneSource[id] || (encoded[id] && !stillEncoded[id]) {
+			continue
 		}
+		out.Sources = append(out.Sources, bundle.Sources[i])
 	}
 
 	// A Device that still lists a dropped id "references one or more
