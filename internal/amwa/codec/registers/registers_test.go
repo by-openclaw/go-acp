@@ -67,3 +67,60 @@ func TestAllSortedAndProvenanced(t *testing.T) {
 		}
 	}
 }
+
+// The published register, name for name: AMWA NMOS Parameter Registers,
+// capabilities/README.md, as read on 2026-10-05 (28 parameters). A URN
+// AMWA has published and this table lacks made a conformant Node look
+// like one that invented a capability — a third-party IS-11 Node drew
+// "not in the AMWA capabilities register" for format:profile, :level,
+// :sublevel, :bit_rate and transport:privacy, :usb_class (#1328).
+func TestTheRegisterHoldsEveryPublishedCapability(t *testing.T) {
+	published := map[string]Kind{
+		"urn:x-nmos:cap:meta:label":                         KindString,
+		"urn:x-nmos:cap:meta:preference":                    KindInteger,
+		"urn:x-nmos:cap:meta:enabled":                       KindBoolean,
+		"urn:x-nmos:cap:format:media_type":                  KindEnum,
+		"urn:x-nmos:cap:format:grain_rate":                  KindRational,
+		"urn:x-nmos:cap:format:frame_width":                 KindInteger,
+		"urn:x-nmos:cap:format:frame_height":                KindInteger,
+		"urn:x-nmos:cap:format:interlace_mode":              KindEnum,
+		"urn:x-nmos:cap:format:colorspace":                  KindEnum,
+		"urn:x-nmos:cap:format:transfer_characteristic":     KindEnum,
+		"urn:x-nmos:cap:format:color_sampling":              KindEnum,
+		"urn:x-nmos:cap:format:component_depth":             KindInteger,
+		"urn:x-nmos:cap:format:bit_rate":                    KindInteger,
+		"urn:x-nmos:cap:format:profile":                     KindString,
+		"urn:x-nmos:cap:format:level":                       KindString,
+		"urn:x-nmos:cap:format:sublevel":                    KindString,
+		"urn:x-nmos:cap:format:channel_count":               KindInteger,
+		"urn:x-nmos:cap:format:sample_rate":                 KindRational,
+		"urn:x-nmos:cap:format:sample_depth":                KindInteger,
+		"urn:x-nmos:cap:format:event_type":                  KindString,
+		"urn:x-nmos:cap:transport:bit_rate":                 KindInteger,
+		"urn:x-nmos:cap:transport:packet_time":              KindNumber,
+		"urn:x-nmos:cap:transport:max_packet_time":          KindNumber,
+		"urn:x-nmos:cap:transport:packet_transmission_mode": KindEnum,
+		"urn:x-nmos:cap:transport:st2110_21_sender_type":    KindEnum,
+		"urn:x-nmos:cap:transport:hkep":                     KindBoolean,
+		"urn:x-nmos:cap:transport:privacy":                  KindBoolean,
+		"urn:x-nmos:cap:transport:usb_class":                KindInteger,
+	}
+	for urn, kind := range published {
+		p, ok := Lookup(urn)
+		if !ok {
+			t.Errorf("%s is published and not in the register", urn)
+			continue
+		}
+		if p.Kind != kind {
+			t.Errorf("%s kind = %s, want %s", urn, p.Kind, kind)
+		}
+	}
+	for _, p := range All() {
+		if _, ok := published[p.URN]; !ok {
+			t.Errorf("%s is in the register and not published", p.URN)
+		}
+	}
+	if u, _ := Lookup("urn:x-nmos:cap:transport:usb_class"); u.Min == nil || u.Max == nil || *u.Min != 0 || *u.Max != 255 {
+		t.Error("usb_class is an integer in the range 0 to 255")
+	}
+}
