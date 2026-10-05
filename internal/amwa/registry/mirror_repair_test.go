@@ -697,3 +697,38 @@ func TestMirrorPassDoesNotSendWhatLeftMeanwhile(t *testing.T) {
 		t.Errorf("target saw %v, want r1 and not the receiver that left", sent)
 	}
 }
+
+// A delete cascades at the target. What the cache still shows under the
+// deleted resource is no longer taken to be held there, so a child that
+// registers again waits for its parent instead of being refused.
+func TestMirrorForgetsWhatTheTargetDroppedWithItsParent(t *testing.T) {
+	target := &orderTarget{}
+	m, _ := repairMirror(t, target)
+	m.resync(context.Background()) // everything lands
+	m.mu.Lock()
+	landedBefore := len(m.landed["flows"]) + len(m.landed["receivers"])
+	m.mu.Unlock()
+
+	gone := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
+		w.WriteHeader(stdhttp.StatusNoContent)
+	}))
+	defer gone.Close()
+	m.opts.Target = gone.URL
+	m.deleteResource(context.Background(), "devices", "v1.3", "d1")
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, gone := range [][2]string{{"devices", "d1"}, {"sources", "s1"}, {"flows", "f1"}, {"senders", "x1"}, {"receivers", "r1"}} {
+		if m.landed[gone[0]][gone[1]] {
+			t.Errorf("%s %s is still taken to be held by the target", gone[0], gone[1])
+		}
+	}
+	for _, kept := range [][2]string{{"nodes", "n1"}, {"devices", "d2"}, {"sources", "s2"}, {"flows", "f2"}, {"receivers", "r2"}} {
+		if !m.landed[kept[0]][kept[1]] {
+			t.Errorf("%s %s was forgotten, and it is not under the deleted device", kept[0], kept[1])
+		}
+	}
+	if landedBefore == 0 {
+		t.Error("nothing had landed before the delete: the test proves nothing")
+	}
+}

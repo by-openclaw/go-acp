@@ -601,6 +601,39 @@ func (m *Mirror) heldForParents(topic, id string, doc json.RawMessage) bool {
 	return wait
 }
 
+// forgetUnderLocked takes a deleted resource, and everything the cache
+// still shows under it, out of what the target is taken to hold. A
+// delete cascades at the target: with a Node goes its device, and with
+// that its sources, flows, senders and receivers — while the mirror
+// hears of each of those leaving one row at a time. A child registered
+// again in between was sent behind a parent the target no longer had,
+// and refused (#1346: 2 requests in a sweep of twenty node restarts).
+// Caller holds mu.
+func (m *Mirror) forgetUnderLocked(topic, id string) {
+	delete(m.landed[topic], id)
+	gone := scopeSet{}
+	gone.add(topic, id)
+	below := false
+	for _, t := range mirrorTopics {
+		if t == topic {
+			below = true
+			continue
+		}
+		if !below {
+			continue
+		}
+		for child := range m.landed[t] {
+			for _, p := range parentsOf(t, m.cache[t][child]) {
+				if gone.has(p.topic, p.id) {
+					gone.add(t, child)
+					delete(m.landed[t], child)
+					break
+				}
+			}
+		}
+	}
+}
+
 // postOutcome is how one POST to the target ended.
 type postOutcome int
 
@@ -754,6 +787,7 @@ func (m *Mirror) deleteResource(ctx context.Context, topic, ver, id string) {
 			if topic == "nodes" {
 				delete(m.targetNodes, id) // no target copy left to heartbeat
 			}
+			m.forgetUnderLocked(topic, id)
 			m.mu.Unlock()
 			return
 		}
