@@ -27,18 +27,16 @@
          + (range(dhs_amwa_plant_scale_count) | map('regex_replace', '^(.*)$', 'dhs-nmos-scale\1.service') | list) }}
     rr_expected_nodes: "{{ (dhs_amwa_plant_nodes | length) + dhs_amwa_plant_scale_count }}"
     rr_query_url: "http://127.0.0.1:{{ dhs_amwa_plant_registry_port }}/x-nmos/query/{{ dhs_amwa_plant_api_ver }}/nodes"
-    rr_query_base: "http://127.0.0.1:{{ dhs_amwa_plant_registry_port }}/x-nmos/query/{{ dhs_amwa_plant_api_ver }}"
     rr_mirror_status_url: "http://127.0.0.1{{ dhs_amwa_plant_mirror_status_addr }}/status.json"
-    # Every Query API collection, for the id-persistence half (AMWA
-    # IS-04-01 test_22 "Node resource IDs persist over a reboot" —
-    # MANUAL in the tool, tool-equivalent here and STRONGER: exact
-    # per-topic set equality over every resource kind, not a spot
-    # check of one uuid).
-    rr_topics: [nodes, devices, sources, flows, senders, receivers]
-    # One page must hold the whole collection or the set comparison
-    # would silently compare truncations — the snapshot task fails if
-    # a collection ever reaches the page size.
-    rr_page_limit: 1000
+    # The id-persistence half (AMWA IS-04-01 test_22 "Node resource IDs
+    # persist over a reboot" — MANUAL in the tool): every one of OUR
+    # nodes, each collection of its own Node API, exact id-set equality
+    # before and after. Not the registry: it is shared with the lab's
+    # real devices and holds more than a page of them.
+    rr_node_ports: >-
+      {{ (dhs_amwa_plant_nodes | map(attribute='port') | list)
+         + (range(dhs_amwa_plant_scale_count) | map('int') | map('add', dhs_amwa_plant_scale_base_port) | list) }}
+    rr_collections: [devices, sources, flows, senders, receivers]
   tasks:
     # ---- pre-flight: the plant must be healthy BEFORE the reboot, so
     # a post-reboot failure is attributable to the reboot alone.
@@ -57,32 +55,44 @@
         url: "{{ rr_query_url }}"
         return_content: true
       register: rr_pre_nodes
-      failed_when: rr_pre_nodes.status != 200 or (rr_pre_nodes.json | length) != (rr_expected_nodes | int)
+      # Our nodes, at least: the plant registry is shared with the lab's
+      # real devices now, which register here too and come and go.
+      failed_when: rr_pre_nodes.status != 200 or (rr_pre_nodes.json | length) < (rr_expected_nodes | int)
 
     - name: "Pre-reboot: mirror status endpoint answers"
       ansible.builtin.uri:
         url: "{{ rr_mirror_status_url }}"
       when: dhs_amwa_plant_mirror_target | length > 0
 
-    # ---- id persistence, pre half (IS-04-01 test_22 equivalent):
-    # snapshot EVERY resource id across the six Query collections.
-    - name: "Pre-reboot: snapshot all resource ids (IS-04-01 test_22 equivalent)"
+    # ---- id persistence, pre half (IS-04-01 test_22 equivalent).
+    - name: "Pre-reboot: each node's own id"
       ansible.builtin.uri:
-        url: "{{ rr_query_base }}/{{ item }}?paging.limit={{ rr_page_limit }}"
+        url: "http://127.0.0.1:{{ item }}/x-nmos/node/{{ dhs_amwa_plant_api_ver }}/self"
         return_content: true
-      loop: "{{ rr_topics }}"
-      register: rr_pre_ids
-      failed_when: >-
-        rr_pre_ids.status != 200
-        or (rr_pre_ids.json | length) >= (rr_page_limit | int)
+      loop: "{{ rr_node_ports }}"
+      register: rr_pre_self
 
-    - name: "Pre-reboot: fold the id snapshot per topic"
+    - name: "Pre-reboot: each node's resource ids, collection by collection"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ item.0 }}/x-nmos/node/{{ dhs_amwa_plant_api_ver }}/{{ item.1 }}"
+        return_content: true
+      loop: "{{ rr_node_ports | product(rr_collections) | list }}"
+      loop_control:
+        label: "{{ item.0 }}/{{ item.1 }}"
+      register: rr_pre_ids
+
+    - name: "Pre-reboot: keep the snapshot"
       ansible.builtin.set_fact:
+        rr_pre_node_ids: "{{ rr_pre_self.results | map(attribute='json.id') | list }}"
         rr_pre_id_sets: >-
-          {{ dict(rr_topics | zip(rr_pre_ids.results
-             | map(attribute='json')
-             | map('map', attribute='id')
-             | map('sort') | list)) }}
+          {{ dict(rr_pre_ids.results | map(attribute='item') | map('join', '/')
+             | zip(rr_pre_ids.results | map(attribute='json') | map('map', attribute='id') | map('sort'))) }}
+
+    - name: "Pre-reboot: every node is registered under its id"
+      ansible.builtin.assert:
+        that: (rr_pre_node_ids | difference(rr_pre_nodes.json | map(attribute='id') | list) | length) == 0
+        fail_msg: "a node of ours is not in the registry before the reboot"
+        quiet: true
 
     # ---- the reboot. test_command gates the module's own wait on the
     # registry unit, so control returns only once systemd has brought
@@ -125,27 +135,42 @@
       retries: 30
       delay: 2
 
-    - name: "Post-reboot: all {{ rr_expected_nodes }} nodes re-registered"
+    - name: "Post-reboot: every node of ours re-registered under its id"
       ansible.builtin.uri:
         url: "{{ rr_query_url }}"
         return_content: true
       register: rr_post_nodes
-      until: rr_post_nodes.status == 200 and (rr_post_nodes.json | length) == (rr_expected_nodes | int)
+      until: >-
+        rr_post_nodes.status == 200
+        and (rr_pre_node_ids | difference(rr_post_nodes.json | map(attribute='id') | list) | length) == 0
       retries: 60
       delay: 5
 
-    # ---- id persistence, post half: every topic must return with the
-    # EXACT id set it had before the reboot (retried per topic — child
-    # resources land right after their node's re-registration).
-    - name: "Post-reboot: resource ids identical per topic (IS-04-01 test_22 equivalent)"
+    # ---- id persistence, post half: every node comes back as the same
+    # node, with the EXACT ids it had, collection by collection.
+    - name: "Post-reboot: each node's own id is the one it had (IS-04-01 test_22 equivalent)"
       ansible.builtin.uri:
-        url: "{{ rr_query_base }}/{{ item }}?paging.limit={{ rr_page_limit }}"
+        url: "http://127.0.0.1:{{ item.0 }}/x-nmos/node/{{ dhs_amwa_plant_api_ver }}/self"
         return_content: true
-      loop: "{{ rr_topics }}"
+      loop: "{{ rr_node_ports | zip(rr_pre_node_ids) | list }}"
+      loop_control:
+        label: "{{ item.0 }}"
+      register: rr_post_self
+      until: rr_post_self.status == 200 and rr_post_self.json.id == item.1
+      retries: 30
+      delay: 2
+
+    - name: "Post-reboot: resource ids identical per node and collection (IS-04-01 test_22 equivalent)"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ item.0 }}/x-nmos/node/{{ dhs_amwa_plant_api_ver }}/{{ item.1 }}"
+        return_content: true
+      loop: "{{ rr_node_ports | product(rr_collections) | list }}"
+      loop_control:
+        label: "{{ item.0 }}/{{ item.1 }}"
       register: rr_post_ids
       until: >-
         rr_post_ids.status == 200
-        and (rr_post_ids.json | map(attribute='id') | sort | list) == (rr_pre_id_sets[item] | list)
+        and (rr_post_ids.json | map(attribute='id') | sort | list) == (rr_pre_id_sets[item | join('/')] | list)
       retries: 30
       delay: 2
 
@@ -156,7 +181,7 @@
       register: rr_post_mirror
       until: >-
         rr_post_mirror.status == 200
-        and (rr_post_mirror.json.cache_counts.nodes | default(0)) == (rr_expected_nodes | int)
+        and (rr_post_mirror.json.cache_counts.nodes | default(0)) >= (rr_expected_nodes | int)
       retries: 60
       delay: 5
       when: dhs_amwa_plant_mirror_target | length > 0
@@ -177,8 +202,9 @@
       ansible.builtin.debug:
         msg: >-
           reboot resilience OK: {{ rr_units | length }} unit(s) active,
-          {{ rr_post_nodes.json | length }}/{{ rr_expected_nodes }} nodes re-registered,
-          ids-stable across {{ rr_topics | length }} topics
+          all {{ rr_expected_nodes }} of our nodes re-registered under their ids
+          ({{ rr_post_nodes.json | length }} nodes in the shared registry),
+          ids stable on every node across {{ rr_collections | length }} collections
           ({{ rr_pre_id_sets | dict2items | map(attribute='value') | map('length') | sum }} resource ids
           persisted — IS-04-01 test_22 equivalent),
           mirror cache nodes={{ (rr_post_mirror.json.cache_counts.nodes | default('n/a'))
