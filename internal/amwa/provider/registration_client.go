@@ -92,6 +92,9 @@ type RegistrationClient struct {
 	// currentRegistry is the FullName of the watcher pick the loop is
 	// currently registered against — used for Disqualify on failure.
 	currentRegistry string
+	// currentServer is that pick's URL: the server, whichever of its
+	// advertised names it was reached under (shouldSwitchToBetter).
+	currentServer string
 
 	http *stdhttp.Client
 
@@ -310,6 +313,7 @@ func (c *RegistrationClient) pickBase() (string, bool) {
 	cand, ok := c.watcher.Best()
 	if !ok {
 		c.currentRegistry = ""
+		c.currentServer = ""
 		c.base = ""
 		return "", false
 	}
@@ -320,6 +324,7 @@ func (c *RegistrationClient) pickBase() (string, bool) {
 	url := strings.TrimRight(cand.URL, "/") + "/x-nmos/registration/" + apiVer
 	c.base = url
 	c.currentRegistry = cand.FullName
+	c.currentServer = cand.URL
 	return url, true
 }
 
@@ -363,7 +368,23 @@ func (c *RegistrationClient) shouldSwitchToBetter() bool {
 	if !ok {
 		return false
 	}
-	return cand.FullName != c.currentRegistry
+	if cand.FullName == c.currentRegistry {
+		return false
+	}
+	// Another name is not another Registry. One server advertises
+	// under both service names (_nmos-register and the legacy
+	// _nmos-registration); when the name we registered under was the
+	// stand-in for a disqualified twin, the twin comes back as the best
+	// name once its penalty expires — for the server we are already
+	// registered with. Switching there deregistered every resource from
+	// it and registered them again (AMWA IS-04-01 test_21 in the
+	// unicast window: "Node DELETEd more than just its 'node'
+	// resource"). The name is followed, the registration is kept.
+	if cand.URL != "" && cand.URL == c.currentServer {
+		c.currentRegistry = cand.FullName
+		return false
+	}
+	return true
 }
 
 // SetHeartbeatIntervalFn installs the live heartbeat-cadence source
