@@ -288,21 +288,49 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	}
 	defer func() { _ = s.Close() }()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	n, walkErr := printWalk(os.Stdout, os.Stderr, *limit, f.modules(), func(fn func(codec.VarBind) error) error {
+		return s.Walk(ctx, start, fn)
+	})
+	fmt.Fprintf(os.Stderr, "%d object(s)\n", n)
+	printSNMPCompliance(prof)
+	return walkErr
+}
+
+// walkFlushEvery is how many objects a walk prints at a time, and
+// walkProgressEvery how often it says how far it is.
+const (
+	walkFlushEvery    = 100
+	walkProgressEvery = 5000
+)
+
+// printWalk prints a walk as it is read: the rows in blocks of
+// walkFlushEvery, each block aligned by itself, and a running count on
+// errOut every walkProgressEvery objects.
+//
+// The rows used to be held until the walk had ended. That showed
+// nothing wrong while a walk stopped at twenty thousand objects, a few
+// seconds; with no limit, a device whose tree takes a quarter of an hour
+// to read — an IRD's programme tables — printed nothing for a quarter
+// of an hour and looked dead.
+func printWalk(out, errOut io.Writer, limit int, prefer []string, walk func(func(codec.VarBind) error) error) (int, error) {
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	n := 0
-	prefer := f.modules()
-	walkErr := s.Walk(ctx, start, func(vb codec.VarBind) error {
+	err := walk(func(vb codec.VarBind) error {
 		n++
 		writeBind(w, vb, prefer)
-		if *limit > 0 && n >= *limit {
-			return fmt.Errorf("snmp: stopped at the --limit of %d objects", *limit)
+		if n%walkFlushEvery == 0 {
+			_ = w.Flush()
+		}
+		if n%walkProgressEvery == 0 {
+			_, _ = fmt.Fprintf(errOut, "%d objects so far…\n", n)
+		}
+		if limit > 0 && n >= limit {
+			return fmt.Errorf("snmp: stopped at the --limit of %d objects", limit)
 		}
 		return nil
 	})
 	_ = w.Flush()
-	fmt.Fprintf(os.Stderr, "%d object(s)\n", n)
-	printSNMPCompliance(prof)
-	return walkErr
+	return n, err
 }
 
 // runSNMPSet writes.
