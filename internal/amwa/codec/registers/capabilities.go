@@ -50,6 +50,14 @@ func init() {
 				Description: "Audio bits per sample", Min: f(8)},
 			{URN: "urn:x-nmos:cap:format:event_type", Name: "Event Type", Kind: KindString,
 				Description: "IS-07 event type the Flow carries"},
+			{URN: "urn:x-nmos:cap:format:bit_rate", Name: "Format Bit Rate", Kind: KindInteger,
+				Description: "Bit rate of a compressed video or audio stream in kbit/s", Min: f(0)},
+			{URN: "urn:x-nmos:cap:format:profile", Name: "Profile", Kind: KindString,
+				Description: "Acceptable profiles, as defined for the media type"},
+			{URN: "urn:x-nmos:cap:format:level", Name: "Level", Kind: KindString,
+				Description: "Acceptable levels, as defined for the media type"},
+			{URN: "urn:x-nmos:cap:format:sublevel", Name: "Sublevel", Kind: KindString,
+				Description: "Acceptable sublevels, as defined for the media type"},
 
 			// ---- cap:transport:* ----
 			{URN: "urn:x-nmos:cap:transport:packet_time", Name: "Packet Time", Kind: KindNumber,
@@ -62,6 +70,12 @@ func init() {
 				Description: "Transport bit rate in kbit/s", Min: f(0)},
 			{URN: "urn:x-nmos:cap:transport:packet_transmission_mode", Name: "Packet Transmission Mode", Kind: KindEnum,
 				Values: []string{"codestream", "slice_sequential", "slice_out_of_order"}},
+			{URN: "urn:x-nmos:cap:transport:hkep", Name: "HKEP", Kind: KindBoolean,
+				Description: "Support for streams that use HDCP encryption and the HKEP protocol (BCP-005-02)"},
+			{URN: "urn:x-nmos:cap:transport:privacy", Name: "Privacy", Kind: KindBoolean,
+				Description: "Support for streams that use the Privacy Encryption Protocol (BCP-005-03)"},
+			{URN: "urn:x-nmos:cap:transport:usb_class", Name: "USB Class", Kind: KindInteger,
+				Description: "USB classes supported (BCP-007-02)", Min: f(0), Max: f(255)},
 
 			// ---- cap:meta:* ----
 			{URN: "urn:x-nmos:cap:meta:label", Name: "Constraint Set Label", Kind: KindString,
