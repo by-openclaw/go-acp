@@ -9,6 +9,16 @@
 # api_auth=true and Bearer-gates every served API. Plant resident
 # units are never armed.
 
+# config: <file> on an entry serves that fixture of this role's files/
+# instead of the plant's — a node shaped for what one suite asks.
+- name: The entry's own node fixture, when it names one
+  ansible.builtin.copy:
+    src: "{{ suite.config }}"
+    dest: "{{ dhs_amwa_validate_plant_config | dirname }}/{{ suite.config }}"
+    mode: "0644"
+  delegate_to: "{{ groups['plant'][0] }}"
+  when: suite.config is defined
+
 - name: Start the transient P2P node
   ansible.builtin.command: >-
     systemd-run --unit dhs-nmos-validate-cut --collect
@@ -17,7 +27,7 @@
     --no-registry
     --advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}
     --api-ver v1.3
-    --config {{ dhs_amwa_validate_plant_config }}
+    --config {{ ((dhs_amwa_validate_plant_config | dirname) ~ '/' ~ suite.config) if suite.config is defined else dhs_amwa_validate_plant_config }}
     {{ ('--auth-url ' ~ dhs_amwa_validate_auth_server_url) if suite.auth | default(false) else '' }}
   delegate_to: "{{ groups['plant'][0] }}"
   changed_when: true

@@ -64,6 +64,10 @@
 #
 #   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/amwa-verify-manual.yml
 
+# Every window here is transient — systemd-run units that the play
+# stops itself — so nothing on the hosts differs after a run: the
+# window tasks report no change, and a second run is changed=0.
+
 - name: AMWA verify — manual-row equivalents
   hosts: tooling
   gather_facts: false
@@ -216,7 +220,7 @@
             --bind 0.0.0.0:{{ vm_sys_port }}
             --no-mdns
           delegate_to: "{{ groups['plant'][0] }}"
-          changed_when: true
+          changed_when: false
 
         - name: "IS-09 — the transient System API serves /global"
           ansible.builtin.uri:
@@ -237,7 +241,7 @@
             --config {{ dhs_amwa_validate_plant_config }}
             --system {{ dhs_amwa_validate_plant_host }}:{{ vm_sys_port }}
           delegate_to: "{{ groups['plant'][0] }}"
-          changed_when: true
+          changed_when: false
 
         - name: "Arm the window safety-stop timer"
           ansible.builtin.command: >-
@@ -245,7 +249,7 @@
             --on-active={{ dhs_amwa_validate_window_safety_sec }}
             systemctl stop dhs-nmos-verify-cut dhs-nmos-verify-sys
           delegate_to: "{{ groups['plant'][0] }}"
-          changed_when: true
+          changed_when: false
 
         - name: "Wait for the transient node"
           ansible.builtin.uri:
@@ -316,6 +320,7 @@
           delegate_to: "{{ groups['plant'][0] }}"
           failed_when: false
 
+          changed_when: false
     # ---- BCP-008 fault drills + BCP-007-03 MXL activation (phase 2,
     # #956). The tool's unconditional-Manual rows say "check by
     # manually forcing an error condition"; the DhsFaultControl worker
@@ -334,7 +339,7 @@
             --api-ver v1.3
             --config {{ dhs_amwa_validate_plant_config }}
           delegate_to: "{{ groups['plant'][0] }}"
-          changed_when: true
+          changed_when: false
 
         - name: "Arm the drill-window safety-stop timer"
           ansible.builtin.command: >-
@@ -342,7 +347,7 @@
             --on-active={{ dhs_amwa_validate_window_safety_sec }}
             systemctl stop dhs-nmos-verify-b8
           delegate_to: "{{ groups['plant'][0] }}"
-          changed_when: true
+          changed_when: false
 
         - name: "Wait for the drill node"
           ansible.builtin.uri:
@@ -644,6 +649,7 @@
           delegate_to: "{{ groups['plant'][0] }}"
           failed_when: false
 
+          changed_when: false
     # ---- EVS-style summary: one line per manual row this phase
     # touches — checks that ran, conversions that moved rows to the
     # tool, and the gaps deliberately left visible.
@@ -653,7 +659,7 @@
       loop:
         - { row: "IS-04-01 test_13", check: "fixture media_types[0] templatable", state: "TOOL-SCORED (see IS-04-01 receipt)" }
         - { row: "IS-05-02 test_18", check: "fixture media_types[0] templatable", state: "TOOL-SCORED (see IS-05-02 receipt)" }
-        - { row: "IS-04-01 test_22", check: "reboot id-set snapshot (6 topics)", state: "PASS (amwa-reboot-resilience.yml)" }
+        - { row: "IS-04-01 test_22", check: "reboot id-set snapshot (6 topics)", state: "NOT RUN HERE — scored by amwa-reboot-resilience.yml (it reboots the plant host)" }
         - { row: "IS-04-02 test_25_1", check: "REST ancestry both directions", state: "PASS" }
         - { row: "IS-08-01 test_09", check: "input properties authored", state: "PASS" }
         - { row: "IS-08-01 test_10", check: "output properties authored", state: "PASS" }
