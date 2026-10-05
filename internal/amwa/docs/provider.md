@@ -80,3 +80,11 @@ registered mid-read at a lower minor (#1351 — 81 sources on the plant,
 for twenty minutes). v0.36.2 reads the minors lowest first.
 Reading the audit trail: [`runbook.md`](runbook.md), "Reading the
 mirror's audit trail".
+
+A source registry that guards its Query API (IS-10) is read with a
+token: `--source-auth-url <authorization server> --source-auth-client-id
+<id> --source-auth-client-secret <secret>` makes the mirror an OAuth
+client (client_credentials, scope `query`), and the subscription
+requests, their sockets and the REST reads all carry the Bearer token.
+`--auth-url` (with `--serve`) is the other side: it guards the Query
+face the mirror serves. The legs to the target carry no token.

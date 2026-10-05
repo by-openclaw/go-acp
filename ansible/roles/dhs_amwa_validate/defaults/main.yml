@@ -417,6 +417,16 @@ dhs_amwa_validate_suites:
   - { id: IS-04-02, scope: mirror, target: registry, window: mirror,
       rows: [{ver: v1.3}, {ver: v1.3, port: 18530}],
       baseline_pass: 74, baseline_cnt: 2 }
+  # The same, WITH authorization (#1312): the source registry guards
+  # both of its faces, the mirror reads it as an OAuth client
+  # (--source-auth-url, `query` scope) and guards the face it serves
+  # (--auth-url). Scores the suite's authorization rounds through the
+  # mirror — 16 rows the plain entry leaves `Test Disabled`.
+  # baseline_pass 0 = set from the first fleet run of the release that
+  # carries --source-auth-url (the rule stated below).
+  - { id: IS-04-02, scope: mirror, target: registry, window: mirror, label: mirror, auth: true,
+      rows: [{ver: v1.3}, {ver: v1.3, port: 18530}],
+      baseline_pass: 0, baseline_cnt: 2 }
 
   # ---- auth-mode windows (issue #942): the same exams WITH IS-10 ----
   # The manual sweep receipts (/root/amwa-sweep/IS-04-02-auth.json +

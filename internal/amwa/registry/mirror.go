@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
+	authsession "dhs/internal/amwa/session/auth"
 	"dhs/internal/amwa/session/query"
 	"dhs/internal/metrics"
 	"dhs/internal/plugin"
@@ -143,9 +144,21 @@ type MirrorOptions struct {
 	// Authorization Server at this base URL, exactly the way the
 	// standalone Registry's --auth-url arms its faces. Requires
 	// ServeAddr — a gate with no served face guards nothing. The
-	// mirror's OUTBOUND legs (source Query-WS, target forwards) are
-	// untouched. Empty keeps the served face unauthenticated.
+	// mirror's OUTBOUND legs are untouched (SourceAuthURL arms the
+	// source ones). Empty keeps the served face unauthenticated.
 	ServeAuthURL string
+	// SourceAuthURL, when set, makes the mirror an OAuth client of the
+	// Authorization Server at this base URL (BCP-003-02,
+	// client_credentials): every read of the source's Query API — the
+	// subscription requests, the subscription sockets and the REST
+	// reads — carries a Bearer token with the `query` scope. It is how
+	// a mirror reads a source registry that guards its Query API.
+	// Requires SourceAuthClientID and SourceAuthClientSecret. The
+	// target legs are untouched. Empty reads the source without a
+	// token.
+	SourceAuthURL          string
+	SourceAuthClientID     string
+	SourceAuthClientSecret string
 }
 
 // MirrorStats is a snapshot of forward counters. JSON names are the
@@ -174,6 +187,11 @@ type Mirror struct {
 
 	met     *metrics.Connector
 	metOnce sync.Once
+
+	// sourceToken supplies the Bearer token of the source legs when
+	// the mirror is an OAuth client (SourceAuthURL); nil otherwise.
+	// Assigned once in Run before any goroutine starts.
+	sourceToken func(context.Context) (string, error)
 
 	// sourceClients holds one Query API client per subscribed wire
 	// minor — the WS legs dial through them, and resync re-fetches the
@@ -274,6 +292,12 @@ func NewMirror(opts MirrorOptions) (*Mirror, error) {
 	if strings.TrimRight(opts.Source, "/") == strings.TrimRight(opts.Target, "/") {
 		return nil, errors.New("registry/mirror: source and target must differ")
 	}
+	if opts.SourceAuthURL != "" && (opts.SourceAuthClientID == "" || opts.SourceAuthClientSecret == "") {
+		return nil, errors.New("registry/mirror: --source-auth-url makes the mirror an OAuth client of that server — give it --source-auth-client-id and --source-auth-client-secret")
+	}
+	if opts.SourceAuthURL == "" && (opts.SourceAuthClientID != "" || opts.SourceAuthClientSecret != "") {
+		return nil, errors.New("registry/mirror: --source-auth-client-id/--source-auth-client-secret name a client of no server — add --source-auth-url or drop them")
+	}
 	if opts.ServeAuthURL != "" && opts.ServeAddr == "" {
 		return nil, errors.New("registry/mirror: --auth-url guards the served Query face, and no face is being served — add --serve ADDR or drop --auth-url")
 	}
@@ -354,6 +378,16 @@ func (m *Mirror) Run(ctx context.Context) error {
 	// highest minor that shows a resource is the one it is registered
 	// at; what a lower minor's subscription shows of it is a view
 	// (mirror_minor.go).
+	if m.opts.SourceAuthURL != "" {
+		tc := authsession.NewTokenClient(authsession.TokenClientOptions{
+			MetadataURL:  authsession.MetadataURL(m.opts.SourceAuthURL, ""),
+			ClientID:     m.opts.SourceAuthClientID,
+			ClientSecret: m.opts.SourceAuthClientSecret,
+			Scope:        "query",
+			Logger:       m.logger,
+		})
+		m.sourceToken = tc.Token
+	}
 	clients := make(map[string]*query.Client)
 	for _, ver := range mirrorSourceVersions(m.opts.APIVer) {
 		vcodec, ok := is04.Get(ver)
@@ -364,6 +398,7 @@ func (m *Mirror) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("registry/mirror: source: %w", err)
 		}
+		qc.HTTP.TokenSource = m.sourceToken
 		clients[ver] = qc
 	}
 	m.sourceClients = clients
@@ -464,7 +499,7 @@ func (m *Mirror) watchTopic(ctx context.Context, qc *query.Client, topic, ver st
 				m.forwardRow(ctx, topic, ver, row)
 			}
 			return nil
-		}, query.WatchOptions{})
+		}, query.WatchOptions{TokenSource: m.sourceToken})
 		if ctx.Err() != nil {
 			return
 		}

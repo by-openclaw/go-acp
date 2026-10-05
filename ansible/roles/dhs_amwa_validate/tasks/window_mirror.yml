@@ -33,6 +33,27 @@
   delegate_to: "{{ groups['plant'][0] }}"
   changed_when: true
 
+# auth: true (#1312) — the registry window armed the source, so the
+# mirror is armed on both of its Query sides: a client of the same
+# Authorization Server towards the source (its own credentials, from
+# the server's RFC 7591 registration endpoint, `query` scope only),
+# and a Bearer gate on the face it serves. The target stays as it is:
+# the exam never reads it.
+- name: Register the mirror as an OAuth client
+  ansible.builtin.uri:
+    url: "{{ _auth_meta.json.registration_endpoint }}"
+    method: POST
+    body_format: json
+    body:
+      client_name: dhs-nmos-validate-mirror
+      grant_types: [client_credentials]
+      token_endpoint_auth_method: client_secret_basic
+      scope: "query"
+    status_code: [200, 201]
+  register: _mirror_dcr
+  no_log: true
+  when: _cut_armed
+
 # Its served face announces under its OWN instance name: DNS-SD names
 # are unique per link and the plant mirror holds "dhs-nmos-mirror" on
 # this host — under the default the announce is refused as a name
@@ -50,7 +71,12 @@
     --serve-advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}
     --serve-instance-name dhs-nmos-validate-mirror
     --serve-pri 99
+    {{ ('--auth-url ' ~ dhs_amwa_validate_auth_server_url
+        ~ ' --source-auth-url ' ~ dhs_amwa_validate_auth_server_url
+        ~ ' --source-auth-client-id ' ~ _mirror_dcr.json.client_id
+        ~ ' --source-auth-client-secret ' ~ _mirror_dcr.json.client_secret) if _cut_armed else '' }}
   delegate_to: "{{ groups['plant'][0] }}"
+  no_log: "{{ _cut_armed }}"
   changed_when: true
 
 - name: Arm the mirror-window safety-stop timer
@@ -67,6 +93,7 @@
 - name: The companion node is readable THROUGH the mirror
   ansible.builtin.uri:
     url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/v1.3/nodes"
+    headers: "{{ _cut_headers }}"
     return_content: true
   register: _mirror_up
   retries: 20
@@ -80,6 +107,7 @@
 - name: Seed a persistent subscription on the mirror's served face
   ansible.builtin.uri:
     url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_mirror_port }}/x-nmos/query/v1.3/subscriptions"
+    headers: "{{ _cut_headers }}"
     method: POST
     body_format: json
     body:

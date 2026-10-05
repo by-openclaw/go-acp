@@ -977,6 +977,13 @@ requests answer 401 with WWW-Authenticate, WS upgrades included.
 /status.json reports the armed state as "serve_auth". The mirror's
 outbound legs (source Query-WS, target forwards) stay untouched.
 
+With --source-auth-url URL --source-auth-client-id ID
+--source-auth-client-secret SECRET the mirror is an OAuth client of
+that Authorization Server (client_credentials, scope "query") and
+every read of the source — subscription requests, their sockets, REST
+— carries its Bearer token: the way to mirror a source registry that
+guards its Query API. The target legs stay untouched.
+
 With --serve-advertise-host H[:P] the served face mints ws_href from
 that identity instead of the bound address (a bare host takes the
 --serve port) and announces itself as _nmos-query._tcp via mDNS with
@@ -1016,8 +1023,18 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		"BCP-003-02 Authorization Server base (scheme://host[:port]). "+
 			"When set with --serve, the served Query face validates Bearer "+
 			"tokens (WS upgrades included) exactly like the registry's own "+
-			"--auth-url; the mirror's outbound source/target legs are untouched. "+
+			"--auth-url; the mirror's outbound legs are untouched "+
+			"(--source-auth-url arms the source ones). "+
 			"Requires --serve")
+	sourceAuthURL := fs.String("source-auth-url", "",
+		"BCP-003-02 Authorization Server base (scheme://host[:port]) the "+
+			"mirror is a client of: every read of the source's Query API "+
+			"(subscriptions, their sockets, REST) carries a Bearer token "+
+			"with the query scope — for a source registry that guards its "+
+			"Query API. Requires --source-auth-client-id and "+
+			"--source-auth-client-secret; the target legs are untouched")
+	sourceAuthClientID := fs.String("source-auth-client-id", "", "OAuth client id for the client_credentials grant (with --source-auth-url)")
+	sourceAuthClientSecret := fs.String("source-auth-client-secret", "", "OAuth client secret for the client_credentials grant (with --source-auth-url)")
 	serveAdvertiseHost := fs.String("serve-advertise-host", "",
 		"identity minted into the served face's ws_href and mDNS announce, "+
 			"as host or host:port (a bare host takes the bound --serve port). "+
@@ -1058,22 +1075,25 @@ func runNMOSRegistryMirror(ctx context.Context, args []string) error {
 		return fmt.Errorf("nmos mirror: %d --serve-tls-cert but %d --serve-tls-key — every certificate needs its private key, given in the same order", len(serveTLSCerts), len(serveTLSKeys))
 	}
 	m, err := amwaregistry.NewMirror(amwaregistry.MirrorOptions{
-		Source:             *source,
-		Target:             *targetURL,
-		APIVer:             *apiVer,
-		Logger:             logger,
-		Deps:               pluginDeps(logger),
-		AuditPath:          *auditLog,
-		AuditMaxBytes:      int64(*auditMaxMB) << 20,
-		StatusAddr:         *statusAddr,
-		ServeAddr:          *serveAddr,
-		ServeAuthURL:       *serveAuthURL,
-		ServeAdvertiseHost: *serveAdvertiseHost,
-		ServePri:           *servePri,
-		ServeInstanceName:  *serveInstanceName,
-		ServeTLSCert:       serveTLSCerts.String(),
-		ServeTLSKey:        serveTLSKeys.String(),
-		TargetPace:         *targetPace,
+		Source:                 *source,
+		Target:                 *targetURL,
+		APIVer:                 *apiVer,
+		Logger:                 logger,
+		Deps:                   pluginDeps(logger),
+		AuditPath:              *auditLog,
+		AuditMaxBytes:          int64(*auditMaxMB) << 20,
+		StatusAddr:             *statusAddr,
+		ServeAddr:              *serveAddr,
+		ServeAuthURL:           *serveAuthURL,
+		SourceAuthURL:          *sourceAuthURL,
+		SourceAuthClientID:     *sourceAuthClientID,
+		SourceAuthClientSecret: *sourceAuthClientSecret,
+		ServeAdvertiseHost:     *serveAdvertiseHost,
+		ServePri:               *servePri,
+		ServeInstanceName:      *serveInstanceName,
+		ServeTLSCert:           serveTLSCerts.String(),
+		ServeTLSKey:            serveTLSKeys.String(),
+		TargetPace:             *targetPace,
 	})
 	if err != nil {
 		return fmt.Errorf("nmos mirror: %w", err)
