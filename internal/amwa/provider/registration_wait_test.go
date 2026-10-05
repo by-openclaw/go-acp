@@ -139,3 +139,69 @@ func TestHeartbeatsStartWhileTheRestIsStillBeingRegistered(t *testing.T) {
 		t.Errorf("a Registry that lost the Node mid-registration: err = %v, want ErrRegistryNotFound", err)
 	}
 }
+
+// The heartbeat loop takes over from the registration where the
+// registration left the cadence: a registration that sent a heartbeat
+// of its own is not followed by another one a tick later. A Registry
+// that measures the interval (AMWA IS-04-01 test_05 allows half a
+// second either way on five) called that "Heartbeats are too frequent".
+func TestHeartbeatCadenceHoldsAcrossTheEndOfRegistration(t *testing.T) {
+	const cadence = 400 * time.Millisecond
+	var mu sync.Mutex
+	var beats []time.Time
+	posts, total := 0, 0
+	srv := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/health/nodes/"):
+			mu.Lock()
+			beats = append(beats, time.Now())
+			mu.Unlock()
+			_, _ = w.Write([]byte(`{"health":"1"}`))
+		case r.Method == stdhttp.MethodPost:
+			// The Registry takes its time over the last resource but one,
+			// so the registration sends a heartbeat just before its last
+			// POST — the case the loop used to follow with one of its own
+			// a tick later.
+			mu.Lock()
+			posts++
+			slow := posts == total-1
+			mu.Unlock()
+			if slow {
+				time.Sleep(cadence - 50*time.Millisecond)
+			}
+			w.WriteHeader(stdhttp.StatusCreated)
+		default:
+			w.WriteHeader(stdhttp.StatusNoContent)
+		}
+	}))
+	defer srv.Close()
+
+	bundle, err := LoadNodeConfigFromFile(filepath.Join("..", "..", "..", "tests", "integration", "nmos", "amwa", "amwa-test-node.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	total = 1 + len(bundle.Devices) + len(bundle.Sources) + len(bundle.Flows) + len(bundle.Senders) + len(bundle.Receivers)
+	mu.Unlock()
+	c := NewRegistrationClient(nil, srv.URL, "v1.3", bundle)
+	c.SetDefaultHeartbeatInterval(cadence)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { c.Run(ctx); close(done) }()
+	// The registration, then the loop for a few cadences.
+	time.Sleep(3 * time.Second)
+	cancel()
+	<-done
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(beats) < 5 {
+		t.Fatalf("%d heartbeats in three seconds at a %v cadence", len(beats), cadence)
+	}
+	floor := cadence - heartbeatSlack(cadence) - 40*time.Millisecond // the slack the loop allows itself, and scheduling
+	for i := 1; i < len(beats); i++ {
+		if gap := beats[i].Sub(beats[i-1]); gap < floor {
+			t.Errorf("heartbeat %d came %v after the one before, under the %v cadence allows", i, gap.Round(time.Millisecond), floor)
+		}
+	}
+}

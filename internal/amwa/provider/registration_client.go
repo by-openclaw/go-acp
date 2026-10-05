@@ -136,6 +136,11 @@ type RegistrationClient struct {
 	deletions      uint64
 	failures       uint64
 
+	// registrationBeat is when registerAll last sent a heartbeat while
+	// it was still registering (UnixNano), 0 when it sent none — see
+	// beatDuringRegistration.
+	registrationBeat atomic.Int64
+
 	// closed signals the heartbeat loop to exit + DELETE has finished.
 	closed chan struct{}
 
@@ -457,7 +462,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 	curTick := heartbeatTick(c.heartbeatInterval())
 	ticker := time.NewTicker(curTick)
 	defer ticker.Stop()
-	lastHeartbeat := time.Time{}
+	lastHeartbeat := c.beatDuringRegistration()
 
 	for {
 		// A tick, a republish and a cancellation can all be ready in
@@ -525,7 +530,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 						c.everRegistered = true
 						// Force a heartbeat to the new Registry on the
 						// next tick — the test framework counts those.
-						lastHeartbeat = time.Time{}
+						lastHeartbeat = c.beatDuringRegistration()
 						break
 					}
 					c.logger.Warn("provider/node: re-register attempt failed", "step", i, "err", err)
@@ -602,7 +607,7 @@ func (c *RegistrationClient) Run(ctx context.Context) {
 					}
 					regErr := c.rejoinOrRegister(loopCtx)
 					if regErr == nil {
-						lastHeartbeat = time.Time{}
+						lastHeartbeat = c.beatDuringRegistration()
 						break
 					}
 					c.logger.Warn("provider/node: cascade rejoin/register failed", "step", i, "err", regErr)
@@ -641,6 +646,20 @@ func (c *RegistrationClient) Stats() map[string]uint64 {
 	}
 }
 
+// beatDuringRegistration is where the heartbeat loop takes over from
+// a registration: the time of the last heartbeat registerAll sent
+// while it was still POSTing, or the zero time when it sent none — the
+// loop then beats on its next tick, as it always did. Without it the
+// loop beat again a second after a registration that had just sent
+// one, and the Registry saw two heartbeats 1.5 s apart (IS-04-01
+// test_05 under authorization: "Heartbeats are too frequent").
+func (c *RegistrationClient) beatDuringRegistration() time.Time {
+	if ns := c.registrationBeat.Load(); ns != 0 {
+		return time.Unix(0, ns)
+	}
+	return time.Time{}
+}
+
 // registerAll POSTs every owned resource in dependency order.
 //
 // IS-04 v1.3.3 §4 distinguishes 201 Created (fresh registration) from
@@ -661,6 +680,7 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 	// interval, and one that outlasts the Registry's expiry would lose
 	// the Node before it had sent a single one.
 	beat := time.Now()
+	c.registrationBeat.Store(0)
 	keepAlive := func() error {
 		cadence := c.heartbeatInterval()
 		if time.Since(beat) < cadence-heartbeatSlack(cadence) {
@@ -670,6 +690,7 @@ func (c *RegistrationClient) registerAll(ctx context.Context) error {
 			return err
 		}
 		beat = time.Now()
+		c.registrationBeat.Store(beat.UnixNano())
 		return nil
 	}
 	post := func(t is04.ResourceType, data any) error {
