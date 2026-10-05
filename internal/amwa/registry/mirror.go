@@ -38,6 +38,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"dhs/internal/amwa/codec/is04"
@@ -728,7 +729,7 @@ func (m *Mirror) postResource(ctx context.Context, topic, ver, id string, doc js
 			return postUnsent
 		}
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := m.http.Do(req)
+		resp, err := m.send(req)
 		if err != nil {
 			m.fail("POST", topic, err)
 			return postUnknown // no answer: the target may hold it or not
@@ -807,7 +808,7 @@ func (m *Mirror) deleteResource(ctx context.Context, topic, ver, id string) {
 			m.fail("build DELETE", topic, err)
 			return
 		}
-		resp, err := m.http.Do(req)
+		resp, err := m.send(req)
 		if err != nil {
 			m.fail("DELETE", topic, err)
 			return
@@ -993,6 +994,42 @@ func verFromLocation(loc string) string {
 	return rest
 }
 
+// send does one request to the target, and does it once more when the
+// connection it went out on had already been closed at the far end.
+//
+// The client opens connections ahead of need while the first requests
+// go out together, and may leave one unused. A registry that closes a
+// connection which has carried no request for a few seconds (a header
+// read timeout — ours is 5 s) closes that one, and the client finds out
+// only when it writes a request to it: io.EOF or a reset, with nothing
+// received. net/http retries that by itself only on a connection it has
+// used before, and never a POST. Everything the mirror sends is safe to
+// send again — a resource POST is an upsert, a DELETE and a heartbeat
+// repeat to the same end — so it is sent again, on a new connection,
+// and is not a failure of the target. Seen as one failed heartbeat in
+// about one copy of sixteen, five seconds after the fill.
+func (m *Mirror) send(req *stdhttp.Request) (*stdhttp.Response, error) {
+	resp, err := m.http.Do(req)
+	if err == nil || !closedBeforeAnswer(err) || req.Context().Err() != nil {
+		return resp, err
+	}
+	again := req.Clone(req.Context())
+	if req.GetBody != nil {
+		body, berr := req.GetBody()
+		if berr != nil {
+			return nil, err
+		}
+		again.Body = body
+	}
+	return m.http.Do(again)
+}
+
+// closedBeforeAnswer says a request failed because the peer had closed
+// the connection, before a byte of the answer.
+func closedBeforeAnswer(err error) bool {
+	return errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE)
+}
+
 // sendHealth POSTs one heartbeat. The empty (non-nil sized) body is
 // deliberate: it guarantees a Content-Length header, which some
 // registries (EVS Cerebrum) demand on POST — without it they answer
@@ -1008,7 +1045,7 @@ func (m *Mirror) sendHealth(ctx context.Context, nodeID, ver string) error {
 		m.fail("build health", "nodes", err)
 		return err
 	}
-	resp, err := m.http.Do(req)
+	resp, err := m.send(req)
 	if err != nil {
 		m.fail("health", "nodes", err)
 		return err

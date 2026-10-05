@@ -334,7 +334,7 @@ func TestMirrorCopiesTheOracleRegistry(t *testing.T) {
 	}
 	s := readMirror(t, statusAddr)
 	if s.Failures != 0 || s.Skipped != 0 || s.Resyncs != 0 {
-		t.Fatalf("FAIL-real: the copy took %d refused or failed request(s), %d skipped, %d repair(s)\n%s", s.Failures, s.Skipped, s.Resyncs, tail(mirror.logs.String()))
+		t.Fatalf("FAIL-real: the copy took %d refused or failed request(s), %d skipped, %d repair(s)\n%s", s.Failures, s.Skipped, s.Resyncs, tail(mirror.logs.String())+"\nthe target registry:\n"+tail(registry.logs.String()))
 	}
 	t.Logf("PASS: %d resource(s) of the oracle registry are in ours, document for document, held 15 s; forwarded %d, refused or failed 0, repairs 0", source().count(), s.Forwarded)
 }
