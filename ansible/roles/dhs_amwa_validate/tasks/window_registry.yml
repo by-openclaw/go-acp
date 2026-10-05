@@ -63,7 +63,7 @@
 # 200 is the disarmed shape.
 - name: Wait for the transient registry
   ansible.builtin.uri:
-    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/v1.3/nodes"
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/{{ suite.rows[0].ver | default('v1.3') }}/nodes"
     status_code: [200, 401]
   register: _cut_up
   retries: 15
@@ -153,7 +153,7 @@
 
 - name: The companion node is registered in the transient registry
   ansible.builtin.uri:
-    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/v1.3/nodes"
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/{{ suite.rows[0].ver | default('v1.3') }}/nodes"
     headers: "{{ _cut_headers }}"
     return_content: true
   register: _cut_reg
@@ -168,7 +168,7 @@
 # attached) gives those rounds a resource to score.
 - name: Seed a persistent subscription so the subscription rounds score
   ansible.builtin.uri:
-    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/v1.3/subscriptions"
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/query/{{ suite.rows[0].ver | default('v1.3') }}/subscriptions"
     method: POST
     body_format: json
     body:
