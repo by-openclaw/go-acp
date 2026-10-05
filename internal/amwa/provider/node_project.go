@@ -74,33 +74,50 @@ func projectForMinor(bundle *NodeConfig, apiVer string) *NodeConfig {
 		}
 	}
 
-	// A Flow nothing sends is not carried on this version of the
-	// device, and a Source no Flow encodes is not produced by it.
+	// A Flow whose Senders have all just been dropped is not carried on
+	// this version of the device, and a Source whose Flows have all gone
+	// that way is not produced by it.
 	//
 	// The cascade matters: leaving the orphans behind would publish an
 	// IS-07 event source whose only Sender has just been dropped, so a
 	// controller could read the source's state over REST and have no
 	// way to subscribe to it.
-	usedFlows := map[string]bool{}
-	for i := range out.Senders {
-		if id := out.Senders[i].FlowID; id != nil && *id != "" {
-			usedFlows[*id] = true
+	//
+	// It follows what the projection dropped, and nothing else. A Flow
+	// no Sender ever sent, a Source no Flow ever encoded — an audio
+	// input generated inside the device, which IS-08 routes — were never
+	// reached through a Sender and do not leave with one. They used to:
+	// at v1.2 the device lost such a Source, and the channel map that
+	// routes it was rejected at start ("unknown input").
+	sent := map[string]bool{}      // flows some Sender of the whole device sends
+	stillSent := map[string]bool{} // flows a kept Sender sends
+	for i := range bundle.Senders {
+		if id := bundle.Senders[i].FlowID; id != nil && *id != "" {
+			sent[*id] = true
+			if keptSenders[bundle.Senders[i].ID] {
+				stillSent[*id] = true
+			}
 		}
 	}
 	out.Flows = nil
-	usedSources := map[string]bool{}
+	encoded := map[string]bool{}      // sources some Flow of the whole device encodes
+	stillEncoded := map[string]bool{} // sources a kept Flow encodes
 	for i := range bundle.Flows {
-		if !usedFlows[bundle.Flows[i].ID] {
+		f := &bundle.Flows[i]
+		encoded[f.SourceID] = true
+		if sent[f.ID] && !stillSent[f.ID] {
 			continue
 		}
-		out.Flows = append(out.Flows, bundle.Flows[i])
-		usedSources[bundle.Flows[i].SourceID] = true
+		out.Flows = append(out.Flows, *f)
+		stillEncoded[f.SourceID] = true
 	}
 	out.Sources = nil
 	for i := range bundle.Sources {
-		if usedSources[bundle.Sources[i].ID] {
-			out.Sources = append(out.Sources, bundle.Sources[i])
+		id := bundle.Sources[i].ID
+		if encoded[id] && !stillEncoded[id] {
+			continue
 		}
+		out.Sources = append(out.Sources, bundle.Sources[i])
 	}
 
 	// A Device that still lists a dropped id "references one or more

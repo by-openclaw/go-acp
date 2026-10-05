@@ -106,3 +106,53 @@ func TestProjectDoesNotMutateTheInput(t *testing.T) {
 		t.Error("projectForMinor modified the bundle it was given")
 	}
 }
+
+// The narrowing follows what it dropped. A Source no Flow ever encoded
+// — an audio input generated inside the device, which IS-08 routes —
+// was never reached through a Sender and does not leave with the
+// WebSocket chain; nor does a Flow no Sender ever sent. Before, a v1.2
+// device lost such a Source, and the channel map routing it was
+// rejected at start: "unknown input".
+func TestProjectKeepsWhatNoSenderEverCarried(t *testing.T) {
+	full := wsBundle()
+	dev := full.Devices[0].ID
+	const input, idle, idleFlow = "aaaaaaaa-1111-4111-8111-111111111111", "bbbbbbbb-2222-4222-8222-222222222222", "cccccccc-3333-4333-8333-333333333333"
+	src := func(id, label string) is04.Source {
+		return is04.Source{
+			ResourceCore: is04.ResourceCore{ID: id, Version: "0:0", Label: label, Tags: map[string][]string{}},
+			DeviceID:     dev, Format: formatAudio,
+		}
+	}
+	full.Sources = append(full.Sources, src(input, "generated input"), src(idle, "encoded, never sent"))
+	full.Flows = append(full.Flows, is04.Flow{
+		ResourceCore: is04.ResourceCore{ID: idleFlow, Version: "0:0", Label: "idle flow", Tags: map[string][]string{}},
+		SourceID:     idle, DeviceID: dev, Format: formatAudio,
+	})
+
+	for _, ver := range []string{"v1.0", "v1.1", "v1.2"} {
+		got := projectForMinor(full, ver)
+		if got == full {
+			t.Fatalf("%s: the WebSocket sender must be dropped", ver)
+		}
+		have := map[string]bool{}
+		for _, s := range got.Sources {
+			have[s.ID] = true
+			if s.Format == formatData {
+				t.Errorf("%s: the event source %s outlived its only sender", ver, s.ID)
+			}
+		}
+		if !have[input] {
+			t.Errorf("%s: the Source no Flow ever encoded was dropped with the WebSocket chain", ver)
+		}
+		if !have[idle] {
+			t.Errorf("%s: the Source whose Flow no Sender ever sent was dropped", ver)
+		}
+		kept := false
+		for _, f := range got.Flows {
+			kept = kept || f.ID == idleFlow
+		}
+		if !kept {
+			t.Errorf("%s: the Flow no Sender ever sent was dropped", ver)
+		}
+	}
+}
