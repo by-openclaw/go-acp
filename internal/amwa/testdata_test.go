@@ -27,6 +27,7 @@ var kinds = map[string][]string{
 	"events-mqtt":            {"IS-07 MQTT source=", "message=state", "message=connection_status"},
 	"channelmapping":         {"IS-08 Channel Mapping", "POST map/activations mode=activate_immediate channels=1"},
 	"system":                 {"IS-09 System", "GET global"},
+	"streamcompatibility":    {"IS-11 Stream Compatibility", "constraints/active/ constraint_sets=1 parameters=2", "state=constrained"},
 	"control-ws":             {"IS-12 Command commands=1", "IS-12 CommandResponse responses=1", "IS-12 Notification notifications=1"},
 	"configuration":          {"IS-14 Configuration", "PUT role=root.ExampleControl properties/1p6/value/"},
 	"configuration-bulk":     {"IS-14 Configuration", "PATCH role=root.ExampleControl bulkProperties/"},

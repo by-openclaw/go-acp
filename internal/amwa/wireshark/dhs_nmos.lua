@@ -559,7 +559,13 @@ local function http_detail(api, method, rest, query, body, code)
         end
     elseif api == "streamcompatibility" then
         if rest ~= "" then p[#p + 1] = rest end
-        if body and method == "PUT" then kv(p, "constraint_sets", tostring(count(body, '"urn:x%-nmos:cap:'))) end
+        if body and method == "PUT" then
+            -- The sets are the objects of the array; what each constrains
+            -- is a parameter. One set of two parameters is not two sets.
+            local sets = body:match('"constraint_sets"%s*:%s*(%b[])')
+            if sets then kv(p, "constraint_sets", tostring(count(sets:sub(2, -2), "%b{}"))) end
+            kv(p, "parameters", tostring(count(body, '"urn:x%-[%w%-]+:cap:[%w_]+:[%w_]+"%s*:%s*{')))
+        end
         if body and code then kv(p, "state", jstr(body, "state")) end
     elseif api == "events" then
         if rest ~= "" then p[#p + 1] = rest end

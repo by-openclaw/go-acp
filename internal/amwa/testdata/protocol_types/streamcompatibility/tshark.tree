@@ -1,0 +1,376 @@
+Frame 1: 74 bytes on wire (592 bits), 74 bytes captured (592 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 0, Len: 0
+
+Frame 2: 74 bytes on wire (592 bits), 74 bytes captured (592 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 0, Ack: 1, Len: 0
+
+Frame 3: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1, Ack: 1, Len: 0
+
+Frame 4: 200 bytes on wire (1600 bits), 200 bytes captured (1600 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1, Ack: 1, Len: 134
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Detail: GET]
+
+Frame 5: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 1, Ack: 135, Len: 0
+
+Frame 6: 466 bytes on wire (3728 bits), 466 bytes captured (3728 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 1, Ack: 135, Len: 400
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Detail: 200]
+
+Frame 7: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 135, Ack: 401, Len: 0
+
+Frame 8: 209 bytes on wire (1672 bits), 209 bytes captured (1672 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 135, Ack: 401, Len: 143
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: self]
+    [Detail: GET self]
+
+Frame 9: 1599 bytes on wire (12792 bits), 1599 bytes captured (12792 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 401, Ack: 278, Len: 1533
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: self]
+    [Detail: 200 self]
+
+Frame 10: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 278, Ack: 1934, Len: 0
+
+Frame 11: 212 bytes on wire (1696 bits), 212 bytes captured (1696 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 278, Ack: 1934, Len: 146
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: devices]
+    [Detail: GET devices]
+
+Frame 12: 1874 bytes on wire (14992 bits), 1874 bytes captured (14992 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 1934, Ack: 424, Len: 1808
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: devices]
+    [Detail: 200 devices]
+
+Frame 13: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 424, Ack: 3742, Len: 0
+
+Frame 14: 212 bytes on wire (1696 bits), 212 bytes captured (1696 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 424, Ack: 3742, Len: 146
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: sources]
+    [Detail: GET sources]
+
+Frame 15: 7306 bytes on wire (58448 bits), 7306 bytes captured (58448 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 3742, Ack: 570, Len: 7240
+
+Frame 16: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 570, Ack: 10982, Len: 0
+
+Frame 17: 3230 bytes on wire (25840 bits), 3230 bytes captured (25840 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 10982, Ack: 570, Len: 3164
+[2 Reassembled TCP Segments (10404 bytes): #15(7240), #17(3164)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: sources]
+    [Detail: 200 sources]
+
+Frame 18: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 570, Ack: 14146, Len: 0
+
+Frame 19: 210 bytes on wire (1680 bits), 210 bytes captured (1680 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 570, Ack: 14146, Len: 144
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: flows]
+    [Detail: GET flows]
+
+Frame 20: 4647 bytes on wire (37176 bits), 4647 bytes captured (37176 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 14146, Ack: 714, Len: 4581
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: flows]
+    [Detail: 200 flows]
+
+Frame 21: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 714, Ack: 18727, Len: 0
+
+Frame 22: 212 bytes on wire (1696 bits), 212 bytes captured (1696 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 714, Ack: 18727, Len: 146
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: senders]
+    [Detail: GET senders]
+
+Frame 23: 13098 bytes on wire (104784 bits), 13098 bytes captured (104784 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 18727, Ack: 860, Len: 13032
+
+Frame 24: 13098 bytes on wire (104784 bits), 13098 bytes captured (104784 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 31759, Ack: 860, Len: 13032
+
+Frame 25: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 860, Ack: 44791, Len: 0
+
+Frame 26: 3265 bytes on wire (26120 bits), 3265 bytes captured (26120 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 44791, Ack: 860, Len: 3199
+[3 Reassembled TCP Segments (29263 bytes): #23(13032), #24(13032), #26(3199)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: senders]
+    [Detail: 200 senders]
+
+Frame 27: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 860, Ack: 47990, Len: 0
+
+Frame 28: 214 bytes on wire (1712 bits), 214 bytes captured (1712 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 860, Ack: 47990, Len: 148
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: receivers]
+    [Detail: GET receivers]
+
+Frame 29: 26130 bytes on wire (209040 bits), 26130 bytes captured (209040 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 47990, Ack: 1008, Len: 26064
+
+Frame 30: 2894 bytes on wire (23152 bits), 2894 bytes captured (23152 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 74054, Ack: 1008, Len: 2828
+[2 Reassembled TCP Segments (28892 bytes): #29(26064), #30(2828)]
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-04 Node]
+    [Version: v1.3]
+    [Resource: receivers]
+    [Detail: 200 receivers]
+
+Frame 31: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1008, Ack: 76882, Len: 0
+
+Frame 32: 261 bytes on wire (2088 bits), 261 bytes captured (2088 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1008, Ack: 76882, Len: 195
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/constraints/supported/]
+    [Detail: GET senders/00000000-2000-4000-8006-453036130001/constraints/supported/]
+
+Frame 33: 1365 bytes on wire (10920 bits), 1365 bytes captured (10920 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 76882, Ack: 1203, Len: 1299
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/constraints/supported/]
+    [Detail: 200 senders/00000000-2000-4000-8006-453036130001/constraints/supported/]
+
+Frame 34: 547 bytes on wire (4376 bits), 547 bytes captured (4376 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1203, Ack: 78181, Len: 481
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+    [Detail: PUT senders/00000000-2000-4000-8006-453036130001/constraints/active/ constraint_sets=1 parameters=2]
+
+Frame 35: 626 bytes on wire (5008 bits), 626 bytes captured (5008 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 78181, Ack: 1684, Len: 560
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+    [Detail: 200 senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+
+Frame 36: 246 bytes on wire (1968 bits), 246 bytes captured (1968 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1684, Ack: 78741, Len: 180
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/status/]
+    [Detail: GET senders/00000000-2000-4000-8006-453036130001/status/]
+
+Frame 37: 515 bytes on wire (4120 bits), 515 bytes captured (4120 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 78741, Ack: 1864, Len: 449
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/status/]
+    [Detail: 200 senders/00000000-2000-4000-8006-453036130001/status/ state=constrained]
+
+Frame 38: 258 bytes on wire (2064 bits), 258 bytes captured (2064 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 1864, Ack: 79190, Len: 192
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+    [Detail: GET senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+
+Frame 39: 690 bytes on wire (5520 bits), 690 bytes captured (5520 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 79190, Ack: 2056, Len: 624
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+    [Detail: 200 senders/00000000-2000-4000-8006-453036130001/constraints/active/]
+
+Frame 40: 246 bytes on wire (1968 bits), 246 bytes captured (1968 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 2056, Ack: 79814, Len: 180
+Hypertext Transfer Protocol
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/inputs/]
+    [Detail: GET senders/00000000-2000-4000-8006-453036130001/inputs/]
+
+Frame 41: 492 bytes on wire (3936 bits), 492 bytes captured (3936 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 79814, Ack: 2236, Len: 426
+Hypertext Transfer Protocol
+JavaScript Object Notation: application/json
+AMWA NMOS (HTTP / WebSocket / MQTT layer)
+    [API: IS-11 Stream Compatibility]
+    [Version: v1.0]
+    [Resource: senders/00000000-2000-4000-8006-453036130001/inputs/]
+    [Detail: 200 senders/00000000-2000-4000-8006-453036130001/inputs/]
+
+Frame 42: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 2236, Ack: 80240, Len: 0
+
+Frame 43: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:3d:60:34:03:96 (aa:3d:60:34:03:96), Dst: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b)
+Internet Protocol Version 4, Src: 172.21.0.3, Dst: 172.21.0.1
+Transmission Control Protocol, Src Port: 7051, Dst Port: 55948, Seq: 80240, Ack: 2237, Len: 0
+
+Frame 44: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface br-3965026e8083, id 0
+Ethernet II, Src: aa:b0:b0:98:6c:9b (aa:b0:b0:98:6c:9b), Dst: aa:3d:60:34:03:96 (aa:3d:60:34:03:96)
+Internet Protocol Version 4, Src: 172.21.0.1, Dst: 172.21.0.3
+Transmission Control Protocol, Src Port: 55948, Dst Port: 7051, Seq: 2237, Ack: 80241, Len: 0
+
