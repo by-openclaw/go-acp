@@ -35,7 +35,7 @@
     # real devices and holds more than a page of them.
     rr_node_ports: >-
       {{ (dhs_amwa_plant_nodes | map(attribute='port') | list)
-         + (range(dhs_amwa_plant_scale_count) | map('int') | map('add', dhs_amwa_plant_scale_base_port) | list) }}
+         + (range(dhs_amwa_plant_scale_base_port, dhs_amwa_plant_scale_base_port + dhs_amwa_plant_scale_count) | list) }}
     rr_collections: [devices, sources, flows, senders, receivers]
   tasks:
     # ---- pre-flight: the plant must be healthy BEFORE the reboot, so
