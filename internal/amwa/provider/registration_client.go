@@ -129,6 +129,9 @@ type RegistrationClient struct {
 	// registered Node MUST stop advertising _nmos-node._tcp until
 	// registration is lost (AMWA test_12_01).
 	onRegistered atomic.Pointer[func(bool)]
+	// onRegistering fires around a full registration: true before its
+	// first POST, false when it fails. See SetOnRegistering.
+	onRegistering atomic.Pointer[func(bool)]
 	// everRegistered flips true after the first successful registerAll.
 	// On subsequent failovers we use rejoinOrRegister (heartbeat-first)
 	// per IS-04 §6.1. Touched only inside the Run loop, no mutex.
@@ -264,6 +267,26 @@ func (c *RegistrationClient) SetOnRegistered(cb func(bool)) {
 		return
 	}
 	c.onRegistered.Store(&cb)
+}
+
+// SetOnRegistering installs a callback fired with true just before the
+// first POST of a registration and with false when that registration
+// fails (success is reported by the registered callback). A Node before
+// v1.3 takes the ver_* records out of its announce from that first POST:
+// a browser that starts on seeing it — AMWA IS-04-01 test_12 does — must
+// not find them, and the last receiver may be seconds away.
+func (c *RegistrationClient) SetOnRegistering(cb func(bool)) {
+	if cb == nil {
+		c.onRegistering.Store(nil)
+		return
+	}
+	c.onRegistering.Store(&cb)
+}
+
+func (c *RegistrationClient) fireRegistering(v bool) {
+	if cb := c.onRegistering.Load(); cb != nil && *cb != nil {
+		(*cb)(v)
+	}
 }
 
 // setRegistered atomically updates the registered flag and fires the
@@ -689,6 +712,17 @@ func (c *RegistrationClient) beatDuringRegistration() time.Time {
 // the stale entries from the Registry and re-POST as fresh state
 // (AMWA test_21). Subsequent resources naturally follow.
 func (c *RegistrationClient) registerAll(ctx context.Context) error {
+	c.fireRegistering(true)
+	err := c.registerResources(ctx)
+	if err != nil {
+		c.fireRegistering(false)
+	}
+	return err
+}
+
+// registerResources is the registration itself: the Node, then each of
+// its resources, parents first.
+func (c *RegistrationClient) registerResources(ctx context.Context) error {
 	if err := c.postResource(ctx, is04.ResourceNode, &c.bundle.Node); err != nil {
 		return err
 	}

@@ -764,6 +764,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachAuthToken(rc)
 		s.attachTLSTrust(rc)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		rc.SetOnRegistering(s.onRegistrationStarting)
 		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
 		rc.SetDefaultHeartbeatInterval(s.cfg.HeartbeatInterval)
 		s.regClient = rc
@@ -783,6 +784,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachTLSTrust(rc)
 		rc.SetWatcher(uw)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		rc.SetOnRegistering(s.onRegistrationStarting)
 		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
 		rc.SetDefaultHeartbeatInterval(s.cfg.HeartbeatInterval)
 		s.regClient = rc
@@ -805,6 +807,7 @@ func (s *IS04NodeServer) Serve(ctx context.Context) error {
 		s.attachTLSTrust(rc)
 		rc.SetWatcher(w)
 		rc.SetOnRegistered(s.onRegistrationStateChanged)
+		rc.SetOnRegistering(s.onRegistrationStarting)
 		rc.SetHeartbeatIntervalFn(s.systemHeartbeatInterval)
 		rc.SetDefaultHeartbeatInterval(s.cfg.HeartbeatInterval)
 		s.regClient = rc
@@ -1062,6 +1065,40 @@ func (s *IS04NodeServer) stopMDNSAnnounceLocked() {
 		"service", dnssdcodec.ServiceNode)
 }
 
+// onRegistrationStarting follows the start (true) and the failure
+// (false) of a registration. Before v1.3 the ver_* records leave the
+// announce with the first POST, not with the last: the Node is "in the
+// presence of a Registration API" from then, and AMWA IS-04-01 test_12
+// browses as soon as it has seen that POST — a Node of a few resources
+// was still announcing them and failed the row at v1.0, v1.1 and v1.2.
+// A registration that fails puts them back. v1.3 withdraws the whole
+// announce and does so on the registered transition, unchanged.
+func (s *IS04NodeServer) onRegistrationStarting(starting bool) {
+	if s.cfg.DiscoveryMode != "" && s.cfg.DiscoveryMode != "mdns" {
+		return
+	}
+	if !s.announcesWhileRegistered() {
+		return
+	}
+	s.republishAnnounce(starting, "registration start")
+}
+
+// republishAnnounce sets whether the announce goes without its ver_*
+// records and republishes it.
+func (s *IS04NodeServer) republishAnnounce(withoutVer bool, why string) {
+	s.mu.Lock()
+	s.announceWithoutVer = withoutVer
+	snapshot := s.announceSnapshotLocked()
+	resp := s.responder
+	s.mu.Unlock()
+	if resp == nil {
+		return
+	}
+	if err := resp.Update(s.announceCtx, snapshot); err != nil {
+		s.logger.Warn("provider/node: republish announce failed", "on", why, "without_ver", withoutVer, "err", err)
+	}
+}
+
 // onRegistrationStateChanged follows every registration transition
 // with the _nmos-node._tcp announce. IS-04 v1.3 §4.2.1 (and AMWA
 // test_12_01): a registered Node MUST stop advertising via mDNS until
@@ -1074,17 +1111,7 @@ func (s *IS04NodeServer) onRegistrationStateChanged(registered bool) {
 		return // static discovery — no responder to toggle
 	}
 	if s.announcesWhileRegistered() {
-		s.mu.Lock()
-		s.announceWithoutVer = registered
-		snapshot := s.announceSnapshotLocked()
-		resp := s.responder
-		s.mu.Unlock()
-		if resp == nil {
-			return
-		}
-		if err := resp.Update(s.announceCtx, snapshot); err != nil {
-			s.logger.Warn("provider/node: republish announce on registration change failed", "registered", registered, "err", err)
-		}
+		s.republishAnnounce(registered, "registration change")
 		return
 	}
 	s.mu.Lock()
