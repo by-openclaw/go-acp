@@ -26,7 +26,7 @@
     --bind 0.0.0.0:{{ dhs_amwa_validate_cut_port }}
     --no-registry
     --advertise-host {{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}
-    --api-ver {{ suite.rows[0].ver | default('v1.3') }}
+    --api-ver {{ suite.is04_ver | default('v1.3') }}
     --config {{ ((dhs_amwa_validate_plant_config | dirname) ~ '/' ~ suite.config) if suite.config is defined else dhs_amwa_validate_plant_config }}
     {{ ('--auth-url ' ~ dhs_amwa_validate_auth_server_url) if suite.auth | default(false) else '' }}
   delegate_to: "{{ groups['plant'][0] }}"
@@ -45,7 +45,7 @@
 # 200 is the disarmed shape.
 - name: Wait for the transient node
   ansible.builtin.uri:
-    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/node/{{ suite.rows[0].ver | default('v1.3') }}/self"
+    url: "http://{{ dhs_amwa_validate_plant_host }}:{{ dhs_amwa_validate_cut_port }}/x-nmos/node/{{ suite.is04_ver | default('v1.3') }}/self"
     status_code: [200, 401]
   register: _cut_up
   retries: 15
