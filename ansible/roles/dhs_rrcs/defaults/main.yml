@@ -1,0 +1,51 @@
+---
+# dhs_rrcs — converge a Riedel RRCS gateway to a desired state.
+#
+# The role writes the desired state to a JSON file and runs
+# `dhs consumer rrcs ensure` on it (ADR-0007): --check first, then the
+# apply unless rrcs_check_only, then the same apply again to prove that a
+# second run changes nothing. Ansible's changed status is the verb's own
+# {changed} field.
+#
+# WRITES ARE UNPROVEN ON A REAL RRCS. On 2026-10-06 a configuration edit
+# stopped a production RRCS 9.0 (internal/rrcs/CLAUDE.md). Run this role
+# with rrcs_check_only: true anywhere, and without it only against a test
+# system that has passed internal/rrcs/docs/oracle-test-plan.md.
+
+dhs_bin: /usr/local/bin/dhs
+
+# The RRCS to converge: host or host:port (default port 8193).
+rrcs_host: ""
+
+# Dry-run only: report what would change, send nothing. The default.
+rrcs_check_only: true
+
+# Required for an apply: the same value as rrcs_host. It is the write
+# guard of the verb (--write-to); keeping it a separate variable makes a
+# write a decision taken in the inventory, per host.
+rrcs_write_to: ""
+
+# Values by path, as `dhs consumer rrcs export` prints them. Examples:
+#   net.1.node.60.card.1.Ptp.PTP: 100
+#   net.1.node.60.card.1.Ptp.PtpPriority: 128
+#   net.1.node.60.card.1.Nmos.RegistrationMode: Manual
+#   net.1.node.60.card.1.Nmos.RegistrationIp: 10.0.0.15
+#   net.1.node.60.card.1.Nmos.RegistrationPort: 8080
+#   net.1.node.63.port.1045.out.PortAes67Output.Protocol: Manual
+#   net.1.node.63.port.1045.out.PortAes67Output.Multicast: 239.5.63.45
+#   net.1.node.63.port.1045.out.PortAes67Output.MulticastPort: 5004
+rrcs_values: {}
+
+# Crosspoints: [{source: PATH, destination: PATH, state: present|absent}].
+rrcs_crosspoints: []
+
+# Where the desired-state file is written on the managed host.
+rrcs_desired_file: "/tmp/dhs-rrcs-desired-{{ rrcs_host | regex_replace('[^A-Za-z0-9.]', '_') }}.json"
+
+# Extra flags for every run, e.g. [--capture, auto] or
+# [--syslog-addr, "10.0.0.5:514"].
+rrcs_extra_argv: []
+
+# Prove idempotency after an apply: run it again and fail unless the
+# second run reports changed=false.
+rrcs_assert_idempotent: true

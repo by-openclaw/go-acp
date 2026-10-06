@@ -1,0 +1,34 @@
+# Riedel RRCS — converge a gateway to a desired state (ADR-0007 contract).
+#
+# Dry-run, safe anywhere (sends nothing):
+#   ansible-playbook playbooks/rrcs-ensure.yml -e rrcs_host=10.0.0.12 -e @vars/rrcs-site.yml
+#
+# Apply, test system only — writes are unproven on a real RRCS
+# (internal/rrcs/CLAUDE.md, internal/rrcs/docs/oracle-test-plan.md):
+#   ansible-playbook playbooks/rrcs-ensure.yml -e rrcs_host=ORACLE \
+#     -e rrcs_check_only=false -e rrcs_write_to=ORACLE -e @vars/rrcs-site.yml
+#
+# The apply runs twice and fails unless the second run changes nothing.
+#
+# vars/rrcs-site.yml, for one AES67 client card and one sender:
+#
+#   rrcs_values:
+#     net.1.node.60.card.1.Ptp.PTP: 100
+#     net.1.node.60.card.1.Ptp.PtpPriority: 128
+#     net.1.node.60.card.1.Ptp.PtpPriority2: 128
+#     net.1.node.60.card.1.Nmos.RegistrationMode: Manual
+#     net.1.node.60.card.1.Nmos.RegistrationIp: 10.0.0.15
+#     net.1.node.60.card.1.Nmos.RegistrationPort: 8080
+#     net.1.node.63.port.1045.out.PortAes67Output.Protocol: Manual
+#     net.1.node.63.port.1045.out.PortAes67Output.Multicast: 239.5.63.45
+#     net.1.node.63.port.1045.out.PortAes67Output.MulticastPort: 5004
+#   rrcs_crosspoints:
+#     - {source: net.1.node.63.port.1045.in, destination: net.1.node.61.port.1026, state: present}
+#
+# The paths are those `dhs consumer rrcs export` prints.
+- name: Riedel RRCS — ensure desired state
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  roles:
+    - role: dhs_rrcs

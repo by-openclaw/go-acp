@@ -1,0 +1,58 @@
+---
+- name: Validate role parameters
+  ansible.builtin.assert:
+    that:
+      - rrcs_host | length > 0
+      - rrcs_check_only or (rrcs_write_to == rrcs_host)
+    fail_msg: >-
+      dhs_rrcs needs rrcs_host. An apply (rrcs_check_only: false) also needs
+      rrcs_write_to set to the same value as rrcs_host: it is the write
+      guard, and writes are unproven on a real RRCS.
+
+- name: Write the desired state
+  ansible.builtin.copy:
+    dest: "{{ rrcs_desired_file }}"
+    mode: "0600"
+    content: "{{ {'values': rrcs_values, 'crosspoints': rrcs_crosspoints} | to_nice_json }}\n"
+  # The file is an input of the run, not a change on the gateway.
+  changed_when: false
+
+- name: Dry-run — what would change
+  ansible.builtin.command:
+    argv: >-
+      {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
+          '--check', '--output', 'json'] + rrcs_extra_argv }}
+  register: rrcs_check
+  changed_when: false
+
+- name: Report the dry-run
+  ansible.builtin.debug:
+    msg: "{{ (rrcs_check.stdout | from_json).diff }}"
+
+- name: Converge
+  when: not rrcs_check_only
+  block:
+    - name: Apply the desired state
+      ansible.builtin.command:
+        argv: >-
+          {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
+              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_extra_argv }}
+      register: rrcs_apply
+      changed_when: (rrcs_apply.stdout | from_json).changed | bool
+
+    - name: Apply again — a second run changes nothing (ADR-0007)
+      ansible.builtin.command:
+        argv: >-
+          {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
+              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_extra_argv }}
+      register: rrcs_again
+      changed_when: false
+      when: rrcs_assert_idempotent
+
+    - name: Assert run-twice = 0
+      ansible.builtin.assert:
+        that:
+          - not ((rrcs_again.stdout | from_json).changed | bool)
+          - (rrcs_again.stdout | from_json).diff | length == 0
+        fail_msg: "rrcs ensure is not idempotent on {{ rrcs_host }}: {{ rrcs_again.stdout }}"
+      when: rrcs_assert_idempotent

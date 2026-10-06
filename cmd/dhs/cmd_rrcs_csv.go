@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"dhs/internal/rrcs/codec"
+	rrcs "dhs/internal/rrcs/consumer"
 )
 
 // export and import follow the contract of the acp connectors: one
@@ -389,62 +390,10 @@ type rrcsApplied struct {
 	Error  string `json:"error,omitempty"`
 }
 
-// rrcsImport writes the values of a snapshot file back to the gateway.
-func rrcsImport(ctx context.Context, args []string) error {
-	// --dry-run is a flag without a value, as on the acp connectors; it
-	// is taken out before the flags are reordered around the host.
-	dryRun := false
-	rest := make([]string, 0, len(args))
-	for _, a := range args {
-		switch a {
-		case "--dry-run", "-dry-run", "--dry-run=true", "-dry-run=true":
-			dryRun = true
-		default:
-			rest = append(rest, a)
-		}
-	}
-	fs := flag.NewFlagSet("rrcs import", flag.ContinueOnError)
-	fs.Usage = func() {
-		_, _ = fmt.Fprint(fs.Output(), `Usage: dhs consumer rrcs import <host>[:port] --file SNAPSHOT [--path P ...] [--dry-run] [flags]
-
-Reads a file written by export (json or csv, by its extension) and WRITES
-every writable value that differs from the live system, one
-ConfigurationChangeEx per port or client card, then reads everything back.
-Rows whose value equals the live one are left alone; read-only rows are
-skipped and listed.
-
-  --dry-run   compare and report, send nothing
-`)
-		fs.PrintDefaults()
-	}
-	cf := newRRCSFlags(fs)
-	file := fs.String("file", "", "snapshot file written by export, json or csv (required)")
-	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
-	var paths rrcsProps
-	fs.Var(&paths, "path", "apply only the rows whose path contains this text; comma-separated or repeated")
-	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return rrcsValErr("import", "want exactly one host[:port] argument")
-	}
-	if *file == "" {
-		return rrcsValErr("import", "want --file SNAPSHOT")
-	}
-	if !dryRun {
-		if err := rrcsWriteGuard("import", fs.Arg(0), *writeTo); err != nil {
-			return err
-		}
-	}
-	rows, err := rrcsReadRows(*file)
-	if err != nil {
-		return fmt.Errorf("rrcs import: %w", err)
-	}
-	client, _, closeFn, err := cf.open("import", fs.Arg(0))
-	if err != nil {
-		return err
-	}
-	defer closeFn()
+// rrcsConverge compares rows with the live system and, unless dryRun,
+// writes what differs — one ConfigurationChangeEx per port or client card
+// — then reads everything back. It is the core of import and of ensure.
+func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep func(string) bool, dryRun bool) (applied []*rrcsApplied, skips []rrcsSkip, unchanged, failed int, err error) {
 	read := func() (*rrcsModel, error) {
 		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{})
 		if err != nil {
@@ -454,19 +403,15 @@ skipped and listed.
 	}
 	live, err := read()
 	if err != nil {
-		return err
+		return nil, nil, 0, 0, err
 	}
 
-	keep := rrcsPathFilter(paths)
-	var skips []rrcsSkip
-	var applied []*rrcsApplied
 	type plan struct {
 		change *rrcsChange
 		items  []*rrcsApplied
 	}
 	plans := map[string]*plan{}
 	var order []*plan
-	unchanged := 0
 	current := func(m *rrcsModel, object, block, field string) (string, bool) {
 		props, ok := m.lookup(object)
 		if !ok {
@@ -554,7 +499,6 @@ skipped and listed.
 		applied = append(applied, item)
 	}
 
-	failed := 0
 	if !dryRun && len(order) > 0 {
 		for _, p := range order {
 			if ctx.Err() != nil {
@@ -571,7 +515,7 @@ skipped and listed.
 		// Applied means it reads back.
 		after, err := read()
 		if err != nil {
-			return fmt.Errorf("rrcs import: sent, but the read back failed: %w", err)
+			return nil, nil, 0, 0, fmt.Errorf("sent, but the read back failed: %w", err)
 		}
 		for _, it := range applied {
 			if it.Result != "applied" {
@@ -586,6 +530,69 @@ skipped and listed.
 		}
 	}
 
+	return applied, skips, unchanged, failed, nil
+}
+
+// rrcsImport writes the values of a snapshot file back to the gateway.
+func rrcsImport(ctx context.Context, args []string) error {
+	// --dry-run is a flag without a value, as on the acp connectors; it
+	// is taken out before the flags are reordered around the host.
+	dryRun := false
+	rest := make([]string, 0, len(args))
+	for _, a := range args {
+		switch a {
+		case "--dry-run", "-dry-run", "--dry-run=true", "-dry-run=true":
+			dryRun = true
+		default:
+			rest = append(rest, a)
+		}
+	}
+	fs := flag.NewFlagSet("rrcs import", flag.ContinueOnError)
+	fs.Usage = func() {
+		_, _ = fmt.Fprint(fs.Output(), `Usage: dhs consumer rrcs import <host>[:port] --file SNAPSHOT [--path P ...] [--dry-run] [flags]
+
+Reads a file written by export (json or csv, by its extension) and WRITES
+every writable value that differs from the live system, one
+ConfigurationChangeEx per port or client card, then reads everything back.
+Rows whose value equals the live one are left alone; read-only rows are
+skipped and listed.
+
+  --dry-run   compare and report, send nothing
+`)
+		fs.PrintDefaults()
+	}
+	cf := newRRCSFlags(fs)
+	file := fs.String("file", "", "snapshot file written by export, json or csv (required)")
+	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
+	var paths rrcsProps
+	fs.Var(&paths, "path", "apply only the rows whose path contains this text; comma-separated or repeated")
+	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return rrcsValErr("import", "want exactly one host[:port] argument")
+	}
+	if *file == "" {
+		return rrcsValErr("import", "want --file SNAPSHOT")
+	}
+	if !dryRun {
+		if err := rrcsWriteGuard("import", fs.Arg(0), *writeTo); err != nil {
+			return err
+		}
+	}
+	rows, err := rrcsReadRows(*file)
+	if err != nil {
+		return fmt.Errorf("rrcs import: %w", err)
+	}
+	client, _, closeFn, err := cf.open("import", fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	defer closeFn()
+	applied, skips, unchanged, failed, err := rrcsConverge(ctx, client, rows, rrcsPathFilter(paths), dryRun)
+	if err != nil {
+		return fmt.Errorf("rrcs import: %w", err)
+	}
 	if cf.output == "json" {
 		doc := struct {
 			Target    string         `json:"target"`

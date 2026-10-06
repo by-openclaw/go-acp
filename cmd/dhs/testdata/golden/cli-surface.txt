@@ -30,7 +30,7 @@ CONSUMER (outbound — connect to a device, query / control it)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
   Verbs (rrcs):                info, discover, walk, tree, list, get, set,
-                               export, import, xp, call, watch
+                               export, import, ensure, xp, call, watch
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3629,6 +3629,9 @@ VERBS
             from the live system (ConfigurationChangeEx): --file, --path,
             --dry-run to compare and send nothing
 
+  ensure    converge to a desired-state file (values, crosspoints): --file,
+            --check to report and send nothing; the contract of every dhs
+            ensure, for Ansible. Without --check it WRITES
   xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
             --state on|off (SetXp, KillXp): --src PATH --dst PATH
   call      any method of the specification, parameters as JSON (--arg);
@@ -3977,6 +3980,45 @@ Usage of rrcs xp:
     	source: the path of a port that has an input, as list sources prints it
   -state string
     	on = SetXp | off = KillXp | empty = only read the state (GetXpStatus)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+
+========== consumer/rrcs/ensure ==========
+$ dhs consumer rrcs ensure --help
+Usage: dhs consumer rrcs ensure <host>[:port] --file DESIRED.json [--check] [flags]
+
+Brings the gateway to the state a file describes and reports what changed,
+in the contract of every dhs ensure (ADR-0007): run it twice and the second
+run changes nothing.
+
+  --check   dry-run: compare and report would_change, send nothing
+  --diff    accepted; the diff is always part of the output
+
+The file names values by the path export prints, and crosspoints by their
+two ports:
+  {"values": {"net.1.node.60.card.1.Ptp.PTP": 100},
+   "crosspoints": [{"source": "…port.7.in", "destination": "…port.1026", "state": "present"}]}
+Only what the file names is touched. Without --check this WRITES and needs
+--write-to HOST.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	desired-state file, JSON (required)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration

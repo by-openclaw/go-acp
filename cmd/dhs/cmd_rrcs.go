@@ -68,6 +68,8 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsExport(ctx, args[1:])
 	case "call":
 		return rrcsCall(ctx, args[1:])
+	case "ensure":
+		return rrcsEnsure(ctx, args[1:])
 	case "xp":
 		return rrcsXpVerb(ctx, args[1:])
 	case "import":
@@ -117,6 +119,9 @@ VERBS
             from the live system (ConfigurationChangeEx): --file, --path,
             --dry-run to compare and send nothing
 
+  ensure    converge to a desired-state file (values, crosspoints): --file,
+            --check to report and send nothing; the contract of every dhs
+            ensure, for Ansible. Without --check it WRITES
   xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
             --state on|off (SetXp, KillXp): --src PATH --dst PATH
   call      any method of the specification, parameters as JSON (--arg);
