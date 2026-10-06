@@ -7,6 +7,19 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.40.1](https://github.com/by-openclaw/go-acp/compare/v0.40.0...v0.40.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **acp1:** a session leaves the registry before its send channel is closed ([4f97902](https://github.com/by-openclaw/go-acp/commit/4f979026adbfe1f31d3edd15ce4dc0db366d03b0))
+* **acp1:** a session leaves the registry before its send channel is closed ([b306492](https://github.com/by-openclaw/go-acp/commit/b3064925c1d90be3153e060d71a37d92219e0a58)), closes [#1405](https://github.com/by-openclaw/go-acp/issues/1405)
+* **acp1:** the AN2 registry pointer is read and set under the server lock ([c4396f2](https://github.com/by-openclaw/go-acp/commit/c4396f2bfcaf5a342987bb5fff0a4920a57d9b80)), closes [#1405](https://github.com/by-openclaw/go-acp/issues/1405)
+* **amwa:** before v1.3 the ver_* records leave the announce when the registration starts ([ae2b9d5](https://github.com/by-openclaw/go-acp/commit/ae2b9d5b16291b8da384c7709e53ce625d76c368))
+* **amwa:** before v1.3 the ver_* records leave the announce when the registration starts ([ec39ba7](https://github.com/by-openclaw/go-acp/commit/ec39ba72f78a53acd9ac82cb6d8716ab267683e8)), closes [#1408](https://github.com/by-openclaw/go-acp/issues/1408)
+* **ansible:** the validation window's node minor is the entry's own, not its first row's ([2488e4d](https://github.com/by-openclaw/go-acp/commit/2488e4d7a66f580b0563cae3fb8190a2115cb765))
+* **ansible:** the validation window's node minor is the entry's own, not its first row's ([f5858ac](https://github.com/by-openclaw/go-acp/commit/f5858ac7bea6a8bd96b432534861dca50ad02b66)), closes [#1403](https://github.com/by-openclaw/go-acp/issues/1403)
+
 ## [0.40.0](https://github.com/by-openclaw/go-acp/compare/v0.39.0...v0.40.0) (2026-10-05)
 
 
