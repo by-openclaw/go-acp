@@ -91,15 +91,15 @@ func TestRRCSWalk(t *testing.T) {
 	if len(snap.Licenses) != 1 || snap.Licenses[0].Args[0] != float64(60) {
 		t.Errorf("licences: %+v", snap.Licenses)
 	}
-	// The panel has two directions and no pool port (-1); the output has
-	// one direction and two pool ports (0 and 1).
-	if len(snap.Commands) != 4 {
-		t.Fatalf("command lists: %d, want 4", len(snap.Commands))
+	// One request per port and pool port: the panel has no pool port
+	// (-1), the output has two (0 and 1).
+	if len(snap.Commands) != 3 {
+		t.Fatalf("command lists: %d, want 3", len(snap.Commands))
 	}
-	if got := snap.Commands[0].Args; len(got) != 5 || got[1] != float64(61) || got[2] != float64(1040) || got[3] != true || got[4] != float64(-1) {
+	if got := snap.Commands[0].Args; len(got) != 5 || got[1] != float64(61) || got[2] != float64(1040) || got[3] != false || got[4] != float64(-1) {
 		t.Errorf("first command request: %v", got)
 	}
-	if a, b := snap.Commands[2].Args, snap.Commands[3].Args; a[4] != float64(0) || b[4] != float64(1) || a[3] != false {
+	if a, b := snap.Commands[1].Args, snap.Commands[2].Args; a[4] != float64(0) || b[4] != float64(1) || a[3] != false {
 		t.Errorf("pool port requests: %v %v", a, b)
 	}
 	conf := snap.Objects["conference"]
@@ -125,7 +125,7 @@ func TestRRCSWalk(t *testing.T) {
 	if snap.Requests != len(f.methods()) || snap.Failed == 0 {
 		t.Errorf("counts: %d requests (%d sent), %d failed", snap.Requests, len(f.methods()), snap.Failed)
 	}
-	for _, want := range []string{"conference           1", "command lists        4", "snapshot"} {
+	for _, want := range []string{"conference           1", "command lists        3", "snapshot"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("summary lacks %q:\n%s", want, text)
 		}

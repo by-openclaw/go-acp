@@ -29,7 +29,7 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
-  Verbs (rrcs):                info, discover, walk, get, watch
+  Verbs (rrcs):                info, discover, walk, tree, list, get, watch
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3607,8 +3607,14 @@ VERBS
             type lists, GetLicenseInfo per node, GetObjectList per object
             type, GetObjectProperty of every object, GetPortsCommandLists
             of every port (what is on its keys) — read only
-  get       GetObjectProperty of one object (--id), one property (--prop) or
-            all; --names yes = GetObjectPropertyNames
+  tree      the system as a tree: node, client cards, ports, what is on
+            each key; conferences, groups, IFBs with members, logic sources
+  list      one table: nodes | cards | ports | panels | keys | conferences |
+            groups | ifbs | logic; --node, --type, --match select rows
+  get       the properties of one thing: --path (as tree and list print it),
+            or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
+
+  tree, list and get --path also read a snapshot written by walk: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C
 
@@ -3662,7 +3668,7 @@ Usage of rrcs walk:
   -output string
     	output: text | json (default "text")
   -skip string
-    	leave out a part: properties (one request per object) | commands (one or two requests per port) | both
+    	leave out a part: properties (one request per object) | commands (one request per port) | both
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3671,16 +3677,58 @@ $ dhs consumer rrcs get --help
 Usage of rrcs get:
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
   -id int
-    	object ID, as the lists print it (required)
+    	object ID, as the lists print it: GetObjectProperty
   -names string
-    	yes = list the property names the object supports instead of the values (default "no")
+    	with --id: yes = list the property names the object supports instead of the values (default "no")
   -output string
     	output: text | json (default "text")
+  -path string
+    	path, as list and tree print it (e.g. net.1.node.61.port.1026, group.109136507): the properties the lists hold
   -prop string
-    	property name; empty = every property of the object
+    	property name; empty = every property
   -timeout duration
     	per-request timeout (default 10s)
+
+========== consumer/rrcs/list ==========
+$ dhs consumer rrcs list --help
+Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|conferences|groups|ifbs|logic> <host>[:port] | --from FILE [flags]
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -match string
+    	keep the rows where a name, a label or the path contains this text, case ignored
+  -node int
+    	keep what sits on this node number; 0 = every node
+  -output string
+    	output: text | json (default "text")
+  -timeout duration
+    	per-request timeout (default 10s)
+  -type string
+    	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
+
+========== consumer/rrcs/tree ==========
+$ dhs consumer rrcs tree --help
+Usage of rrcs tree:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -keys string
+    	yes = show what is on the keys of each panel | no = ports only (one request per port less) (default "yes")
+  -match string
+    	keep the rows where a name, a label or the path contains this text, case ignored
+  -node int
+    	keep what sits on this node number; 0 = every node
+  -output string
+    	output: text | json (default "text")
+  -timeout duration
+    	per-request timeout (default 10s)
+  -type string
+    	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help

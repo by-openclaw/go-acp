@@ -110,43 +110,34 @@ func rrcsFieldBool(v codec.Value, name string) bool {
 	return ok && f.Kind == codec.KindBool && f.Bool
 }
 
-// rrcsWalk reads everything the gateway offers for reading and writes it
-// to one JSON document.
-func rrcsWalk(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("rrcs walk", flag.ContinueOnError)
-	cf := newRRCSFlags(fs)
-	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
-	skip := fs.String("skip", "", "leave out a part: properties (one request per object) | commands (one or two requests per port) | both")
-	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return rrcsValErr("walk", "want exactly one host[:port] argument")
-	}
-	if *skip != "" && *skip != "properties" && *skip != "commands" && *skip != "both" {
-		return rrcsValErr("walk", "--skip must be properties, commands or both")
-	}
-	client, _, closeFn, err := cf.open("walk", fs.Arg(0))
-	if err != nil {
-		return err
-	}
-	defer closeFn()
-	started := time.Now()
-	if *out == "auto" {
-		*out = filepath.Join(snapshotDir(rrcsProto, hostOnly(fs.Arg(0))),
-			"walk-"+started.UTC().Format("20060102T1504Z")+".json")
-	}
-	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
-		return fmt.Errorf("rrcs walk: %w", err)
-	}
+// rrcsCollectOpts says how much of the gateway a collection reads.
+type rrcsCollectOpts struct {
+	// full adds the type lists, the licences and the object lists.
+	full bool
+	// properties asks every property of every listed object.
+	properties bool
+	// commands asks what is on the keys of the ports.
+	commands bool
+	// onlyPort, when set, limits the commands to the ports it accepts.
+	onlyPort func(node, port int, isInput bool) bool
+	// step receives the progress lines.
+	step func(format string, a ...any)
+}
 
+// rrcsCollect reads the gateway into a snapshot. A request that fails is
+// recorded with its error and does not stop the collection.
+func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts) (*rrcsWalkSnapshot, int, error) {
+	started := time.Now()
 	snap := &rrcsWalkSnapshot{
 		SchemaVersion: 1, Proto: rrcsProto, Target: client.Peer(),
 		StartedUTC: started.UTC().Format(time.RFC3339),
 		Objects:    map[string][]rrcsWalkObject{},
 	}
 	w := &rrcsWalker{ctx: ctx, client: client, snap: snap}
-	step := func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) }
+	step := opts.step
+	if step == nil {
+		step = func(string, ...any) {}
+	}
 
 	// 1. Status.
 	for _, m := range rrcsInfoMethods {
@@ -154,14 +145,18 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		snap.Status = append(snap.Status, rec)
 	}
 	if snap.Failed == len(rrcsInfoMethods) {
-		return fmt.Errorf("rrcs walk: no request was answered by %s", client.Peer())
+		return nil, 0, fmt.Errorf("rrcs: no request was answered by %s", client.Peer())
 	}
 	step("status: %d requests", len(snap.Status))
 
 	// 2. Lists. The ports and the nodes are kept for the later steps.
 	var ports, nodes []codec.Value
 	pools := map[[2]int32]int32{} // node, port → pool port amount
-	for _, m := range append(append([]string{}, rrcsDiscoverMethods...), rrcsWalkLists...) {
+	listMethods := append(append([]string{}, rrcsDiscoverMethods...), "GetAllCaps")
+	if opts.full {
+		listMethods = append(append([]string{}, rrcsDiscoverMethods...), rrcsWalkLists...)
+	}
+	for _, m := range listMethods {
 		rec, reply, ok := w.call(m)
 		snap.Lists = append(snap.Lists, rec)
 		if !ok {
@@ -185,6 +180,9 @@ func rrcsWalk(ctx context.Context, args []string) error {
 
 	// 3. Licence of each node (§8.18).
 	for _, n := range nodes {
+		if !opts.full {
+			break
+		}
 		if addr, ok := rrcsFieldInt(n, "NodeAddress"); ok {
 			rec, _, _ := w.call("GetLicenseInfo", codec.Int(addr))
 			snap.Licenses = append(snap.Licenses, rec)
@@ -200,7 +198,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	}
 	seen := map[int32]props{}
 	for _, typ := range rrcsObjectTypes {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || !opts.full {
 			break
 		}
 		rec, reply, ok := w.call("GetObjectList", codec.String(typ))
@@ -219,7 +217,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 			id, _ := rrcsFieldInt(it, "ObjectID")
 			name, _ := it.Field("LongName")
 			obj := rrcsWalkObject{ObjectID: id, LongName: name.Str}
-			if *skip != "properties" && *skip != "both" {
+			if opts.properties {
 				p, done := seen[id]
 				if !done {
 					prec, _, _ := w.call("GetObjectProperty", codec.Int(id), codec.String(""))
@@ -235,8 +233,9 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	}
 
 	// 5. What is configured on the keys and virtual functions of each
-	// port, in each direction the port has (§8.9.3).
-	if *skip != "commands" && *skip != "both" {
+	// port (§8.9.3). One request per port: a real RRCS 9.0 answers the
+	// same list for both directions of a port (381 of 381).
+	if opts.commands {
 		for _, p := range ports {
 			if ctx.Err() != nil {
 				break
@@ -244,34 +243,74 @@ func rrcsWalk(ctx context.Context, args []string) error {
 			net, _ := rrcsFieldInt(p, "Net")
 			node, _ := rrcsFieldInt(p, "Node")
 			port, _ := rrcsFieldInt(p, "Port")
-			for _, dir := range []struct {
-				member  string
-				isInput bool
-			}{{"Input", true}, {"Output", false}} {
-				if !rrcsFieldBool(p, dir.member) {
-					continue
-				}
-				// A real RRCS 9.0 answers "does not exist" to pool port 0
-				// on a port without pool ports; GetAllCaps gives -1 for
-				// those, and an amount for the others.
-				amount, known := pools[[2]int32{node, port}]
-				if !known || amount <= 0 {
-					rec, _, _ := w.call("GetPortsCommandLists",
-						codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(dir.isInput), codec.Int(-1))
-					snap.Commands = append(snap.Commands, rec)
-					continue
-				}
-				for pool := int32(0); pool < amount; pool++ {
-					rec, _, _ := w.call("GetPortsCommandLists",
-						codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(dir.isInput), codec.Int(pool))
-					snap.Commands = append(snap.Commands, rec)
-				}
+			isInput := !rrcsFieldBool(p, "Output")
+			if opts.onlyPort != nil && !opts.onlyPort(int(node), int(port), isInput) {
+				continue
+			}
+			// A real RRCS 9.0 answers "does not exist" to pool port 0
+			// on a port without pool ports; GetAllCaps gives -1 for
+			// those, and an amount for the others.
+			amount, known := pools[[2]int32{node, port}]
+			if !known || amount <= 0 {
+				rec, _, _ := w.call("GetPortsCommandLists",
+					codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(-1))
+				snap.Commands = append(snap.Commands, rec)
+				continue
+			}
+			for pool := int32(0); pool < amount; pool++ {
+				rec, _, _ := w.call("GetPortsCommandLists",
+					codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(pool))
+				snap.Commands = append(snap.Commands, rec)
 			}
 		}
 		step("commands: %d requests", len(snap.Commands))
 	}
 
 	snap.Complete = ctx.Err() == nil
+	return snap, len(ports), nil
+}
+
+// rrcsWalk reads everything the gateway offers for reading and writes it
+// to one JSON document.
+func rrcsWalk(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("rrcs walk", flag.ContinueOnError)
+	cf := newRRCSFlags(fs)
+	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
+	skip := fs.String("skip", "", "leave out a part: properties (one request per object) | commands (one request per port) | both")
+	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return rrcsValErr("walk", "want exactly one host[:port] argument")
+	}
+	if *skip != "" && *skip != "properties" && *skip != "commands" && *skip != "both" {
+		return rrcsValErr("walk", "--skip must be properties, commands or both")
+	}
+	client, _, closeFn, err := cf.open("walk", fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	defer closeFn()
+	started := time.Now()
+	if *out == "auto" {
+		*out = filepath.Join(snapshotDir(rrcsProto, hostOnly(fs.Arg(0))),
+			"walk-"+started.UTC().Format("20060102T1504Z")+".json")
+	}
+	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
+		return fmt.Errorf("rrcs walk: %w", err)
+	}
+
+	snap, portCount, err := rrcsCollect(ctx, client, rrcsCollectOpts{
+		full:       true,
+		properties: *skip != "properties" && *skip != "both",
+		commands:   *skip != "commands" && *skip != "both",
+		step:       func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) },
+	})
+	if err != nil {
+		return err
+	}
+	step := func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) }
+
 	doc, err := json.MarshalIndent(snap, "", " ")
 	if err != nil {
 		return err
@@ -300,31 +339,40 @@ func rrcsWalk(ctx context.Context, args []string) error {
 			fmt.Printf("%-20s %d\n", typ, len(objs))
 		}
 	}
-	fmt.Printf("%-20s %d\n", "ports", len(ports))
+	fmt.Printf("%-20s %d\n", "ports", portCount)
 	fmt.Printf("%-20s %d\n", "command lists", len(snap.Commands))
 	fmt.Printf("%-20s %d of %d\n", "failed requests", snap.Failed, snap.Requests)
 	fmt.Printf("%-20s %s\n", "snapshot", *out)
 	return nil
 }
 
-// rrcsGet reads the properties of one object, or one of them.
+// rrcsGet reads the properties of one thing: an object by its ID, asked
+// to the gateway, or anything by its path, read from the lists.
 func rrcsGet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("rrcs get", flag.ContinueOnError)
-	cf := newRRCSFlags(fs)
-	id := fs.Int64("id", 0, "object ID, as the lists print it (required)")
-	prop := fs.String("prop", "", "property name; empty = every property of the object")
-	names := fs.String("names", "no", "yes = list the property names the object supports instead of the values")
+	src := newRRCSSource(fs)
+	cf := src.cf
+	id := fs.Int64("id", 0, "object ID, as the lists print it: GetObjectProperty")
+	path := fs.String("path", "", "path, as list and tree print it (e.g. net.1.node.61.port.1026, group.109136507): the properties the lists hold")
+	prop := fs.String("prop", "", "property name; empty = every property")
+	names := fs.String("names", "no", "with --id: yes = list the property names the object supports instead of the values")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
-	if fs.NArg() != 1 {
-		return rrcsValErr("get", "want exactly one host[:port] argument")
-	}
-	if *id == 0 || *id < -1<<31 || *id > 1<<31-1 {
-		return rrcsValErr("get", "--id must be a 32-bit object ID")
-	}
 	if *names != "yes" && *names != "no" {
 		return rrcsValErr("get", "--names must be yes or no")
+	}
+	if (*id == 0) == (*path == "") {
+		return rrcsValErr("get", "want --id or --path, one of them")
+	}
+	if *path != "" {
+		return rrcsGetPath(ctx, src, fs.Args(), *path, *prop)
+	}
+	if fs.NArg() != 1 || *src.from != "" {
+		return rrcsValErr("get", "--id asks a gateway: want exactly one host[:port] argument and no --from")
+	}
+	if *id < -1<<31 || *id > 1<<31-1 {
+		return rrcsValErr("get", "--id must be a 32-bit object ID")
 	}
 	client, _, closeFn, err := cf.open("get", fs.Arg(0))
 	if err != nil {

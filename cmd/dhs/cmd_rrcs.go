@@ -58,6 +58,10 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsWalk(ctx, args[1:])
 	case "get":
 		return rrcsGet(ctx, args[1:])
+	case "list":
+		return rrcsList(ctx, args[1:])
+	case "tree":
+		return rrcsTree(ctx, args[1:])
 	}
 	return rrcsValErr(args[0], "unknown verb (run 'dhs consumer rrcs --help')")
 }
@@ -80,8 +84,14 @@ VERBS
             type lists, GetLicenseInfo per node, GetObjectList per object
             type, GetObjectProperty of every object, GetPortsCommandLists
             of every port (what is on its keys) — read only
-  get       GetObjectProperty of one object (--id), one property (--prop) or
-            all; --names yes = GetObjectPropertyNames
+  tree      the system as a tree: node, client cards, ports, what is on
+            each key; conferences, groups, IFBs with members, logic sources
+  list      one table: nodes | cards | ports | panels | keys | conferences |
+            groups | ifbs | logic; --node, --type, --match select rows
+  get       the properties of one thing: --path (as tree and list print it),
+            or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
+
+  tree, list and get --path also read a snapshot written by walk: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C
 
