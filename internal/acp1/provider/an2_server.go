@@ -46,7 +46,9 @@ func (s *server) ServeAN2(ctx context.Context, addr string) error {
 	s.logger.Info("acp1 provider an2 listening", slog.String("addr", ln.Addr().String()))
 
 	reg := newAN2SessionRegistry(s.logger)
+	s.mu.Lock()
 	s.an2Registry = reg
+	s.mu.Unlock()
 
 	go func() {
 		<-ctx.Done()
@@ -246,7 +248,10 @@ func (s *server) handleAN2ACP1Frame(f *an2.AN2Frame, sess *an2Session) {
 // Called from the UDP-side broadcastAnnounce bridge so an announce
 // produced via UDP set still reaches AN2 consumers.
 func (s *server) broadcastAN2Announce(acp1Body []byte) {
-	if s.an2Registry == nil {
+	s.mu.Lock()
+	reg := s.an2Registry
+	s.mu.Unlock()
+	if reg == nil {
 		return
 	}
 	out := &an2.AN2Frame{
@@ -260,7 +265,7 @@ func (s *server) broadcastAN2Announce(acp1Body []byte) {
 	// below AN2 MaxPayload (65536), and out is non-nil — the only two
 	// EncodeAN2Frame failure modes.
 	b, _ := an2.EncodeAN2Frame(out)
-	s.an2Registry.broadcastACP1(b)
+	reg.broadcastACP1(b)
 }
 
 // ---- helpers -----------------------------------------------------------
