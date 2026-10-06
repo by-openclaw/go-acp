@@ -156,8 +156,15 @@ row 33 of §5 is ✅.
 sent since the service started, 0 decode errors, 0 NAKs. Row 22 of §3
 is ✅ on a current release, not "prior live runs".
 
-**Not proven by a third party:** a write made by the controller to our
-producer (it needs an operator action in Cerebrum).
+**A write made by the controller to our producer:** made from Cerebrum
+by the operator on 2026-10-06 and witnessed by them. It is the one row
+of this page with no automated oracle: it takes an action in the
+Cerebrum UI.
+
+**ACP2 is DONE against ADR-0025** on the released v0.40.2: the fifteen
+consumer verbs on the real Neuron and the producer under Cerebrum,
+each play twice with the second run changing nothing (2026-10-06;
+slot 1: 49 812 objects in 56 s; producer 0 decode errors, 0 NAKs).
 
 **Device behaviour noted:** "Find my Neuron", once switched on, refuses
 writes for about fifteen seconds (`no access`) — the Neuron's own guard.
