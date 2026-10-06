@@ -83,6 +83,19 @@ type rrcsFlags struct {
 	timeout time.Duration
 	output  string
 	capture string
+
+	// note writes one line of the verb's own account of the run into
+	// the capture, so the file explains itself without the console.
+	note func(text string)
+}
+
+// say prints a diagnostic on stderr and keeps it in the capture.
+func (c *rrcsFlags) say(format string, args ...any) {
+	text := fmt.Sprintf(format, args...)
+	fmt.Fprintln(os.Stderr, text)
+	if c.note != nil {
+		c.note(text)
+	}
 }
 
 func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
@@ -114,6 +127,11 @@ func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), err
 		}
 		rec.WriteMeta(captureMeta(rrcsProto, addr, verb))
 		tap = func(dir wiretrace.Direction, _ string, doc []byte) { rec.Record(rrcsProto, string(dir), doc) }
+		c.note = func(text string) {
+			rec.WriteMeta(struct {
+				Note string `json:"note"`
+			}{text})
+		}
 		closeFn = func() { _ = rec.Close() }
 	}
 	client, err := rrcs.NewClient(rrcs.Config{Addr: addr, Timeout: c.timeout, Tap: tap})
@@ -286,7 +304,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		Path: *path,
 		Tap:  tap,
 		OnReject: func(remote string, err error) {
-			fmt.Fprintf(os.Stderr, "rrcs watch: unreadable request from %s: %v\n", remote, err)
+			cf.say("rrcs watch: unreadable request from %s: %v", remote, err)
 		},
 		OnEvent: func(e rrcs.Event) {
 			if e.Method == rrcs.MethodGetAlive && *alive != "show" {
@@ -325,7 +343,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	if _, err := client.Register(ctx, reg); err != nil {
 		return fmt.Errorf("rrcs watch: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "rrcs watch: registered at %s — events go to port %d path %s; Ctrl+C to stop\n",
+	cf.say("rrcs watch: registered at %s — events go to port %d path %s; Ctrl+C to stop",
 		client.Peer(), reg.Port, rrcs.NormalizePath(reg.Path))
 
 	var tick <-chan time.Time
@@ -351,11 +369,11 @@ loop:
 			switch {
 			case ctx.Err() != nil:
 			case err != nil:
-				fmt.Fprintf(os.Stderr, "rrcs watch: registration check: %v\n", err)
+				cf.say("rrcs watch: registration check: %v", err)
 			case !ok:
-				fmt.Fprintln(os.Stderr, "rrcs watch: RRCS dropped the registration — registering again")
+				cf.say("rrcs watch: RRCS dropped the registration — registering again")
 				if _, err := client.Register(ctx, reg); err != nil {
-					fmt.Fprintf(os.Stderr, "rrcs watch: %v\n", err)
+					cf.say("rrcs watch: %v", err)
 				} else {
 					registrations++
 				}
@@ -364,12 +382,16 @@ loop:
 	}
 
 	// The context is over; the goodbye needs one of its own.
+	cf.say("rrcs watch: stopping — unregistering (up to %s)", cf.timeout)
 	bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
+	start := time.Now()
 	if _, err := client.Unregister(bye, reg); err != nil {
-		fmt.Fprintf(os.Stderr, "rrcs watch: unregister: %v\n", err)
+		cf.say("rrcs watch: unregister failed after %s: %v", time.Since(start).Round(time.Millisecond), err)
+	} else {
+		cf.say("rrcs watch: unregistered in %s", time.Since(start).Round(time.Millisecond))
 	}
-	fmt.Fprintf(os.Stderr, "rrcs watch: %d events, %d GetAlive answered, %d registration(s)\n",
+	cf.say("rrcs watch: %d events, %d GetAlive answered, %d registration(s)",
 		listener.Events(), listener.Alives(), registrations)
 	return runErr
 }

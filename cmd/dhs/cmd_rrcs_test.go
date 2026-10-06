@@ -326,9 +326,17 @@ func TestRRCSWatchText(t *testing.T) {
 		}
 		return call.Params[0], true
 	})
+	capture := filepath.Join(t.TempDir(), "watch.jsonl")
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--capture", capture})
 	})
+	// The capture tells the run on its own: registered, unregistered, counts.
+	raw, _ := os.ReadFile(capture)
+	for _, want := range []string{`"note":"rrcs watch: registered at`, `"note":"rrcs watch: unregistered in`, `1 events, 1 GetAlive answered, 1 registration(s)`} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("capture lacks %q", want)
+		}
+	}
 	if err != nil || !strings.Contains(out, "ConfigurationChange") || strings.Contains(out, "GetAlive") {
 		t.Errorf("%v\n%s", err, out)
 	}
