@@ -94,8 +94,10 @@ VERBS
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
   list      one table: nodes | cards | ports | panels | keys | streams |
-            conferences | groups | ifbs | logic; --node, --type, --match
-            select rows. streams = the AES67 receivers and senders
+            sources | dests | xp | conferences | groups | ifbs | logic;
+            --node, --type, --match select rows. streams = the AES67
+            receivers and senders; sources and dests = the two axes of the
+            crosspoint matrix; xp = the crosspoints active now
   get       the properties of one thing: --path (as tree and list print it),
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 

@@ -3611,8 +3611,10 @@ VERBS
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
   list      one table: nodes | cards | ports | panels | keys | streams |
-            conferences | groups | ifbs | logic; --node, --type, --match
-            select rows. streams = the AES67 receivers and senders
+            sources | dests | xp | conferences | groups | ifbs | logic;
+            --node, --type, --match select rows. streams = the AES67
+            receivers and senders; sources and dests = the two axes of the
+            crosspoint matrix; xp = the crosspoints active now
   get       the properties of one thing: --path (as tree and list print it),
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 
@@ -3712,7 +3714,7 @@ Usage of rrcs get:
 
 ========== consumer/rrcs/list ==========
 $ dhs consumer rrcs list --help
-Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|conferences|groups|ifbs|logic> <host>[:port] | --from FILE [flags]
+Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|dests|xp|conferences|groups|ifbs|logic> <host>[:port] | --from FILE [flags]
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -from string

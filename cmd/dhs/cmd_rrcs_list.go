@@ -14,7 +14,7 @@ import (
 
 // rrcsListKinds are what `list` prints.
 var rrcsListKinds = []string{
-	"nodes", "cards", "ports", "panels", "keys", "streams", "conferences", "groups", "ifbs", "logic",
+	"nodes", "cards", "ports", "panels", "keys", "streams", "sources", "dests", "xp", "conferences", "groups", "ifbs", "logic",
 }
 
 // rrcsSource is where a verb takes the system from: a gateway, or a
@@ -215,6 +215,30 @@ func rrcsList(ctx context.Context, args []string) error {
 			}
 		}
 		rows = out
+	case "sources", "dests":
+		// The two axes of the crosspoint matrix: every port that has an
+		// input is a source, every port that has an output a destination.
+		header = []string{"#", "PATH", "TYPE", "LABEL", "OBJECT ID", "LONG NAME"}
+		var out []*rrcsPort
+		for _, p := range m.Ports {
+			if !flt.port(p) || (kind == "sources" && !p.Input) || (kind == "dests" && !p.Output) {
+				continue
+			}
+			out = append(out, p)
+			cells = append(cells, []string{strconv.Itoa(len(out)), p.Path, p.Type, p.Label, strconv.Itoa(p.ObjectID), p.LongName})
+		}
+		rows = out
+	case "xp":
+		header = []string{"SOURCE", "SRC LABEL", "DESTINATION", "DST LABEL"}
+		out := []rrcsXp{}
+		for _, x := range m.Xps {
+			if (*flt.node == 0 || x.srcNode == *flt.node || x.dstNode == *flt.node) &&
+				rrcsHas(x.Source+" "+x.SourceLabel+" "+x.Destination+" "+x.DestinationLabel, *flt.match) {
+				out = append(out, x)
+				cells = append(cells, []string{x.Source, x.SourceLabel, x.Destination, x.DestinationLabel})
+			}
+		}
+		rows = out
 	case "streams":
 		header = []string{"PATH", "ROLE", "LABEL", "MODE", "MULTICAST", "MULTICAST 2", "SOURCE", "CH", "BITS", "PTIME", "PT"}
 		var out []*rrcsStream
@@ -281,6 +305,19 @@ func rrcsList(ctx context.Context, args []string) error {
 		_, _ = fmt.Fprintln(tw, strings.Join(c, "\t"))
 	}
 	_ = tw.Flush()
+	if kind == "xp" {
+		sources, dests := 0, 0
+		for _, p := range m.Ports {
+			if p.Input {
+				sources++
+			}
+			if p.Output {
+				dests++
+			}
+		}
+		fmt.Printf("%d active crosspoints, of %d sources x %d destinations\n", len(cells), sources, dests)
+		return nil
+	}
 	fmt.Printf("%d %s\n", len(cells), kind)
 	return nil
 }

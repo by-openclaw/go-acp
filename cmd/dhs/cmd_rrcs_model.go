@@ -94,6 +94,16 @@ type rrcsObject struct {
 	Raw      map[string]any  `json:"-"`
 }
 
+// rrcsXp is one active crosspoint: a source heard at a destination.
+type rrcsXp struct {
+	Source           string `json:"source"`
+	SourceLabel      string `json:"source_label,omitempty"`
+	Destination      string `json:"destination"`
+	DestinationLabel string `json:"destination_label,omitempty"`
+
+	srcNode, dstNode int
+}
+
 type rrcsModel struct {
 	Target  string
 	Status  map[string]string
@@ -102,6 +112,7 @@ type rrcsModel struct {
 	Ports   []*rrcsPort
 	Keys    []*rrcsKey
 	Objects map[string][]*rrcsObject // conference, group, ifb, logic
+	Xps     []rrcsXp
 
 	byAddr map[[2]int][]*rrcsPort
 }
@@ -264,6 +275,26 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 			return m.Cards[i].Node < m.Cards[j].Node
 		}
 		return m.Cards[i].Bay < m.Cards[j].Bay
+	})
+
+	// §8.1 GetAllActiveXps: "XP#N": [source net, node, port, destination
+	// net, node, port].
+	for name, v := range jMap(lists["GetAllActiveXps"]) {
+		row := jList(v)
+		if !strings.HasPrefix(name, "XP#") || len(row) < 6 {
+			continue
+		}
+		n := func(i int) int { f, _ := row[i].(float64); return int(f) }
+		x := rrcsXp{srcNode: n(1), dstNode: n(4)}
+		x.Source, x.SourceLabel = m.ref(n(0), n(1), n(2), true)
+		x.Destination, x.DestinationLabel = m.ref(n(3), n(4), n(5), false)
+		m.Xps = append(m.Xps, x)
+	}
+	sort.Slice(m.Xps, func(i, j int) bool {
+		if m.Xps[i].Destination != m.Xps[j].Destination {
+			return m.Xps[i].Destination < m.Xps[j].Destination
+		}
+		return m.Xps[i].Source < m.Xps[j].Source
 	})
 
 	m.buildObjects(lists, net)

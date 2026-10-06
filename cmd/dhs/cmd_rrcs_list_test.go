@@ -91,6 +91,10 @@ func rrcsTreeAnswer(call codec.Call) (codec.Value, bool) {
 		return codec.Array(k, codec.Array(st(mem("ObjectID", codec.Int(400)), mem("Label", codec.String("Com A1")),
 			mem("LongName", codec.String("IFB one")), mem("Input", addr(61, 7, true)), mem("Output", addr(61, 7, false)),
 			mem("MixMinus", addr(0, 0, false))))), true
+	case "GetAllActiveXps":
+		return st(mem("ErrorCode", codec.Int(0)), mem("TransKey", k), mem("XP Count", codec.Int(2)),
+			mem("XP#1", codec.Array(codec.Int(1), codec.Int(61), codec.Int(1026), codec.Int(1), codec.Int(61), codec.Int(7))),
+			mem("XP#2", codec.Array(codec.Int(1), codec.Int(61), codec.Int(7), codec.Int(1), codec.Int(61), codec.Int(1026)))), true
 	case "GetAllLogicSources_v2":
 		return st(mem("ErrorCode", codec.Int(0)), mem("TransKey", k), mem("LogicSourceCount", codec.Int(1)),
 			mem("LogicSource#1", codec.Array(codec.String("Cabine On-Air"), codec.String("On-Air"), codec.Int(500), codec.Bool(true)))), true
@@ -204,6 +208,16 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 		"receiver  CODEC  NMOS    0.0.0.0:5004    0.0.0.0:5004  10.0.0.9  1   24    1000   97",
 		"sender    CODEC  9 ")
 	rrcsWant(t, rrcsRun(t, "list", "streams", "--from", snap, "--type", "output"), "1 streams")
+	rrcsWant(t, rrcsRun(t, "list", "sources", "--from", snap), "1  net.1.node.61.port.7.in", "3 sources")
+	rrcsWant(t, rrcsRun(t, "list", "dests", "--from", snap), "net.1.node.61.port.7.out", "3 dests")
+	rrcsWant(t, rrcsRun(t, "list", "xp", "--from", snap),
+		"net.1.node.61.port.7.in  I.-7       net.1.node.61.port.1026   NOC2",
+		"net.1.node.61.port.1026  NOC2       net.1.node.61.port.7.out  O.-7",
+		"2 active crosspoints, of 3 sources x 3 destinations")
+	rrcsWant(t, rrcsRun(t, "list", "xp", "--from", snap, "--match", "O.-7"), "1 active crosspoints")
+	if got := strings.TrimSpace(rrcsRun(t, "list", "xp", "--from", snap, "--node", "99", "--output", "json")); got != "[]" {
+		t.Errorf("no crosspoint as JSON: %s", got)
+	}
 	rrcsWant(t, rrcsRun(t, "list", "conferences", "--from", snap), "conference.300", "net.1.node.61.port.1041 (CODEC) talk+listen")
 	rrcsWant(t, rrcsRun(t, "list", "groups", "--from", snap), "group.200", "net.1.node.61.port.7.out (O.-7), net.1.node.99.port.1.out")
 	rrcsWant(t, rrcsRun(t, "list", "ifbs", "--from", snap), "ifb.400", "input", "output")
