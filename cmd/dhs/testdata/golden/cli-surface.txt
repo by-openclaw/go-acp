@@ -29,7 +29,7 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
-  Verbs (rrcs):                info, discover, watch
+  Verbs (rrcs):                info, discover, walk, get, watch
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3603,6 +3603,12 @@ VERBS
   discover  GetAllNodes, GetAllClientCards, GetAllDevices, GetAllPorts,
             GetAllConferences, GetAllGroups, GetAllIFBs, GetAllLogicSources_v2,
             GetAllGpIns, GetAllGpOuts, GetAllActiveXps — read only
+  walk      everything readable, into one JSON snapshot: info + discover +
+            type lists, GetLicenseInfo per node, GetObjectList per object
+            type, GetObjectProperty of every object, GetPortsCommandLists
+            of every port (what is on its keys) — read only
+  get       GetObjectProperty of one object (--id), one property (--prop) or
+            all; --names yes = GetObjectPropertyNames
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C
 
@@ -3643,6 +3649,36 @@ Usage of rrcs watch:
     	output: text | json (default "text")
   -path string
     	URL path RRCS posts its events to (default "/RPC2")
+  -timeout duration
+    	per-request timeout (default 10s)
+
+========== consumer/rrcs/walk ==========
+$ dhs consumer rrcs walk --help
+Usage of rrcs walk:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -out string
+    	snapshot FILE the walk is written to. Literal "auto" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028) (default "auto")
+  -output string
+    	output: text | json (default "text")
+  -skip string
+    	leave out a part: properties (one request per object) | commands (one or two requests per port) | both
+  -timeout duration
+    	per-request timeout (default 10s)
+
+========== consumer/rrcs/get ==========
+$ dhs consumer rrcs get --help
+Usage of rrcs get:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -id int
+    	object ID, as the lists print it (required)
+  -names string
+    	yes = list the property names the object supports instead of the values (default "no")
+  -output string
+    	output: text | json (default "text")
+  -prop string
+    	property name; empty = every property of the object
   -timeout duration
     	per-request timeout (default 10s)
 

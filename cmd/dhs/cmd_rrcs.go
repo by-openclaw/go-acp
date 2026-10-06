@@ -54,6 +54,10 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsQuery(ctx, "discover", rrcsDiscoverMethods, args[1:])
 	case "watch":
 		return rrcsWatch(ctx, args[1:])
+	case "walk":
+		return rrcsWalk(ctx, args[1:])
+	case "get":
+		return rrcsGet(ctx, args[1:])
 	}
 	return rrcsValErr(args[0], "unknown verb (run 'dhs consumer rrcs --help')")
 }
@@ -72,6 +76,12 @@ VERBS
   discover  GetAllNodes, GetAllClientCards, GetAllDevices, GetAllPorts,
             GetAllConferences, GetAllGroups, GetAllIFBs, GetAllLogicSources_v2,
             GetAllGpIns, GetAllGpOuts, GetAllActiveXps — read only
+  walk      everything readable, into one JSON snapshot: info + discover +
+            type lists, GetLicenseInfo per node, GetObjectList per object
+            type, GetObjectProperty of every object, GetPortsCommandLists
+            of every port (what is on its keys) — read only
+  get       GetObjectProperty of one object (--id), one property (--prop) or
+            all; --names yes = GetObjectPropertyNames
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C
 
