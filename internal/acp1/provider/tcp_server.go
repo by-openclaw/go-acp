@@ -119,10 +119,7 @@ func (s *server) ServeTCP(ctx context.Context, addr string) error {
 func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip string, reg *tcpSessionRegistry) {
 	send := make(chan []byte, tcpSendChanCap)
 	sess := reg.register(ip, conn, send)
-	defer func() {
-		_ = conn.Close()
-		reg.remove(ip, sess.id)
-	}()
+	defer func() { _ = conn.Close() }()
 
 	// Writer
 	writerDone := make(chan struct{})
@@ -164,6 +161,11 @@ func (s *server) serveTCPSession(ctx context.Context, conn *net.TCPConn, ip stri
 		}
 	}
 
+	// Out of the registry first: the announce fan-out sends on every
+	// registered session's channel, and a send on a closed channel is a
+	// panic. remove takes the lock the fan-out holds while it sends, so
+	// once it returns no fan-out can still reach this channel.
+	reg.remove(ip, sess.id)
 	close(send)
 	<-writerDone
 }

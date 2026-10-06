@@ -89,10 +89,7 @@ func (s *server) ServeAN2(ctx context.Context, addr string) error {
 func (s *server) serveAN2Session(ctx context.Context, conn *net.TCPConn, ip string, reg *an2SessionRegistry) {
 	send := make(chan []byte, tcpSendChanCap)
 	sess := reg.register(ip, conn, send)
-	defer func() {
-		_ = conn.Close()
-		reg.remove(ip, sess.id)
-	}()
+	defer func() { _ = conn.Close() }()
 
 	writerDone := make(chan struct{})
 	go func() {
@@ -127,6 +124,9 @@ func (s *server) serveAN2Session(ctx context.Context, conn *net.TCPConn, ip stri
 		}
 	}
 
+	// Out of the registry first, as in serveTCPSession: the fan-out
+	// must not find a session whose channel is closed.
+	reg.remove(ip, sess.id)
 	close(send)
 	<-writerDone
 }
