@@ -268,3 +268,42 @@ func TestRRCSWriteGuard(t *testing.T) {
 	// The dry runs need no guard.
 	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run"), "would apply 1,")
 }
+
+// An alias is read with a request of its own; set shows it and reads it
+// back.
+func TestRRCSSetAlias(t *testing.T) {
+	alias := "OLD"
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		k := call.Params[0]
+		switch call.Method {
+		case "GetPortAlias":
+			return codec.Array(k, codec.Int(0), codec.String(alias)), true
+		case "GetPortLabel":
+			return codec.Array(k, codec.Int(0), codec.String("LBL")), true
+		case "GetInputGain", "GetOutputGain", "GetAllKeyConfiguration":
+			return codec.Array(k, codec.Int(0), codec.Int(0)), true
+		case "ConfigurationChangeEx":
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			if a, ok := sp.Field("Alias"); ok {
+				alias = a.Str
+			}
+			return k, true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	out := rrcsRun(t, "set", f.addr(), "--path", "net.1.node.61.port.1026", "--prop", "Alias=TEST1", "--apply", "yes", "--write-to", f.addr())
+	rrcsWant(t, out, "Alias                              OLD", "done: every wanted value reads back")
+	// Emptying it, the way a shell passes an empty value.
+	rrcsWant(t, rrcsRun(t, "set", f.addr(), "--path", "net.1.node.61.port.1026", "--prop", "Alias=", "--apply", "yes", "--write-to", f.addr()),
+		"done: every wanted value reads back")
+	// Only the addressed port is asked for its values.
+	asked := 0
+	for _, m := range f.methods() {
+		if m == "GetPortAlias" {
+			asked++
+		}
+	}
+	if asked != 4 {
+		t.Errorf("GetPortAlias sent %d times, want 4 (before and after, twice)", asked)
+	}
+}

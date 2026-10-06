@@ -65,6 +65,10 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsSet(ctx, args[1:])
 	case "export":
 		return rrcsExport(ctx, args[1:])
+	case "call":
+		return rrcsCall(ctx, args[1:])
+	case "xp":
+		return rrcsXpVerb(ctx, args[1:])
 	case "import":
 		return rrcsImport(ctx, args[1:])
 	case "tree":
@@ -94,7 +98,8 @@ VERBS
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
   list      one table: nodes | cards | ports | panels | keys | streams |
-            sources | dests | xp | conferences | groups | ifbs | logic;
+            sources | dests | xp | conferences | groups | ifbs | logic |
+            users | patches | logicdests (those three from a walk snapshot);
             --node, --type, --match select rows. streams = the AES67
             receivers and senders; sources and dests = the two axes of the
             crosspoint matrix; xp = the crosspoints active now
@@ -110,6 +115,11 @@ VERBS
   import    WRITES: every writable value of an export file that differs
             from the live system (ConfigurationChangeEx): --file, --path,
             --dry-run to compare and send nothing
+
+  xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
+            --state on|off (SetXp, KillXp): --src PATH --dst PATH
+  call      any method of the specification, parameters as JSON (--arg);
+            a method that is not Get… or Is… WRITES and needs --write-to
 
   tree, list, export and get --path also read a snapshot written by walk:
   --from FILE

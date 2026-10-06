@@ -30,7 +30,7 @@ CONSUMER (outbound — connect to a device, query / control it)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
   Verbs (rrcs):                info, discover, walk, tree, list, get, set,
-                               export, import, watch
+                               export, import, xp, call, watch
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3611,7 +3611,8 @@ VERBS
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
   list      one table: nodes | cards | ports | panels | keys | streams |
-            sources | dests | xp | conferences | groups | ifbs | logic;
+            sources | dests | xp | conferences | groups | ifbs | logic |
+            users | patches | logicdests (those three from a walk snapshot);
             --node, --type, --match select rows. streams = the AES67
             receivers and senders; sources and dests = the two axes of the
             crosspoint matrix; xp = the crosspoints active now
@@ -3627,6 +3628,11 @@ VERBS
   import    WRITES: every writable value of an export file that differs
             from the live system (ConfigurationChangeEx): --file, --path,
             --dry-run to compare and send nothing
+
+  xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
+            --state on|off (SetXp, KillXp): --src PATH --dst PATH
+  call      any method of the specification, parameters as JSON (--arg);
+            a method that is not Get… or Is… WRITES and needs --write-to
 
   tree, list, export and get --path also read a snapshot written by walk:
   --from FILE
@@ -3714,7 +3720,7 @@ Usage of rrcs get:
 
 ========== consumer/rrcs/list ==========
 $ dhs consumer rrcs list --help
-Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|dests|xp|conferences|groups|ifbs|logic> <host>[:port] | --from FILE [flags]
+Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|dests|xp|conferences|groups|ifbs|logic|users|patches|logicdests> <host>[:port] | --from FILE [flags]
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -from string
@@ -3805,6 +3811,54 @@ skipped and listed.
     	output: text | json (default "text")
   -path value
     	apply only the rows whose path contains this text; comma-separated or repeated
+  -timeout duration
+    	per-request timeout (default 10s)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+
+========== consumer/rrcs/call ==========
+$ dhs consumer rrcs call --help
+Usage: dhs consumer rrcs call <host>[:port] METHOD [--arg JSON ...] [flags]
+
+Sends one request of the RRCS specification and prints the answer as
+received. The transaction key is added in front. Each --arg is one
+parameter, written as JSON, in the order of the specification:
+  --arg 1  --arg true  --arg '"text"'  --arg '{"Node":66,"Port":1045}'  --arg '[1,2]'
+
+On Windows PowerShell write the parameters in a file and use --args-file:
+the shell removes the double quotes of JSON given on the command line.
+
+A method whose name starts with Get or Is only reads. Any other method
+changes something and is refused without --write-to HOST.
+
+  -arg value
+    	one parameter as JSON; repeat in the order of the specification
+  -args-file string
+    	read the parameters from this file instead of --arg: one JSON array, each element one parameter. Spares the quoting of JSON on a command line (Windows PowerShell removes the double quotes)
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	yes = put the transaction key in front, as every method but GetAlive has it | no (default "yes")
+  -output string
+    	output: text | json (default "text")
+  -timeout duration
+    	per-request timeout (default 10s)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+
+========== consumer/rrcs/xp ==========
+$ dhs consumer rrcs xp --help
+Usage of rrcs xp:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -dst string
+    	destination: the path of a port that has an output, as list dests prints it
+  -output string
+    	output: text | json (default "text")
+  -src string
+    	source: the path of a port that has an input, as list sources prints it
+  -state string
+    	on = SetXp | off = KillXp | empty = only read the state (GetXpStatus)
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string

@@ -143,7 +143,14 @@ func rrcsChangeFor(path string) (*rrcsChange, error) {
 
 // rrcsCurrent reads what the gateway holds now for the object of a path.
 func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string) (map[string]any, error) {
-	snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{})
+	// For a port, its label, alias and gains are read too: they come
+	// from requests of their own and may be what is being set.
+	opts := rrcsCollectOpts{}
+	if node, port, _, isPort := rrcsPortOfPath(path); isPort {
+		opts.values = true
+		opts.onlyPort = func(n, p int, _ bool) bool { return n == node && p == port }
+	}
+	snap, _, err := rrcsCollect(ctx, client, opts)
 	if err != nil {
 		return nil, err
 	}

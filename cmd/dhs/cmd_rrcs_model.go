@@ -305,6 +305,23 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 	m.buildObjects(lists, net)
 	m.buildKeys(jList(snap["commands"]))
 	m.buildPortValues(jList(snap["port_values"]))
+	// What walk listed by object type and the model has no table for:
+	// users, audio patches, logic destinations.
+	for typ, kind := range map[string]string{"user": "user", "audiopatch": "patch", "logic-destination": "logicdest"} {
+		for _, it := range jList(jMap(snap["objects"])[typ]) {
+			raw := jMap(it)
+			props := jMap(raw["properties"])
+			if props == nil {
+				props = map[string]any{}
+			}
+			id := jInt(raw, "object_id")
+			props["ObjectID"], props["LongName"] = float64(id), jStr(raw, "long_name")
+			m.Objects[kind] = append(m.Objects[kind], &rrcsObject{Path: kind + "." + strconv.Itoa(id), Kind: kind,
+				ObjectID: id, LongName: jStr(raw, "long_name"), Label: jStr(props, "Label"), Raw: props})
+		}
+		objs := m.Objects[kind]
+		sort.Slice(objs, func(i, j int) bool { return objs[i].LongName < objs[j].LongName })
+	}
 	return m
 }
 

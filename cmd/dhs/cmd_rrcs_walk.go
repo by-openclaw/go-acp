@@ -67,6 +67,10 @@ type rrcsWalkSnapshot struct {
 	// PortValues holds, per port, what only a request per port gives:
 	// label, alias, input gain, output gain (§8.3, §8.4, §8.5).
 	PortValues []rrcsWalkCall `json:"port_values"`
+	// KeyConfigs holds GetAllKeyConfiguration of each port that has keys
+	// (§8.8): the mode and labelling of every key, as another control
+	// system polls it on a real RRCS 9.0.
+	KeyConfigs []rrcsWalkCall `json:"key_configs"`
 	// NotOnline counts the requests a port answered with "not online"
 	// (error 24): expected for a port that is unplugged, not a failure.
 	NotOnline int `json:"not_online"`
@@ -309,8 +313,12 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 				rec, _, _ = w.call("GetOutputGain", codec.Int(net), codec.Int(node), codec.Int(port))
 				snap.PortValues = append(snap.PortValues, rec)
 			}
+			if keys, _ := rrcsFieldInt(p, "KeyCount"); keys > 0 {
+				rec, _, _ = w.call("GetAllKeyConfiguration", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput))
+				snap.KeyConfigs = append(snap.KeyConfigs, rec)
+			}
 		}
-		step("port values: %d requests, %d on ports not online", len(snap.PortValues), snap.NotOnline)
+		step("port values: %d requests, key configurations: %d, on ports not online: %d", len(snap.PortValues), len(snap.KeyConfigs), snap.NotOnline)
 	}
 
 	snap.Complete = ctx.Err() == nil

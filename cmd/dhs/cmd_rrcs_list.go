@@ -15,6 +15,7 @@ import (
 // rrcsListKinds are what `list` prints.
 var rrcsListKinds = []string{
 	"nodes", "cards", "ports", "panels", "keys", "streams", "sources", "dests", "xp", "conferences", "groups", "ifbs", "logic",
+	"users", "patches", "logicdests",
 }
 
 // rrcsSource is where a verb takes the system from: a gateway, or a
@@ -269,7 +270,8 @@ func rrcsList(ctx context.Context, args []string) error {
 		}
 		rows = out
 	default:
-		objKind := map[string]string{"conferences": "conference", "groups": "group", "ifbs": "ifb", "logic": "logic"}[kind]
+		objKind := map[string]string{"conferences": "conference", "groups": "group", "ifbs": "ifb", "logic": "logic",
+			"users": "user", "patches": "patch", "logicdests": "logicdest"}[kind]
 		header = []string{"PATH", "LABEL", "LONG NAME", "MEMBERS"}
 		if objKind == "logic" {
 			header[3] = "STATE"

@@ -112,7 +112,7 @@ var perProtocolVerbs = map[string][]string{
 		"events", "export", "audit", "probe", "registers",
 	},
 	"ccm": {"walk", "export"},
-	"rrcs": {"info", "discover", "watch", "walk", "get", "list", "tree", "set", "export", "import"},
+	"rrcs": {"info", "discover", "watch", "walk", "get", "list", "tree", "set", "export", "import", "call", "xp"},
 }
 
 // producerVerbs freezes the producer role. The producer is selectable at build
