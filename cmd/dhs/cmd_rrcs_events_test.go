@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -213,5 +215,90 @@ func TestRRCSExportMeta(t *testing.T) {
 	ptime := rows["net.1.node.61.port.7.out.PortAes67Output.PacketTime"]
 	if ptime == nil || ptime[col["unit"]] != "us" || ptime[col["enum_items"]] != "125|250|333|1000|1333" {
 		t.Errorf("packet time row %v", ptime)
+	}
+}
+
+// The uniform logging contract: the events of watch reach the local file
+// in the chosen format and the remote syslog server as RFC 5424, and the
+// operational lines go with them.
+func TestRRCSWatchLogsToSinks(t *testing.T) {
+	udp, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = udp.Close() }()
+	datagrams := make(chan string, 16)
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, _, err := udp.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+			datagrams <- string(buf[:n])
+		}
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		if call.Method == "RegisterForAllEvents" {
+			url := "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int)) + call.Params[2].Str
+			go func() {
+				doc, _ := codec.EncodeCall("PortInactive", codec.String("R0000000001"), codec.Int(1), codec.Int(61), codec.Int(1026))
+				if resp, err := http.Post(url, "text/xml", bytes.NewReader(doc)); err == nil {
+					_ = resp.Body.Close()
+				}
+				cancel()
+			}()
+			return call.Params[0], true
+		}
+		if call.Method == "UnregisterForAllEvents" {
+			return call.Params[0], true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	logFile := filepath.Join(t.TempDir(), "watch.log")
+	if _, err := rrcsStdout(t, func() error {
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0",
+			"--log", logFile, "--log-format", "json", "--syslog-addr", udp.LocalAddr().String()})
+	}); err != nil {
+		t.Fatalf("watch: %v", err)
+	}
+	files, _ := filepath.Glob(filepath.Join(filepath.Dir(logFile), "watch*.log"))
+	var logged string
+	for _, name := range files {
+		raw, _ := os.ReadFile(name)
+		logged += string(raw)
+	}
+	for _, want := range []string{`"msg":"value_change"`, `"proto":"rrcs"`, `"event":"PortInactive"`,
+		`"path":"net.1.node.61.port.1026"`, `"label":"Online"`, `"value":"false"`, `"oid":100`,
+		`rrcs watch: registered at`, `rrcs watch: unregistered in`} {
+		if !strings.Contains(logged, want) {
+			t.Errorf("log file lacks %s:\n%s", want, logged)
+		}
+	}
+	got := ""
+	deadline := time.After(2 * time.Second)
+collect:
+	for !strings.Contains(got, "value_change") {
+		select {
+		case d := <-datagrams:
+			got += d + "\n"
+		case <-deadline:
+			break collect
+		}
+	}
+	if !strings.Contains(got, "value_change") || !strings.Contains(got, "path=net.1.node.61.port.1026") || !strings.HasPrefix(got, "<") {
+		t.Errorf("syslog datagrams:\n%s", got)
+	}
+	// --log off writes no file; an unusable syslog address is refused.
+	off := filepath.Join(t.TempDir(), "none")
+	rrcsRun(t, "info", f.addr(), "--log", "off")
+	if _, err := os.Stat(off); err == nil {
+		t.Error("a log file exists with --log off")
+	}
+	if err := runRRCS(context.Background(), []string{"info", f.addr(), "--syslog-addr", "not an address"}); err == nil {
+		t.Error("unusable --syslog-addr accepted")
 	}
 }

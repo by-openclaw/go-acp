@@ -3647,8 +3647,18 @@ $ dhs consumer rrcs info --help
 Usage of rrcs info:
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3657,8 +3667,18 @@ $ dhs consumer rrcs discover --help
 Usage of rrcs discover:
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3675,12 +3695,22 @@ Usage of rrcs watch:
     	values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received (default "values")
   -listen string
     	local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1) (default ":8195")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
   -path string
     	URL path RRCS posts its events to (default "/RPC2")
   -spy string
     	panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit (default "none")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3689,12 +3719,22 @@ $ dhs consumer rrcs walk --help
 Usage of rrcs walk:
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -out string
     	snapshot FILE the walk is written to. Literal "auto" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028) (default "auto")
   -output string
     	output: text | json (default "text")
   -skip string
     	leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3707,6 +3747,14 @@ Usage of rrcs get:
     	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
   -id int
     	object ID, as the lists print it: GetObjectProperty
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -names string
     	with --id: yes = list the property names the object supports instead of the values (default "no")
   -output string
@@ -3715,6 +3763,8 @@ Usage of rrcs get:
     	path, as list and tree print it (e.g. net.1.node.61.port.1026, group.109136507): the properties the lists hold
   -prop string
     	property name; empty = every property
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3725,12 +3775,22 @@ Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|des
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -from string
     	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -match string
     	keep the rows where a name, a label or the path contains this text, case ignored
   -node int
     	keep what sits on this node number; 0 = every node
   -output string
     	output: text | json (default "text")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
   -type string
@@ -3745,12 +3805,22 @@ Usage of rrcs tree:
     	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
   -keys string
     	yes = show what is on the keys of each panel | no = ports only (one request per port less) (default "yes")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -match string
     	keep the rows where a name, a label or the path contains this text, case ignored
   -node int
     	keep what sits on this node number; 0 = every node
   -output string
     	output: text | json (default "text")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
   -type string
@@ -3763,12 +3833,22 @@ Usage of rrcs set:
     	no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChangeEx) and read the object back (default "no")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
   -path string
     	what to change: a port (net.1.node.61.port.1026, …port.7.out) or a client card (net.1.node.60.card.1)
   -prop value
     	NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
@@ -3783,12 +3863,22 @@ Usage of rrcs export:
     	json | csv (default: from the --out extension, else json). One row per value: path, label, kind, access, value, value_name
   -from string
     	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -out string
     	output file (default: stdout)
   -output string
     	output: text | json (default "text")
   -path value
     	keep the rows whose path contains this text; comma-separated or repeated (e.g. PortAes67Output, card, Ptp, node.63.port.1045)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3807,10 +3897,20 @@ skipped and listed.
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
     	snapshot file written by export, json or csv (required)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
   -path value
     	apply only the rows whose path contains this text; comma-separated or repeated
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
@@ -3839,8 +3939,18 @@ changes something and is refused without --write-to HOST.
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -key string
     	yes = put the transaction key in front, as every method but GetAlive has it | no (default "yes")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
@@ -3853,12 +3963,22 @@ Usage of rrcs xp:
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -dst string
     	destination: the path of a port that has an output, as list dests prints it
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level: debug | info | warn | error (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json (default "text")
   -src string
     	source: the path of a port that has an input, as list sources prints it
   -state string
     	on = SetXp | off = KillXp | empty = only read the state (GetXpStatus)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"log/slog"
 	"fmt"
 	"net"
 	"net/http"
@@ -136,6 +137,17 @@ type rrcsFlags struct {
 	output  string
 	capture string
 
+	// The uniform logging contract (docs/logging.md): a local file in
+	// syslog format by default, optionally a remote syslog server.
+	logPath      string
+	logFormat    string
+	logLevel     string
+	syslogAddr   string
+	logRetention int
+	// sink receives the operational lines and the event stream; nil
+	// when every sink is off.
+	sink *slog.Logger
+
 	// note writes one line of the verb's own account of the run into
 	// the capture, so the file explains itself without the console.
 	note func(text string)
@@ -148,12 +160,42 @@ func (c *rrcsFlags) say(format string, args ...any) {
 	if c.note != nil {
 		c.note(text)
 	}
+	if c.sink != nil {
+		c.sink.Info(text, slog.String("proto", rrcsProto))
+	}
+}
+
+// logValue writes one decoded event to the sinks, with the fields of the
+// generic watch (docs/logging.md, msg=value_change).
+func (c *rrcsFlags) logValue(l rrcsChangeLine) {
+	if c.sink == nil {
+		return
+	}
+	attrs := []any{
+		slog.String("proto", rrcsProto), slog.String("event", l.Event),
+		slog.String("path", l.Path), slog.String("label", l.Label), slog.String("value", l.Value),
+	}
+	if l.OID != 0 {
+		attrs = append(attrs, slog.Int("oid", l.OID))
+	}
+	if l.Unit != "" {
+		attrs = append(attrs, slog.String("unit", l.Unit))
+	}
+	if l.Name != "" {
+		attrs = append(attrs, slog.String("name", l.Name))
+	}
+	c.sink.Info("value_change", attrs...)
 }
 
 func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
 	c := &rrcsFlags{}
 	fs.DurationVar(&c.timeout, "timeout", rrcs.DefaultTimeout, "per-request timeout")
 	fs.StringVar(&c.output, "output", "text", "output: text | json")
+	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format. Default \"auto\" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; \"off\" disables the local file")
+	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is")
+	fs.StringVar(&c.logLevel, "log-level", "info", "log level: debug | info | warn | error")
+	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward the logs as RFC 5424 UDP datagrams to host:port")
+	fs.IntVar(&c.logRetention, "log-retention", 0, "days of daily log files to keep; 0 = keep every day")
 	fs.StringVar(&c.capture, "capture", "", "record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal \"auto\" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
 	return c
 }
@@ -164,17 +206,25 @@ func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), err
 		return nil, nil, nil, rrcsValErr(verb, "--output must be text or json")
 	}
 	var tap rrcs.Tap
-	closeFn := func() {}
+	_, sink, logClose, _, lerr := buildConsumerLoggers(parseLogLevel(c.logLevel), c.logFormat, c.logPath, c.syslogAddr,
+		defaultLogPath(rrcsProto, hostOnly(addr), verb), c.logRetention)
+	if lerr != nil {
+		return nil, nil, nil, rrcsValErr(verb, lerr.Error())
+	}
+	c.sink = sink
+	closeFn := logClose
 	if c.capture == "auto" {
 		c.capture = defaultCapturePath(rrcsProto, hostOnly(addr), verb, "", time.Now())
 		fmt.Fprintf(os.Stderr, "rrcs %s: --capture auto → %s (ADR-0028)\n", verb, c.capture)
 	}
 	if c.capture != "" {
 		if err := os.MkdirAll(filepath.Dir(c.capture), 0o755); err != nil {
+			logClose()
 			return nil, nil, nil, fmt.Errorf("capture dir: %w", err)
 		}
 		rec, err := transport.NewRecorder(c.capture)
 		if err != nil {
+			logClose()
 			return nil, nil, nil, fmt.Errorf("capture: %w", err)
 		}
 		rec.WriteMeta(captureMeta(rrcsProto, addr, verb))
@@ -184,7 +234,10 @@ func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), err
 				Note string `json:"note"`
 			}{text})
 		}
-		closeFn = func() { _ = rec.Close() }
+		closeFn = func() {
+			_ = rec.Close()
+			logClose()
+		}
 	}
 	client, err := rrcs.NewClient(rrcs.Config{Addr: addr, Timeout: c.timeout, Tap: tap})
 	if err != nil {
@@ -407,6 +460,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 				return
 			}
 			for _, l := range rrcsDecode(model, e) {
+				cf.logValue(l)
 				if jsonOut {
 					l.Time = stamp
 					b, _ := json.Marshal(l)
