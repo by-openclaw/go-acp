@@ -125,6 +125,7 @@ func rrcsSetFake(t *testing.T, obey bool) (*rrcsFake, *[]codec.Call) {
 	var mu sync.Mutex
 	var changes []codec.Call
 	applied := ""
+	appliedPort := int32(-1)
 	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -135,6 +136,9 @@ func rrcsSetFake(t *testing.T, obey bool) (*rrcsFake, *[]codec.Call) {
 			if out, ok := sp.Field("PortAes67Output"); ok && obey {
 				if m, ok := out.Field("Multicast"); ok {
 					applied = m.Str
+					addr, _ := sp.Field("PortAddress")
+					port, _ := addr.Field("Port")
+					appliedPort = port.Int
 				}
 			}
 			return call.Params[0], true
@@ -143,7 +147,7 @@ func rrcsSetFake(t *testing.T, obey bool) (*rrcsFake, *[]codec.Call) {
 			if applied != "" {
 				for i, p := range v.Items[1].Items {
 					out, has := p.Field("PortAes67Output")
-					if !has {
+					if number, _ := p.Field("Port"); !has || number.Int != appliedPort {
 						continue
 					}
 					for j, m := range out.Members {

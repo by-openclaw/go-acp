@@ -29,7 +29,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
-  Verbs (rrcs):                info, discover, walk, tree, list, get, set, watch
+  Verbs (rrcs):                info, discover, walk, tree, list, get, set,
+                               export, import, watch
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3619,7 +3620,14 @@ VERBS
             (ConfigurationChangeEx): --path, --prop NAME=VALUE (repeat).
             Shows the change and sends nothing unless --apply yes
 
-  tree, list and get --path also read a snapshot written by walk: --from FILE
+  export    the values of the ports and client cards to one file, one row
+            per value: --format json|csv, --out FILE, --path TEXT
+  import    WRITES: every writable value of an export file that differs
+            from the live system (ConfigurationChangeEx): --file, --path,
+            --dry-run to compare and send nothing
+
+  tree, list, export and get --path also read a snapshot written by walk:
+  --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
             pressed and released on the panels (ChangePanelSpyRegistry)
@@ -3751,6 +3759,46 @@ Usage of rrcs set:
     	what to change: a port (net.1.node.61.port.1026, …port.7.out) or a client card (net.1.node.60.card.1)
   -prop value
     	NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…
+  -timeout duration
+    	per-request timeout (default 10s)
+
+========== consumer/rrcs/export ==========
+$ dhs consumer rrcs export --help
+Usage of rrcs export:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -format string
+    	json | csv (default: from the --out extension, else json). One row per value: path, label, kind, access, value, value_name
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -out string
+    	output file (default: stdout)
+  -output string
+    	output: text | json (default "text")
+  -path value
+    	keep the rows whose path contains this text; comma-separated or repeated (e.g. PortAes67Output, card, Ptp, node.63.port.1045)
+  -timeout duration
+    	per-request timeout (default 10s)
+
+========== consumer/rrcs/import ==========
+$ dhs consumer rrcs import --help
+Usage: dhs consumer rrcs import <host>[:port] --file SNAPSHOT [--path P ...] [--dry-run] [flags]
+
+Reads a file written by export (json or csv, by its extension) and WRITES
+every writable value that differs from the live system, one
+ConfigurationChangeEx per port or client card, then reads everything back.
+Rows whose value equals the live one are left alone; read-only rows are
+skipped and listed.
+
+  --dry-run   compare and report, send nothing
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	snapshot file written by export, json or csv (required)
+  -output string
+    	output: text | json (default "text")
+  -path value
+    	apply only the rows whose path contains this text; comma-separated or repeated
   -timeout duration
     	per-request timeout (default 10s)
 

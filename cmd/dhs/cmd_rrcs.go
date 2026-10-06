@@ -63,6 +63,10 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsList(ctx, args[1:])
 	case "set":
 		return rrcsSet(ctx, args[1:])
+	case "export":
+		return rrcsExport(ctx, args[1:])
+	case "import":
+		return rrcsImport(ctx, args[1:])
 	case "tree":
 		return rrcsTree(ctx, args[1:])
 	}
@@ -99,7 +103,14 @@ VERBS
             (ConfigurationChangeEx): --path, --prop NAME=VALUE (repeat).
             Shows the change and sends nothing unless --apply yes
 
-  tree, list and get --path also read a snapshot written by walk: --from FILE
+  export    the values of the ports and client cards to one file, one row
+            per value: --format json|csv, --out FILE, --path TEXT
+  import    WRITES: every writable value of an export file that differs
+            from the live system (ConfigurationChangeEx): --file, --path,
+            --dry-run to compare and send nothing
+
+  tree, list, export and get --path also read a snapshot written by walk:
+  --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
             pressed and released on the panels (ChangePanelSpyRegistry)
