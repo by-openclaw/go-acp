@@ -128,3 +128,40 @@ in the BINARY, but the fleet service configuration predates them —
 `--manifest`, no `--announce-replay`. Redeploy + a fresh two-instance
 Cerebrum verification (real Neuron + our emulator side by side) is
 tracked as the acp2 close-out unit (#969).
+
+## 12. 2026-10-05 / 06 — every verb on the oracle, released binary (supersedes the states above where they differ)
+
+Driven by Ansible from the control node, each play run twice with the
+second run changing nothing.
+
+**Consumer — `ansible/playbooks/acp2-neuron-verify.yml`, real EVS Neuron
+CONVERT Hybrid `10.6.255.102`, released v0.39.0 and v0.40.0:** all
+fifteen consumer verbs pass against the device — `info`, `health`,
+`diag`, `walk` (slot 0: 214 objects; slot 1: 49 812 objects in 59 s),
+`get`, `tree`, `export` (json / yaml / csv), `extract` (twice), `diff`,
+`watch` (live announces), `validate` (99 854 frames decoded), and the
+write verbs `set` (written, read back from the device), `ensure`
+(converged: nothing written; not converged: written once) and `import`
+(dry run writes nothing; real import writes the value). The write
+object, the rack controller's "Front Panel LED", is restored every run.
+The Go suite `internal/acp2/integration` runs in the same play with the
+released CLI (`DHS_BIN`) against the device and passes.
+
+So rows 2–15 of §1 are **✅ verified live**, not "code + unit test", and
+row 33 of §5 is ✅.
+
+**Producer — `ansible/playbooks/acp2-producer-verify.yml`, resident
+`dhs-acp2` service, released v0.40.0:** the lab's Cerebrum
+(`10.6.250.5`) holds a session to it; 50 217 frames received and 55 449
+sent since the service started, 0 decode errors, 0 NAKs. Row 22 of §3
+is ✅ on a current release, not "prior live runs".
+
+**Not proven by a third party:** a write made by the controller to our
+producer (it needs an operator action in Cerebrum).
+
+**Device behaviour noted:** "Find my Neuron", once switched on, refuses
+writes for about fifteen seconds (`no access`) — the Neuron's own guard.
+
+The play used to say the device was "read-only by ruling". No such
+ruling existed; the write verbs had simply never been run against the
+oracle.
