@@ -26,7 +26,7 @@
 # The node's own log, while the container still exists — the one
 # artefact that explains a CuT failure.
 - name: What the CuT node said
-  ansible.builtin.command: docker logs --tail 80 dhs-validate-node
+  ansible.builtin.command: docker logs --tail {{ dhs_amwa_validate_node_log_tail }} dhs-validate-node
   register: _cut_log
   changed_when: false
   failed_when: false
