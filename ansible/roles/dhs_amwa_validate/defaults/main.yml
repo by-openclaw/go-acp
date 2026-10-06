@@ -346,10 +346,12 @@ dhs_amwa_validate_suites:
   # The same suite on a Node serving v1.2: test_12 — the announce a
   # registered Node keeps before v1.3, without its ver_* records — is
   # `Test Disabled` for a v1.3 Node, and test_12_01 for a v1.2 one. The
-  # window's node takes its minor from the entry's row.
+  # window's node takes its minor from the entry's `is04_ver` (v1.3 when
+  # absent) — not from its first row, which for IS-11-01 is the IS-11
+  # API version and started that node at IS-04 v1.0.
   # baseline_pass 0 = set from the first fleet run of the release that
   # carries the pre-v1.3 announce.
-  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.2,
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.2, is04_ver: v1.2,
       rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
   # Every minor, not only the last one. Until 2026-10-05 the IS-04
   # suites sat v1.3 alone, and the first v1.2 entry found three defects
@@ -357,9 +359,9 @@ dhs_amwa_validate_suites:
   # announce's address record, a Source lost in the narrowing). The
   # Node, the peer-to-peer Node and the Registry are scored at v1.0,
   # v1.1 and v1.2 as well. Baselines from the first fleet run.
-  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.1,
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.1, is04_ver: v1.1,
       rows: [{ver: v1.1}], baseline_pass: 0, baseline_cnt: 0 }
-  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.0,
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.0, is04_ver: v1.0,
       rows: [{ver: v1.0}], baseline_pass: 0, baseline_cnt: 0 }
   # IS-09-02 drives our node's System API CLIENT against the tool's
   # mock System API (mDNS-announced) — same window; note the suite's
@@ -383,7 +385,7 @@ dhs_amwa_validate_suites:
   # pair scored and its mDNS pair disabled.
   - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast,
       rows: [{ver: v1.3}], baseline_pass: 60, baseline_cnt: 0 }
-  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast-v1.2,
+  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast-v1.2, is04_ver: v1.2,
       rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
   - { id: IS-09-02, scope: node, target: cut, window: unicast, label: unicast, flaky_retry: true,
       rows: [{ver: v1.3}, {host: null, port: null, ver: v1.0}],
@@ -399,11 +401,11 @@ dhs_amwa_validate_suites:
   # --no-registry transient.
   - { id: IS-04-03, scope: node, target: cut, window: p2p,
       rows: [{ver: v1.3}], baseline_pass: 17, baseline_cnt: 0 }
-  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.2,
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.2, is04_ver: v1.2,
       rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
-  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.1,
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.1, is04_ver: v1.1,
       rows: [{ver: v1.1}], baseline_pass: 0, baseline_cnt: 0 }
-  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.0,
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.0, is04_ver: v1.0,
       rows: [{ver: v1.0}], baseline_pass: 0, baseline_cnt: 0 }
 
   # ---- registry scope, a transient registry from the plant binary ----
@@ -423,11 +425,11 @@ dhs_amwa_validate_suites:
       rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 74, baseline_cnt: 2 }
   # The Registry at every earlier minor (the companion node registers
   # at the entry's minor, and both of its APIs are scored there).
-  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.2,
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.2, is04_ver: v1.2,
       rows: [{ver: v1.2}, {ver: v1.2}], baseline_pass: 0, baseline_cnt: 2 }
-  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.1,
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.1, is04_ver: v1.1,
       rows: [{ver: v1.1}, {ver: v1.1}], baseline_pass: 0, baseline_cnt: 2 }
-  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.0,
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.0, is04_ver: v1.0,
       rows: [{ver: v1.0}, {ver: v1.0}], baseline_pass: 0, baseline_cnt: 2 }
 
   # ---- mirror scope: a transient source registry + mirror (window: mirror) ----
