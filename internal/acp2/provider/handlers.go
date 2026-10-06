@@ -288,6 +288,16 @@ func (s *session) handleSetProperty(slot uint8, msg *codec.ACP2Message) {
 		Body:  appendObjIDIdx(msg.ObjID, msg.Idx, body),
 	}
 	s.replyACP2(slot, reply)
+	// A write is the one request that changes what this provider
+	// serves: it is on record, with who made it. Reads are counted, not
+	// logged.
+	s.srv.logger.Info("acp2 set applied",
+		slog.String("remote", s.conn.RemoteAddr().String()),
+		slog.Int("slot", int(slot)),
+		slog.Int("obj", int(msg.ObjID)),
+		slog.Int("pid", int(msg.PID)),
+		slog.Int("idx", int(msg.Idx)),
+	)
 
 	// Fan out the announce to every session with ACP2 events enabled.
 	// Spec §3.2 / §4.2 ACP2 Announce header: [type=2, mtid=0, stat=0, pid].
