@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.40.3](https://github.com/by-openclaw/go-acp/compare/v0.40.2...v0.40.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* **ansible:** the fault drills read a state that outlasts the next task ([ee57d0b](https://github.com/by-openclaw/go-acp/commit/ee57d0b8d47e3bd34d1ffb13508550e2794cac00))
+
 ## [0.40.2](https://github.com/by-openclaw/go-acp/compare/v0.40.1...v0.40.2) (2026-10-06)
 
 
