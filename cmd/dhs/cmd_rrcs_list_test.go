@@ -72,7 +72,7 @@ func rrcsTreeAnswer(call codec.Call) (codec.Value, bool) {
 			mem("ClientCardTypeString", codec.String("AES67")), mem("LongName", codec.String("CARD 1")), mem("ObjectID", codec.Int(8))))), true
 	case "GetAllPorts":
 		return codec.Array(k, codec.Array(
-			port(61, 1026, true, true, "RSP-1232HL", "NOC2", "BM NOC 2", 100, 32),
+			port(61, 1026, true, true, "RSP-1232HL", "PNL2", "PANEL-02", 100, 32),
 			port(61, 7, false, true, "Output (AES67)", "O.-7", "Out seven", 101, 0),
 			port(61, 7, true, false, "Input (AES67)", "I.-7", "In seven", 102, 0),
 			port(61, 1041, true, true, "4-Wire (AES67)", "CODEC", "Codec IP", 103, 0),
@@ -84,11 +84,11 @@ func rrcsTreeAnswer(call codec.Call) (codec.Value, bool) {
 			mem("LongName", codec.String("Conference 003")), mem("MemberList", codec.Array(st(mem("Node", codec.Int(61)),
 				mem("Port", codec.Int(1041)), mem("Talk", codec.Bool(true)), mem("Listen", codec.Bool(true)))))))), true
 	case "GetAllGroups":
-		return codec.Array(k, codec.Array(st(mem("ObjectID", codec.Int(200)), mem("Label", codec.String("PRE GEN")),
-			mem("LongName", codec.String("MCR PRE GEN")), mem("MemberList", codec.Array(
+		return codec.Array(k, codec.Array(st(mem("ObjectID", codec.Int(200)), mem("Label", codec.String("GRP ALF")),
+			mem("LongName", codec.String("GROUP ALPHA")), mem("MemberList", codec.Array(
 				st(mem("Node", codec.Int(61)), mem("Port", codec.Int(7))), st(mem("Node", codec.Int(99)), mem("Port", codec.Int(1)))))))), true
 	case "GetAllIFBs":
-		return codec.Array(k, codec.Array(st(mem("ObjectID", codec.Int(400)), mem("Label", codec.String("Com A1")),
+		return codec.Array(k, codec.Array(st(mem("ObjectID", codec.Int(400)), mem("Label", codec.String("IFB A1")),
 			mem("LongName", codec.String("IFB one")), mem("Input", addr(61, 7, true)), mem("Output", addr(61, 7, false)),
 			mem("MixMinus", addr(0, 0, false))))), true
 	case "GetAllActiveXps":
@@ -97,13 +97,13 @@ func rrcsTreeAnswer(call codec.Call) (codec.Value, bool) {
 			mem("XP#2", codec.Array(codec.Int(1), codec.Int(61), codec.Int(7), codec.Int(1), codec.Int(61), codec.Int(1026)))), true
 	case "GetAllLogicSources_v2":
 		return st(mem("ErrorCode", codec.Int(0)), mem("TransKey", k), mem("LogicSourceCount", codec.Int(1)),
-			mem("LogicSource#1", codec.Array(codec.String("Cabine On-Air"), codec.String("On-Air"), codec.Int(500), codec.Bool(true)))), true
+			mem("LogicSource#1", codec.Array(codec.String("Studio On-Air"), codec.String("On-Air"), codec.Int(500), codec.Bool(true)))), true
 	case "GetPortsCommandLists":
 		switch call.Params[3].Int {
 		case 1026:
 			return st(mem("TransKey", k), mem("CommandLists", codec.Array(
 				entry(pos(1026, 5, "key"), mem("CommandType", codec.String("call-to-group")), mem("Description", codec.String("Call to Group ")),
-					mem("Group", codec.Int(200)), mem("GroupName", codec.String("MCR PRE GEN")), mem("ObjectID", codec.Int(601))),
+					mem("Group", codec.Int(200)), mem("GroupName", codec.String("GROUP ALPHA")), mem("ObjectID", codec.Int(601))),
 				entry(pos(1026, 1, "key"), mem("CommandType", codec.String("call-to-port-cmd")), mem("Description", codec.String("Call to out seven")),
 					mem("DestinationPortAddress", addr(61, 7, false)), mem("ObjectID", codec.Int(600))),
 				entry(pos(1026, 9, "key"), mem("CommandType", codec.String("listen-to-port-cmd")), mem("Description", codec.String("Listen")),
@@ -152,7 +152,7 @@ func TestRRCSTreeLive(t *testing.T) {
 		"port.7.in",
 		"port.7.out",
 		"key.0.1.1        call-to-port-cmd     net.1.node.61.port.7.out (O.-7)",
-		"key.0.1.5        call-to-group        group.200 (MCR PRE GEN)",
+		"key.0.1.5        call-to-group        group.200 (GROUP ALPHA)",
 		"key.0.1.9        listen-to-port-cmd   trunk.2.109",
 		"vfunc.always.0   call-to-conference   conference.300 (Conference 003)",
 		"conference  (1)",
@@ -199,7 +199,7 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 	rrcsWant(t, rrcsRun(t, "list", "ports", "--from", snap), "net.1.node.61.port.7.in", "in+out  RSP-1232HL", "4 ports")
 	rrcsWant(t, rrcsRun(t, "list", "ports", "--from", snap, "--type", "aes67", "--match", "seven"), "2 ports")
 	rrcsWant(t, rrcsRun(t, "list", "ports", "--from", snap, "--node", "62"), "0 ports")
-	rrcsWant(t, rrcsRun(t, "list", "panels", "--from", snap), "NOC2", "1 panels")
+	rrcsWant(t, rrcsRun(t, "list", "panels", "--from", snap), "PNL2", "1 panels")
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap), "5 keys", "net.1.node.61.port.1041.vfunc.always.0")
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap, "--match", "group"), "1 keys")
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap, "--type", "4-wire"), "1 keys")
@@ -211,8 +211,8 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 	rrcsWant(t, rrcsRun(t, "list", "sources", "--from", snap), "1  net.1.node.61.port.7.in", "3 sources")
 	rrcsWant(t, rrcsRun(t, "list", "dests", "--from", snap), "net.1.node.61.port.7.out", "3 dests")
 	rrcsWant(t, rrcsRun(t, "list", "xp", "--from", snap),
-		"net.1.node.61.port.7.in  I.-7       net.1.node.61.port.1026   NOC2",
-		"net.1.node.61.port.1026  NOC2       net.1.node.61.port.7.out  O.-7",
+		"net.1.node.61.port.7.in  I.-7       net.1.node.61.port.1026   PNL2",
+		"net.1.node.61.port.1026  PNL2       net.1.node.61.port.7.out  O.-7",
 		"2 active crosspoints, of 3 sources x 3 destinations")
 	rrcsWant(t, rrcsRun(t, "list", "xp", "--from", snap, "--match", "O.-7"), "1 active crosspoints")
 	if got := strings.TrimSpace(rrcsRun(t, "list", "xp", "--from", snap, "--node", "99", "--output", "json")); got != "[]" {
@@ -238,9 +238,9 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 		t.Errorf("tree as JSON: %v", err)
 	}
 
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61.port.1026"), `LongName                     "BM NOC 2"`, "KeyCount                     32")
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61.port.1026.key.0.1.5"), `GroupName                    "MCR PRE GEN"`)
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "group.200", "--prop", "Label", "--output", "json"), `{"Label":"PRE GEN"}`)
+	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61.port.1026"), `LongName                     "PANEL-02"`, "KeyCount                     32")
+	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61.port.1026.key.0.1.5"), `GroupName                    "GROUP ALPHA"`)
+	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "group.200", "--prop", "Label", "--output", "json"), `{"Label":"GRP ALF"}`)
 	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.60"), `"FRAME A"`)
 	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61"), "Ports                        4")
 	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.60.card.1"), `"CARD 1"`)

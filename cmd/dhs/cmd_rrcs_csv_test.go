@@ -69,7 +69,7 @@ func TestRRCSExport(t *testing.T) {
 	if proto == nil || proto[7] != "enum" || proto[9] != "2" || proto[10] != "Manual" || proto[16] != "2=Manual|3=RTSP|5=NMOS" {
 		t.Errorf("protocol row %v", proto)
 	}
-	if long := rows["net.1.node.61.port.1026.LongName"]; long == nil || long[8] != "R--" || long[9] != "BM NOC 2" {
+	if long := rows["net.1.node.61.port.1026.LongName"]; long == nil || long[8] != "R--" || long[9] != "PANEL-02" {
 		t.Errorf("long name row %v", long)
 	}
 	if src := rows["net.1.node.61.port.1041.PortAes67Input.SourceIp"]; src == nil || src[8] != "RW-" {

@@ -84,7 +84,7 @@ func TestRRCSCall(t *testing.T) {
 		mu.Unlock()
 		switch call.Method {
 		case "GetPortAlias":
-			return codec.Array(call.Params[0], codec.Int(0), codec.String("NOC TWO")), true
+			return codec.Array(call.Params[0], codec.Int(0), codec.String("PNL TWO")), true
 		case "SetXp":
 			return codec.Array(call.Params[0], codec.Int(0)), true
 		case "GetAlive":
@@ -97,14 +97,14 @@ func TestRRCSCall(t *testing.T) {
 	ctx := context.Background()
 
 	out := rrcsRun(t, "call", f.addr(), "GetPortAlias", "--arg", "1", "--arg", "61", "--arg", "1026", "--arg", "false")
-	if strings.TrimSpace(out) != `["NOC TWO"]` {
+	if strings.TrimSpace(out) != `["PNL TWO"]` {
 		t.Errorf("payload: %s", out)
 	}
 	if p := got[0].Params; len(p) != 5 || p[1].Int != 1 || p[3].Int != 1026 || p[4].Kind != codec.KindBool {
 		t.Errorf("sent %+v", got[0])
 	}
 	whole := rrcsRun(t, "call", f.addr(), "GetPortAlias", "--output", "json")
-	if !strings.Contains(whole, `,0,"NOC TWO"]`) {
+	if !strings.Contains(whole, `,0,"PNL TWO"]`) {
 		t.Errorf("whole answer: %s", whole)
 	}
 	if out := rrcsRun(t, "call", f.addr(), "GetAlive", "--key", "no"); strings.TrimSpace(out) != "[]" || len(got[len(got)-1].Params) != 0 {
@@ -135,7 +135,7 @@ func TestRRCSCall(t *testing.T) {
 	// Parameters from a file.
 	file := filepath.Join(t.TempDir(), "args.json")
 	_ = os.WriteFile(file, []byte("ï»¿[1, 61, 1026, false]"), 0o644)
-	if out := rrcsRun(t, "call", f.addr(), "GetPortAlias", "--args-file", file); strings.TrimSpace(out) != `["NOC TWO"]` || len(got[len(got)-1].Params) != 5 {
+	if out := rrcsRun(t, "call", f.addr(), "GetPortAlias", "--args-file", file); strings.TrimSpace(out) != `["PNL TWO"]` || len(got[len(got)-1].Params) != 5 {
 		t.Errorf("args file: %s, sent %+v", out, got[len(got)-1])
 	}
 	notArray := filepath.Join(t.TempDir(), "bad.json")

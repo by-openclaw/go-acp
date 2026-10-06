@@ -37,7 +37,7 @@ func rrcsWalkAnswer(call codec.Call) (codec.Value, bool) {
 		switch call.Params[1].Str {
 		case "conference", "group":
 			return codec.Struct(rrcsMember("TransKey", k), rrcsMember("ObjectList", codec.Array(
-				codec.Struct(rrcsMember("ObjectID", codec.Int(77)), rrcsMember("LongName", codec.String("Conf 006")))))), true
+				codec.Struct(rrcsMember("ObjectID", codec.Int(77)), rrcsMember("LongName", codec.String("Conf 001")))))), true
 		case "user":
 			return codec.Struct(rrcsMember("TransKey", k), rrcsMember("ObjectList", codec.Array(
 				codec.Struct(rrcsMember("ObjectID", codec.Int(-5)), rrcsMember("LongName", codec.String("ghost")))))), true
@@ -50,9 +50,9 @@ func rrcsWalkAnswer(call codec.Call) (codec.Value, bool) {
 			return codec.Array(k, codec.Int(22)), true // object does not exist
 		}
 		if call.Params[2].Str == "Label" {
-			return codec.Struct(rrcsMember("TransKey", k), rrcsMember("Label", codec.String("Conf 006"))), true
+			return codec.Struct(rrcsMember("TransKey", k), rrcsMember("Label", codec.String("Conf 001"))), true
 		}
-		return codec.Struct(rrcsMember("TransKey", k), rrcsMember("Label", codec.String("Conf 006")), rrcsMember("Owner", codec.Int(3))), true
+		return codec.Struct(rrcsMember("TransKey", k), rrcsMember("Label", codec.String("Conf 001")), rrcsMember("Owner", codec.Int(3))), true
 	case "GetObjectPropertyNames":
 		return codec.Struct(rrcsMember("TransKey", k), rrcsMember("PropertyNames", codec.Array(codec.String("Label"), codec.String("Owner")))), true
 	case "GetAllCaps":
@@ -103,7 +103,7 @@ func TestRRCSWalk(t *testing.T) {
 		t.Errorf("pool port requests: %v %v", a, b)
 	}
 	conf := snap.Objects["conference"]
-	if len(conf) != 1 || conf[0].ObjectID != 77 || conf[0].LongName != "Conf 006" || conf[0].Properties == nil {
+	if len(conf) != 1 || conf[0].ObjectID != 77 || conf[0].LongName != "Conf 001" || conf[0].Properties == nil {
 		t.Errorf("conference: %+v", conf)
 	}
 	if ghost := snap.Objects["user"]; len(ghost) != 1 || !strings.Contains(ghost[0].Error, "code 22") {
@@ -185,13 +185,13 @@ func TestRRCSGet(t *testing.T) {
 	f := newRRCSFake(t, rrcsWalkAnswer)
 	ctx := context.Background()
 	all, err := rrcsStdout(t, func() error { return runRRCS(ctx, []string{"get", f.addr(), "--id", "77"}) })
-	if err != nil || !strings.Contains(all, `Label                        "Conf 006"`) || !strings.Contains(all, "Owner                        3") {
+	if err != nil || !strings.Contains(all, `Label                        "Conf 001"`) || !strings.Contains(all, "Owner                        3") {
 		t.Errorf("all: %v\n%s", err, all)
 	}
 	one, err := rrcsStdout(t, func() error {
 		return runRRCS(ctx, []string{"get", f.addr(), "--id", "77", "--prop", "Label", "--output", "json"})
 	})
-	if err != nil || strings.TrimSpace(one) != `{"Label":"Conf 006"}` {
+	if err != nil || strings.TrimSpace(one) != `{"Label":"Conf 001"}` {
 		t.Errorf("one: %v\n%s", err, one)
 	}
 	names, err := rrcsStdout(t, func() error { return runRRCS(ctx, []string{"get", f.addr(), "--id", "77", "--names", "yes"}) })
@@ -213,7 +213,7 @@ func TestRRCSWalkPortValues(t *testing.T) {
 			return codec.Array(k, codec.Int(0), codec.String("LBL")), true
 		case "GetPortAlias": // net, node, port, input
 			if call.Params[3].Int == 1026 {
-				return codec.Array(k, codec.Int(0), codec.String("NOC TWO")), true
+				return codec.Array(k, codec.Int(0), codec.String("PNL TWO")), true
 			}
 			return codec.Array(k, codec.Int(0), codec.String("")), true
 		case "GetInputGain":
@@ -255,10 +255,10 @@ func TestRRCSWalkPortValues(t *testing.T) {
 		}
 	}
 	ports := rrcsRun(t, "list", "ports", "--from", snapFile)
-	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "BM NOC 2   NOC TWO  -6.0     mute")
+	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "PANEL-02   PNL TWO  -6.0     mute")
 	rrcsWant(t, rrcsRun(t, "get", "--from", snapFile, "--path", "net.1.node.61.port.1026", "--prop", "InputGain"), "InputGain                    -12")
 	out := rrcsRun(t, "export", "--from", snapFile, "--format", "csv", "--path", "port.1026.InputGain,port.1026.Alias")
-	rrcsWant(t, out, "net.1.node.61.port.1026.Alias,100,Alias,string,R--,NOC TWO", "InputGain,int,R--,-12,,0.5 dB,-36,36")
+	rrcsWant(t, out, "net.1.node.61.port.1026.Alias,100,Alias,string,R--,PNL TWO", "InputGain,int,R--,-12,,0.5 dB,-36,36")
 
 	// --skip values leaves them out; an unknown part is refused.
 	rrcsRun(t, "walk", f.addr(), "--out", snapFile, "--skip", "properties, commands ,values")

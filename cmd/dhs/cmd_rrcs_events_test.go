@@ -59,25 +59,25 @@ func TestRRCSDecode(t *testing.T) {
 		want  []string
 	}{
 		{"port active", rrcsEvent("PortActive", i(1), i(61), i(1026)),
-			[]string{"15:37:28.836  oid=100 net.1.node.61.port.1026 Online = true  (NOC2)"}},
+			[]string{"15:37:28.836  oid=100 net.1.node.61.port.1026 Online = true  (PNL2)"}},
 		{"port inactive, unknown port", rrcsEvent("PortInactive", i(1), i(70), i(3)),
 			[]string{"15:37:28.836  net.1.node.70.port.3 Online = false"}},
 		{"crosspoints", rrcsEvent("CrosspointChange", i(2), xp), []string{
-			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 State = on  (I.-7 > NOC2)",
-			"15:37:28.836  oid=101 xp.net.1.node.61.port.1026>net.1.node.61.port.7.out State = off  (NOC2 > O.-7)"}},
+			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 State = on  (I.-7 > PNL2)",
+			"15:37:28.836  oid=101 xp.net.1.node.61.port.1026>net.1.node.61.port.7.out State = off  (PNL2 > O.-7)"}},
 		{"volume", rrcsEvent("XpVolumeChange", codec.Array(
 			st(mem("Source", addr(61, 7, true)), mem("Destination", addr(61, 1026, false)), mem("SingleVolume", i(218))),
 			st(mem("Source", addr(61, 7, true)), mem("Destination", addr(61, 1026, false)), mem("ConferenceVolume", i(0))),
 			st(mem("Source", addr(61, 7, true)), mem("Destination", addr(61, 1026, false)), mem("SingleVolume", codec.String("-1"))))), []string{
-			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 SingleVolume = -6.0 dB [-114.5..12.5]  (I.-7 > NOC2)",
-			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 ConferenceVolume = mute [-114.5..12.5]  (I.-7 > NOC2)",
-			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 SingleVolume = unavailable [-114.5..12.5]  (I.-7 > NOC2)"}},
+			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 SingleVolume = -6.0 dB [-114.5..12.5]  (I.-7 > PNL2)",
+			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 ConferenceVolume = mute [-114.5..12.5]  (I.-7 > PNL2)",
+			"15:37:28.836  oid=100 xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 SingleVolume = unavailable [-114.5..12.5]  (I.-7 > PNL2)"}},
 		{"logic source", rrcsEvent("LogicSourceChange", i(500), b(true)),
-			[]string{"15:37:28.836  oid=500 logic.500 State = on  (Cabine On-Air)"}},
+			[]string{"15:37:28.836  oid=500 logic.500 State = on  (Studio On-Air)"}},
 		{"gp input", rrcsEvent("GpInputChange", i(1), i(61), i(1026), i(2), i(3), b(true)),
-			[]string{"15:37:28.836  oid=100 net.1.node.61.port.1026.gpi.3 State = on  (NOC2)  slot 2"}},
+			[]string{"15:37:28.836  oid=100 net.1.node.61.port.1026.gpi.3 State = on  (PNL2)  slot 2"}},
 		{"gp output", rrcsEvent("GpOutputChange", i(1), i(61), i(1026), i(2), i(4), b(false)),
-			[]string{"15:37:28.836  oid=100 net.1.node.61.port.1026.gpo.4 State = off  (NOC2)  slot 2"}},
+			[]string{"15:37:28.836  oid=100 net.1.node.61.port.1026.gpo.4 State = off  (PNL2)  slot 2"}},
 		{"configuration", rrcsEvent("ConfigurationChange"), []string{"15:37:28.836  gateway Configuration = changed"}},
 		{"artist restored", rrcsEvent("ConnectArtistRestored", codec.String("Working")),
 			[]string{"15:37:28.836  gateway ArtistConnection = connected  gateway state Working"}},
@@ -88,14 +88,14 @@ func TestRRCSDecode(t *testing.T) {
 		{"node controller reboot", rrcsEvent("NodeControllerReboot", i(1), i(2)), []string{"15:37:28.836  net.1.node.2 NodeControllerReboot = true"}},
 		{"client failed", rrcsEvent("ClientFailedCleared", i(1), i(60), i(4)), []string{"15:37:28.836  net.1.node.60.card.4 ClientFailed = false"}},
 		{"key pressed", rrcsEvent("PanelSpyKeyEvent", keyEvent), []string{
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = pressed  (NOC2)  key type 0 latched true; page 1: call-to-group group.200 (MCR PRE GEN)"}},
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = pressed  (PNL2)  key type 0 latched true; page 1: call-to-group group.200 (GROUP ALPHA)"}},
 		{"function key", rrcsEvent("PanelSpyFuncKeyEvent", st(mem("FuncKeyAction", i(0)), mem("Node", i(61)), mem("Port", i(1026)),
 			mem("FuncKeyNo", i(1)), mem("FuncKeyStates", st(mem("Shift", b(false)))))), []string{
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.funckey FuncKeyAction = 0  (NOC2)",
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.funckey FuncKeyNo = 1  (NOC2)"}},
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.funckey FuncKeyAction = 0  (PNL2)",
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.funckey FuncKeyNo = 1  (PNL2)"}},
 		{"spy state", rrcsEvent("PanelSpyStateChange", spyState), []string{
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Key = active  (NOC2)",
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Rotate = error  (NOC2)  Port is not online"}},
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Key = active  (PNL2)",
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Rotate = error  (PNL2)  Port is not online"}},
 		{"alive", rrcs.Event{Time: rrcsEvent("x").Time, Method: "GetAlive"}, []string{"15:37:28.836  gateway Alive = ping"}},
 		{"unknown method", rrcsEvent("SendString", codec.String("hello")), []string{`15:37:28.836  event SendString = ["hello"]`}},
 		{"crosspoints in another shape", rrcsEvent("CrosspointChange", i(1)), []string{"15:37:28.836  event CrosspointChange = [1]"}},
@@ -158,7 +158,7 @@ func TestRRCSWatchValues(t *testing.T) {
 	out, err := rrcsStdout(t, func() error {
 		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0"})
 	})
-	if err != nil || !strings.Contains(out, "oid=100 net.1.node.61.port.1026 Online = true  (NOC2)") {
+	if err != nil || !strings.Contains(out, "oid=100 net.1.node.61.port.1026 Online = true  (PNL2)") {
 		t.Errorf("%v\n%s", err, out)
 	}
 
