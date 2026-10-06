@@ -713,11 +713,14 @@ func (c *RegistrationClient) beatDuringRegistration() time.Time {
 // (AMWA test_21). Subsequent resources naturally follow.
 func (c *RegistrationClient) registerAll(ctx context.Context) error {
 	c.fireRegistering(true)
+	c.logger.Info("provider/node: registering", "registry", c.base)
 	err := c.registerResources(ctx)
 	if err != nil {
 		c.fireRegistering(false)
+		return err
 	}
-	return err
+	c.logger.Info("provider/node: registered", "registry", c.base)
+	return nil
 }
 
 // registerResources is the registration itself: the Node, then each of

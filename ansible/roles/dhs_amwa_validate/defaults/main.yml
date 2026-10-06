@@ -62,6 +62,9 @@ dhs_amwa_validate_suite_timeout: 1800
 # Subset filter: AMWA suite ids ("-e dhs_amwa_validate_only='[\"IS-08-01\"]'").
 # Empty = every enabled suite of the play's scope.
 dhs_amwa_validate_only: []
+# Lines of the transient node's own log kept beside a result. Raise it
+# (-e dhs_amwa_validate_node_log_tail=5000) to read a whole suite.
+dhs_amwa_validate_node_log_tail: 80
 
 # Safety window for CuT units: transient services self-destruct and a
 # paused registry self-restores after this many seconds even if the

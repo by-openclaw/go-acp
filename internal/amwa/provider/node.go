@@ -1087,6 +1087,7 @@ func (s *IS04NodeServer) onRegistrationStarting(starting bool) {
 // records and republishes it.
 func (s *IS04NodeServer) republishAnnounce(withoutVer bool, why string) {
 	s.mu.Lock()
+	changed := s.announceWithoutVer != withoutVer
 	s.announceWithoutVer = withoutVer
 	snapshot := s.announceSnapshotLocked()
 	resp := s.responder
@@ -1096,7 +1097,9 @@ func (s *IS04NodeServer) republishAnnounce(withoutVer bool, why string) {
 	}
 	if err := resp.Update(s.announceCtx, snapshot); err != nil {
 		s.logger.Warn("provider/node: republish announce failed", "on", why, "without_ver", withoutVer, "err", err)
+		return
 	}
+	s.logger.Info("provider/node: announce republished", "on", why, "without_ver", withoutVer, "changed", changed)
 }
 
 // onRegistrationStateChanged follows every registration transition
