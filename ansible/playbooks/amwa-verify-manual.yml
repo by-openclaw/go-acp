@@ -286,10 +286,15 @@
                 mode: activate_immediate
             status_code: [200]
 
+        # What the browse printed is kept (/run/dhs-verify-discover.txt on
+        # the plant host): when this row does not find the counter, that
+        # file says whether the announce was absent or carried another
+        # value.
         - name: "IS-04-03 test_02 — ver_rcv incremented by exactly one (mod 256)"
           ansible.builtin.shell: >-
             {{ dhs_amwa_validate_plant_bin }} consumer nmos discover
             --service _nmos-node._tcp --timeout 4s
+            | tee -a /run/dhs-verify-discover.txt
             | grep -A10 ':{{ vm_cut_port }}' | grep -o 'ver_rcv=[0-9]*' | head -1
           register: vm_ver_post
           retries: 5
