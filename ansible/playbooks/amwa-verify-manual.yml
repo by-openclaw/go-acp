@@ -286,10 +286,15 @@
                 mode: activate_immediate
             status_code: [200]
 
+        # What the browse printed is kept (/run/dhs-verify-discover.txt on
+        # the plant host): when this row does not find the counter, that
+        # file says whether the announce was absent or carried another
+        # value.
         - name: "IS-04-03 test_02 — ver_rcv incremented by exactly one (mod 256)"
           ansible.builtin.shell: >-
             {{ dhs_amwa_validate_plant_bin }} consumer nmos discover
             --service _nmos-node._tcp --timeout 4s
+            | tee -a /run/dhs-verify-discover.txt
             | grep -A10 ':{{ vm_cut_port }}' | grep -o 'ver_rcv=[0-9]*' | head -1
           register: vm_ver_post
           retries: 5
@@ -326,8 +331,12 @@
     # manually forcing an error condition"; the DhsFaultControl worker
     # is that force, over IS-14's rolePaths methods PATCH, and every
     # injected transition runs the same health engine the tool-scored
-    # rows exercise. statusReportingDelay is dropped to 1 s (3p3 is
-    # writable by class definition) so the drills stay fast.
+    # rows exercise. statusReportingDelay is set to 4 s (3p3 is writable
+    # by class definition): the drills read a state that lasts one delay
+    # — the dip after a synchronization source change, the fault still
+    # held right after its clear — one task after causing it. At 1 s the
+    # state was over by the time the next task's request arrived, about
+    # as often as not (second pass of the v0.40.2 round, test_11).
     - name: "BCP-008 / BCP-007-03 — transient drill window"
       block:
         - name: "Start the transient drill node (direct mode)"
@@ -357,12 +366,12 @@
           delay: 2
           until: vm_b8_up.status == 200
 
-        - name: "Shorten statusReportingDelay to 1 s on the drill monitors"
+        - name: "Set statusReportingDelay to 4 s on the drill monitors"
           ansible.builtin.uri:
             url: "{{ vm_b8_cfg }}/{{ item }}/properties/3p3/value"
             method: PUT
             body_format: json
-            body: { value: 1 }
+            body: { value: 4 }
             status_code: [200]
           loop: ["{{ vm_b8_rm }}", "{{ vm_b8_sm }}"]
 
