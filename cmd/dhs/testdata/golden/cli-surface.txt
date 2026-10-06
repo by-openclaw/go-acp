@@ -3663,6 +3663,8 @@ Usage of rrcs watch:
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check duration
     	ask RRCS this often whether we are still registered, and register again if not; 0 = never (default 30s)
+  -events string
+    	values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received (default "values")
   -listen string
     	local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1) (default ":8195")
   -output string

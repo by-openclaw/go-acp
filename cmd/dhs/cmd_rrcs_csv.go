@@ -68,6 +68,10 @@ type rrcsRow struct {
 	Access    string `json:"access"`
 	Value     string `json:"value"`
 	ValueName string `json:"value_name,omitempty"`
+	Unit      string `json:"unit,omitempty"`
+	Min       string `json:"min,omitempty"`
+	Max       string `json:"max,omitempty"`
+	Default   string `json:"default,omitempty"`
 	EnumItems string `json:"enum_items,omitempty"`
 }
 
@@ -81,8 +85,16 @@ func (r rrcsRow) record() []string {
 			rec[i] = r.Protocol
 		case "path":
 			rec[i] = r.Path
-		case "id":
+		case "id", "oid":
 			rec[i] = r.ID
+		case "unit":
+			rec[i] = r.Unit
+		case "min":
+			rec[i] = r.Min
+		case "max":
+			rec[i] = r.Max
+		case "default":
+			rec[i] = r.Default
 		case "label":
 			rec[i] = r.Label
 		case "kind":
@@ -142,8 +154,13 @@ func rrcsRowsOf(target, path string, id int, props map[string]any) []rrcsRow {
 				access = "RW-"
 			}
 		}
+		meta := rrcsMetaFor(block, field)
+		if meta.Enum != "" && items == "" {
+			items = meta.Enum
+		}
 		rows = append(rows, rrcsRow{IP: target, Protocol: rrcsProto, Path: path + "." + prop, ID: strconv.Itoa(id),
-			Label: field, Kind: kind, Access: access, Value: value, ValueName: name, EnumItems: items})
+			Label: field, Kind: kind, Access: access, Value: value, ValueName: name,
+			Unit: meta.Unit, Min: meta.Min, Max: meta.Max, Default: meta.Default, EnumItems: items})
 	}
 	names := make([]string, 0, len(props))
 	for k := range props {

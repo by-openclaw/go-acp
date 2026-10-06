@@ -75,7 +75,7 @@ func TestRRCSWatchSpyAll(t *testing.T) {
 		return k, true
 	})
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--spy", "all"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--spy", "all", "--events", "raw"})
 	})
 	if err != nil {
 		t.Fatalf("watch: %v", err)
@@ -109,7 +109,7 @@ func TestRRCSWatchSpyRefused(t *testing.T) {
 		return call.Params[0], true
 	})
 	_, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--spy", "61.1,61.2"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--spy", "61.1,61.2", "--events", "raw"})
 	})
 	if err != nil {
 		t.Errorf("watch: %v", err)

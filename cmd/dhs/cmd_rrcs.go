@@ -313,6 +313,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	path := fs.String("path", rrcs.DefaultPath, "URL path RRCS posts its events to")
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
 	spy := fs.String("spy", "none", "panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
+	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
@@ -323,6 +324,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	spyAll, spyPanels, err := rrcsParseSpy(*spy)
 	if err != nil {
 		return rrcsValErr("watch", err.Error())
+	}
+	if *events != "values" && *events != "raw" {
+		return rrcsValErr("watch", "--events must be values or raw")
 	}
 	if *alive != "count" && *alive != "show" {
 		return rrcsValErr("watch", "--alive must be count or show")
@@ -343,6 +347,19 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	}
 	defer closeFn()
 
+	// The names behind the numbers of the events: read once, before the
+	// registration, so no event meets a half-built tree.
+	var model *rrcsModel
+	if *events == "values" {
+		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{commands: spyAll || len(spyPanels) > 0})
+		if err == nil {
+			model, err = rrcsModelOf(snap)
+		}
+		if err != nil {
+			cf.say("rrcs watch: the system could not be read, events are printed with numbers only: %v", err)
+		}
+	}
+
 	var mu sync.Mutex // one line at a time on stdout
 	jsonOut := cf.output == "json"
 	listener := &rrcs.Listener{
@@ -362,18 +379,30 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			mu.Lock()
 			defer mu.Unlock()
 			stamp := e.Time.UTC().Format("2006-01-02T15:04:05.000Z")
-			if jsonOut {
-				b, _ := json.Marshal(struct {
-					Time     string `json:"ts"`
-					Remote   string `json:"remote"`
-					Method   string `json:"method"`
-					TransKey string `json:"trans_key,omitempty"`
-					Params   any    `json:"params"`
-				}{stamp, e.Remote, e.Method, e.TransKey, rrcsJSON(codec.Array(params...))})
-				fmt.Println(string(b))
+			if *events == "raw" {
+				if jsonOut {
+					b, _ := json.Marshal(struct {
+						Time     string `json:"ts"`
+						Remote   string `json:"remote"`
+						Method   string `json:"method"`
+						TransKey string `json:"trans_key,omitempty"`
+						Params   any    `json:"params"`
+					}{stamp, e.Remote, e.Method, e.TransKey, rrcsJSON(codec.Array(params...))})
+					fmt.Println(string(b))
+					return
+				}
+				fmt.Printf("%s  %-24s %s\n", stamp, e.Method, rrcsCompact(codec.Array(params...)))
 				return
 			}
-			fmt.Printf("%s  %-24s %s\n", stamp, e.Method, rrcsCompact(codec.Array(params...)))
+			for _, l := range rrcsDecode(model, e) {
+				if jsonOut {
+					l.Time = stamp
+					b, _ := json.Marshal(l)
+					fmt.Println(string(b))
+					continue
+				}
+				fmt.Println(l.text())
+			}
 		},
 	}
 	srv := &http.Server{Handler: listener, ReadHeaderTimeout: 10 * time.Second}
