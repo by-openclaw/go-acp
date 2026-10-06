@@ -88,9 +88,15 @@ above with `changed=0`, two did not:
   again in the eight passes since, and its cause is not known (#1417);
   the play now keeps what that browse printed.
 
-The reboot row (`amwa-reboot-resilience.yml`) was scored on 2026-10-05:
-the control node's container restarted, the registry active 4 s after
-boot, every node back under its own id.
+The reboot row (`amwa-reboot-resilience.yml`) was scored on the released
+v0.40.3 on 2026-10-06, from the secondary runner: the plant host
+rebooted at 21:11:51 UTC and was back 21 s later, the registry active
+3 s after boot.
+
+```
+reboot resilience OK: 24 unit(s) active, all 22 of our nodes re-registered under their ids (23 nodes in the shared registry), ids stable on every node across 5 collections (200 resource ids persisted — IS-04-01 test_22 equivalent), mirror cache nodes=25,
+boot_id b8f5e42e-3f23-4b2a-981d-e644c2ff944b -> fe7bc709-d60c-4fcb-93bb-7f75ebda19b8
+```
 
 ## The plant mirror
 
