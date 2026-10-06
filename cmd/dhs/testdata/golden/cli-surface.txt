@@ -29,7 +29,7 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
-  Verbs (rrcs):                info, discover, walk, tree, list, get, watch
+  Verbs (rrcs):                info, discover, walk, tree, list, get, set, watch
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3615,6 +3615,10 @@ VERBS
   get       the properties of one thing: --path (as tree and list print it),
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 
+  set       WRITES: edit properties of a port or of a client card
+            (ConfigurationChangeEx): --path, --prop NAME=VALUE (repeat).
+            Shows the change and sends nothing unless --apply yes
+
   tree, list and get --path also read a snapshot written by walk: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
@@ -3733,6 +3737,22 @@ Usage of rrcs tree:
     	per-request timeout (default 10s)
   -type string
     	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
+
+========== consumer/rrcs/set ==========
+$ dhs consumer rrcs set --help
+Usage of rrcs set:
+  -apply string
+    	no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChangeEx) and read the object back (default "no")
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -output string
+    	output: text | json (default "text")
+  -path string
+    	what to change: a port (net.1.node.61.port.1026, …port.7.out) or a client card (net.1.node.60.card.1)
+  -prop value
+    	NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…
+  -timeout duration
+    	per-request timeout (default 10s)
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help

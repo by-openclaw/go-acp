@@ -77,6 +77,19 @@ func (s *rrcsSource) model(ctx context.Context, verb string, hosts []string, com
 	return rrcsBuildModel(snap), nil
 }
 
+// rrcsModelOf builds the tree of a collection made in this run.
+func rrcsModelOf(collected *rrcsWalkSnapshot) (*rrcsModel, error) {
+	doc, err := json.Marshal(collected)
+	if err != nil {
+		return nil, err
+	}
+	var snap map[string]any
+	if err := json.Unmarshal(doc, &snap); err != nil {
+		return nil, err
+	}
+	return rrcsBuildModel(snap), nil
+}
+
 // rrcsFilter is the selection common to list and tree.
 type rrcsFilter struct {
 	node  *int
@@ -181,12 +194,13 @@ func rrcsList(ctx context.Context, args []string) error {
 		}
 		rows = out
 	case "cards":
-		header = []string{"PATH", "TYPE", "OBJECT ID", "LONG NAME"}
+		header = []string{"PATH", "TYPE", "OBJECT ID", "LONG NAME", "MEDIA 1 (RED)", "MEDIA 2 (BLUE)", "NMOS REGISTRY", "PTP"}
 		var out []*rrcsCard
 		for _, c := range m.Cards {
 			if (*flt.node == 0 || c.Node == *flt.node) && rrcsHas(c.Path+" "+c.LongName, *flt.match) {
 				out = append(out, c)
-				cells = append(cells, []string{c.Path, c.Type, strconv.Itoa(c.ObjectID), c.LongName})
+				cells = append(cells, []string{c.Path, c.Type, strconv.Itoa(c.ObjectID), c.LongName,
+					rrcsCardMedia(c.Raw, "Media_1"), rrcsCardMedia(c.Raw, "Media_2"), rrcsCardNmos(c.Raw), rrcsCardPtp(c.Raw)})
 			}
 		}
 		rows = out
@@ -482,4 +496,47 @@ func rrcsStreams(p *rrcsPort) []*rrcsStream {
 		out = append(out, st)
 	}
 	return out
+}
+
+// rrcsCardMedia prints one media interface of a client card. IpAddress is
+// printed as RRCS returns it: a real 9.0 puts a netmask there.
+func rrcsCardMedia(card map[string]any, name string) string {
+	m := jMap(card[name])
+	if m == nil {
+		return ""
+	}
+	out := "ip " + jStr(m, "IpAddress") + " gw " + jStr(m, "DefaultGateway")
+	if jBool(m, "ObtainIpAddrAutomatic") {
+		out += " dhcp"
+	}
+	return out
+}
+
+// rrcsCardNmos prints the NMOS registration of a client card
+// (§8.10.4.34: 0 = Automatic, 1 = Peer2Peer, 2 = Manual).
+func rrcsCardNmos(card map[string]any) string {
+	n := jMap(card["Nmos"])
+	if n == nil {
+		return ""
+	}
+	if !jBool(n, "Enable") {
+		return "off"
+	}
+	mode := map[int]string{0: "automatic", 1: "peer2peer", 2: "manual"}[jInt(n, "RegistrationMode")]
+	if mode == "" {
+		mode = "mode " + strconv.Itoa(jInt(n, "RegistrationMode"))
+	}
+	return mode + " " + jStr(n, "RegistrationIp") + ":" + strconv.Itoa(jInt(n, "RegistrationPort"))
+}
+
+// rrcsCardPtp prints the PTP settings of a client card (§8.10.4.34:
+// mode 0 = Multicast, 1 = Hybrid).
+func rrcsCardPtp(card map[string]any) string {
+	p := jMap(card["Ptp"])
+	if p == nil {
+		return ""
+	}
+	mode := map[int]string{0: "multicast", 1: "hybrid"}[jInt(p, "PtpMode")]
+	return fmt.Sprintf("domain %d prio %d/%d %s announce %d", jInt(p, "PTP"), jInt(p, "PtpPriority"),
+		jInt(p, "PtpPriority2"), mode, jInt(p, "PtpAnnounceInterval"))
 }

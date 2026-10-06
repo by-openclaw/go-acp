@@ -61,6 +61,8 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsGet(ctx, args[1:])
 	case "list":
 		return rrcsList(ctx, args[1:])
+	case "set":
+		return rrcsSet(ctx, args[1:])
 	case "tree":
 		return rrcsTree(ctx, args[1:])
 	}
@@ -92,6 +94,10 @@ VERBS
             select rows. streams = the AES67 receivers and senders
   get       the properties of one thing: --path (as tree and list print it),
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
+
+  set       WRITES: edit properties of a port or of a client card
+            (ConfigurationChangeEx): --path, --prop NAME=VALUE (repeat).
+            Shows the change and sends nothing unless --apply yes
 
   tree, list and get --path also read a snapshot written by walk: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
