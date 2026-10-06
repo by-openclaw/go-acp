@@ -190,9 +190,38 @@ the connection 2.4 s later, and refused every connection afterwards until
 it was restarted by hand. Sixteen read requests on the same connection,
 in the same second, had been answered normally.
 
-What is not known: whether the cause is the edit of a stream that NMOS
-owns, a member the specification means as mandatory (`PortType`), or the
-form of the address. Nobody has read the RRCS log of that minute yet.
+The RRCS log of that minute (read on 2026-10-06, local time = UTC+2):
+
+```
+22:14:31 226ms  XML-RPC-Server        'ConfigurationChangeEx("C1317670920", ..'1 configuration changes'..) initiated.'
+22:14:31 648ms  Config                Opening File Version 0x5F0 created by RRCS version 9.0.RR1-11.f33d55f
+22:14:31 726ms  Configuration Update  Applying change ('1'/'1'): Edit PortEx
+22:23:39 085ms  Application           RRCS version 9.0.RR1-11.f33d55f is starting.
+```
+
+Nothing is logged between "Applying change: Edit PortEx" and the next
+start, nine minutes later, under another process ID: the RRCS process
+died while applying the edit. RRCS accepted the request, parsed it as an
+Edit PortEx, and failed inside its own code; it did not reject anything.
+
+What is still not known: which part of the edit it cannot survive — a
+stream that NMOS owns, a missing `PortType`, or the form of the address.
+That needs a test system.
+
+Also from that log:
+
+- The first watch failed exactly as diagnosed: RRCS logged `Notification
+  failed: Stopping notifications : Server error: Invalid content-length:
+  No content-length available.` for every answer without Content-Length.
+- `UnregisterForAllEvents` is answered ("succeeded" each time). The
+  captures that end on it without an answer are runs whose process was
+  ended before the answer arrived; no registration was left behind.
+- Another control system (User-Agent `DataMiner/1.0`, two agents) polls
+  the same RRCS all day with `GetPortLabel`, `GetPortAlias`,
+  `GetInputGain`, `GetOutputGain`, `GetAllKeyConfiguration`,
+  `GetPortsCommandLists`, `GetObjectProperty`: those reads are proven
+  safe on a real system, and the log prints their parameter lists.
+- A crash of RRCS takes that monitoring down with it.
 
 Rules that follow:
 

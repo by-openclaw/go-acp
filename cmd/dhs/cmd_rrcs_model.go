@@ -56,7 +56,12 @@ type rrcsPort struct {
 	ObjectID int            `json:"object_id"`
 	KeyCount int            `json:"key_count"`
 	Pages    int            `json:"page_count"`
-	Keys     []*rrcsKey     `json:"-"`
+	// Read per port by walk; empty when the snapshot has no port values
+	// or the port was not online.
+	Alias      string     `json:"alias,omitempty"`
+	InputGain  string     `json:"input_gain_db,omitempty"`
+	OutputGain string     `json:"output_gain_db,omitempty"`
+	Keys       []*rrcsKey `json:"-"`
 	Raw      map[string]any `json:"-"`
 }
 
@@ -299,6 +304,7 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 
 	m.buildObjects(lists, net)
 	m.buildKeys(jList(snap["commands"]))
+	m.buildPortValues(jList(snap["port_values"]))
 	return m
 }
 
@@ -481,4 +487,61 @@ func (m *rrcsModel) lookup(path string) (map[string]any, bool) {
 		}
 	}
 	return nil, false
+}
+
+// buildPortValues reads the per-port answers of walk into the ports. The
+// values are also put into the properties of the port, so get, export
+// and import see them under Alias, InputGain and OutputGain.
+func (m *rrcsModel) buildPortValues(calls []any) {
+	for _, c := range calls {
+		call := jMap(c)
+		args := jList(call["args"])
+		payload := jList(call["payload"])
+		if len(payload) == 0 {
+			continue
+		}
+		num := func(i int) int {
+			if i < len(args) {
+				f, _ := args[i].(float64)
+				return int(f)
+			}
+			return 0
+		}
+		method := jStr(call, "method")
+		var port *rrcsPort
+		switch method {
+		case "GetPortLabel": // node, port, input
+			in, _ := args[2].(bool)
+			port = m.find(num(0), num(1), in)
+		case "GetPortAlias": // net, node, port, input
+			in, _ := args[3].(bool)
+			port = m.find(num(1), num(2), in)
+		case "GetInputGain":
+			port = m.find(num(1), num(2), true)
+		case "GetOutputGain":
+			port = m.find(num(1), num(2), false)
+		}
+		if port == nil {
+			continue
+		}
+		switch method {
+		case "GetPortAlias":
+			port.Alias, _ = payload[0].(string)
+			port.Raw["Alias"] = port.Alias
+		case "GetInputGain", "GetOutputGain":
+			// §8.5: gain [dB] = Gain / 2.0, -128 = mute.
+			raw, _ := payload[0].(float64)
+			db := "mute"
+			if int(raw) != -128 {
+				db = strconv.FormatFloat(raw/2, 'f', 1, 64)
+			}
+			if method == "GetInputGain" {
+				port.InputGain = db
+				port.Raw["InputGain"] = raw
+			} else {
+				port.OutputGain = db
+				port.Raw["OutputGain"] = raw
+			}
+		}
+	}
 }

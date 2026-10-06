@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"dhs/internal/rrcs/codec"
@@ -20,6 +22,7 @@ import (
 var rrcsWalkLists = []string{
 	"GetNodeTypes", "GetClientCardTypes", "GetPortExTypeList", "GetErrorCodeList",
 	"GetAllCaps", "GetTrunkPorts",
+	"GetTrunklineSetup", "GetTrunklineActivities", "GetTrunkIfbs", "GetTrunkingNetAddr", "GetStageNetAddr",
 }
 
 // rrcsObjectTypes are the object types GetObjectList accepts (§8.9.1).
@@ -61,6 +64,12 @@ type rrcsWalkSnapshot struct {
 	Objects       map[string][]rrcsWalkObject `json:"objects"`
 	ObjectLists   []rrcsWalkCall              `json:"object_lists"`
 	Commands      []rrcsWalkCall              `json:"commands"`
+	// PortValues holds, per port, what only a request per port gives:
+	// label, alias, input gain, output gain (§8.3, §8.4, §8.5).
+	PortValues []rrcsWalkCall `json:"port_values"`
+	// NotOnline counts the requests a port answered with "not online"
+	// (error 24): expected for a port that is unplugged, not a failure.
+	NotOnline int `json:"not_online"`
 }
 
 // rrcsWalker runs the requests of one walk and keeps the count.
@@ -80,7 +89,11 @@ func (w *rrcsWalker) call(method string, params ...codec.Value) (rrcsWalkCall, r
 	reply, err := w.client.Call(w.ctx, method, params...)
 	w.snap.Requests++
 	if err != nil {
-		w.snap.Failed++
+		if errors.Is(err, &codec.CodeError{Code: codec.CodePortNotOnline}) {
+			w.snap.NotOnline++
+		} else {
+			w.snap.Failed++
+		}
 		rec.Error = err.Error()
 		return rec, reply, false
 	}
@@ -118,6 +131,8 @@ type rrcsCollectOpts struct {
 	properties bool
 	// commands asks what is on the keys of the ports.
 	commands bool
+	// values asks label, alias and gains of each port.
+	values bool
 	// onlyPort, when set, limits the commands to the ports it accepts.
 	onlyPort func(node, port int, isInput bool) bool
 	// step receives the progress lines.
@@ -266,6 +281,38 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 		step("commands: %d requests", len(snap.Commands))
 	}
 
+	// 6. Label, alias and gains of each port. A real RRCS 9.0 logs these
+	// forms for another control system that polls them all day:
+	// GetPortLabel(node, port, input), GetPortAlias(net, node, port,
+	// input), GetInputGain / GetOutputGain(net, node, port).
+	if opts.values {
+		for _, p := range ports {
+			if ctx.Err() != nil {
+				break
+			}
+			net, _ := rrcsFieldInt(p, "Net")
+			node, _ := rrcsFieldInt(p, "Node")
+			port, _ := rrcsFieldInt(p, "Port")
+			isInput := !rrcsFieldBool(p, "Output")
+			if opts.onlyPort != nil && !opts.onlyPort(int(node), int(port), isInput) {
+				continue
+			}
+			rec, _, _ := w.call("GetPortLabel", codec.Int(node), codec.Int(port), codec.Bool(isInput))
+			snap.PortValues = append(snap.PortValues, rec)
+			rec, _, _ = w.call("GetPortAlias", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput))
+			snap.PortValues = append(snap.PortValues, rec)
+			if rrcsFieldBool(p, "Input") {
+				rec, _, _ = w.call("GetInputGain", codec.Int(net), codec.Int(node), codec.Int(port))
+				snap.PortValues = append(snap.PortValues, rec)
+			}
+			if rrcsFieldBool(p, "Output") {
+				rec, _, _ = w.call("GetOutputGain", codec.Int(net), codec.Int(node), codec.Int(port))
+				snap.PortValues = append(snap.PortValues, rec)
+			}
+		}
+		step("port values: %d requests, %d on ports not online", len(snap.PortValues), snap.NotOnline)
+	}
+
 	snap.Complete = ctx.Err() == nil
 	return snap, len(ports), nil
 }
@@ -276,15 +323,24 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("rrcs walk", flag.ContinueOnError)
 	cf := newRRCSFlags(fs)
 	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
-	skip := fs.String("skip", "", "leave out a part: properties (one request per object) | commands (one request per port) | both")
+	skip := fs.String("skip", "", "leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
 		return rrcsValErr("walk", "want exactly one host[:port] argument")
 	}
-	if *skip != "" && *skip != "properties" && *skip != "commands" && *skip != "both" {
-		return rrcsValErr("walk", "--skip must be properties, commands or both")
+	skips := map[string]bool{}
+	for _, part := range strings.Split(*skip, ",") {
+		switch part = strings.TrimSpace(part); part {
+		case "":
+		case "both": // kept from the first release
+			skips["properties"], skips["commands"] = true, true
+		case "properties", "commands", "values":
+			skips[part] = true
+		default:
+			return rrcsValErr("walk", "--skip takes properties, commands, values, comma-separated")
+		}
 	}
 	client, _, closeFn, err := cf.open("walk", fs.Arg(0))
 	if err != nil {
@@ -302,8 +358,9 @@ func rrcsWalk(ctx context.Context, args []string) error {
 
 	snap, portCount, err := rrcsCollect(ctx, client, rrcsCollectOpts{
 		full:       true,
-		properties: *skip != "properties" && *skip != "both",
-		commands:   *skip != "commands" && *skip != "both",
+		properties: !skips["properties"],
+		commands:   !skips["commands"],
+		values:     !skips["values"],
 		step:       func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) },
 	})
 	if err != nil {
@@ -341,6 +398,8 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("%-20s %d\n", "ports", portCount)
 	fmt.Printf("%-20s %d\n", "command lists", len(snap.Commands))
+	fmt.Printf("%-20s %d\n", "port values", len(snap.PortValues))
+	fmt.Printf("%-20s %d\n", "port not online", snap.NotOnline)
 	fmt.Printf("%-20s %d of %d\n", "failed requests", snap.Failed, snap.Requests)
 	fmt.Printf("%-20s %s\n", "snapshot", *out)
 	return nil

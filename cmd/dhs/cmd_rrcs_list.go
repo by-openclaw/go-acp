@@ -205,13 +205,13 @@ func rrcsList(ctx context.Context, args []string) error {
 		}
 		rows = out
 	case "ports", "panels":
-		header = []string{"PATH", "DIR", "TYPE", "LABEL", "KEYS", "PAGES", "OBJECT ID", "LONG NAME"}
+		header = []string{"PATH", "DIR", "TYPE", "LABEL", "KEYS", "PAGES", "OBJECT ID", "LONG NAME", "ALIAS", "GAIN IN", "GAIN OUT"}
 		var out []*rrcsPort
 		for _, p := range m.Ports {
 			if flt.port(p) && (kind == "ports" || p.KeyCount > 0) {
 				out = append(out, p)
 				cells = append(cells, []string{p.Path, rrcsDir(p), p.Type, p.Label, strconv.Itoa(p.KeyCount),
-					strconv.Itoa(p.Pages), strconv.Itoa(p.ObjectID), p.LongName})
+					strconv.Itoa(p.Pages), strconv.Itoa(p.ObjectID), p.LongName, p.Alias, p.InputGain, p.OutputGain})
 			}
 		}
 		rows = out

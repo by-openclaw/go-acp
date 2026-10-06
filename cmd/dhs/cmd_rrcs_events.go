@@ -40,6 +40,8 @@ var rrcsMetaOf = map[string]rrcsMeta{
 	"Stream.ReceiveBuffer":    {Default: "3", Unit: "packets"},
 	"Stream.PlayMode":         {Enum: "0=Synton|1=Synchron"},
 	"Xp.Volume":               {Min: "-114.5", Max: "12.5", Unit: "dB"},
+	".InputGain":              {Min: "-36", Max: "36", Unit: "0.5 dB", Enum: "-128=mute"},
+	".OutputGain":             {Min: "-36", Max: "36", Unit: "0.5 dB", Enum: "-128=mute"},
 }
 
 // rrcsMetaFor finds the entry of a member of a block.

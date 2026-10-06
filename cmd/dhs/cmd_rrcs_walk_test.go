@@ -202,3 +202,74 @@ func TestRRCSGet(t *testing.T) {
 		t.Errorf("missing object: %v", err)
 	}
 }
+
+// walk reads label, alias and gains per port; a port that is not online
+// is counted apart and is not a failure.
+func TestRRCSWalkPortValues(t *testing.T) {
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		k := call.Params[0]
+		switch call.Method {
+		case "GetPortLabel": // node, port, input
+			return codec.Array(k, codec.Int(0), codec.String("LBL")), true
+		case "GetPortAlias": // net, node, port, input
+			if call.Params[3].Int == 1026 {
+				return codec.Array(k, codec.Int(0), codec.String("NOC TWO")), true
+			}
+			return codec.Array(k, codec.Int(0), codec.String("")), true
+		case "GetInputGain":
+			if call.Params[3].Int == 1041 {
+				return codec.Array(k, codec.Int(24)), true // port is not online
+			}
+			return codec.Array(k, codec.Int(0), codec.Int(-12)), true
+		case "GetOutputGain":
+			if call.Params[3].Int == 1041 {
+				return codec.Array(k, codec.Int(24)), true
+			}
+			return codec.Array(k, codec.Int(0), codec.Int(-128)), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	dir := t.TempDir()
+	snapFile := filepath.Join(dir, "walk.json")
+	text := rrcsRun(t, "walk", f.addr(), "--out", snapFile, "--skip", "properties,commands")
+	rrcsWant(t, text, "port values          14", "port not online      2")
+	raw, _ := os.ReadFile(snapFile)
+	var snap rrcsWalkSnapshot
+	if err := json.Unmarshal(raw, &snap); err != nil {
+		t.Fatal(err)
+	}
+	// Four ports: label and alias each, an input gain for three, an
+	// output gain for three.
+	if len(snap.PortValues) != 14 {
+		t.Errorf("port value requests: %d", len(snap.PortValues))
+	}
+	if snap.NotOnline != 2 {
+		t.Errorf("not online: %d", snap.NotOnline)
+	}
+	for _, c := range snap.PortValues {
+		if strings.Contains(c.Error, "code 24") {
+			continue
+		}
+		if c.Error != "" {
+			t.Errorf("%s %v: %s", c.Method, c.Args, c.Error)
+		}
+	}
+	ports := rrcsRun(t, "list", "ports", "--from", snapFile)
+	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "BM NOC 2   NOC TWO  -6.0     mute")
+	rrcsWant(t, rrcsRun(t, "get", "--from", snapFile, "--path", "net.1.node.61.port.1026", "--prop", "InputGain"), "InputGain                    -12")
+	out := rrcsRun(t, "export", "--from", snapFile, "--format", "csv", "--path", "port.1026.InputGain,port.1026.Alias")
+	rrcsWant(t, out, "net.1.node.61.port.1026.Alias,100,Alias,string,R--,NOC TWO", "InputGain,int,R--,-12,,0.5 dB,-36,36")
+
+	// --skip values leaves them out; an unknown part is refused.
+	rrcsRun(t, "walk", f.addr(), "--out", snapFile, "--skip", "properties, commands ,values")
+	raw, _ = os.ReadFile(snapFile)
+	snap = rrcsWalkSnapshot{}
+	_ = json.Unmarshal(raw, &snap)
+	if len(snap.PortValues) != 0 {
+		t.Errorf("--skip values still asked %d", len(snap.PortValues))
+	}
+	var val *consumer.ValidationError
+	if err := runRRCS(context.Background(), []string{"walk", "h", "--skip", "values,everything"}); !errors.As(err, &val) {
+		t.Errorf("bad --skip: %v", err)
+	}
+}
