@@ -17,7 +17,9 @@ import (
 	"sync"
 	"time"
 
+	"dhs/internal/clock"
 	"dhs/internal/consumer"
+	"dhs/internal/consumer/alarm"
 	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
 	"dhs/internal/transport"
@@ -384,6 +386,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
 	spy := fs.String("spy", "none", "panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
 	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
+	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
@@ -416,6 +419,28 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		return err
 	}
 	defer closeFn()
+
+	var judge *alarm.Evaluator
+	if *alarmFile != "" {
+		tpl, err := alarm.LoadFile(*alarmFile)
+		if err != nil {
+			return rrcsValErr("watch", "--alarm: "+err.Error())
+		}
+		judge = alarm.New(tpl, clock.System())
+	}
+	// raise prints and logs one change of verdict.
+	raise := func(tr alarm.Transition) {
+		fmt.Printf("%s  ALARM %s\n", tr.At.UTC().Format("15:04:05.000"), tr.String())
+		if cf.sink != nil {
+			level := slog.LevelWarn
+			if tr.Severity == alarm.Normal {
+				level = slog.LevelInfo
+			}
+			cf.sink.Log(ctx, level, "alarm", slog.String("proto", rrcsProto), slog.String("severity", tr.Severity.String()),
+				slog.String("prior", tr.Prior.String()), slog.String("path", tr.Path), slog.String("value", tr.Value),
+				slog.String("band", tr.Band), slog.String("text", tr.Text))
+		}
+	}
 
 	// The names behind the numbers of the events: read once, before the
 	// registration, so no event meets a half-built tree.
@@ -466,6 +491,12 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			}
 			for _, l := range rrcsDecode(model, e) {
 				cf.logValue(l)
+				if judge != nil {
+					if tr := judge.Eval(client.Peer(), consumer.Event{Path: l.Path + "." + l.Label, Label: l.Label, Unit: l.Unit,
+						Value: consumer.Value{Kind: consumer.KindString, Str: l.Value}}); tr != nil {
+						raise(*tr)
+					}
+				}
 				if jsonOut {
 					l.Time = stamp
 					b, _ := json.Marshal(l)
@@ -526,6 +557,13 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		defer t.Stop()
 		tick = t.C
 	}
+	// A verdict that waits out a hold becomes true with time alone.
+	var sweep <-chan time.Time
+	if judge != nil {
+		st := time.NewTicker(time.Second)
+		defer st.Stop()
+		sweep = st.C
+	}
 	registrations := 1
 	var runErr error
 loop:
@@ -533,6 +571,12 @@ loop:
 		select {
 		case <-ctx.Done():
 			break loop
+		case <-sweep:
+			mu.Lock()
+			for _, tr := range judge.Sweep() {
+				raise(tr)
+			}
+			mu.Unlock()
 		case err := <-serveErr:
 			if !errors.Is(err, http.ErrServerClosed) {
 				runErr = fmt.Errorf("rrcs watch: listener: %w", err)

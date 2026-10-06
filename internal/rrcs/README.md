@@ -203,6 +203,39 @@ The names are those `get --path` prints.
 anywhere. Without it, every writable value that differs is written, then
 everything is read back.
 
+### ensure — a desired state, for Ansible
+
+```
+.\dhs.exe consumer rrcs ensure HOST --file desired.json --check --output json
+.\dhs.exe consumer rrcs ensure TESTHOST --file desired.json --write-to TESTHOST --output json
+```
+
+`desired.json` names values by the path `export` prints, and crosspoints by
+their two ports. Only what the file names is touched.
+
+```json
+{
+  "values": {
+    "net.1.node.60.card.1.Ptp.PTP": 100,
+    "net.1.node.60.card.1.Nmos.RegistrationIp": "10.0.0.15",
+    "net.1.node.63.port.1045.out.PortAes67Output.Protocol": "Manual",
+    "net.1.node.63.port.1045.out.PortAes67Output.Multicast": "239.5.63.45"
+  },
+  "crosspoints": [
+    {"source": "net.1.node.63.port.1045.in", "destination": "net.1.node.61.port.1026", "state": "present"}
+  ]
+}
+```
+
+`--check` reports `would_change` and the `diff` and sends nothing: safe
+anywhere. An apply reports `changed`; run again, it reports `changed:
+false`. The Ansible role `dhs_rrcs` and `playbooks/rrcs-ensure.yml` wrap
+it: the same content as `rrcs_values` and `rrcs_crosspoints` variables, a
+dry-run by default.
+
+Not covered yet: conferences, groups, IFBs, key assignment, creating
+ports. They need their shapes confirmed on a test system first.
+
 ### call — any method of the specification
 
 ```
@@ -220,7 +253,35 @@ A method named `Get…` or `Is…` only reads and needs no `--write-to`.
 | The capture | The exact request |
 | The RRCS log of that minute | How RRCS understood the request, and its own error text |
 
-## 5. When something goes wrong
+## 5. Logs and alarms
+
+Every verb that talks to a gateway logs, like the other dhs connectors:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--log` | `auto` | Local file, one per day: `.cache\logs\rrcs\<host>\<verb>.log`. A path replaces it; `off` disables it |
+| `--log-format` | `syslog` | `syslog` (RFC 5424), `json` or `text` |
+| `--syslog-addr` | none | Also send every record to a syslog server, `host:port`, UDP |
+| `--log-level` | `info` | `debug`, `info`, `warn`, `error` |
+
+`watch` writes one `value_change` record per decoded event (`proto`,
+`event`, `oid`, `path`, `label`, `value`, `unit`, `name`).
+
+```
+.\dhs.exe consumer rrcs watch HOST --syslog-addr 10.0.0.5:514 --alarm RRCS@9.0.json
+```
+
+`--alarm FILE` judges the values with an alarm template
+(`internal/rrcs/alarm/RRCS@9.0.json`) and prints, and logs with its
+severity, each change of verdict:
+
+| Condition | Severity | Where the severity comes from |
+|---|---|---|
+| RRCS loses the Artist system | critical | Seen: nothing can be read or controlled in that state |
+| A port goes off line for 30 s | minor | RRCS itself rates "Panels offline" Minor |
+| Node and client card alarms | none yet | Neither the specification nor RRCS rates them; the plant has to |
+
+## 6. When something goes wrong
 
 | Symptom | Meaning |
 |---|---|

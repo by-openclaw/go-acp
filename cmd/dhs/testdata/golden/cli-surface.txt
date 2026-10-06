@@ -3688,6 +3688,8 @@ Usage of rrcs discover:
 ========== consumer/rrcs/watch ==========
 $ dhs consumer rrcs watch --help
 Usage of rrcs watch:
+  -alarm string
+    	judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes
   -alive string
     	GetAlive pings: count (summary only) | show (one line each) (default "count")
   -capture string

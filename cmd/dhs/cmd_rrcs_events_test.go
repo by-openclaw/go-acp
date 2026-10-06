@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"os"
@@ -13,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/alarm"
 	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
 )
@@ -301,4 +304,86 @@ collect:
 	if err := runRRCS(context.Background(), []string{"info", f.addr(), "--syslog-addr", "not an address"}); err == nil {
 		t.Error("unusable --syslog-addr accepted")
 	}
+}
+
+// The committed template loads, and every row says where it comes from
+// (ADR-0033: a row without a source is a guess).
+func TestRRCSAlarmTemplate(t *testing.T) {
+	tpl, err := alarm.LoadFile(filepath.Join("..", "..", "internal", "rrcs", "alarm", "RRCS@9.0.json"))
+	if err != nil {
+		t.Fatalf("template: %v", err)
+	}
+	for _, row := range tpl.Rows {
+		if len(row.Source) < 40 {
+			t.Errorf("row %s has no real source: %q", row.Match, row.Source)
+		}
+	}
+	if last := tpl.Rows[len(tpl.Rows)-1]; last.Match != "**" || last.Kind != alarm.KindInfo {
+		t.Errorf("the template does not end with the catch-all info row: %+v", last)
+	}
+}
+
+// watch --alarm raises when the Artist connection fails and clears when
+// it is back; a port going off line waits out its hold and raises nothing
+// at once.
+func TestRRCSWatchAlarm(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		if call.Method == "RegisterForAllEvents" {
+			url := "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int)) + call.Params[2].Str
+			go func() {
+				for _, doc := range [][]byte{
+					must(codec.EncodeCall("ConnectArtistFailure", codec.String("R0000000001"), codec.String("Working"))),
+					must(codec.EncodeCall("PortInactive", codec.String("R0000000002"), codec.Int(1), codec.Int(61), codec.Int(1026))),
+					must(codec.EncodeCall("ConnectArtistRestored", codec.String("R0000000003"), codec.String("Working"))),
+				} {
+					if resp, err := http.Post(url, "text/xml", bytes.NewReader(doc)); err == nil {
+						_ = resp.Body.Close()
+					}
+				}
+				cancel()
+			}()
+			return call.Params[0], true
+		}
+		if call.Method == "UnregisterForAllEvents" {
+			return call.Params[0], true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	logFile := filepath.Join(t.TempDir(), "watch.log")
+	out, err := rrcsStdout(t, func() error {
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--log", logFile, "--log-format", "json",
+			"--alarm", filepath.Join("..", "..", "internal", "rrcs", "alarm", "RRCS@9.0.json")})
+	})
+	if err != nil {
+		t.Fatalf("watch: %v", err)
+	}
+	rrcsWant(t, out,
+		"ALARM critical raised gateway.ArtistConnection (value): failed",
+		"ALARM normal cleared gateway.ArtistConnection",
+		"RRCS connection to the Artist system")
+	if strings.Contains(out, "ALARM minor") {
+		t.Errorf("a port off line raised before its hold:\n%s", out)
+	}
+	files, _ := filepath.Glob(filepath.Join(filepath.Dir(logFile), "watch*.log"))
+	var logged string
+	for _, name := range files {
+		raw, _ := os.ReadFile(name)
+		logged += string(raw)
+	}
+	if !strings.Contains(logged, `"msg":"alarm"`) || !strings.Contains(logged, `"severity":"critical"`) {
+		t.Errorf("the alarm did not reach the log:\n%s", logged)
+	}
+	var val *consumer.ValidationError
+	if err := runRRCS(context.Background(), []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--alarm", filepath.Join(t.TempDir(), "none.json")}); !errors.As(err, &val) {
+		t.Errorf("missing template: %v", err)
+	}
+}
+
+func must(doc []byte, err error) []byte {
+	if err != nil {
+		panic(err)
+	}
+	return doc
 }
