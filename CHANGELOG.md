@@ -7,6 +7,14 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.40.2](https://github.com/by-openclaw/go-acp/compare/v0.40.1...v0.40.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **amwa:** a replaced mDNS TXT record is withdrawn by name, and the responder answers for every record it owns ([eb4e45e](https://github.com/by-openclaw/go-acp/commit/eb4e45e789432121918add1d5ec81ba91ed93da6))
+* **amwa:** a replaced mDNS TXT record is withdrawn by name, and the responder answers for every record it owns ([6fbd957](https://github.com/by-openclaw/go-acp/commit/6fbd957255f9b178dcd531a5464d5e6efd2cd5dd)), closes [#1413](https://github.com/by-openclaw/go-acp/issues/1413)
+
 ## [0.40.1](https://github.com/by-openclaw/go-acp/compare/v0.40.0...v0.40.1) (2026-10-06)
 
 
