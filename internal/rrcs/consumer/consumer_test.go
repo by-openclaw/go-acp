@@ -576,3 +576,35 @@ func TestRegisterThenReceive(t *testing.T) {
 		t.Errorf("counters %d %d", l.Events(), l.Alives())
 	}
 }
+
+// §8.12: TransKey, TCPPort, URLPath, Node, Port, EventInfo.
+func TestPanelSpy(t *testing.T) {
+	f := newFakeRRCS(t, func(call codec.Call) (codec.Value, *codec.Fault) { return key(call), nil })
+	c := f.client(t, Config{})
+	reg := Registration{Port: 8195}
+	if _, err := c.PanelSpy(context.Background(), reg, 61, 1026, true); err != nil {
+		t.Fatalf("PanelSpy: %v", err)
+	}
+	got := f.calls[0]
+	if got.Method != "ChangePanelSpyRegistry" || len(got.Params) != 6 || got.Params[1].Int != 8195 ||
+		got.Params[2].Str != "/RPC2" || got.Params[3].Int != 61 || got.Params[4].Int != 1026 {
+		t.Fatalf("sent %+v", got)
+	}
+	for _, name := range []string{"RotateEventsOn", "KeyEventsOn", "FuncKeyEventsOn", "NumKeyEventsOn"} {
+		if v, ok := got.Params[5].Field(name); !ok || !v.Bool {
+			t.Errorf("EventInfo.%s = %+v, %v", name, v, ok)
+		}
+	}
+	if _, err := c.PanelSpy(context.Background(), reg, 61, 1026, false); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := f.calls[1].Params[5].Field("KeyEventsOn"); v.Bool {
+		t.Error("off was sent as on")
+	}
+	if _, err := c.PanelSpy(context.Background(), reg, -1, 0, true); !errors.Is(err, codec.ErrRange) {
+		t.Errorf("negative node: %v", err)
+	}
+	if _, err := c.PanelSpy(context.Background(), Registration{}, 1, 1, true); err == nil {
+		t.Error("an empty registration was accepted")
+	}
+}

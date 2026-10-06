@@ -3609,14 +3609,16 @@ VERBS
             of every port (what is on its keys) — read only
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
-  list      one table: nodes | cards | ports | panels | keys | conferences |
-            groups | ifbs | logic; --node, --type, --match select rows
+  list      one table: nodes | cards | ports | panels | keys | streams |
+            conferences | groups | ifbs | logic; --node, --type, --match
+            select rows. streams = the AES67 receivers and senders
   get       the properties of one thing: --path (as tree and list print it),
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 
   tree, list and get --path also read a snapshot written by walk: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
-            GetAlive; UnregisterForAllEvents on Ctrl+C
+            GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
+            pressed and released on the panels (ChangePanelSpyRegistry)
 
 Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
 
@@ -3655,6 +3657,8 @@ Usage of rrcs watch:
     	output: text | json (default "text")
   -path string
     	URL path RRCS posts its events to (default "/RPC2")
+  -spy string
+    	panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit (default "none")
   -timeout duration
     	per-request timeout (default 10s)
 
@@ -3694,7 +3698,7 @@ Usage of rrcs get:
 
 ========== consumer/rrcs/list ==========
 $ dhs consumer rrcs list --help
-Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|conferences|groups|ifbs|logic> <host>[:port] | --from FILE [flags]
+Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|conferences|groups|ifbs|logic> <host>[:port] | --from FILE [flags]
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -from string

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -86,14 +87,16 @@ VERBS
             of every port (what is on its keys) — read only
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
-  list      one table: nodes | cards | ports | panels | keys | conferences |
-            groups | ifbs | logic; --node, --type, --match select rows
+  list      one table: nodes | cards | ports | panels | keys | streams |
+            conferences | groups | ifbs | logic; --node, --type, --match
+            select rows. streams = the AES67 receivers and senders
   get       the properties of one thing: --path (as tree and list print it),
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 
   tree, list and get --path also read a snapshot written by walk: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
-            GetAlive; UnregisterForAllEvents on Ctrl+C
+            GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
+            pressed and released on the panels (ChangePanelSpyRegistry)
 
 Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.`)
 }
@@ -292,12 +295,17 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	listen := fs.String("listen", ":8195", "local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1)")
 	path := fs.String("path", rrcs.DefaultPath, "URL path RRCS posts its events to")
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
+	spy := fs.String("spy", "none", "panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
 		return rrcsValErr("watch", "want exactly one host[:port] argument")
+	}
+	spyAll, spyPanels, err := rrcsParseSpy(*spy)
+	if err != nil {
+		return rrcsValErr("watch", err.Error())
 	}
 	if *alive != "count" && *alive != "show" {
 		return rrcsValErr("watch", "--alive must be count or show")
@@ -366,6 +374,35 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	cf.say("rrcs watch: registered at %s — events go to port %d path %s; Ctrl+C to stop",
 		client.Peer(), reg.Port, rrcs.NormalizePath(reg.Path))
 
+	// Panel spy is a second registration, per panel, on top of the first
+	// (§9.9.1). It is made again after every new registration.
+	if spyAll {
+		reply, err := client.Call(ctx, "GetAllPorts")
+		if err != nil {
+			cf.say("rrcs watch: panel spy: %v", err)
+		}
+		for _, p := range rrcsListOf(reply) {
+			if n, _ := rrcsFieldInt(p, "KeyCount"); n > 0 {
+				node, _ := rrcsFieldInt(p, "Node")
+				port, _ := rrcsFieldInt(p, "Port")
+				spyPanels = append(spyPanels, [2]int{int(node), int(port)})
+			}
+		}
+	}
+	setSpy := func(c context.Context, on bool) {
+		failed := 0
+		for _, panel := range spyPanels {
+			if _, err := client.PanelSpy(c, reg, panel[0], panel[1], on); err != nil {
+				failed++
+				cf.say("rrcs watch: panel spy node %d port %d: %v", panel[0], panel[1], err)
+			}
+		}
+		if len(spyPanels) > 0 {
+			cf.say("rrcs watch: panel spy on=%v for %d panel(s), %d refused", on, len(spyPanels), failed)
+		}
+	}
+	setSpy(ctx, true)
+
 	var tick <-chan time.Time
 	if *check > 0 {
 		t := time.NewTicker(*check)
@@ -396,6 +433,7 @@ loop:
 					cf.say("rrcs watch: %v", err)
 				} else {
 					registrations++
+					setSpy(ctx, true)
 				}
 			}
 		}
@@ -405,6 +443,7 @@ loop:
 	cf.say("rrcs watch: stopping — unregistering (up to %s)", cf.timeout)
 	bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
+	setSpy(bye, false)
 	start := time.Now()
 	if _, err := client.Unregister(bye, reg); err != nil {
 		cf.say("rrcs watch: unregister failed after %s: %v", time.Since(start).Round(time.Millisecond), err)
@@ -414,4 +453,24 @@ loop:
 	cf.say("rrcs watch: %d events, %d GetAlive answered, %d registration(s)",
 		listener.Events(), listener.Alives(), registrations)
 	return runErr
+}
+
+// rrcsParseSpy reads the --spy value: none, all, or a list of NODE.PORT.
+func rrcsParseSpy(v string) (all bool, panels [][2]int, err error) {
+	switch v {
+	case "", "none":
+		return false, nil, nil
+	case "all":
+		return true, nil, nil
+	}
+	for _, item := range strings.Split(v, ",") {
+		node, port, ok := strings.Cut(strings.TrimSpace(item), ".")
+		n, err1 := strconv.Atoi(node)
+		p, err2 := strconv.Atoi(port)
+		if !ok || err1 != nil || err2 != nil || n < 0 || p < 0 {
+			return false, nil, fmt.Errorf("--spy: %q is not NODE.PORT", item)
+		}
+		panels = append(panels, [2]int{n, p})
+	}
+	return false, panels, nil
 }

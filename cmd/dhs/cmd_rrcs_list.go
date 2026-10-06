@@ -14,7 +14,7 @@ import (
 
 // rrcsListKinds are what `list` prints.
 var rrcsListKinds = []string{
-	"nodes", "cards", "ports", "panels", "keys", "conferences", "groups", "ifbs", "logic",
+	"nodes", "cards", "ports", "panels", "keys", "streams", "conferences", "groups", "ifbs", "logic",
 }
 
 // rrcsSource is where a verb takes the system from: a gateway, or a
@@ -198,6 +198,20 @@ func rrcsList(ctx context.Context, args []string) error {
 				out = append(out, p)
 				cells = append(cells, []string{p.Path, rrcsDir(p), p.Type, p.Label, strconv.Itoa(p.KeyCount),
 					strconv.Itoa(p.Pages), strconv.Itoa(p.ObjectID), p.LongName})
+			}
+		}
+		rows = out
+	case "streams":
+		header = []string{"PATH", "ROLE", "LABEL", "MODE", "MULTICAST", "MULTICAST 2", "SOURCE", "CH", "BITS", "PTIME", "PT"}
+		var out []*rrcsStream
+		for _, p := range m.Ports {
+			if !flt.port(p) {
+				continue
+			}
+			for _, st := range rrcsStreams(p) {
+				out = append(out, st)
+				cells = append(cells, []string{st.Port, st.Role, st.Label, st.Mode, st.Multicast, st.Multicast2, st.Source,
+					strconv.Itoa(st.Channels), strconv.Itoa(st.BitDepth), strconv.Itoa(st.PacketTime), strconv.Itoa(st.PayloadType)})
 			}
 		}
 		rows = out
@@ -426,4 +440,46 @@ func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, pro
 		fmt.Printf("%-28s %s\n", k, b)
 	}
 	return nil
+}
+
+// rrcsStream is one AES67 stream of a port: what it receives (the input
+// of the port) or what it sends (its output).
+type rrcsStream struct {
+	Port        string `json:"port"`
+	Role        string `json:"role"` // receiver | sender
+	Label       string `json:"label"`
+	Mode        string `json:"mode"`
+	Multicast   string `json:"multicast"`
+	Multicast2  string `json:"multicast_2"`
+	Source      string `json:"source,omitempty"`
+	Channels    int    `json:"channels"`
+	BitDepth    int    `json:"bit_depth"`
+	PacketTime  int    `json:"packet_time_us"`
+	PayloadType int    `json:"payload_type"`
+}
+
+// rrcsStreams reads PortAes67Input and PortAes67Output of a port
+// (§8.10.4.6). Protocol: 2 = Manual, 3 = RTSP, 5 = NMOS.
+func rrcsStreams(p *rrcsPort) []*rrcsStream {
+	var out []*rrcsStream
+	for _, side := range []struct{ member, role string }{{"PortAes67Input", "receiver"}, {"PortAes67Output", "sender"}} {
+		a := jMap(p.Raw[side.member])
+		if a == nil {
+			continue
+		}
+		mode := map[int]string{2: "Manual", 3: "RTSP", 5: "NMOS"}[jInt(a, "Protocol")]
+		if mode == "" {
+			mode = strconv.Itoa(jInt(a, "Protocol"))
+		}
+		st := &rrcsStream{Port: p.Path, Role: side.role, Label: p.Label, Mode: mode,
+			Multicast:  jStr(a, "Multicast") + ":" + strconv.Itoa(jInt(a, "MulticastPort")),
+			Multicast2: jStr(a, "Multicast2") + ":" + strconv.Itoa(jInt(a, "MulticastPort2")),
+			Channels:   jInt(a, "Channels"), BitDepth: jInt(a, "BitDepth"),
+			PacketTime: jInt(a, "PacketTime"), PayloadType: jInt(a, "PayloadType")}
+		if side.role == "receiver" {
+			st.Source = jStr(a, "SourceIp")
+		}
+		out = append(out, st)
+	}
+	return out
 }

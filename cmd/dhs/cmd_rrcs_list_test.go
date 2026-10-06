@@ -20,7 +20,25 @@ func rrcsTreeAnswer(call codec.Call) (codec.Value, bool) {
 	k := call.Params[0]
 	st := codec.Struct
 	mem := rrcsMember
+	stream := func(proto int32, mcast string) codec.Value {
+		return st(mem("Protocol", codec.Int(proto)), mem("Multicast", codec.String(mcast)), mem("MulticastPort", codec.Int(5004)),
+			mem("Multicast2", codec.String("0.0.0.0")), mem("MulticastPort2", codec.Int(5004)), mem("SourceIp", codec.String("10.0.0.9")),
+			mem("Channels", codec.Int(1)), mem("BitDepth", codec.Int(24)), mem("PacketTime", codec.Int(1000)), mem("PayloadType", codec.Int(97)))
+	}
 	port := func(n, p int32, in, out bool, typ, label, long string, id, keys int32) codec.Value {
+		if typ == "Output (AES67)" {
+			return st(mem("Net", codec.Int(1)), mem("Node", codec.Int(n)), mem("Port", codec.Int(p)),
+				mem("Input", codec.Bool(in)), mem("Output", codec.Bool(out)), mem("PortType", codec.String(typ)),
+				mem("Label", codec.String(label)), mem("LongName", codec.String(long)), mem("ObjectID", codec.Int(id)),
+				mem("KeyCount", codec.Int(keys)), mem("PageCount", codec.Int(keys/16)), mem("PortAes67Output", stream(2, "239.1.2.3")))
+		}
+		if typ == "4-Wire (AES67)" {
+			return st(mem("Net", codec.Int(1)), mem("Node", codec.Int(n)), mem("Port", codec.Int(p)),
+				mem("Input", codec.Bool(in)), mem("Output", codec.Bool(out)), mem("PortType", codec.String(typ)),
+				mem("Label", codec.String(label)), mem("LongName", codec.String(long)), mem("ObjectID", codec.Int(id)),
+				mem("KeyCount", codec.Int(keys)), mem("PageCount", codec.Int(keys/16)),
+				mem("PortAes67Input", stream(5, "0.0.0.0")), mem("PortAes67Output", stream(9, "0.0.0.0")))
+		}
 		return st(mem("Net", codec.Int(1)), mem("Node", codec.Int(n)), mem("Port", codec.Int(p)),
 			mem("Input", codec.Bool(in)), mem("Output", codec.Bool(out)), mem("PortType", codec.String(typ)),
 			mem("Label", codec.String(label)), mem("LongName", codec.String(long)), mem("ObjectID", codec.Int(id)),
@@ -181,6 +199,11 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap), "5 keys", "net.1.node.61.port.1041.vfunc.always.0")
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap, "--match", "group"), "1 keys")
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap, "--type", "4-wire"), "1 keys")
+	rrcsWant(t, rrcsRun(t, "list", "streams", "--from", snap), "3 streams",
+		"net.1.node.61.port.7.out  sender    O.-7   Manual  239.1.2.3:5004",
+		"receiver  CODEC  NMOS    0.0.0.0:5004    0.0.0.0:5004  10.0.0.9  1   24    1000   97",
+		"sender    CODEC  9 ")
+	rrcsWant(t, rrcsRun(t, "list", "streams", "--from", snap, "--type", "output"), "1 streams")
 	rrcsWant(t, rrcsRun(t, "list", "conferences", "--from", snap), "conference.300", "net.1.node.61.port.1041 (CODEC) talk+listen")
 	rrcsWant(t, rrcsRun(t, "list", "groups", "--from", snap), "group.200", "net.1.node.61.port.7.out (O.-7), net.1.node.99.port.1.out")
 	rrcsWant(t, rrcsRun(t, "list", "ifbs", "--from", snap), "ifb.400", "input", "output")
