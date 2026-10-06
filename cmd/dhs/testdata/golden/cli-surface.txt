@@ -20,7 +20,7 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p | rrcs
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -29,6 +29,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rrcs):                info, discover, watch
+                               (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113
@@ -3585,6 +3587,64 @@ $ dhs consumer probel-sw08p replace --help
 error: missing <host:port>
 
 [exit status 1]
+
+========== consumer/rrcs/<dispatcher-help> ==========
+$ dhs consumer rrcs --help
+dhs consumer rrcs — Riedel RRCS gateway (XML-RPC over HTTP, default port 8193)
+
+USAGE
+  dhs consumer rrcs <verb> <host>[:port] [flags]
+
+VERBS
+
+  Verb      Wire
+  --------  ---------------------------------------------------------------
+  info      GetVersion, GetState, IsConnectedToArtist, GetConfigurationID
+  discover  GetAllNodes, GetAllClientCards, GetAllDevices, GetAllPorts,
+            GetAllConferences, GetAllGroups, GetAllIFBs, GetAllLogicSources_v2,
+            GetAllGpIns, GetAllGpOuts, GetAllActiveXps — read only
+  watch     RegisterForAllEvents, then every event RRCS sends; answers
+            GetAlive; UnregisterForAllEvents on Ctrl+C
+
+Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
+
+========== consumer/rrcs/info ==========
+$ dhs consumer rrcs info --help
+Usage of rrcs info:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -output string
+    	output: text | json (default "text")
+  -timeout duration
+    	per-request timeout (default 10s)
+
+========== consumer/rrcs/discover ==========
+$ dhs consumer rrcs discover --help
+Usage of rrcs discover:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -output string
+    	output: text | json (default "text")
+  -timeout duration
+    	per-request timeout (default 10s)
+
+========== consumer/rrcs/watch ==========
+$ dhs consumer rrcs watch --help
+Usage of rrcs watch:
+  -alive string
+    	GetAlive pings: count (summary only) | show (one line each) (default "count")
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -check duration
+    	ask RRCS this often whether we are still registered, and register again if not; 0 = never (default 30s)
+  -listen string
+    	local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1) (default ":8195")
+  -output string
+    	output: text | json (default "text")
+  -path string
+    	URL path RRCS posts its events to (default "/RPC2")
+  -timeout duration
+    	per-request timeout (default 10s)
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help

@@ -317,6 +317,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "cerebrum-nb" {
 		return runCerebrum(ctx, rest)
 	}
+	if proto == rrcsProto {
+		return runRRCS(ctx, rest)
+	}
 	if proto == "ccm" {
 		handled, remaining, err := runCCM(ctx, rest)
 		if handled {
@@ -583,7 +586,7 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p | rrcs
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -592,6 +595,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rrcs):                info, discover, watch
+                               (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113
