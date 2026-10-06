@@ -55,6 +55,10 @@ func rrcsWalkAnswer(call codec.Call) (codec.Value, bool) {
 		return codec.Struct(rrcsMember("TransKey", k), rrcsMember("Label", codec.String("Conf 006")), rrcsMember("Owner", codec.Int(3))), true
 	case "GetObjectPropertyNames":
 		return codec.Struct(rrcsMember("TransKey", k), rrcsMember("PropertyNames", codec.Array(codec.String("Label"), codec.String("Owner")))), true
+	case "GetAllCaps":
+		return codec.Struct(rrcsMember("ErrorCode", codec.Int(0)), rrcsMember("TransKey", k), rrcsMember("port count", codec.Int(2)),
+			rrcsMember("port#1", codec.Array(codec.Int(1), codec.Int(61), codec.Int(1040), codec.Int(-1))),
+			rrcsMember("port#2", codec.Array(codec.Int(1), codec.Int(62), codec.Int(7), codec.Int(2)))), true
 	case "GetPortsCommandLists":
 		return codec.Struct(rrcsMember("TransKey", k), rrcsMember("CommandLists", codec.Array())), true
 	}
@@ -87,12 +91,16 @@ func TestRRCSWalk(t *testing.T) {
 	if len(snap.Licenses) != 1 || snap.Licenses[0].Args[0] != float64(60) {
 		t.Errorf("licences: %+v", snap.Licenses)
 	}
-	// The panel has two directions, the output one.
-	if len(snap.Commands) != 3 {
-		t.Fatalf("command lists: %d, want 3", len(snap.Commands))
+	// The panel has two directions and no pool port (-1); the output has
+	// one direction and two pool ports (0 and 1).
+	if len(snap.Commands) != 4 {
+		t.Fatalf("command lists: %d, want 4", len(snap.Commands))
 	}
-	if got := snap.Commands[0].Args; len(got) != 5 || got[1] != float64(61) || got[2] != float64(1040) || got[3] != true {
+	if got := snap.Commands[0].Args; len(got) != 5 || got[1] != float64(61) || got[2] != float64(1040) || got[3] != true || got[4] != float64(-1) {
 		t.Errorf("first command request: %v", got)
+	}
+	if a, b := snap.Commands[2].Args, snap.Commands[3].Args; a[4] != float64(0) || b[4] != float64(1) || a[3] != false {
+		t.Errorf("pool port requests: %v %v", a, b)
 	}
 	conf := snap.Objects["conference"]
 	if len(conf) != 1 || conf[0].ObjectID != 77 || conf[0].LongName != "Conf 006" || conf[0].Properties == nil {
@@ -117,7 +125,7 @@ func TestRRCSWalk(t *testing.T) {
 	if snap.Requests != len(f.methods()) || snap.Failed == 0 {
 		t.Errorf("counts: %d requests (%d sent), %d failed", snap.Requests, len(f.methods()), snap.Failed)
 	}
-	for _, want := range []string{"conference           1", "command lists        3", "snapshot"} {
+	for _, want := range []string{"conference           1", "command lists        4", "snapshot"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("summary lacks %q:\n%s", want, text)
 		}

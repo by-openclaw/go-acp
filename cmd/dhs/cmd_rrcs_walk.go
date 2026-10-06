@@ -22,10 +22,11 @@ var rrcsWalkLists = []string{
 	"GetAllCaps", "GetTrunkPorts",
 }
 
-// rrcsObjectTypes are the object types GetObjectList accepts (§8.9.1),
-// and `portex`, which 9.0 puts in the place of the deprecated `port`.
+// rrcsObjectTypes are the object types GetObjectList accepts (§8.9.1).
+// A real RRCS 9.0 refuses `portex` here with fault 14: that type belongs
+// to the configuration changes only.
 var rrcsObjectTypes = []string{
-	"conference", "group", "port", "portex", "ifb", "logic-source", "logic-destination",
+	"conference", "group", "port", "ifb", "logic-source", "logic-destination",
 	"gp-input", "gp-output", "user", "audiopatch", "client-card", "device",
 }
 
@@ -159,6 +160,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 
 	// 2. Lists. The ports and the nodes are kept for the later steps.
 	var ports, nodes []codec.Value
+	pools := map[[2]int32]int32{} // node, port → pool port amount
 	for _, m := range append(append([]string{}, rrcsDiscoverMethods...), rrcsWalkLists...) {
 		rec, reply, ok := w.call(m)
 		snap.Lists = append(snap.Lists, rec)
@@ -170,6 +172,13 @@ func rrcsWalk(ctx context.Context, args []string) error {
 			ports = rrcsListOf(reply)
 		case "GetAllNodes":
 			nodes = rrcsListOf(reply)
+		case "GetAllCaps":
+			// "port#N": [net, node, port, pool port amount] (§8.8).
+			for _, m := range reply.Value.Members {
+				if it := m.Value.Items; m.Value.Kind == codec.KindArray && len(it) == 4 {
+					pools[[2]int32{it[1].Int, it[2].Int}] = it[3].Int
+				}
+			}
 		}
 	}
 	step("lists: %d requests, %d ports, %d nodes", len(snap.Lists), len(ports), len(nodes))
@@ -242,9 +251,21 @@ func rrcsWalk(ctx context.Context, args []string) error {
 				if !rrcsFieldBool(p, dir.member) {
 					continue
 				}
-				rec, _, _ := w.call("GetPortsCommandLists",
-					codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(dir.isInput), codec.Int(0))
-				snap.Commands = append(snap.Commands, rec)
+				// A real RRCS 9.0 answers "does not exist" to pool port 0
+				// on a port without pool ports; GetAllCaps gives -1 for
+				// those, and an amount for the others.
+				amount, known := pools[[2]int32{node, port}]
+				if !known || amount <= 0 {
+					rec, _, _ := w.call("GetPortsCommandLists",
+						codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(dir.isInput), codec.Int(-1))
+					snap.Commands = append(snap.Commands, rec)
+					continue
+				}
+				for pool := int32(0); pool < amount; pool++ {
+					rec, _, _ := w.call("GetPortsCommandLists",
+						codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(dir.isInput), codec.Int(pool))
+					snap.Commands = append(snap.Commands, rec)
+				}
 			}
 		}
 		step("commands: %d requests", len(snap.Commands))
