@@ -158,12 +158,12 @@ func TestRRCSImportRoundTrip(t *testing.T) {
 		t.Fatalf("--dry-run sent %d changes", len(*changes))
 	}
 
-	done := rrcsRun(t, "import", f.addr(), "--file", file)
+	done := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
 	rrcsWant(t, done, "applied     net.1.node.61.port.7.out.PortAes67Output.Multicast", "applied 1,", "failed 0")
 	if len(*changes) != 1 {
 		t.Fatalf("%d changes sent, want 1", len(*changes))
 	}
-	again := rrcsRun(t, "import", f.addr(), "--file", file)
+	again := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
 	rrcsWant(t, again, "applied 0,")
 	if len(*changes) != 1 {
 		t.Errorf("a second import sent a change again")
@@ -177,7 +177,7 @@ func TestRRCSImportNotTaken(t *testing.T) {
 	rrcsRun(t, "export", f.addr(), "--out", file, "--path", "port.7.out")
 	rrcsEditCSV(t, file, "net.1.node.61.port.7.out.PortAes67Output.Multicast", "239.9.9.9", ',')
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--output", "json"})
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--output", "json", "--write-to", f.addr()})
 	})
 	if err == nil || !strings.Contains(out, `"result":"not_taken"`) || !strings.Contains(out, `"failed":1`) {
 		t.Errorf("%v\n%s", err, out)
@@ -238,6 +238,9 @@ func TestRRCSImportSkipsAndRefusals(t *testing.T) {
 		"dead gateway": {"import", "127.0.0.1:1", "--file", file, "--timeout", "300ms"},
 		"bad out":      {"export", f.addr(), "--out", filepath.Join(dir, "no", "such", "dir", "x.csv")},
 	} {
+		if args[0] == "import" {
+			args = append(args, "--dry-run")
+		}
 		if err := runRRCS(ctx, args); err == nil || errors.As(err, &val) {
 			t.Errorf("%s: got %v, want a runtime error", name, err)
 		}
@@ -251,7 +254,7 @@ func TestRRCSImportJSON(t *testing.T) {
 	rows := []rrcsRow{{Path: "net.1.node.61.port.7.out.PortAes67Output.Multicast", Value: "239.9.9.9"}}
 	raw, _ := json.Marshal(rows)
 	_ = os.WriteFile(file, raw, 0o644)
-	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file), "applied 1,")
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr()), "applied 1,")
 	if len(*changes) != 1 {
 		t.Errorf("%d changes", len(*changes))
 	}

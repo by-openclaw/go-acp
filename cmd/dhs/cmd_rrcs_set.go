@@ -183,6 +183,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 	path := fs.String("path", "", "what to change: a port (net.1.node.61.port.1026, …port.7.out) or a client card (net.1.node.60.card.1)")
 	var props rrcsProps
 	fs.Var(&props, "prop", "NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…")
+	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	apply := fs.String("apply", "no", "no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChangeEx) and read the object back")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
@@ -195,6 +196,11 @@ func rrcsSet(ctx context.Context, args []string) error {
 	}
 	if *path == "" || len(props) == 0 {
 		return rrcsValErr("set", "want --path and at least one --prop NAME=VALUE")
+	}
+	if *apply == "yes" {
+		if err := rrcsWriteGuard("set", fs.Arg(0), *writeTo); err != nil {
+			return err
+		}
 	}
 	change, err := rrcsChangeFor(*path)
 	if err != nil {
@@ -264,5 +270,20 @@ func rrcsSet(ctx context.Context, args []string) error {
 		return fmt.Errorf("rrcs set: RRCS accepted the request but these still differ: %s", strings.Join(differ, ", "))
 	}
 	fmt.Println("done: every wanted value reads back")
+	return nil
+}
+
+// rrcsWriteToHelp describes the guard every writing verb carries.
+const rrcsWriteToHelp = "required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system"
+
+// rrcsWriteGuard refuses a write unless the operator named the target a
+// second time.
+func rrcsWriteGuard(verb, host, writeTo string) error {
+	if writeTo == "" {
+		return rrcsValErr(verb, "this would WRITE to "+host+": add --write-to "+host+" to confirm the target (see --help), or stay with the dry run")
+	}
+	if writeTo != host {
+		return rrcsValErr(verb, "--write-to "+writeTo+" does not match the host "+host)
+	}
 	return nil
 }

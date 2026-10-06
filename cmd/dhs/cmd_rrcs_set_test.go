@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -183,7 +185,7 @@ func TestRRCSSetShowsAndSendsNothing(t *testing.T) {
 func TestRRCSSetApplies(t *testing.T) {
 	f, changes := rrcsSetFake(t, true)
 	out := rrcsRun(t, "set", f.addr(), "--path", "net.1.node.61.port.7.out",
-		"--prop", "PortAes67Output.Multicast=239.9.9.9", "--apply", "yes")
+		"--prop", "PortAes67Output.Multicast=239.9.9.9", "--apply", "yes", "--write-to", f.addr())
 	rrcsWant(t, out, "read back:", "PortAes67Output.Multicast          239.9.9.9", "done: every wanted value reads back")
 	if len(*changes) != 1 {
 		t.Fatalf("%d changes sent, want 1", len(*changes))
@@ -199,7 +201,7 @@ func TestRRCSSetNotTaken(t *testing.T) {
 	f, _ := rrcsSetFake(t, false)
 	_, err := rrcsStdout(t, func() error {
 		return runRRCS(context.Background(), []string{"set", f.addr(), "--path", "net.1.node.61.port.7.out",
-			"--prop", "PortAes67Output.Multicast=239.9.9.9", "--apply", "yes"})
+			"--prop", "PortAes67Output.Multicast=239.9.9.9", "--apply", "yes", "--write-to", f.addr()})
 	})
 	if err == nil || !strings.Contains(err.Error(), "still differ: PortAes67Output.Multicast") {
 		t.Errorf("got %v", err)
@@ -224,7 +226,7 @@ func TestRRCSSetRefusals(t *testing.T) {
 		}
 	}
 	f, changes := rrcsSetFake(t, true)
-	if err := runRRCS(ctx, []string{"set", f.addr(), "--path", "net.1.node.61.port.999", "--prop", "Alias=x", "--apply", "yes"}); err == nil || len(*changes) != 0 {
+	if err := runRRCS(ctx, []string{"set", f.addr(), "--path", "net.1.node.61.port.999", "--prop", "Alias=x", "--apply", "yes", "--write-to", f.addr()}); err == nil || len(*changes) != 0 {
 		t.Errorf("a port that does not exist: %v, %d changes sent", err, len(*changes))
 	}
 	// A gateway that refuses the change.
@@ -235,10 +237,34 @@ func TestRRCSSetRefusals(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	_, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"set", refuse.addr(), "--path", "net.1.node.60.card.1", "--prop", "Ptp.PTP=100", "--apply", "yes"})
+		return runRRCS(ctx, []string{"set", refuse.addr(), "--path", "net.1.node.60.card.1", "--prop", "Ptp.PTP=100", "--apply", "yes", "--write-to", refuse.addr()})
 	})
 	var fault *codec.Fault
 	if !errors.As(err, &fault) {
 		t.Errorf("refused change: %v", err)
 	}
+}
+
+// A write names its target twice or does not happen.
+func TestRRCSWriteGuard(t *testing.T) {
+	f, changes := rrcsSetFake(t, true)
+	ctx := context.Background()
+	var val *consumer.ValidationError
+	set := []string{"set", f.addr(), "--path", "net.1.node.61.port.7.out", "--prop", "PortAes67Output.Multicast=239.9.9.9", "--apply", "yes"}
+	if err := runRRCS(ctx, set); !errors.As(err, &val) || !strings.Contains(err.Error(), "--write-to "+f.addr()) {
+		t.Errorf("set without --write-to: %v", err)
+	}
+	if err := runRRCS(ctx, append(set, "--write-to", "10.12.0.12")); !errors.As(err, &val) || !strings.Contains(err.Error(), "does not match") {
+		t.Errorf("set with another host: %v", err)
+	}
+	file := filepath.Join(t.TempDir(), "x.csv")
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.7.out.PortAes67Output.Multicast,239.9.9.9\n"), 0o644)
+	if err := runRRCS(ctx, []string{"import", f.addr(), "--file", file}); !errors.As(err, &val) {
+		t.Errorf("import without --write-to: %v", err)
+	}
+	if len(f.methods()) != 0 || len(*changes) != 0 {
+		t.Errorf("a refused write reached the gateway: %v", f.methods())
+	}
+	// The dry runs need no guard.
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run"), "would apply 1,")
 }

@@ -173,3 +173,33 @@ and `<param>`. The codec emits and accepts that form only.
 A real RRCS with an Artist node. No independent implementation of the
 protocol is known. Until captures exist, unit tests take their bytes from
 the specification text.
+
+## Writes: one production incident, guard in place
+
+On 2026-10-06 at 20:14:31 UTC the first write this connector ever sent
+reached a production RRCS (`9.0.RR1-11.f33d55f`, Artist-1024):
+
+```
+ConfigurationChangeEx  [ { ChangeType: edit, ObjectType: portex,
+  SpecificParams: { PortAddress: { IsInput: 0, Node: 66, Port: 1045 },
+                    PortAes67Output: { Multicast: "239.5.66.45", MulticastPort: 5004 } } } ]
+```
+
+The stream was in NMOS mode (`Protocol` 5). RRCS sent no answer, reset
+the connection 2.4 s later, and refused every connection afterwards until
+it was restarted by hand. Sixteen read requests on the same connection,
+in the same second, had been answered normally.
+
+What is not known: whether the cause is the edit of a stream that NMOS
+owns, a member the specification means as mandatory (`PortType`), or the
+form of the address. Nobody has read the RRCS log of that minute yet.
+
+Rules that follow:
+
+- `set --apply yes` and `import` without `--dry-run` refuse to run unless
+  `--write-to HOST` repeats the host. Do not weaken that guard.
+- No write goes to a production RRCS until the same write has passed on a
+  test system, with the RRCS log open.
+- On the test system start with one harmless member on an unused port,
+  then one variable at a time: mode Manual first, then the address.
+- Reads are unaffected: thousands of them ran against that system.

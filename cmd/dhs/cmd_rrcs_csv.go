@@ -402,6 +402,7 @@ skipped and listed.
 	}
 	cf := newRRCSFlags(fs)
 	file := fs.String("file", "", "snapshot file written by export, json or csv (required)")
+	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	var paths rrcsProps
 	fs.Var(&paths, "path", "apply only the rows whose path contains this text; comma-separated or repeated")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
@@ -412,6 +413,11 @@ skipped and listed.
 	}
 	if *file == "" {
 		return rrcsValErr("import", "want --file SNAPSHOT")
+	}
+	if !dryRun {
+		if err := rrcsWriteGuard("import", fs.Arg(0), *writeTo); err != nil {
+			return err
+		}
 	}
 	rows, err := rrcsReadRows(*file)
 	if err != nil {

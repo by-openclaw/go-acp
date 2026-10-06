@@ -3761,6 +3761,8 @@ Usage of rrcs set:
     	NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…
   -timeout duration
     	per-request timeout (default 10s)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
 
 ========== consumer/rrcs/export ==========
 $ dhs consumer rrcs export --help
@@ -3801,6 +3803,8 @@ skipped and listed.
     	apply only the rows whose path contains this text; comma-separated or repeated
   -timeout duration
     	per-request timeout (default 10s)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help
