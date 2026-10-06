@@ -550,6 +550,15 @@ dhs_amwa_validate_suites:
       rows: [{ver: v1.3}, {ver: v1.2}], baseline_pass: 69, baseline_cnt: 0 }
   - { id: IS-04-03, scope: node, target: cut, window: p2p, auth: true,
       rows: [{ver: v1.3}], baseline_pass: 24, baseline_cnt: 0 }
+  # The same, at each earlier minor: the authorization rounds of the
+  # version entries are scored at their own minor, not only at v1.3.
+  # baseline_pass 0 = set from the first fleet run.
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.2, is04_ver: v1.2, auth: true,
+      rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.1, is04_ver: v1.1, auth: true,
+      rows: [{ver: v1.1}], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: IS-04-03, scope: node, target: cut, window: p2p, label: v1.0, is04_ver: v1.0, auth: true,
+      rows: [{ver: v1.0}], baseline_pass: 0, baseline_cnt: 0 }
   # IS-04-01 WITH authorization (#1312), on the bridges: the node
   # obtains a token from the armed tool's mock Authorization Server and
   # registers into its token-checking mock registries. The host-network
@@ -560,6 +569,14 @@ dhs_amwa_validate_suites:
       rows: [{ver: v1.3}], baseline_pass: 67, baseline_cnt: 0 }
   - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast, auth: true,
       rows: [{ver: v1.3}], baseline_pass: 67, baseline_cnt: 0 }
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.2, is04_ver: v1.2, auth: true,
+      rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.1, is04_ver: v1.1, auth: true,
+      rows: [{ver: v1.1}], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: IS-04-01, scope: node, target: cut, window: isolated, label: v1.0, is04_ver: v1.0, auth: true,
+      rows: [{ver: v1.0}], baseline_pass: 0, baseline_cnt: 0 }
+  - { id: IS-04-01, scope: node, target: cut, window: unicast, label: unicast-v1.2, is04_ver: v1.2, auth: true,
+      rows: [{ver: v1.2}], baseline_pass: 0, baseline_cnt: 0 }
   # Armed baselines (2026-09-01, #944): the token-bearing companion
   # node + seeded persistent subscription give every Query round a
   # resource, so the armed window sits the SAME exam shape as the
@@ -570,6 +587,12 @@ dhs_amwa_validate_suites:
   # a Pass instead of the "reserved for development" Warning.
   - { id: IS-04-02, scope: registry, target: registry, window: registry, auth: true,
       rows: [{ver: v1.3}, {ver: v1.3}], baseline_pass: 90, baseline_cnt: 2 }
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.2, is04_ver: v1.2, auth: true,
+      rows: [{ver: v1.2}, {ver: v1.2}], baseline_pass: 0, baseline_cnt: 1 }
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.1, is04_ver: v1.1, auth: true,
+      rows: [{ver: v1.1}, {ver: v1.1}], baseline_pass: 0, baseline_cnt: 1 }
+  - { id: IS-04-02, scope: registry, target: registry, window: registry, label: registry-v1.0, is04_ver: v1.0, auth: true,
+      rows: [{ver: v1.0}, {ver: v1.0}], baseline_pass: 0, baseline_cnt: 1 }
 
   # ---- controller scope (issue #954): the four testing-facade exams,
   # driven by our shipped facade (window_facade.yml). Row shapes are
