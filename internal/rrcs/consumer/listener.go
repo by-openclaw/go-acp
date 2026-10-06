@@ -3,6 +3,7 @@ package consumer
 import (
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -140,12 +141,13 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *Listener) reply(w http.ResponseWriter, r *http.Request, doc []byte) {
+	// "The Content-Length must be specified and must be correct" (§5.5).
+	// Without it the answer leaves chunked, which a real RRCS (9.0)
+	// takes for a failed notification: it then drops the registration.
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(doc)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(doc)
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
 	l.trace(wiretrace.DirectionTx, r.RemoteAddr, doc)
 }
 

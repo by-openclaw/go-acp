@@ -453,6 +453,26 @@ func TestListenerSpecNotification(t *testing.T) {
 	}
 }
 
+// §5.5: the answer carries its Content-Length and is not chunked.
+func TestListenerAnswerHasContentLength(t *testing.T) {
+	srv := httptest.NewServer(&Listener{})
+	defer srv.Close()
+	for _, doc := range []string{
+		`<methodCall><methodName>ConnectArtistRestored</methodName><params><param><value><string>R0000000000</string></value></param><param><value><string>Working</string></value></param></params></methodCall>`,
+		`garbage`,
+	} {
+		resp, err := http.Post(srv.URL+"/RPC2", "text/xml", strings.NewReader(doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.ContentLength != int64(len(body)) || len(resp.TransferEncoding) != 0 {
+			t.Errorf("Content-Length %d, body %d bytes, transfer encoding %v", resp.ContentLength, len(body), resp.TransferEncoding)
+		}
+	}
+}
+
 // §9.8: GetAlive has no parameter and must be answered.
 func TestListenerGetAlive(t *testing.T) {
 	l := &Listener{Path: "notification"}
