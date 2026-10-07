@@ -39,7 +39,7 @@ func (p *Plugin) CrosspointInterrogate(
 		return f.ID == codec.TxCrosspointTally || f.ID == codec.TxCrosspointTallyExt
 	})
 	if err != nil {
-		if req.ID == codec.RxCrosspointInterrogate && errors.Is(err, context.DeadlineExceeded) {
+		if req.ID == codec.RxCrosspointInterrogate && errors.Is(err, ErrNoReply) {
 			return codec.CrosspointTallyParams{}, fmt.Errorf("probel interrogate: the router acknowledged but sent no tally. "+
 				"Some routers (the EVS Neuron) do not answer a general-form interrogate when the routed source is above %d; "+
 				"give the source count with --srcs N so dhs asks in the extended form: %w",
