@@ -306,3 +306,63 @@ func TestRRCSExportKeysAndCommands(t *testing.T) {
 	// An import of that file changes nothing: none of it is writable.
 	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run"), "would apply 0,")
 }
+
+// The named values, ranges, defaults and text lengths of the export come
+// from the specification's own tables.
+func TestRRCSSpecMeta(t *testing.T) {
+	// Complete lists make an enum, with the name of the value.
+	if p := rrcsSpecFor("client-card", "Nmos", "RegistrationMode"); p.Enum != "0=Automatic|1=Peer2Peer|2=Manual" {
+		t.Errorf("RegistrationMode: %+v", p)
+	}
+	if p := rrcsSpecFor("client-card", "Ptp", "PTP"); p.Min != "0" || p.Max != "127" {
+		t.Errorf("PTP domain: %+v", p)
+	}
+	if p := rrcsSpecFor("portex", "PortAes67Input", "PayloadType"); p.Min != "96" || p.Max != "127" {
+		t.Errorf("PayloadType: %+v", p)
+	}
+	// As RRCS reports it, KeyMode is one more than the value an edit takes.
+	if p := rrcsSpecFor("panel-key", "", "KeyMode"); p.Enum != "1=Auto|2=Momentary(PTT)|3=Latching" {
+		t.Errorf("KeyMode: %+v", p)
+	}
+	// Names are matched without regard to case.
+	if p := rrcsSpecFor("panel-key", "", "LatchingTimeOut"); p.Default != "0" {
+		t.Errorf("LatchingTimeOut: %+v", p)
+	}
+	if p := rrcsSpecFor("panel-key", "", "LabelValue"); p.MaxLen != "8" {
+		t.Errorf("LabelValue: %+v", p)
+	}
+	// The media blocks are left to the hand-kept table; unknown things
+	// have nothing.
+	for _, q := range [][3]string{{"client-card", "Media_1", "DefaultGateway"}, {"portex", "", "NoSuchProperty"}, {"no-such-object", "", "Label"}} {
+		if p := rrcsSpecFor(q[0], q[1], q[2]); p != (rrcsSpecProp{}) {
+			t.Errorf("%v: %+v", q, p)
+		}
+	}
+
+	rows := rrcsRowsOf("h", "panel-key", "net.1.node.61.port.1026.key.0.1.5", 644, map[string]any{
+		"KeyMode": float64(2), "GroupColor": float64(7), "LabelValue": "HYP GEN", "Dim": true})
+	byLabel := map[string]rrcsRow{}
+	for _, r := range rows {
+		byLabel[r.Label] = r
+	}
+	if r := byLabel["KeyMode"]; r.Kind != "enum" || r.ValueName != "Momentary(PTT)" || r.Default != "2" {
+		t.Errorf("KeyMode row: %+v", r)
+	}
+	// A range with one named point outside it stays a number, and the
+	// point widens the range.
+	if r := byLabel["GroupColor"]; r.Kind != "int" || r.Min != "0" || r.Max != "16" || r.EnumItems != "16=<none>" {
+		t.Errorf("GroupColor row: %+v", r)
+	}
+	if r := byLabel["LabelValue"]; r.MaxLen != "8" {
+		t.Errorf("LabelValue row: %+v", r)
+	}
+	// A scale the specification abbreviates stays a number between its ends.
+	vox := rrcsRowsOf("h", "portex", "net.1.node.61.port.1026", 1, map[string]any{"VoxOnTh": float64(12)})[0]
+	if vox.Kind != "int" || vox.Min != "0" || vox.Max != "25" || vox.ValueName != "" {
+		t.Errorf("VoxOnTh row: %+v", vox)
+	}
+	cmd := rrcsRowsOf("h", "call-to-port-cmd", "x.cmd", 2, map[string]any{"Monitoring": float64(2)})[0]
+	if cmd.Kind != "enum" || cmd.ValueName != "Always Off" {
+		t.Errorf("Monitoring row: %+v", cmd)
+	}
+}

@@ -74,6 +74,7 @@ type rrcsRow struct {
 	Max       string `json:"max,omitempty"`
 	Default   string `json:"default,omitempty"`
 	EnumItems string `json:"enum_items,omitempty"`
+	MaxLen    string `json:"max_len,omitempty"`
 }
 
 func (r rrcsRow) record() []string {
@@ -108,6 +109,8 @@ func (r rrcsRow) record() []string {
 			rec[i] = r.ValueName
 		case "enum_items":
 			rec[i] = r.EnumItems
+		case "max_len":
+			rec[i] = r.MaxLen
 		}
 	}
 	return rec
@@ -141,7 +144,11 @@ func rrcsScalar(field string, v any) (value, kind, name, items string, ok bool) 
 
 // rrcsRowsOf flattens one object: its own values, and those of the
 // blocks one level down.
-func rrcsRowsOf(target, path string, id int, props map[string]any) []rrcsRow {
+//
+// object is the object type of the specification the properties belong
+// to (portex, client-card, panel-key, or the type of a command): it is
+// what finds the range, the default and the named values of each one.
+func rrcsRowsOf(target, object, path string, id int, props map[string]any) []rrcsRow {
 	var rows []rrcsRow
 	add := func(block, field string, v any) {
 		value, kind, name, items, ok := rrcsScalar(field, v)
@@ -155,13 +162,70 @@ func rrcsRowsOf(target, path string, id int, props map[string]any) []rrcsRow {
 				access = "RW-"
 			}
 		}
+		// What the specification prints for this property, then the few
+		// values kept by hand (units, and the ranges of the blocks the
+		// printed tables do not give cleanly).
+		spec := rrcsSpecFor(object, block, field)
 		meta := rrcsMetaFor(block, field)
+		if meta.Min == "" && meta.Max == "" {
+			meta.Min, meta.Max = spec.Min, spec.Max
+		}
+		if meta.Default == "" {
+			meta.Default = spec.Default
+		}
+		if meta.Enum == "" {
+			meta.Enum = spec.Enum
+		}
 		if meta.Enum != "" && items == "" {
 			items = meta.Enum
+			if kind == "int" {
+				// A complete list of named values makes an enum. Where
+				// the specification prints only some of them — the ends
+				// of a scale, or a list of allowed numbers — the value
+				// stays a number, the printed points are kept as hints,
+				// and they bound the range when none is given.
+				lo, hi, named, count := 0, 0, true, 0
+				for _, item := range strings.Split(items, "|") {
+					n, label, ok := strings.Cut(item, "=")
+					key, err := strconv.Atoi(n)
+					if err != nil {
+						named = false
+						continue
+					}
+					if !ok {
+						named = false
+					}
+					if count == 0 || key < lo {
+						lo = key
+					}
+					if count == 0 || key > hi {
+						hi = key
+					}
+					count++
+					if ok && n == value {
+						name = label
+					}
+				}
+				switch {
+				case named && count > 0 && hi-lo+1 == count && meta.Min == "" && meta.Max == "":
+					kind = "enum"
+				case count > 0 && named:
+					if meta.Min == "" || meta.Max == "" {
+						meta.Min, meta.Max = strconv.Itoa(lo), strconv.Itoa(hi)
+					} else {
+						if n, err := strconv.Atoi(meta.Min); err == nil && lo < n {
+							meta.Min = strconv.Itoa(lo)
+						}
+						if n, err := strconv.Atoi(meta.Max); err == nil && hi > n {
+							meta.Max = strconv.Itoa(hi)
+						}
+					}
+				}
+			}
 		}
 		rows = append(rows, rrcsRow{IP: target, Protocol: rrcsProto, Path: path + "." + prop, ID: strconv.Itoa(id),
 			Label: field, Kind: kind, Access: access, Value: value, ValueName: name,
-			Unit: meta.Unit, Min: meta.Min, Max: meta.Max, Default: meta.Default, EnumItems: items})
+			Unit: meta.Unit, Min: meta.Min, Max: meta.Max, Default: meta.Default, EnumItems: items, MaxLen: spec.MaxLen})
 	}
 	names := make([]string, 0, len(props))
 	for k := range props {
@@ -190,10 +254,10 @@ func rrcsRows(m *rrcsModel) []rrcsRow {
 	target := hostOnly(m.Target)
 	var rows []rrcsRow
 	for _, c := range m.Cards {
-		rows = append(rows, rrcsRowsOf(target, c.Path, c.ObjectID, c.Raw)...)
+		rows = append(rows, rrcsRowsOf(target, "client-card", c.Path, c.ObjectID, c.Raw)...)
 	}
 	for _, p := range m.Ports {
-		rows = append(rows, rrcsRowsOf(target, p.Path, p.ObjectID, p.Raw)...)
+		rows = append(rows, rrcsRowsOf(target, "portex", p.Path, p.ObjectID, p.Raw)...)
 		// Each key position of a panel is an object of its own, and so
 		// is the command on it: both go out under the key, with their
 		// own object ID.
@@ -202,7 +266,7 @@ func rrcsRows(m *rrcsModel) []rrcsRow {
 			assigned[k.Path] = true
 		}
 		for _, kc := range p.KeyConfigs {
-			rows = append(rows, rrcsRowsOf(target, kc.Path, kc.ObjectID, kc.Props)...)
+			rows = append(rows, rrcsRowsOf(target, "panel-key", kc.Path, kc.ObjectID, kc.Props)...)
 		}
 		for _, k := range p.Keys {
 			cmd := map[string]any{}
@@ -215,7 +279,7 @@ func rrcsRows(m *rrcsModel) []rrcsRow {
 			if k.TargetName != "" {
 				cmd["TargetName"] = k.TargetName
 			}
-			rows = append(rows, rrcsRowsOf(target, k.Path+".cmd", k.ObjectID, cmd)...)
+			rows = append(rows, rrcsRowsOf(target, k.CommandType, k.Path+".cmd", k.ObjectID, cmd)...)
 		}
 	}
 	return rows
@@ -682,4 +746,41 @@ func (m *rrcsModel) mustRaw(object, block, field string) any {
 		return jMap(props[block])[field]
 	}
 	return props[field]
+}
+
+// rrcsSpecFor finds what the specification prints about a property
+// (generated table rrcsSpecMeta). Names are matched without regard to
+// case: RRCS answers LatchingTimeOut where the table has LatchingTimeout.
+//
+// Two corrections to the printed tables:
+//   - the Media blocks of a client card are left to the hand-kept table:
+//     their printed columns do not line up;
+//   - KeyMode as RRCS reports it is one more than the value an edit
+//     takes ("the integer values for Auto, Momentary and Latching are
+//     increased by 1 on the GetKeyConfiguration API", specification
+//     history 8.x).
+func rrcsSpecFor(object, block, field string) rrcsSpecProp {
+	if block == "Media_1" || block == "Media_2" {
+		return rrcsSpecProp{}
+	}
+	props := rrcsSpecMeta[object][block]
+	p, ok := props[field]
+	if !ok {
+		for name, candidate := range props {
+			if strings.EqualFold(name, field) {
+				p, ok = candidate, true
+				break
+			}
+		}
+	}
+	if !ok {
+		return rrcsSpecProp{}
+	}
+	if p.Type != "int" {
+		p.Min, p.Max = "", ""
+	}
+	if object == "panel-key" && field == "KeyMode" {
+		p.Enum, p.Default = "1=Auto|2=Momentary(PTT)|3=Latching", "2"
+	}
+	return p
 }
