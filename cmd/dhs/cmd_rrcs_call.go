@@ -7,10 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"net"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"dhs/internal/rrcs/codec"
+	rrcs "dhs/internal/rrcs/consumer"
 )
 
 // rrcsReadOnlyMethod reports whether a method only reads: the names of
@@ -197,11 +201,16 @@ func rrcsXpVerb(ctx context.Context, args []string) error {
 	dst := fs.String("dst", "", "destination: the path of a port that has an output, as list dests prints it")
 	state := fs.String("state", "", "on = SetXp | off = KillXp | empty = only read the state (GetXpStatus)")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
+	level := fs.String("level", "no", "yes = also read the level of the crosspoint. GetXpVolume does not work on an Artist-1024 (§8.2; a real RRCS 9.0 answers \"Node address invalid\"), so the level is read the way watch gets it: a registration for this crosspoint, whose first notification is its current level, removed at once. It needs --listen free: not while a watch runs on this machine")
+	listen := fs.String("listen", ":8195", "with --level yes: local [ip]:port RRCS sends the level to")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
 		return rrcsValErr("xp", "want exactly one host[:port] argument")
+	}
+	if *level != "yes" && *level != "no" {
+		return rrcsValErr("xp", "--level must be yes or no")
 	}
 	if *state != "" && *state != "on" && *state != "off" {
 		return rrcsValErr("xp", "--state must be on, off or empty")
@@ -239,16 +248,104 @@ func rrcsXpVerb(ctx context.Context, args []string) error {
 		}
 	}
 	reply, err := client.Call(ctx, "GetXpStatus", address...)
-	if err != nil {
-		return fmt.Errorf("rrcs xp: %w", err)
-	}
 	now := "off"
-	if p := reply.Payload(); len(p.Items) > 0 && p.Items[0].Kind == codec.KindBool && p.Items[0].Bool {
-		now = "on"
+	switch {
+	case err != nil && *level == "yes" && *state == "":
+		// The level does not depend on the state read: say why the
+		// state is missing and go on.
+		cf.say("rrcs xp: state not read: %v", err)
+		now = ""
+	case err != nil:
+		return fmt.Errorf("rrcs xp: %w", err)
+	default:
+		if p := reply.Payload(); len(p.Items) > 0 && p.Items[0].Kind == codec.KindBool && p.Items[0].Bool {
+			now = "on"
+		}
 	}
-	fmt.Printf("xp.%s>%s State = %s\n", *src, *dst, now)
+	if now != "" {
+		fmt.Printf("xp.%s>%s State = %s\n", *src, *dst, now)
+	}
 	if *state != "" && now != *state {
 		return fmt.Errorf("rrcs xp: RRCS accepted the request and the crosspoint reads %s", now)
 	}
+	if *level == "yes" {
+		x := rrcs.Crosspoint{SrcNode: sNode, SrcPort: sPort, DstNode: dNode, DstPort: dPort}
+		return rrcsXpLevel(ctx, cf, client, *listen, x, "xp."+*src+">"+*dst)
+	}
 	return nil
+}
+
+// rrcsXpLevel reads the level of one crosspoint through the volume
+// registration (§8.15): RRCS sends the current level of a crosspoint as
+// soon as it is added to the registry. Everything it registers is removed
+// before it returns.
+func rrcsXpLevel(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, listen string, x rrcs.Crosspoint, name string) error {
+	ln, err := net.Listen("tcp", listen)
+	if err != nil {
+		return fmt.Errorf("rrcs xp: listen %s: %w (is a watch running on this machine?)", listen, err)
+	}
+	got := make(chan codec.Value, 1)
+	listener := &rrcs.Listener{AnyPath: true, OnEvent: func(e rrcs.Event) {
+		if e.Method != rrcs.MethodXpVolumeChange || len(e.Params) == 0 {
+			return
+		}
+		list := e.Params[len(e.Params)-1]
+		for _, ch := range list.Items {
+			s, _ := ch.Field("Source")
+			d, _ := ch.Field("Destination")
+			if rrcsMemberInt(s, "Node") == x.SrcNode && rrcsMemberInt(s, "Port") == x.SrcPort &&
+				rrcsMemberInt(d, "Node") == x.DstNode && rrcsMemberInt(d, "Port") == x.DstPort {
+				select {
+				case got <- ch:
+				default:
+				}
+			}
+		}
+	}}
+	srv := &http.Server{Handler: listener, ReadHeaderTimeout: 10 * time.Second}
+	go func() { _ = srv.Serve(ln) }()
+	defer func() { _ = srv.Close() }()
+
+	reg := rrcs.Registration{Port: ln.Addr().(*net.TCPAddr).Port}
+	ip := rrcsLocalIP(listen, client.Peer())
+	if _, err := client.Register(ctx, reg); err != nil {
+		return fmt.Errorf("rrcs xp: level: %w", err)
+	}
+	// The goodbye runs whatever happens next, on a context of its own.
+	defer func() {
+		bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		defer cancel()
+		if _, err := client.UnregisterVolumeEvents(bye, ip); err != nil {
+			cf.say("rrcs xp: level: unregister: %v", err)
+		}
+		if _, err := client.Unregister(bye, reg); err != nil {
+			cf.say("rrcs xp: level: unregister: %v", err)
+		}
+	}()
+	if _, err := client.RegisterVolumeEvents(ctx, ip, reg.Port); err != nil {
+		return fmt.Errorf("rrcs xp: level: %w", err)
+	}
+	if _, err := client.FollowVolumes(ctx, ip, reg.Port, x); err != nil {
+		return fmt.Errorf("rrcs xp: level: %w", err)
+	}
+	select {
+	case ch := <-got:
+		meta := rrcsMetaOf["Xp.Volume"]
+		for _, member := range []string{"SingleVolume", "ConferenceVolume"} {
+			v, ok := ch.Field(member)
+			if !ok {
+				continue
+			}
+			value, unit := rrcsVolume(int(v.Int))
+			if unit != "" {
+				value += " " + unit
+			}
+			fmt.Printf("%s %s = %s [%s..%s]  (raw %d)\n", name, member, value, meta.Min, meta.Max, v.Int)
+		}
+		return nil
+	case <-time.After(cf.timeout):
+		return fmt.Errorf("rrcs xp: level: RRCS accepted the registration and sent no level within %s", cf.timeout)
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

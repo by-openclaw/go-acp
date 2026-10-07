@@ -421,6 +421,10 @@ func rrcsRunOp(ctx context.Context, op *rrcsOp, args []string) error {
 		fmt.Println(rrcsCompact(reply.Value))
 		return nil
 	}
+	if !op.Read && len(reply.Payload().Items) == 0 {
+		fmt.Printf("%s: accepted by RRCS (error code 0)\n", op.Method)
+		return nil
+	}
 	fmt.Println(rrcsCompact(reply.Payload()))
 	return nil
 }

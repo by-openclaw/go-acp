@@ -3994,6 +3994,10 @@ Usage of rrcs xp:
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -dst string
     	destination: the path of a port that has an output, as list dests prints it
+  -level string
+    	yes = also read the level of the crosspoint. GetXpVolume does not work on an Artist-1024 (§8.2; a real RRCS 9.0 answers "Node address invalid"), so the level is read the way watch gets it: a registration for this crosspoint, whose first notification is its current level, removed at once. It needs --listen free: not while a watch runs on this machine (default "no")
+  -listen string
+    	with --level yes: local [ip]:port RRCS sends the level to (default ":8195")
   -log string
     	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
   -log-format string

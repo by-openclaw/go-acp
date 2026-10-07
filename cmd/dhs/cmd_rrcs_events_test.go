@@ -525,3 +525,49 @@ func TestRRCSWatchCSV(t *testing.T) {
 		t.Errorf("online: %v", online)
 	}
 }
+
+// xp --level yes reads the level through the volume registration and
+// removes what it registered, even where the state read is refused.
+func TestRRCSXpLevel(t *testing.T) {
+	var mu sync.Mutex
+	var methods []string
+	base := ""
+	st, mem, i, b := codec.Struct, rrcsMember, codec.Int, codec.Bool
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		methods = append(methods, call.Method)
+		mu.Unlock()
+		k := call.Params[0]
+		switch call.Method {
+		case "GetXpStatus":
+			return codec.Array(k, i(3)), true // Node address invalid, as GetXpVolume on an Artist-1024
+		case "RegisterForAllEvents":
+			base = "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int))
+			return k, true
+		case "XpVolumeChangeRegistryAdd":
+			addr := func(n, p int32, in bool) codec.Value {
+				return st(mem("IsInput", b(in)), mem("Node", i(n)), mem("Port", i(p)))
+			}
+			go func() {
+				doc := must(codec.EncodeCall("XpVolumeChange", codec.String("R0000000000"), codec.Array(
+					st(mem("ConferenceVolume", i(0)), mem("Destination", addr(61, 1024, false)), mem("SingleVolume", i(190)), mem("Source", addr(61, 1026, true))))))
+				if resp, err := http.Post(base+"/", "text/xml", bytes.NewReader(doc)); err == nil {
+					_ = resp.Body.Close()
+				}
+			}()
+			return codec.Array(k, i(0)), true
+		case "RegisterForEventsEx", "UnregisterForAllEvents", "UnregisterForEventsEx":
+			return codec.Array(k, i(0)), true
+		}
+		return codec.Value{}, false
+	})
+	out := rrcsRun(t, "xp", f.addr(), "--src", "net.1.node.61.port.1026", "--dst", "net.1.node.61.port.1024", "--level", "yes", "--listen", "127.0.0.1:0")
+	rrcsWant(t, out,
+		"xp.net.1.node.61.port.1026>net.1.node.61.port.1024 SingleVolume = -20.0 dB [-114.5..12.5]  (raw 190)",
+		"ConferenceVolume = mute")
+	mu.Lock()
+	defer mu.Unlock()
+	if got := strings.Join(methods, ","); got != "GetXpStatus,RegisterForAllEvents,RegisterForEventsEx,XpVolumeChangeRegistryAdd,UnregisterForEventsEx,UnregisterForAllEvents" {
+		t.Errorf("methods: %s", got)
+	}
+}

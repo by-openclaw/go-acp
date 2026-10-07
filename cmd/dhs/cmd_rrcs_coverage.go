@@ -40,8 +40,8 @@ var rrcsCatalog = []rrcsMethod{
 	{"GetAllActiveXps", "8.1", "read", "walk, list xp", "yes, empty list only"},
 	{"GetActiveXpsRange", "8.1", "read", "walk", "yes, empty list only"},
 	// §8.2 Volume
-	{"SetXpVolume", "8.2", "write", "set-xp-volume", "no"},
-	{"GetXpVolume", "8.2", "read", "walk", "no"},
+	{"SetXpVolume", "8.2", "write", "set-xp-volume", "yes"},
+	{"GetXpVolume", "8.2", "read", "walk; xp --level yes instead", "refused on an Artist-1024 (Node address invalid)"},
 	// §8.3 – §8.5 Alias, label, gain
 	{"SetPortAlias", "8.3", "write", "set-port-alias", "no"},
 	{"GetPortAlias", "8.3", "read", "walk", "yes"},
