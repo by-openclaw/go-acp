@@ -556,6 +556,19 @@ func (c *Client) Send(ctx context.Context, f codec.Frame, match func(codec.Frame
 			return codec.Frame{}, fmt.Errorf("probel cmd %d: %w (%s)", f.ID, ErrNoReply, replyTimeout)
 		case <-ctx.Done():
 			replyTimer.Stop()
+			// The request was ACKed and the caller's deadline ran out before
+			// the reply timeout did: the same fact — the peer accepted the
+			// frame and does not serve it — as the case above, and it gets
+			// the same verdict. The two timers default to the same 5 s, and
+			// which one fired first used to decide between "request ACKed
+			// but no reply" and a bare "context deadline exceeded". A
+			// cancellation is the caller's own doing and stays what it is.
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				if c.onNoReply != nil {
+					c.onNoReply()
+				}
+				return codec.Frame{}, fmt.Errorf("probel cmd %d: %w: %w", f.ID, ErrNoReply, ctx.Err())
+			}
 			return codec.Frame{}, ctx.Err()
 		}
 	}

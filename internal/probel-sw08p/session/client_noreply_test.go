@@ -73,3 +73,68 @@ func TestSendACKReplyWithinReplyTimeout(t *testing.T) {
 		t.Errorf("reply.ID = %#x; want %#x", reply.ID, codec.TxCrosspointTally)
 	}
 }
+
+// TestSendACKNoReplyAtTheCallersDeadline: the peer ACKs and never answers, and
+// the caller's deadline runs out before the reply timeout does (the CLI's
+// --timeout and the reply timeout both default to 5 s, so either can be first).
+// The verdict is the same as when the reply timeout fires: ErrNoReply, with
+// OnNoReply fired — and the deadline is still there for a caller that asks.
+func TestSendACKNoReplyAtTheCallersDeadline(t *testing.T) {
+	a, b := net.Pipe()
+	disable := false
+	var fired atomic.Int32
+	client := NewClientFromConn(a, discardLogger(), ClientConfig{
+		WireHexLog:   &disable,
+		ReplyTimeout: 10 * time.Second,
+		OnNoReply:    func() { fired.Add(1) },
+	})
+	defer func() { _ = client.Close() }()
+
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) { p.writeACK() })
+	defer func() { _ = peer.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	req := codec.EncodeAllSourceNamesRequest(codec.AllSourceNamesRequestParams{NameLength: codec.NameLen4})
+	_, err := client.Send(ctx, req, func(f codec.Frame) bool { return f.ID == codec.TxSourceNamesResponse })
+	if !errors.Is(err, ErrNoReply) {
+		t.Fatalf("Send err = %v; want ErrNoReply — the request was ACKed and not answered", err)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("Send err = %v; the caller's deadline is no longer in it", err)
+	}
+	if fired.Load() != 1 {
+		t.Errorf("OnNoReply fired %d times; want 1", fired.Load())
+	}
+}
+
+// TestSendACKThenCancelled: a caller that cancels while waiting for the reply
+// gets its cancellation, not a verdict on the peer.
+func TestSendACKThenCancelled(t *testing.T) {
+	a, b := net.Pipe()
+	disable := false
+	var fired atomic.Int32
+	client := NewClientFromConn(a, discardLogger(), ClientConfig{
+		WireHexLog:   &disable,
+		ReplyTimeout: 10 * time.Second,
+		OnNoReply:    func() { fired.Add(1) },
+	})
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	peer := newFakePeer(b, func(p *fakePeer, f codec.Frame) {
+		p.writeACK()
+		time.AfterFunc(50*time.Millisecond, cancel)
+	})
+	defer func() { _ = peer.Close() }()
+
+	req := codec.EncodeAllSourceNamesRequest(codec.AllSourceNamesRequestParams{NameLength: codec.NameLen4})
+	_, err := client.Send(ctx, req, func(f codec.Frame) bool { return f.ID == codec.TxSourceNamesResponse })
+	if !errors.Is(err, context.Canceled) || errors.Is(err, ErrNoReply) {
+		t.Fatalf("Send err = %v; want the caller's cancellation alone", err)
+	}
+	if fired.Load() != 0 {
+		t.Errorf("OnNoReply fired %d times on a cancellation; want 0", fired.Load())
+	}
+}
