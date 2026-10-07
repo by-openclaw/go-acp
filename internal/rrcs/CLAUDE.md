@@ -232,3 +232,43 @@ Rules that follow:
 - On the test system start with one harmless member on an unused port,
   then one variable at a time: mode Manual first, then the address.
 - Reads are unaffected: thousands of them ran against that system.
+
+## Panel spy on an Artist-1024 with AES67 panels: RRCS never gets its acknowledge
+
+Seen 2026-10-07 on RRCS 9.0.RR1-11, node firmware 9.0.U1-46, smart panels
+RSP-1232HL / RSP-1216HL on AES67 client cards. The request is right and is
+accepted; the failure is between RRCS and the client card.
+
+What the RRCS log shows for one panel, after our
+`ChangePanelSpyRegistry(… node=61, port=1026 …) succeeded`:
+
+```
+CP     Creating panel-spy-registration event: initiator={RRCS: owner-node=60, id=0x0001, auto-delete, cmd-device=0xD1},
+       source panel-id=0xE720023D, destination={channel=0xD1, …}, notifications={rotation/key/…}
+Event  Received panel-spy-registration event: … (the Artist system echoes it)
+…5 s…
+       PanelSpyStateChanged(… Rotate=Error (No client card acknowledge received (time-out=5000 msec).), Key=Error (…))
+CP     Creating panel-spy-registration event: …      (RRCS tries again)
+Event  Received panel-spy-deregistration event: …
+Event  Received panel-spy-registration event: …
+```
+
+and so on every 5 seconds, per panel, for as long as the registration
+lives: 642 attempts in 54 minutes for 24 panels. No key or rotary
+notification was ever sent.
+
+Consequences:
+
+- Nothing to change in the request. Whether this RRCS / firmware pair
+  supports panel spy on these cards is a question for Riedel.
+- Do not leave `watch --spy` running on that system: it makes RRCS and the
+  Artist system exchange registration events every 5 seconds per panel for
+  nothing.
+- Names and numbers RRCS really uses, against the specification:
+  `PanelSpyStateChanged` (not `…Change`); a smart panel's port comes back
+  less 1024 (1026 as 2); the states are 0 unregistered, 1 busy, 2 active,
+  3 error, as printed.
+
+What does work for "who talks to whom" on that system: `CrosspointChange`,
+which RRCS logs itself as `XML-Notification: Crosspoint from (1, 61, 1026)
+to (1, 64, 1024) is on.`
