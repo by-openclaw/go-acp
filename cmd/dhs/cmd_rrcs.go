@@ -608,7 +608,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			}
 		},
 	}
-	srv := &http.Server{Handler: listener, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: listener, ReadHeaderTimeout: rrcsListenerWait}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
 	defer func() {

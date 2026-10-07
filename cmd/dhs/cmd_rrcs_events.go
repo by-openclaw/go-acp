@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
@@ -419,3 +420,12 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 	l.Raw = rrcsJSON(codec.Array(p...))
 	return []rrcsChangeLine{l}
 }
+
+// rrcsListenerWait is how long our listener lets a connection from RRCS
+// stay silent before its first request. RRCS opens one connection per
+// registration and keeps the one of RegisterForEventsEx idle until a level
+// changes; with 10 seconds we closed it each time, and RRCS logged
+// "Connection to server lost: Error code 10057" (its log of 2026-10-07,
+// nine times). The registration survived, but an error line on a
+// production system is ours to avoid.
+const rrcsListenerWait = 12 * time.Hour

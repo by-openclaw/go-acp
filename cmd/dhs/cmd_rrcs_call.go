@@ -302,7 +302,7 @@ func rrcsXpLevel(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, listen
 			}
 		}
 	}}
-	srv := &http.Server{Handler: listener, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: listener, ReadHeaderTimeout: rrcsListenerWait}
 	go func() { _ = srv.Serve(ln) }()
 	defer func() { _ = srv.Close() }()
 
