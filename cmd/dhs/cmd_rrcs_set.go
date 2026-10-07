@@ -191,7 +191,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 	var props rrcsProps
 	fs.Var(&props, "prop", "NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
-	apply := fs.String("apply", "no", "no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChangeEx) and read the object back")
+	apply := fs.String("apply", "no", "no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChange) and read the object back")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 		return err
 	}
 	request := change.request()
-	doc, err := codec.EncodeCall("ConfigurationChangeEx", codec.String("C0000000000"), request)
+	doc, err := codec.EncodeCall(rrcsChangeMethod, codec.String("C0000000000"), request)
 	if err != nil {
 		return err
 	}
@@ -246,8 +246,8 @@ func rrcsSet(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	cf.say("rrcs set: sending ConfigurationChangeEx edit %s %s", change.objectType, *path)
-	reply, err := client.Call(ctx, "ConfigurationChangeEx", request)
+	cf.say("rrcs set: sending %s edit %s %s", rrcsChangeMethod, change.objectType, *path)
+	reply, err := client.Call(ctx, rrcsChangeMethod, request)
 	if err != nil {
 		cf.say("rrcs set: refused: %v", err)
 		return fmt.Errorf("rrcs set: %w", err)
@@ -281,7 +281,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 }
 
 // rrcsWriteToHelp describes the guard every writing verb carries.
-const rrcsWriteToHelp = "required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system"
+const rrcsWriteToHelp = "required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS"
 
 // rrcsWriteGuard refuses a write unless the operator named the target a
 // second time.

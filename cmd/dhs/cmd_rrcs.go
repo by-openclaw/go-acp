@@ -118,13 +118,13 @@ VERBS
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 
   set       WRITES: edit properties of a port or of a client card
-            (ConfigurationChangeEx): --path, --prop NAME=VALUE (repeat).
+            (ConfigurationChange): --path, --prop NAME=VALUE (repeat).
             Shows the change and sends nothing unless --apply yes
 
   export    the values of the ports and client cards to one file, one row
             per value: --format json|csv, --out FILE, --path TEXT
   import    WRITES: every writable value of an export file that differs
-            from the live system (ConfigurationChangeEx): --file, --path,
+            from the live system (ConfigurationChange): --file, --path,
             --dry-run to compare and send nothing
 
   ensure    converge to a desired-state file (values, crosspoints): --file,

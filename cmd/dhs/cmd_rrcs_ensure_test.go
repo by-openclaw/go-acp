@@ -28,7 +28,7 @@ func rrcsEnsureFake(t *testing.T) (*rrcsFake, func() []string) {
 		defer mu.Unlock()
 		k := call.Params[0]
 		switch call.Method {
-		case "ConfigurationChangeEx":
+		case "ConfigurationChange":
 			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
 			if out, ok := sp.Field("PortAes67Output"); ok {
 				if m, ok := out.Field("Multicast"); ok {
@@ -121,7 +121,7 @@ func TestRRCSEnsureContract(t *testing.T) {
 	if !run.Changed || len(run.Diff) != 2 || run.Previous[field] != "239.1.2.3" || run.Current[field] != "239.9.9.9" || len(run.Failed) != 0 {
 		t.Errorf("first run: %s", out)
 	}
-	if got := strings.Join(writes(), ","); got != "ConfigurationChangeEx,SetXp" {
+	if got := strings.Join(writes(), ","); got != "ConfigurationChange,SetXp" {
 		t.Errorf("writes %s", got)
 	}
 
@@ -169,7 +169,7 @@ func TestRRCSEnsureFailuresAndRefusals(t *testing.T) {
 		"no file":       {"ensure", f.addr()},
 		"no host":       {"ensure", "--file", bad},
 		"no guard":      {"ensure", f.addr(), "--file", write("ok.json", rrcsEnsureDesired)},
-		"unknown key":   {"ensure", f.addr(), "--file", write("k.json", `{"conferences":[]}`), "--check"},
+		"unknown key":   {"ensure", f.addr(), "--file", write("k.json", `{"partylines":[]}`), "--check"},
 		"not json":      {"ensure", f.addr(), "--file", write("n.json", `{`), "--check"},
 		"value object":  {"ensure", f.addr(), "--file", write("o.json", `{"values":{"a.B":{"x":1}}}`), "--check"},
 		"xp bad path":   {"ensure", f.addr(), "--file", write("x.json", `{"crosspoints":[{"source":"group.1","destination":"net.1.node.61.port.7.out"}]}`), "--check"},

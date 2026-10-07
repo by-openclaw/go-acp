@@ -104,6 +104,7 @@ var rrcsOps = []rrcsOp{
 	{"SetNetName", false, "set the long name of the net", params(pText("name", "long name"))},
 	// §8.10 Configuration changes
 	{"ConfigurationChange", false, "apply configuration changes, all or nothing", params(rrcsParam{"file", "changes", "JSON file: the array of changes"})},
+	{"ConfigurationChangeEx", false, "apply configuration changes, each handled on its own (the form that stopped a production RRCS 9.0 on 2026-10-06; set, import and ensure use ConfigurationChange)", params(rrcsParam{"file", "changes", "JSON file: the array of changes"})},
 	{"BufferConfigurationChange", false, "buffer configuration changes for a later apply", params(rrcsParam{"file", "changes", "JSON file: the array of changes"})},
 	{"BufferConfigurationChangeEx", false, "buffer configuration changes, each handled on its own", params(rrcsParam{"file", "changes", "JSON file: the array of changes"})},
 	{"ApplyConfigurationChange", false, "send the buffered changes, all or nothing", nil},

@@ -33,6 +33,11 @@ import (
 type rrcsDesired struct {
 	Values      map[string]json.RawMessage `json:"values"`
 	Crosspoints []rrcsDesiredXp            `json:"crosspoints"`
+	// The configuration itself and the levels: cmd_rrcs_ensure_cfg.go.
+	Keys        []rrcsDesiredKey    `json:"keys"`
+	Conferences []rrcsDesiredObject `json:"conferences"`
+	Groups      []rrcsDesiredObject `json:"groups"`
+	Levels      []rrcsDesiredLevel  `json:"levels"`
 }
 
 type rrcsDesiredXp struct {
@@ -103,6 +108,19 @@ The file names values by the path export prints, and crosspoints by their
 two ports:
   {"values": {"net.1.node.60.card.1.Ptp.PTP": 100},
    "crosspoints": [{"source": "…port.7.in", "destination": "…port.1026", "state": "present"}]}
+and it may also hold keys, conferences, groups and crosspoint levels:
+  "keys": [{"panel": "net.1.node.61.port.1024", "key": "0.1.14",
+            "function": "call-to-port", "target": "net.1.node.63.port.1043",
+            "label": "HYP1", "mode": "latching"},
+           {"panel": "net.1.node.61.port.1024", "key": "0.1.15", "state": "absent"}],
+  "conferences": [{"name": "Conference 040", "label": "CONF 40"}],
+  "groups": [{"name": "Group NOC", "label": "NOC", "members": ["net.1.node.61.port.1024"]}],
+  "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}]
+A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
+call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
+momentary or latching. A conference or a group is named by "id" or, to
+create it, by "name". With --check the exact requests are printed.
+
 Only what the file names is touched. Without --check this WRITES and needs
 --write-to HOST.
 
@@ -112,6 +130,7 @@ Only what the file names is touched. Without --check this WRITES and needs
 	cf := newRRCSFlags(fs)
 	file := fs.String("file", "", "desired-state file, JSON (required)")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
+	listen := fs.String("listen", ":8195", "for the levels of crosspoints: local [ip]:port RRCS sends them to (not while a watch runs on this machine)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
 		return err
 	}
@@ -239,6 +258,25 @@ Only what the file names is touched. Without --check this WRITES and needs
 		before[x.field], after[x.field] = onOff[now], onOff[x.want]
 	}
 
+	// Keys, conferences and groups, then the levels of crosspoints.
+	record := func(d []rrcsDiffEntry, f []rrcsEnsureFailure) {
+		for _, e := range d {
+			diff = append(diff, e)
+			before[e.Field], after[e.Field] = e.From, e.To
+		}
+		failures = append(failures, f...)
+	}
+	d, f, err := rrcsEnsureConfig(ctx, cf, client, &want, check)
+	if err != nil {
+		return fmt.Errorf("rrcs ensure: %w", err)
+	}
+	record(d, f)
+	d, f, err = rrcsEnsureLevels(ctx, cf, client, *listen, want.Levels, check)
+	if err != nil {
+		return fmt.Errorf("rrcs ensure: %w", err)
+	}
+	record(d, f)
+
 	// The ADR-0007 shapes. The failures ride along; the exit code says
 	// whether the run reached its target.
 	var doc any
@@ -273,7 +311,8 @@ Only what the file names is touched. Without --check this WRITES and needs
 		for _, f := range failures {
 			fmt.Printf("%-13s %-64s %s\n", "failed", f.Field, f.Reason)
 		}
-		fmt.Printf("%s %d, failed %d, of %d values and %d crosspoints\n", verb, len(diff), len(failures), len(rows), len(xps))
+		fmt.Printf("%s %d, failed %d, of %d values, %d crosspoints, %d keys, %d conferences, %d groups and %d levels\n", verb, len(diff), len(failures),
+			len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.Levels))
 	}
 	if len(failures) > 0 {
 		return fmt.Errorf("rrcs ensure: %d field(s) could not be brought to their target", len(failures))

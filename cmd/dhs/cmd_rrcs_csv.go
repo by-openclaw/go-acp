@@ -481,7 +481,7 @@ type rrcsApplied struct {
 }
 
 // rrcsConverge compares rows with the live system and, unless dryRun,
-// writes what differs — one ConfigurationChangeEx per port or client card
+// writes what differs — one ConfigurationChange per port or client card
 // — then reads everything back. It is the core of import and of ensure.
 func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep func(string) bool, dryRun bool) (applied []*rrcsApplied, skips []rrcsSkip, unchanged, failed int, err error) {
 	read := func() (*rrcsModel, error) {
@@ -595,7 +595,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 				break
 			}
 			result, text := "applied", ""
-			if _, err := client.Call(ctx, "ConfigurationChangeEx", p.change.request()); err != nil {
+			if _, err := client.Call(ctx, rrcsChangeMethod, p.change.request()); err != nil {
 				result, text = "failed", err.Error()
 			}
 			for _, it := range p.items {
@@ -643,7 +643,7 @@ func rrcsImport(ctx context.Context, args []string) error {
 
 Reads a file written by export (json or csv, by its extension) and WRITES
 every writable value that differs from the live system, one
-ConfigurationChangeEx per port or client card, then reads everything back.
+ConfigurationChange per port or client card, then reads everything back.
 Rows whose value equals the live one are left alone; read-only rows are
 skipped and listed.
 

@@ -3620,13 +3620,13 @@ VERBS
             or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
 
   set       WRITES: edit properties of a port or of a client card
-            (ConfigurationChangeEx): --path, --prop NAME=VALUE (repeat).
+            (ConfigurationChange): --path, --prop NAME=VALUE (repeat).
             Shows the change and sends nothing unless --apply yes
 
   export    the values of the ports and client cards to one file, one row
             per value: --format json|csv, --out FILE, --path TEXT
   import    WRITES: every writable value of an export file that differs
-            from the live system (ConfigurationChangeEx): --file, --path,
+            from the live system (ConfigurationChange): --file, --path,
             --dry-run to compare and send nothing
 
   ensure    converge to a desired-state file (values, crosspoints): --file,
@@ -3653,7 +3653,7 @@ flags; the ones that are not get-… or line-status WRITE and need --write-to:
   set-xp-prio set-xp-destructive set-xp-volume set-port-alias set-port-label
   set-input-gain set-output-gain set-gp-output get-gp-input-state
   get-gp-output-state set-logic-source-state set-state-working
-  set-state-standby set-net-name configuration-change
+  set-state-standby set-net-name configuration-change configuration-change-ex
   buffer-configuration-change buffer-configuration-change-ex
   apply-configuration-change apply-configuration-change-ex clear-key-label
   clear-key-label-and-marker clear-key-marker lock-key press-key press-key-ex
@@ -3861,7 +3861,7 @@ Usage of rrcs tree:
 $ dhs consumer rrcs set --help
 Usage of rrcs set:
   -apply string
-    	no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChangeEx) and read the object back (default "no")
+    	no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChange) and read the object back (default "no")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -log string
@@ -3883,7 +3883,7 @@ Usage of rrcs set:
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/export ==========
 $ dhs consumer rrcs export --help
@@ -3919,7 +3919,7 @@ Usage: dhs consumer rrcs import <host>[:port] --file SNAPSHOT [--path P ...] [--
 
 Reads a file written by export (json or csv, by its extension) and WRITES
 every writable value that differs from the live system, one
-ConfigurationChangeEx per port or client card, then reads everything back.
+ConfigurationChange per port or client card, then reads everything back.
 Rows whose value equals the live one are left alone; read-only rows are
 skipped and listed.
 
@@ -3945,7 +3945,7 @@ skipped and listed.
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/call ==========
 $ dhs consumer rrcs call --help
@@ -3985,7 +3985,7 @@ changes something and is refused without --write-to HOST.
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/xp ==========
 $ dhs consumer rrcs xp --help
@@ -4017,7 +4017,7 @@ Usage of rrcs xp:
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/ensure ==========
 $ dhs consumer rrcs ensure --help
@@ -4034,6 +4034,19 @@ The file names values by the path export prints, and crosspoints by their
 two ports:
   {"values": {"net.1.node.60.card.1.Ptp.PTP": 100},
    "crosspoints": [{"source": "…port.7.in", "destination": "…port.1026", "state": "present"}]}
+and it may also hold keys, conferences, groups and crosspoint levels:
+  "keys": [{"panel": "net.1.node.61.port.1024", "key": "0.1.14",
+            "function": "call-to-port", "target": "net.1.node.63.port.1043",
+            "label": "HYP1", "mode": "latching"},
+           {"panel": "net.1.node.61.port.1024", "key": "0.1.15", "state": "absent"}],
+  "conferences": [{"name": "Conference 040", "label": "CONF 40"}],
+  "groups": [{"name": "Group NOC", "label": "NOC", "members": ["net.1.node.61.port.1024"]}],
+  "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}]
+A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
+call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
+momentary or latching. A conference or a group is named by "id" or, to
+create it, by "name". With --check the exact requests are printed.
+
 Only what the file names is touched. Without --check this WRITES and needs
 --write-to HOST.
 
@@ -4041,6 +4054,8 @@ Only what the file names is touched. Without --check this WRITES and needs
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
     	desired-state file, JSON (required)
+  -listen string
+    	for the levels of crosspoints: local [ip]:port RRCS sends them to (not while a watch runs on this machine) (default ":8195")
   -log string
     	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
   -log-format string
@@ -4056,7 +4071,7 @@ Only what the file names is touched. Without --check this WRITES and needs
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/coverage ==========
 $ dhs consumer rrcs coverage --help
@@ -4095,7 +4110,7 @@ SetXpPrio: make a crosspoint with a priority. It WRITES: it needs --write-to HOS
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-xp-destructive ==========
 $ dhs consumer rrcs set-xp-destructive --help
@@ -4126,7 +4141,7 @@ SetXpDestructive: make a crosspoint and remove the routes it displaces. It WRITE
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-xp-volume ==========
 $ dhs consumer rrcs set-xp-volume --help
@@ -4161,7 +4176,7 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
   -volume string
     	0 mute, 1..255 = (volume - 230) / 2 dB
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-port-alias ==========
 $ dhs consumer rrcs set-port-alias --help
@@ -4190,7 +4205,7 @@ SetPortAlias: set the alias of a port. It WRITES: it needs --write-to HOST, and 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-port-label ==========
 $ dhs consumer rrcs set-port-label --help
@@ -4219,7 +4234,7 @@ SetPortLabel: set the 8-character label of a port. It WRITES: it needs --write-t
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-input-gain ==========
 $ dhs consumer rrcs set-input-gain --help
@@ -4248,7 +4263,7 @@ SetInputGain: set the input gain of a port. It WRITES: it needs --write-to HOST,
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-output-gain ==========
 $ dhs consumer rrcs set-output-gain --help
@@ -4277,7 +4292,7 @@ SetOutputGain: set the output gain of a port. It WRITES: it needs --write-to HOS
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-gp-output ==========
 $ dhs consumer rrcs set-gp-output --help
@@ -4310,7 +4325,7 @@ SetGpOutput: switch a GP output. It WRITES: it needs --write-to HOST, and has no
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/get-gp-input-state ==========
 $ dhs consumer rrcs get-gp-input-state --help
@@ -4341,7 +4356,7 @@ GetGpInputState: read a GP input. It only reads.
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/get-gp-output-state ==========
 $ dhs consumer rrcs get-gp-output-state --help
@@ -4372,7 +4387,7 @@ GetGpOutputState: read a GP output. It only reads.
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-logic-source-state ==========
 $ dhs consumer rrcs set-logic-source-state --help
@@ -4401,7 +4416,7 @@ SetLogicSourceState: switch a logic source. It WRITES: it needs --write-to HOST,
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-state-working ==========
 $ dhs consumer rrcs set-state-working --help
@@ -4426,7 +4441,7 @@ SetStateWorking: make this gateway the working one. It WRITES: it needs --write-
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-state-standby ==========
 $ dhs consumer rrcs set-state-standby --help
@@ -4451,7 +4466,7 @@ SetStateStandby: make this gateway the standby one. It WRITES: it needs --write-
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-net-name ==========
 $ dhs consumer rrcs set-net-name --help
@@ -4478,7 +4493,7 @@ SetNetName: set the long name of the net. It WRITES: it needs --write-to HOST, a
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/configuration-change ==========
 $ dhs consumer rrcs configuration-change --help
@@ -4505,7 +4520,7 @@ ConfigurationChange: apply configuration changes, all or nothing. It WRITES: it 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/buffer-configuration-change ==========
 $ dhs consumer rrcs buffer-configuration-change --help
@@ -4532,7 +4547,7 @@ BufferConfigurationChange: buffer configuration changes for a later apply. It WR
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/buffer-configuration-change-ex ==========
 $ dhs consumer rrcs buffer-configuration-change-ex --help
@@ -4559,7 +4574,7 @@ BufferConfigurationChangeEx: buffer configuration changes, each handled on its o
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/apply-configuration-change ==========
 $ dhs consumer rrcs apply-configuration-change --help
@@ -4584,7 +4599,7 @@ ApplyConfigurationChange: send the buffered changes, all or nothing. It WRITES: 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/apply-configuration-change-ex ==========
 $ dhs consumer rrcs apply-configuration-change-ex --help
@@ -4609,7 +4624,7 @@ ApplyConfigurationChangeEx: send the buffered changes, each handled on its own. 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/clear-key-label ==========
 $ dhs consumer rrcs clear-key-label --help
@@ -4638,7 +4653,7 @@ ClearKeyLabel: clear a key label set through RRCS. It WRITES: it needs --write-t
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/clear-key-label-and-marker ==========
 $ dhs consumer rrcs clear-key-label-and-marker --help
@@ -4667,7 +4682,7 @@ ClearKeyLabelAndMarker: clear a key label and marker set through RRCS. It WRITES
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/clear-key-marker ==========
 $ dhs consumer rrcs clear-key-marker --help
@@ -4696,7 +4711,7 @@ ClearKeyMarker: clear a key marker set through RRCS. It WRITES: it needs --write
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/lock-key ==========
 $ dhs consumer rrcs lock-key --help
@@ -4729,7 +4744,7 @@ LockKey: lock or unlock a key. It WRITES: it needs --write-to HOST, and has not 
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/press-key ==========
 $ dhs consumer rrcs press-key --help
@@ -4762,7 +4777,7 @@ PressKey: press or release a key. It WRITES: it needs --write-to HOST, and has n
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/press-key-ex ==========
 $ dhs consumer rrcs press-key-ex --help
@@ -4797,7 +4812,7 @@ PressKeyEx: press or release a key with a trigger. It WRITES: it needs --write-t
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-key-label ==========
 $ dhs consumer rrcs set-key-label --help
@@ -4828,7 +4843,7 @@ SetKeyLabel: set a key label. It WRITES: it needs --write-to HOST, and has not p
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-key-label-and-marker ==========
 $ dhs consumer rrcs set-key-label-and-marker --help
@@ -4861,7 +4876,7 @@ SetKeyLabelAndMarker: set a key label and marker. It WRITES: it needs --write-to
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-key-marker ==========
 $ dhs consumer rrcs set-key-marker --help
@@ -4892,7 +4907,7 @@ SetKeyMarker: set a key marker. It WRITES: it needs --write-to HOST, and has not
   -virtual string
     	the key is a virtual key
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/start-port-cloning ==========
 $ dhs consumer rrcs start-port-cloning --help
@@ -4921,7 +4936,7 @@ StartPortCloning: clone the output of a port to a monitoring port. It WRITES: it
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/stop-port-cloning ==========
 $ dhs consumer rrcs stop-port-cloning --help
@@ -4950,7 +4965,7 @@ StopPortCloning: stop a port clone. It WRITES: it needs --write-to HOST, and has
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-ifb-volume-mix-minus ==========
 $ dhs consumer rrcs set-ifb-volume-mix-minus --help
@@ -4981,7 +4996,7 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
   -volume string
     	0 mute, 1..255 = (volume - 230) / 2 dB
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/remove-ifb-volume-mix-minus ==========
 $ dhs consumer rrcs remove-ifb-volume-mix-minus --help
@@ -5010,7 +5025,7 @@ RemoveIFBVolumeMixMinus: return the mix-minus level of an IFB to unity. It WRITE
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/xp-volume-change-registry-reset ==========
 $ dhs consumer rrcs xp-volume-change-registry-reset --help
@@ -5039,7 +5054,7 @@ XpVolumeChangeRegistryReset: replace the crosspoints whose level is followed. It
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
   -xp value
     	SRC>DST as two port paths; repeat
 
@@ -5070,7 +5085,7 @@ XpVolumeChangeRegistryRemove: stop following the level of crosspoints. It WRITES
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
   -xp value
     	SRC>DST as two port paths; repeat
 
@@ -5101,7 +5116,7 @@ RegisterForEvents: register a receiver for the general events. It WRITES: it nee
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/unregister-for-events ==========
 $ dhs consumer rrcs unregister-for-events --help
@@ -5130,7 +5145,7 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/register-for-gp-input-change ==========
 $ dhs consumer rrcs register-for-gp-input-change --help
@@ -5159,7 +5174,7 @@ RegisterForGpInputChange: register a receiver for GP input changes. It WRITES: i
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/unregister-for-gp-input-change ==========
 $ dhs consumer rrcs unregister-for-gp-input-change --help
@@ -5188,7 +5203,7 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/register-for-gp-output-change ==========
 $ dhs consumer rrcs register-for-gp-output-change --help
@@ -5217,7 +5232,7 @@ RegisterForGpOutputChange: register a receiver for GP output changes. It WRITES:
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/unregister-for-gp-output-change ==========
 $ dhs consumer rrcs unregister-for-gp-output-change --help
@@ -5246,7 +5261,7 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-trunking-net-addr ==========
 $ dhs consumer rrcs set-trunking-net-addr --help
@@ -5273,7 +5288,7 @@ SetTrunkingNetAddr: set the trunking net address of the ring. It WRITES: it need
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-ltc ==========
 $ dhs consumer rrcs set-ltc --help
@@ -5300,7 +5315,7 @@ SetLTC: move the local trunk controller to a node. It WRITES: it needs --write-t
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/dial-number ==========
 $ dhs consumer rrcs dial-number --help
@@ -5329,7 +5344,7 @@ DialNumber: dial a number on a pool port. It WRITES: it needs --write-to HOST, a
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/hang-up-call ==========
 $ dhs consumer rrcs hang-up-call --help
@@ -5356,7 +5371,7 @@ HangUpCall: hang up the call of a port. It WRITES: it needs --write-to HOST, and
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/line-status ==========
 $ dhs consumer rrcs line-status --help
@@ -5383,7 +5398,7 @@ LineStatus: read the line status of a port. It only reads.
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-system-time-on-all-nodes ==========
 $ dhs consumer rrcs set-system-time-on-all-nodes --help
@@ -5408,7 +5423,7 @@ SetSystemTimeOnAllNodes: set the time of the gateway PC on every node. It WRITES
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/connect-to-artist ==========
 $ dhs consumer rrcs connect-to-artist --help
@@ -5437,7 +5452,7 @@ ConnectToArtist: connect the gateway to an Artist system. It WRITES: it needs --
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/disconnect-from-artist ==========
 $ dhs consumer rrcs disconnect-from-artist --help
@@ -5462,7 +5477,7 @@ DisconnectFromArtist: disconnect the gateway from the Artist system. It WRITES: 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/reset-all-nodes ==========
 $ dhs consumer rrcs reset-all-nodes --help
@@ -5487,7 +5502,7 @@ ResetAllNodes: RESET every node that is on line. It WRITES: it needs --write-to 
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/delete-port-commands ==========
 $ dhs consumer rrcs delete-port-commands --help
@@ -5514,7 +5529,7 @@ DeletePortCommands: delete the commands of a command position. It WRITES: it nee
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-stage-net-addr ==========
 $ dhs consumer rrcs set-stage-net-addr --help
@@ -5541,7 +5556,7 @@ SetStageNetAddr: set the stage net address. It WRITES: it needs --write-to HOST,
   -timeout duration
     	per-request timeout (default 10s)
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/rrcs/set-stage-registry-url ==========
 $ dhs consumer rrcs set-stage-registry-url --help
@@ -5568,7 +5583,7 @@ SetStageRegistryUrl: set the stage registry URL. It WRITES: it needs --write-to 
   -url string
     	URL
   -write-to string
-    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help

@@ -43,11 +43,11 @@ func TestRRCSChangeRequestPort(t *testing.T) {
 	_ = c.add("PortAes67Output.Multicast", codec.String("239.1.2.3"))
 	_ = c.add("PortAes67Output.MulticastPort", codec.Int(5004))
 	_ = c.add("Alias", codec.String("X"))
-	doc, err := codec.EncodeCall("ConfigurationChangeEx", codec.String("C0000000001"), c.request())
+	doc, err := codec.EncodeCall("ConfigurationChange", codec.String("C0000000001"), c.request())
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `<?xml version="1.0"?><methodCall><methodName>ConfigurationChangeEx</methodName><params>` +
+	want := `<?xml version="1.0"?><methodCall><methodName>ConfigurationChange</methodName><params>` +
 		`<param><value><string>C0000000001</string></value></param>` +
 		`<param><value><array><data><value><struct>` +
 		`<member><name>ChangeType</name><value><string>edit</string></value></member>` +
@@ -132,7 +132,7 @@ func rrcsSetFake(t *testing.T, obey bool) (*rrcsFake, *[]codec.Call) {
 		mu.Lock()
 		defer mu.Unlock()
 		switch call.Method {
-		case "ConfigurationChangeEx":
+		case "ConfigurationChange":
 			changes = append(changes, call)
 			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
 			if out, ok := sp.Field("PortAes67Output"); ok && obey {
@@ -175,7 +175,7 @@ func TestRRCSSetShowsAndSendsNothing(t *testing.T) {
 		"net.1.node.61.port.7.out  portex  Out seven",
 		"PortAes67Output.Multicast          239.1.2.3              wanted \"239.9.9.9\"",
 		"PortAes67Output.MulticastPort      5004                   wanted 5006",
-		"<methodName>ConfigurationChangeEx</methodName>",
+		"<methodName>ConfigurationChange</methodName>",
 		"nothing sent")
 	if len(*changes) != 0 {
 		t.Errorf("a change was sent without --apply yes")
@@ -231,7 +231,7 @@ func TestRRCSSetRefusals(t *testing.T) {
 	}
 	// A gateway that refuses the change.
 	refuse := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
-		if call.Method == "ConfigurationChangeEx" {
+		if call.Method == "ConfigurationChange" {
 			return codec.Value{}, false
 		}
 		return rrcsTreeAnswer(call)
@@ -282,7 +282,7 @@ func TestRRCSSetAlias(t *testing.T) {
 			return codec.Array(k, codec.Int(0), codec.String("LBL")), true
 		case "GetInputGain", "GetOutputGain", "GetAllKeyConfiguration":
 			return codec.Array(k, codec.Int(0), codec.Int(0)), true
-		case "ConfigurationChangeEx":
+		case "ConfigurationChange":
 			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
 			if a, ok := sp.Field("Alias"); ok {
 				alias = a.Str
