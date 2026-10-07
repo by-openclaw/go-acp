@@ -36,7 +36,7 @@ var rrcsCatalog = []rrcsMethod{
 	{"SetXpPrio", "8.1", "write", "set-xp-prio", "no"},
 	{"SetXpDestructive", "8.1", "write", "set-xp-destructive", "no"},
 	{"KillXp", "8.1", "write", "xp, ensure", "no"},
-	{"GetXpStatus", "8.1", "read", "xp, ensure", "no"},
+	{"GetXpStatus", "8.1", "read", "xp, ensure", "yes"},
 	{"GetAllActiveXps", "8.1", "read", "walk, list xp", "yes, empty list only"},
 	{"GetActiveXpsRange", "8.1", "read", "walk", "yes, empty list only"},
 	// §8.2 Volume
