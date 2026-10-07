@@ -478,8 +478,9 @@ func TestRRCSWatchVolume(t *testing.T) {
 	if rrcsMemberInt(dst, "Port") != 1026 || rrcsFieldBool(dst, "IsInput") || rrcsMemberInt(src, "Port") != 7 || !rrcsFieldBool(src, "IsInput") {
 		t.Errorf("crosspoint sent: %+v", xp)
 	}
-	if unex == nil {
-		t.Error("the level registration was not removed on exit")
+	// §8.15: TransKey, IP-address — RRCS 9.0 refuses a third parameter.
+	if unex == nil || len(unex.Params) != 2 || unex.Params[1].Str != "127.0.0.1" {
+		t.Errorf("UnregisterForEventsEx: %+v", unex)
 	}
 	if err := runRRCS(context.Background(), []string{"watch", "h", "--volume", "maybe"}); err == nil {
 		t.Error("bad --volume accepted")

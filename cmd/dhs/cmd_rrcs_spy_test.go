@@ -102,8 +102,9 @@ func TestRRCSWatchSpyAll(t *testing.T) {
 		t.Errorf("panel spy requests: %s", got)
 	}
 	methods := strings.Join(f.methods(), ",")
-	// The unregistration goes first: it is the request that must get out.
-	if !strings.HasSuffix(methods, "UnregisterForAllEvents,ChangePanelSpyRegistry") {
+	// The panel spy goes off first: RRCS refuses it once the receiver is
+	// unregistered.
+	if !strings.HasSuffix(methods, "ChangePanelSpyRegistry,UnregisterForAllEvents") {
 		t.Errorf("order of the goodbye: %s", methods)
 	}
 }

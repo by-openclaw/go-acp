@@ -60,9 +60,11 @@ func (c *Client) RegisterVolumeEvents(ctx context.Context, ip string, port int) 
 }
 
 // UnregisterVolumeEvents removes what RegisterVolumeEvents made (§8.15
-// UnregisterForEventsEx).
-func (c *Client) UnregisterVolumeEvents(ctx context.Context, ip string, port int) (Reply, error) {
-	return c.Call(ctx, "UnregisterForEventsEx", codec.String(ip), codec.Int(int32(port)))
+// UnregisterForEventsEx). The receiver is named by its address alone, as
+// §8.15 prints it: RRCS 9.0 answers fault 14 "requires 2 input parameters
+// (3 received)" when the port is sent too.
+func (c *Client) UnregisterVolumeEvents(ctx context.Context, ip string) (Reply, error) {
+	return c.Call(ctx, "UnregisterForEventsEx", codec.String(ip))
 }
 
 // FollowVolumes adds crosspoints to the volume registry of the receiver

@@ -724,9 +724,11 @@ loop:
 	// The order matters. Three runs on Windows, stopped with Ctrl+C from a
 	// shell that redirects the output, ended one request into this
 	// sequence: the shell ends the process almost at once. So the counts
-	// are said first, and the one request that must get out — the
-	// unregistration — goes first. RRCS drops what is left by itself when
-	// its keep-alive finds nobody (seen in its log).
+	// are said first. The level and panel spy registrations are removed
+	// before the unregistration: RRCS refuses a panel spy change once the
+	// receiver is gone (fault 99 "No notification receiver found. Call
+	// 'RegisterForAllEvents' first"). RRCS drops what is left by itself
+	// when its keep-alive finds nobody (seen in its log).
 	cf.say("rrcs watch: %d events, %d GetAlive answered, %d registration(s)",
 		listener.Events(), listener.Alives(), registrations)
 	mu.Lock()
@@ -738,18 +740,18 @@ loop:
 	cf.say("rrcs watch: stopping — unregistering (up to %s)", cf.timeout)
 	bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
+	if *volume == "yes" && volumeIP != "" {
+		if _, err := client.UnregisterVolumeEvents(bye, volumeIP); err != nil {
+			cf.say("rrcs watch: crosspoint levels: unregister: %v", err)
+		}
+	}
+	setSpy(bye, false)
 	start := time.Now()
 	if _, err := client.Unregister(bye, reg); err != nil {
 		cf.say("rrcs watch: unregister failed after %s: %v", time.Since(start).Round(time.Millisecond), err)
 	} else {
 		cf.say("rrcs watch: unregistered in %s", time.Since(start).Round(time.Millisecond))
 	}
-	if *volume == "yes" && volumeIP != "" {
-		if _, err := client.UnregisterVolumeEvents(bye, volumeIP, reg.Port); err != nil {
-			cf.say("rrcs watch: crosspoint levels: unregister: %v", err)
-		}
-	}
-	setSpy(bye, false)
 	return runErr
 }
 
