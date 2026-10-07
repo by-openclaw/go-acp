@@ -378,6 +378,7 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			return reply, ok
 		}
 		single("GetAlive")
+		single("GetAllRemoteKeys") // every key manipulation made through RRCS: the key alone (§8.11)
 		single("IsRegisteredForEvents", codec.String(rrcsLocalIP("", client.Peer())), codec.Int(8195))
 		var net, loNode, hiNode, hiPort int32 = 1, 1 << 30, 0, 0
 		for _, p := range ports {
@@ -415,12 +416,6 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			single("GetPoolPortInfo", codec.Int(node), codec.Int(port))
 			if rrcsFieldBool(p, "Input") {
 				single("GetLevelMeterValues", codec.Int(node), codec.Int(port), codec.Int(pool))
-			}
-			pages, _ := rrcsFieldInt(p, "PageCount")
-			if keys, _ := rrcsFieldInt(p, "KeyCount"); keys > 0 {
-				for page := int32(1); page <= pages; page++ {
-					single("GetAllRemoteKeys", codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(page), codec.Int(0))
-				}
 			}
 		}
 		// One key, read the two ways a single key can be: the position

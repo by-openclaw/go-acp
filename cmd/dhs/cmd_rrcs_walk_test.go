@@ -345,7 +345,7 @@ func TestRRCSWalkSingles(t *testing.T) {
 		"GetNode": 1, "GetClientCard": 1,
 		"GetPort": 4, "GetPoolPortInfo": 4,
 		"GetLevelMeterValues": 3, // the three ports that have an input
-		"GetAllRemoteKeys":    2, // the panel, two pages
+		"GetAllRemoteKeys":    1,
 		"GetCommandList":      1, "GetRemoteKey": 1,
 		"GetXpVolume":          2, // the two active crosspoints of the stand-in
 		"GetIFBVolumeMixMinus": 0, // its IFB has no mix minus

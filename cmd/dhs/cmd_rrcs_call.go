@@ -18,7 +18,8 @@ import (
 // something on the gateway or on the intercom and goes through the write
 // guard.
 func rrcsReadOnlyMethod(method string) bool {
-	return strings.HasPrefix(method, "Get") || strings.HasPrefix(method, "Is")
+	// LineStatus (§8.17) reads without saying so in its name.
+	return strings.HasPrefix(method, "Get") || strings.HasPrefix(method, "Is") || method == "LineStatus"
 }
 
 // rrcsValueOfJSON reads one JSON document into an XML-RPC value, keeping

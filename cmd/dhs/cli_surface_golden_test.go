@@ -112,7 +112,9 @@ var perProtocolVerbs = map[string][]string{
 		"events", "export", "audit", "probe", "registers",
 	},
 	"ccm": {"walk", "export"},
-	"rrcs": {"info", "discover", "watch", "walk", "get", "list", "tree", "set", "export", "import", "call", "xp", "ensure", "coverage"},
+	"rrcs": {"info", "discover", "watch", "walk", "get", "list", "tree", "set", "export", "import", "call", "xp", "ensure", "coverage",
+		"set-xp-prio", "set-xp-destructive", "set-xp-volume", "set-port-alias", "set-port-label", "set-input-gain", "set-output-gain", "set-gp-output", "get-gp-input-state", "get-gp-output-state", "set-logic-source-state", "set-state-working", "set-state-standby", "set-net-name", "configuration-change", "buffer-configuration-change", "buffer-configuration-change-ex", "apply-configuration-change", "apply-configuration-change-ex", "clear-key-label", "clear-key-label-and-marker", "clear-key-marker", "lock-key", "press-key", "press-key-ex", "set-key-label", "set-key-label-and-marker", "set-key-marker", "start-port-cloning", "stop-port-cloning", "set-ifb-volume-mix-minus", "remove-ifb-volume-mix-minus", "xp-volume-change-registry-reset", "xp-volume-change-registry-remove", "register-for-events", "unregister-for-events", "register-for-gp-input-change", "unregister-for-gp-input-change", "register-for-gp-output-change", "unregister-for-gp-output-change", "set-trunking-net-addr", "set-ltc", "dial-number", "hang-up-call", "line-status", "set-system-time-on-all-nodes", "connect-to-artist", "disconnect-from-artist", "reset-all-nodes", "delete-port-commands", "set-stage-net-addr", "set-stage-registry-url",
+	},
 }
 
 // producerVerbs freezes the producer role. The producer is selectable at build

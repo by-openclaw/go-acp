@@ -81,6 +81,9 @@ func runRRCS(ctx context.Context, args []string) error {
 	case "tree":
 		return rrcsTree(ctx, args[1:])
 	}
+	if op := rrcsFindOp(args[0]); op != nil {
+		return rrcsRunOp(ctx, op, args[1:])
+	}
 	return rrcsValErr(args[0], "unknown verb (run 'dhs consumer rrcs --help')")
 }
 
@@ -140,7 +143,20 @@ VERBS
             GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
             pressed and released on the panels (ChangePanelSpyRegistry)
 
-Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.`)
+Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
+
+ONE VERB PER METHOD — every other method of the specification, with named
+flags; the ones that are not get-… or line-status WRITE and need --write-to:`)
+	line := " "
+	for _, op := range rrcsOps {
+		v := rrcsOpVerb(op.Method)
+		if len(line)+len(v)+1 > 78 {
+			fmt.Println(line)
+			line = " "
+		}
+		line += " " + v
+	}
+	fmt.Println(line)
 }
 
 // rrcsFlags is the flag set common to the rrcs verbs.

@@ -21,6 +21,9 @@ func TestRRCSCatalog(t *testing.T) {
 		default:
 			t.Errorf("%s: kind %q", m.Name, m.Kind)
 		}
+		if m.Verb == "call" {
+			t.Errorf("%s has no verb of its own", m.Name)
+		}
 		if m.Verb == "" || m.Real == "" || m.Section == "" {
 			t.Errorf("%s: incomplete entry %+v", m.Name, m)
 		}
@@ -31,6 +34,15 @@ func TestRRCSCatalog(t *testing.T) {
 		}
 		if (m.Kind == "write" || m.Kind == "register") && rrcsReadOnlyMethod(m.Name) {
 			t.Errorf("%s changes something but the write guard lets it through", m.Name)
+		}
+	}
+	for _, op := range rrcsOps {
+		m, ok := byName[op.Method]
+		if !ok || m.Verb != rrcsOpVerb(op.Method) {
+			t.Errorf("%s: catalogue says %+v, the verb is %s", op.Method, m, rrcsOpVerb(op.Method))
+		}
+		if ok && (m.Kind == "read") != op.Read {
+			t.Errorf("%s: the catalogue and the table disagree on whether it reads", op.Method)
 		}
 	}
 	sent := append(append(append([]string{}, rrcsInfoMethods...), rrcsDiscoverMethods...), rrcsWalkLists...)
@@ -49,13 +61,18 @@ func TestRRCSCatalog(t *testing.T) {
 func TestRRCSCoverageVerb(t *testing.T) {
 	out := rrcsRun(t, "coverage")
 	rrcsWant(t, out, "SECTION  METHOD", "GetAllPorts", "ConfigurationChangeEx", "stopped RRCS", "KIND      IN THE SPECIFICATION", "total")
+	// Every method has a verb of its own: nothing is left to the generic
+	// call verb alone.
+	if got := strings.TrimSpace(rrcsRun(t, "coverage", "--output", "json", "--only", "call")); got != "[]" {
+		t.Errorf("methods without a verb of their own: %s", got)
+	}
 	var rows []rrcsMethod
-	if err := json.Unmarshal([]byte(rrcsRun(t, "coverage", "--output", "json", "--only", "call")), &rows); err != nil || len(rows) == 0 {
+	if err := json.Unmarshal([]byte(rrcsRun(t, "coverage", "--output", "json", "--only", "write")), &rows); err != nil || len(rows) == 0 {
 		t.Fatalf("json: %v, %d rows", err, len(rows))
 	}
 	for _, r := range rows {
-		if r.Verb != "call" {
-			t.Errorf("--only call returned %+v", r)
+		if r.Kind != "write" {
+			t.Errorf("--only write returned %+v", r)
 		}
 	}
 	if unproven := rrcsRun(t, "coverage", "--only", "unproven"); strings.Contains(unproven, "GetVersion ") {
