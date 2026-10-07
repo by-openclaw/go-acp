@@ -1,0 +1,179 @@
+---
+# probel-sw08p replay fixtures (ADR-0025 #6): one folder per command the
+# connector implements, each holding a small slice of REAL traffic with
+# the lab's EVS Neuron CONVERT — the frames, a capture built from them,
+# and the dissector's rendering of that capture.
+#
+#   frames.jsonl     the wire trace the consumer wrote (--capture, ADR-0021)
+#   capture.pcapng   the same frames through Wireshark's text2pcap: the
+#                    SW-P-08 bytes are the device's own, the IP/TCP
+#                    headers around them are stand-ins
+#   tshark.tree      dhs_probel_sw08p.lua's rendering of that capture
+#
+# The slices are cut to the first frames of an exchange (`keep`): a
+# fixture is only reviewable if a person can read all of it.
+#
+# Read-only on the device but for ONE crosspoint (the destination and
+# free source of probel-sw08p-neuron-verify.yml), moved and put back.
+# The output lands under `fx_out` on the plant host; it is copied into
+# internal/probel-sw08p/testdata/protocol_types/ and committed by hand —
+# a fixture set is reviewed, not regenerated on every run.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/probel-sw08p-fixtures.yml
+
+- name: probel-sw08p — replay fixtures from the real Neuron
+  hosts: plant
+  gather_facts: false
+  vars:
+    fx_bin: /usr/local/bin/dhs
+    fx_target: "10.6.255.102:7800"
+    fx_size: 4176
+    fx_dst: 4175
+    fx_src: 256
+    fx_out: /root/probel-sw08p-fixtures
+    fx_lua: "{{ playbook_dir }}/../../internal/probel-sw08p/wireshark/dhs_probel_sw08p.lua"
+    fx_cli: "{{ fx_bin }} consumer probel-sw08p --srcs {{ fx_size }}"
+    fx_ml: "--matrix 0 --level 0"
+    # folder: named after the command file (cmd_rxNNN_*.go); a Neuron
+    # speaks the extended form of the crosspoint and protect commands.
+    # served: false = the Neuron ACKs the request and sends no reply —
+    # that exchange is real traffic too, and is what a client must cope with.
+    fx_scenarios:
+      - { folder: rx_001_crosspoint_interrogate, keep: 4, served: true,
+          args: "interrogate {{ fx_target }} --matrix 0 --level 0 --dst {{ fx_dst }}" }
+      - { folder: rx_010_protect_interrogate, keep: 4, served: true,
+          args: "protect-interrogate {{ fx_target }} --matrix 0 --level 0 --dst {{ fx_dst }}" }
+      - { folder: rx_021_crosspoint_tally_dump, keep: 4, served: true,
+          args: "tally-dump {{ fx_target }} --matrix 0 --level 0" }
+      - { folder: rx_100_all_source_names, keep: 4, served: true,
+          args: "all-source-names {{ fx_target }} --matrix 0 --level 0" }
+      - { folder: rx_101_single_source_name, keep: 4, served: true,
+          args: "single-source-name {{ fx_target }} --matrix 0 --level 0 --src {{ fx_src }}" }
+      - { folder: rx_102_all_dest_assoc_names, keep: 4, served: true,
+          args: "all-dest-names {{ fx_target }} --matrix 0" }
+      - { folder: rx_103_single_dest_assoc_name, keep: 4, served: true,
+          args: "single-dest-name {{ fx_target }} --matrix 0 --dst {{ fx_dst }}" }
+      - { folder: rx_008_dual_controller_status, keep: 4, served: false,
+          args: "dual-status {{ fx_target }}" }
+      - { folder: rx_012_protect_connect, keep: 6, served: false,
+          args: "protect-connect {{ fx_target }} --matrix 0 --level 0 --dst {{ fx_dst }} --device 9" }
+      - { folder: rx_017_protect_device_name_request, keep: 4, served: false,
+          args: "protect-name {{ fx_target }} --device 9" }
+      - { folder: rx_019_protect_tally_dump_request, keep: 4, served: false,
+          args: "protect-dump {{ fx_target }} --matrix 0 --level 0" }
+      - { folder: rx_029_master_protect_connect, keep: 6, served: false,
+          args: "master-protect {{ fx_target }} --matrix 0 --level 0 --dst {{ fx_dst }} --device 9" }
+      - { folder: rx_114_all_source_assoc_names, keep: 4, served: false,
+          args: "all-source-assoc-names {{ fx_target }} --matrix 0 --level 0" }
+      - { folder: rx_115_single_source_assoc_name, keep: 4, served: false,
+          args: "single-source-assoc-name {{ fx_target }} --matrix 0 --level 0 --src {{ fx_src }}" }
+      - { folder: rx_120_crosspoint_connect_on_go_salvo, keep: 4, served: false,
+          args: "salvo-connect {{ fx_target }} --matrix 0 --level 0 --src {{ fx_src }} --dsts {{ fx_dst }} --salvo 5" }
+  tasks:
+    - name: A clean output folder
+      ansible.builtin.file:
+        path: "{{ fx_out }}"
+        state: absent
+      changed_when: false
+
+    - name: One folder per command
+      ansible.builtin.file:
+        path: "{{ fx_out }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ (fx_scenarios | map(attribute='folder') | list) + ['rx_002_crosspoint_connect', 'rx_117_update_name_request'] }}"
+      changed_when: false
+
+    - name: Released binary the frames come from
+      ansible.builtin.command: "{{ fx_bin }} version"
+      register: fx_version
+      changed_when: false
+
+    - name: The exchanges that write nothing
+      ansible.builtin.command: >-
+        {{ fx_cli }} {{ item.args }} --capture {{ fx_out }}/{{ item.folder }}/all.jsonl
+      loop: "{{ fx_scenarios }}"
+      loop_control:
+        label: "{{ item.folder }}"
+      register: fx_run
+      changed_when: false
+      failed_when: (fx_run.rc == 0) != item.served
+
+    # ---- the one write: a crosspoint moved and put back ---------------
+    - name: The route as it is
+      ansible.builtin.command: "{{ fx_cli }} interrogate {{ fx_target }} {{ fx_ml }} --dst {{ fx_dst }}"
+      register: fx_before
+      changed_when: false
+
+    - name: Its source
+      ansible.builtin.set_fact:
+        fx_home: "{{ fx_before.stdout | regex_search('<- src=[0-9]+') | regex_replace('[^0-9]', '') }}"
+
+    - name: The free source is free
+      ansible.builtin.command: "{{ fx_cli }} usage {{ fx_target }} {{ fx_ml }} --srce {{ fx_src }} --format ascii"
+      register: fx_free
+      changed_when: false
+      failed_when: fx_free.rc != 0 or 'dst ' in fx_free.stdout
+
+    - name: Connect, captured — and back
+      block:
+        - name: rx 002 — connect, captured
+          ansible.builtin.command: >-
+            {{ fx_cli }} connect {{ fx_target }} {{ fx_ml }} --dst {{ fx_dst }} --src {{ fx_src }}
+            --capture {{ fx_out }}/rx_002_crosspoint_connect/all.jsonl
+          changed_when: false
+
+        - name: rx 117 — update-name, captured (the matrix sends no reply, §3.1.26)
+          ansible.builtin.command: >-
+            {{ fx_cli }} update-name {{ fx_target }} --type dest-assoc --width 8 --matrix 0
+            --first-id {{ fx_dst }} --names {{ fx_label }}
+            --capture {{ fx_out }}/rx_117_update_name_request/all.jsonl
+          vars:
+            fx_label: "{{ (fx_name.stdout.split('\"')[1]) }}"
+          changed_when: false
+      always:
+        - name: The route goes back
+          ansible.builtin.command: "{{ fx_cli }} connect {{ fx_target }} {{ fx_ml }} --dst {{ fx_dst }} --src {{ fx_home }}"
+          changed_when: false
+
+        - name: The route is back
+          ansible.builtin.command: "{{ fx_cli }} interrogate {{ fx_target }} {{ fx_ml }} --dst {{ fx_dst }}"
+          register: fx_after
+          retries: 10
+          delay: 1
+          until: ('<- src=' ~ fx_home) in fx_after.stdout
+          changed_when: false
+      vars:
+        fx_name: "{{ fx_run.results | selectattr('item.folder', 'equalto', 'rx_103_single_dest_assoc_name') | first }}"
+
+    # ---- frames -> capture -> tree ------------------------------------
+    - name: Slice, build the capture, render it
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd {{ fx_out }}/{{ item.folder }}
+        head -n {{ item.keep }} all.jsonl > frames.jsonl
+        rm all.jsonl
+        jq -r '(if .dir=="tx" then "O" else "I" end) + "\n000000 " + (.hex | [scan("..")] | join(" "))' frames.jsonl > frames.txt
+        text2pcap -q -D -T 2008,50000 -n frames.txt capture.pcapng
+        rm frames.txt
+        tshark -r capture.pcapng -X lua_script:{{ fx_lua }} -V -O dhs_probel_sw08p 2>/dev/null > tshark.tree
+        ! grep -q "Lua Error" tshark.tree
+        grep -c "^Probel" tshark.tree
+      args:
+        executable: /bin/bash
+      loop: >-
+        {{ fx_scenarios
+           + [{'folder': 'rx_002_crosspoint_connect', 'keep': 4},
+              {'folder': 'rx_117_update_name_request', 'keep': 2}] }}
+      loop_control:
+        label: "{{ item.folder }}"
+      register: fx_built
+      changed_when: false
+      failed_when: fx_built.rc != 0 or (fx_built.stdout_lines | last | int) < 2
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          {{ fx_built.results | length }} fixture folder(s) under {{ fx_out }} from
+          {{ fx_target }} with {{ fx_version.stdout_lines[0] }};
+          route dst {{ fx_dst }} back on src {{ fx_home }}
