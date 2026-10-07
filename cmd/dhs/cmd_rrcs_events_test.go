@@ -165,7 +165,7 @@ func TestRRCSWatchValues(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0"})
 	})
 	if err != nil || !strings.Contains(out, "oid=100 net.1.node.61.port.1026 Online = true  (PNL2)") {
 		t.Errorf("%v\n%s", err, out)
@@ -192,7 +192,7 @@ func TestRRCSWatchValues(t *testing.T) {
 		return call.Params[0], true
 	})
 	js, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx2, []string{"watch", g.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--output", "json"})
+		return runRRCS(ctx2, []string{"watch", g.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--output", "json"})
 	})
 	var line rrcsChangeLine
 	if err != nil || json.Unmarshal([]byte(strings.TrimSpace(js)), &line) != nil ||
@@ -267,7 +267,7 @@ func TestRRCSWatchLogsToSinks(t *testing.T) {
 	})
 	logFile := filepath.Join(t.TempDir(), "watch.log")
 	if _, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0",
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0",
 			"--log", logFile, "--log-format", "json", "--syslog-addr", udp.LocalAddr().String()})
 	}); err != nil {
 		t.Fatalf("watch: %v", err)
@@ -357,7 +357,7 @@ func TestRRCSWatchAlarm(t *testing.T) {
 	})
 	logFile := filepath.Join(t.TempDir(), "watch.log")
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--log", logFile, "--log-format", "json",
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--log", logFile, "--log-format", "json",
 			"--alarm", filepath.Join("..", "..", "internal", "rrcs", "alarm", "RRCS@9.0.json")})
 	})
 	if err != nil {
@@ -380,7 +380,7 @@ func TestRRCSWatchAlarm(t *testing.T) {
 		t.Errorf("the alarm did not reach the log:\n%s", logged)
 	}
 	var val *consumer.ValidationError
-	if err := runRRCS(context.Background(), []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--alarm", filepath.Join(t.TempDir(), "none.json")}); !errors.As(err, &val) {
+	if err := runRRCS(context.Background(), []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--alarm", filepath.Join(t.TempDir(), "none.json")}); !errors.As(err, &val) {
 		t.Errorf("missing template: %v", err)
 	}
 }
@@ -438,7 +438,7 @@ func TestRRCSWatchVolume(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--volume", "yes"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--volume", "yes"})
 	})
 	if err != nil {
 		t.Fatalf("watch: %v", err)

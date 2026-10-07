@@ -276,7 +276,7 @@ func TestRRCSWatch(t *testing.T) {
 		return codec.Value{}, false
 	})
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", listen, "--check", "100ms", "--alive", "show", "--output", "json", "--events", "raw"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", listen, "--check", "100ms", "--alive", "show", "--output", "json", "--events", "raw"})
 	})
 	if err != nil {
 		t.Fatalf("watch: %v", err)
@@ -297,7 +297,7 @@ func TestRRCSWatchRegistrationRefused(t *testing.T) {
 	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
 		return codec.Array(call.Params[0], codec.Int(13)), true
 	})
-	err := runRRCS(context.Background(), []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--events", "raw"})
+	err := runRRCS(context.Background(), []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--events", "raw"})
 	if !errors.Is(err, &codec.CodeError{Code: codec.CodeGatewayStandby}) {
 		t.Errorf("got %v, want gateway standby", err)
 	}
@@ -328,7 +328,7 @@ func TestRRCSWatchText(t *testing.T) {
 	})
 	capture := filepath.Join(t.TempDir(), "watch.jsonl")
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--capture", capture, "--events", "raw"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--capture", capture, "--events", "raw"})
 	})
 	// The capture tells the run on its own: registered, unregistered, counts.
 	raw, _ := os.ReadFile(capture)

@@ -152,7 +152,9 @@ RRCS sends the events to this machine on port 8195 (`--listen`). Stop with
 | Function key, rotary, numeric key (`--spy`) | One line per member |
 | Anything not known yet | `event <Method> = <parameters>` |
 
-`--spy all` adds key events for every port that has keys; `--spy NODE.PORT`
+By default watch asks for everything RRCS can send: key and rotary events of
+every panel on line (`--spy all`) and the level of every crosspoint made
+while watching (`--volume yes`). `--spy none` / `--volume no` leave them out; `--spy NODE.PORT`
 for chosen panels. `--events raw` prints method and parameters as received.
 `--alive show` also prints the keep-alive pings.
 

@@ -384,9 +384,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	listen := fs.String("listen", ":8195", "local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1)")
 	path := fs.String("path", rrcs.DefaultPath, "URL path RRCS posts its events to")
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
-	spy := fs.String("spy", "none", "panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
+	spy := fs.String("spy", "all", "panel spy — key pressed and released, rotary encoders (RRCS sends these only for panels registered one by one): all (default: every port that has keys and is on line) | none | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
 	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
-	volume := fs.String("volume", "no", "yes = also follow the level of every crosspoint that is made while watching (RegisterForEventsEx, XpVolumeChangeRegistryAdd): a level changed on a panel then arrives as SingleVolume / ConferenceVolume in dB. Adds registrations on RRCS, removed on exit")
+	volume := fs.String("volume", "yes", "crosspoint levels (RRCS sends these only for crosspoints registered one by one): yes (default: follow every crosspoint that is made while watching; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB) | no. Adds registrations on RRCS, removed on exit")
 	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
 	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
@@ -472,6 +472,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	// online is what the port notifications say: RRCS opens a registration
 	// with one PortActive per port that is on line.
 	online := map[[2]int]bool{}
+	spyErrors := map[string]int{} // distinct panel spy error → how many panels gave it
 	jsonOut := cf.output == "json"
 	// follow carries the crosspoints whose level is to be followed, from
 	// the event handler to the loop that talks to RRCS.
@@ -530,6 +531,21 @@ func rrcsWatch(ctx context.Context, args []string) error {
 						Value: consumer.Value{Kind: consumer.KindString, Str: l.Value}}); tr != nil {
 						raise(*tr)
 					}
+				}
+				// The state of the panel spy of each panel is said once per
+				// distinct answer: with 24 panels giving the same error,
+				// the terminal would hold nothing else. Every state still
+				// goes to the log and the capture.
+				if strings.HasSuffix(l.Path, ".spy") {
+					if l.Value != "error" {
+						continue
+					}
+					key := l.Label + "|" + l.Detail
+					spyErrors[key]++
+					if spyErrors[key] > 1 {
+						continue
+					}
+					l.Detail += "  (said once; other panels with the same answer are counted at the end)"
 				}
 				if jsonOut {
 					l.Time = stamp
@@ -692,6 +708,12 @@ loop:
 	// its keep-alive finds nobody (seen in its log).
 	cf.say("rrcs watch: %d events, %d GetAlive answered, %d registration(s)",
 		listener.Events(), listener.Alives(), registrations)
+	mu.Lock()
+	for key, n := range spyErrors {
+		kind, text, _ := strings.Cut(key, "|")
+		cf.say("rrcs watch: panel spy %s not active on %d panel(s): %s", kind, n, text)
+	}
+	mu.Unlock()
 	cf.say("rrcs watch: stopping — unregistering (up to %s)", cf.timeout)
 	bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
