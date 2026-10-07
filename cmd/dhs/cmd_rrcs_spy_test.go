@@ -163,10 +163,9 @@ func TestRRCSWatchSpyEvents(t *testing.T) {
 	}
 }
 
-// With no flag, watch asks for everything RRCS can send: panel spy on the
-// panels that are on line and the levels of crosspoints. A panel spy
-// error that several panels give is printed once.
-func TestRRCSWatchDefaultsAskForAll(t *testing.T) {
+// With --spy all and --volume yes, watch asks for everything RRCS can
+// send. A panel spy error that several panels give is printed once.
+func TestRRCSWatchAskForAll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var mu sync.Mutex
@@ -212,7 +211,7 @@ func TestRRCSWatchDefaultsAskForAll(t *testing.T) {
 	})
 	capture := filepath.Join(t.TempDir(), "watch.jsonl")
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--capture", capture})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--capture", capture, "--spy", "all", "--volume", "yes"})
 	})
 	if err != nil {
 		t.Fatalf("watch: %v", err)
