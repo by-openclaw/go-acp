@@ -682,12 +682,19 @@ loop:
 		case <-ctx.Done():
 			break loop
 		case x := <-follow:
-			if followed[x] {
-				continue
-			}
-			followed[x] = true
-			if _, err := client.FollowVolumes(ctx, volumeIP, reg.Port, x); err != nil {
-				cf.say("rrcs watch: crosspoint level %d.%d>%d.%d: %v", x.SrcNode, x.SrcPort, x.DstNode, x.DstPort, err)
+			// Both directions, one request each so that a refusal of one
+			// does not cost the other: the level a panel sets for a key
+			// is how loud it hears that key's port, which is the
+			// crosspoint the other way round.
+			back := rrcs.Crosspoint{SrcNode: x.DstNode, SrcPort: x.DstPort, DstNode: x.SrcNode, DstPort: x.SrcPort}
+			for _, y := range []rrcs.Crosspoint{x, back} {
+				if followed[y] {
+					continue
+				}
+				followed[y] = true
+				if _, err := client.FollowVolumes(ctx, volumeIP, reg.Port, y); err != nil {
+					cf.say("rrcs watch: crosspoint level %d.%d>%d.%d: %v", y.SrcNode, y.SrcPort, y.DstNode, y.DstPort, err)
+				}
 			}
 		case <-sweep:
 			mu.Lock()

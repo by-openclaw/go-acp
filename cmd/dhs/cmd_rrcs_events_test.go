@@ -454,12 +454,16 @@ func TestRRCSWatchVolume(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	var ex, add, unex *codec.Call
+	adds := 0
 	for n := range seen {
 		switch seen[n].Method {
 		case "RegisterForEventsEx":
 			ex = &seen[n]
 		case "XpVolumeChangeRegistryAdd":
-			add = &seen[n]
+			adds++
+			if add == nil { // the crosspoint as made; the second is its reverse
+				add = &seen[n]
+			}
 		case "UnregisterForEventsEx":
 			unex = &seen[n]
 		}
@@ -469,7 +473,7 @@ func TestRRCSWatchVolume(t *testing.T) {
 		t.Fatalf("RegisterForEventsEx: %+v", ex)
 	}
 	// §8.15: TransKey, IP-address, TCP-port, [{Destination, Source}].
-	if add == nil || len(add.Params) != 4 || len(add.Params[3].Items) != 1 {
+	if add == nil || adds != 2 || len(add.Params) != 4 || len(add.Params[3].Items) != 1 {
 		t.Fatalf("XpVolumeChangeRegistryAdd: %+v", add)
 	}
 	xp := add.Params[3].Items[0]
