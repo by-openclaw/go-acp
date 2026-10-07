@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -389,4 +390,93 @@ func must(doc []byte, err error) []byte {
 		panic(err)
 	}
 	return doc
+}
+
+// watch --volume yes registers for crosspoint levels, follows a
+// crosspoint when it is made, and prints the level RRCS then sends — on
+// whatever path the older registration uses.
+func TestRRCSWatchVolume(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var mu sync.Mutex
+	var seen []codec.Call
+	base := ""
+	post := func(path string, doc []byte) {
+		if resp, err := http.Post(base+path, "text/xml", bytes.NewReader(doc)); err == nil {
+			_ = resp.Body.Close()
+		}
+	}
+	st, mem, i, b := codec.Struct, rrcsMember, codec.Int, codec.Bool
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		seen = append(seen, call)
+		mu.Unlock()
+		k := call.Params[0]
+		switch call.Method {
+		case "RegisterForAllEvents":
+			base = "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int))
+			return k, true
+		case "RegisterForEventsEx":
+			// The crosspoint is made once the level registration exists.
+			go post("/RPC2", must(codec.EncodeCall("CrosspointChange", codec.String("R0000000001"), i(1),
+				st(mem("XP#1", codec.Array(i(1), i(61), i(7), i(1), i(61), i(1026), b(true)))))))
+			return codec.Array(k, i(0)), true
+		case "XpVolumeChangeRegistryAdd":
+			addr := func(n, p int32, in bool) codec.Value {
+				return st(mem("IsInput", b(in)), mem("Net", i(1)), mem("Node", i(n)), mem("Port", i(p)))
+			}
+			go func() {
+				// No path: the older registration names address and port only.
+				post("/", must(codec.EncodeCall("XpVolumeChange", codec.String("R0000000002"), codec.Array(
+					st(mem("Source", addr(61, 7, true)), mem("Destination", addr(61, 1026, false)), mem("SingleVolume", i(218)))))))
+				cancel()
+			}()
+			return codec.Array(k, i(0)), true
+		case "UnregisterForAllEvents", "UnregisterForEventsEx":
+			return codec.Array(k, i(0)), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	out, err := rrcsStdout(t, func() error {
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--volume", "yes"})
+	})
+	if err != nil {
+		t.Fatalf("watch: %v", err)
+	}
+	rrcsWant(t, out,
+		"xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 State = on",
+		"xp.net.1.node.61.port.7.in>net.1.node.61.port.1026 SingleVolume = -6.0 dB [-114.5..12.5]")
+	mu.Lock()
+	defer mu.Unlock()
+	var ex, add, unex *codec.Call
+	for n := range seen {
+		switch seen[n].Method {
+		case "RegisterForEventsEx":
+			ex = &seen[n]
+		case "XpVolumeChangeRegistryAdd":
+			add = &seen[n]
+		case "UnregisterForEventsEx":
+			unex = &seen[n]
+		}
+	}
+	// §8.15: TransKey, IP-address, TCP-port, {XpVolumeChange: true}.
+	if ex == nil || len(ex.Params) != 4 || ex.Params[1].Str != "127.0.0.1" || len(ex.Params[3].Members) != 1 || ex.Params[3].Members[0].Name != "XpVolumeChange" {
+		t.Fatalf("RegisterForEventsEx: %+v", ex)
+	}
+	// §8.15: TransKey, IP-address, TCP-port, [{Destination, Source}].
+	if add == nil || len(add.Params) != 4 || len(add.Params[3].Items) != 1 {
+		t.Fatalf("XpVolumeChangeRegistryAdd: %+v", add)
+	}
+	xp := add.Params[3].Items[0]
+	dst, _ := xp.Field("Destination")
+	src, _ := xp.Field("Source")
+	if rrcsMemberInt(dst, "Port") != 1026 || rrcsFieldBool(dst, "IsInput") || rrcsMemberInt(src, "Port") != 7 || !rrcsFieldBool(src, "IsInput") {
+		t.Errorf("crosspoint sent: %+v", xp)
+	}
+	if unex == nil {
+		t.Error("the level registration was not removed on exit")
+	}
+	if err := runRRCS(context.Background(), []string{"watch", "h", "--volume", "maybe"}); err == nil {
+		t.Error("bad --volume accepted")
+	}
 }

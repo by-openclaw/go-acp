@@ -3720,6 +3720,8 @@ Usage of rrcs watch:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -volume string
+    	yes = also follow the level of every crosspoint that is made while watching (RegisterForEventsEx, XpVolumeChangeRegistryAdd): a level changed on a panel then arrives as SingleVolume / ConferenceVolume in dB. Adds registrations on RRCS, removed on exit (default "no")
 
 ========== consumer/rrcs/walk ==========
 $ dhs consumer rrcs walk --help

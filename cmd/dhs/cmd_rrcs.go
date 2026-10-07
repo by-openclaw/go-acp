@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"log/slog"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -386,6 +386,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
 	spy := fs.String("spy", "none", "panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
 	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
+	volume := fs.String("volume", "no", "yes = also follow the level of every crosspoint that is made while watching (RegisterForEventsEx, XpVolumeChangeRegistryAdd): a level changed on a panel then arrives as SingleVolume / ConferenceVolume in dB. Adds registrations on RRCS, removed on exit")
 	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
 	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
@@ -406,6 +407,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			return rrcsValErr("watch", "--spy-events takes key, rotate, func, num")
 		}
 		spyKinds = append(spyKinds, name)
+	}
+	if *volume != "yes" && *volume != "no" {
+		return rrcsValErr("watch", "--volume must be yes or no")
 	}
 	if *events != "values" && *events != "raw" {
 		return rrcsValErr("watch", "--events must be values or raw")
@@ -469,9 +473,13 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	// with one PortActive per port that is on line.
 	online := map[[2]int]bool{}
 	jsonOut := cf.output == "json"
+	// follow carries the crosspoints whose level is to be followed, from
+	// the event handler to the loop that talks to RRCS.
+	follow := make(chan rrcs.Crosspoint, 256)
 	listener := &rrcs.Listener{
-		Path: *path,
-		Tap:  tap,
+		Path:    *path,
+		AnyPath: *volume == "yes",
+		Tap:     tap,
 		OnReject: func(remote string, err error) {
 			cf.say("rrcs watch: unreadable request from %s: %v", remote, err)
 		},
@@ -485,6 +493,17 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			}
 			mu.Lock()
 			defer mu.Unlock()
+			if *volume == "yes" && e.Method == "CrosspointChange" && len(params) >= 2 {
+				for _, xp := range params[1].Members {
+					if it := xp.Value.Items; len(it) >= 7 && it[6].Kind == codec.KindBool && it[6].Bool {
+						select {
+						case follow <- rrcs.Crosspoint{SrcNode: rrcsParamInt(it, 1), SrcPort: rrcsParamInt(it, 2),
+							DstNode: rrcsParamInt(it, 4), DstPort: rrcsParamInt(it, 5)}:
+						default: // the loop is behind; the next change of this crosspoint asks again
+						}
+					}
+				}
+			}
 			if (e.Method == "PortActive" || e.Method == "PortInactive") && len(params) >= 3 {
 				online[[2]int{rrcsParamInt(params, 1), rrcsParamInt(params, 2)}] = e.Method == "PortActive"
 			}
@@ -584,6 +603,27 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	}
 	setSpy(ctx, true)
 
+	// Crosspoint levels: a registration of its own, by address and port.
+	volumeIP := ""
+	followed := map[rrcs.Crosspoint]bool{}
+	setVolume := func(c context.Context) {
+		if *volume != "yes" {
+			return
+		}
+		if volumeIP == "" {
+			volumeIP = rrcsLocalIP(*listen, client.Peer())
+		}
+		if _, err := client.RegisterVolumeEvents(c, volumeIP, reg.Port); err != nil {
+			cf.say("rrcs watch: crosspoint levels: %v", err)
+			return
+		}
+		cf.say("rrcs watch: crosspoint levels: registered for %s:%d; each crosspoint made from now on is followed", volumeIP, reg.Port)
+		for x := range followed { // a new registration starts empty
+			delete(followed, x)
+		}
+	}
+	setVolume(ctx)
+
 	var tick <-chan time.Time
 	if *check > 0 {
 		t := time.NewTicker(*check)
@@ -604,6 +644,14 @@ loop:
 		select {
 		case <-ctx.Done():
 			break loop
+		case x := <-follow:
+			if followed[x] {
+				continue
+			}
+			followed[x] = true
+			if _, err := client.FollowVolumes(ctx, volumeIP, reg.Port, x); err != nil {
+				cf.say("rrcs watch: crosspoint level %d.%d>%d.%d: %v", x.SrcNode, x.SrcPort, x.DstNode, x.DstPort, err)
+			}
 		case <-sweep:
 			mu.Lock()
 			for _, tr := range judge.Sweep() {
@@ -628,6 +676,7 @@ loop:
 				} else {
 					registrations++
 					setSpy(ctx, true)
+					setVolume(ctx)
 				}
 			}
 		}
@@ -652,6 +701,11 @@ loop:
 	} else {
 		cf.say("rrcs watch: unregistered in %s", time.Since(start).Round(time.Millisecond))
 	}
+	if *volume == "yes" && volumeIP != "" {
+		if _, err := client.UnregisterVolumeEvents(bye, volumeIP, reg.Port); err != nil {
+			cf.say("rrcs watch: crosspoint levels: unregister: %v", err)
+		}
+	}
 	setSpy(bye, false)
 	return runErr
 }
@@ -674,4 +728,19 @@ func rrcsParseSpy(v string) (all bool, panels [][2]int, err error) {
 		panels = append(panels, [2]int{n, p})
 	}
 	return false, panels, nil
+}
+
+// rrcsLocalIP is the address RRCS has to send to: the one given with
+// --listen, or the local end of the route towards the gateway.
+func rrcsLocalIP(listen, peer string) string {
+	if host, _, err := net.SplitHostPort(listen); err == nil && host != "" && host != "0.0.0.0" && host != "::" {
+		return host
+	}
+	conn, err := net.Dial("udp", peer) // no packet is sent: UDP only picks the route
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = conn.Close() }()
+	host, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+	return host
 }

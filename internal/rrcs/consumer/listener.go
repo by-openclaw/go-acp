@@ -43,6 +43,10 @@ type Listener struct {
 	// Path is the URL path given at registration. Empty means
 	// DefaultPath. A leading slash is optional, as in §8.15.1.
 	Path string
+	// AnyPath accepts a request on every path. The older registration
+	// (RegisterForEventsEx, §8.15) names a receiver by address and port
+	// only, so its notifications do not come on Path.
+	AnyPath bool
 	// OnEvent receives every request, GetAlive included, after the
 	// answer has been written. It runs on the HTTP server's goroutine
 	// of that request and must not block for long.
@@ -87,7 +91,7 @@ func ValidPath(p string) bool {
 }
 
 func (l *Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != NormalizePath(l.Path) {
+	if !l.AnyPath && r.URL.Path != NormalizePath(l.Path) {
 		http.NotFound(w, r)
 		return
 	}
