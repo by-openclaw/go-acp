@@ -36,6 +36,12 @@ func newRRCSSource(fs *flag.FlagSet) *rrcsSource {
 // onlyPort limits them to some ports on a live gateway.
 func (s *rrcsSource) model(ctx context.Context, verb string, hosts []string, commands bool,
 	onlyPort func(node, port int, isInput bool) bool) (*rrcsModel, error) {
+	return s.modelWith(ctx, verb, hosts, rrcsCollectOpts{commands: commands, onlyPort: onlyPort})
+}
+
+// modelWith builds the tree from a snapshot file, or from a collection of
+// the gateway that reads what opts says.
+func (s *rrcsSource) modelWith(ctx context.Context, verb string, hosts []string, opts rrcsCollectOpts) (*rrcsModel, error) {
 	var doc []byte
 	switch {
 	case *s.from != "" && len(hosts) > 0:
@@ -57,7 +63,7 @@ func (s *rrcsSource) model(ctx context.Context, verb string, hosts []string, com
 			return nil, err
 		}
 		defer closeFn()
-		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{commands: commands, onlyPort: onlyPort})
+		snap, _, err := rrcsCollect(ctx, client, opts)
 		if err != nil {
 			return nil, err
 		}

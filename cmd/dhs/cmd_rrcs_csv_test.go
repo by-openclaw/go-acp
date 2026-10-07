@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"dhs/internal/consumer"
+	"dhs/internal/rrcs/codec"
 )
 
 func TestRRCSSplitPath(t *testing.T) {
@@ -258,4 +259,50 @@ func TestRRCSImportJSON(t *testing.T) {
 	if len(*changes) != 1 {
 		t.Errorf("%d changes", len(*changes))
 	}
+}
+
+// The export carries, under each panel, every key and the command on it,
+// each with its own object ID.
+func TestRRCSExportKeysAndCommands(t *testing.T) {
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		if call.Method == "GetAllKeyConfiguration" {
+			key := func(n int32, id int32, label string) codec.Value {
+				return codec.Struct(
+					rrcsMember("KeyPosition", codec.Struct(rrcsMember("ExpansionPanel", codec.Int(0)), rrcsMember("KeyNumber", codec.Int(n)),
+						rrcsMember("Page", codec.Int(1)), rrcsMember("PositionType", codec.String("key")))),
+					rrcsMember("KeyProperties", codec.Struct(rrcsMember("KeyMode", codec.Int(2)), rrcsMember("LabelValue", codec.String(label)),
+						rrcsMember("ObjectID", codec.Int(id)))))
+			}
+			return codec.Struct(rrcsMember("TransKey", call.Params[0]), rrcsMember("KeyList", codec.Array(key(5, 901, "GRP ALF"), key(6, 902, "")))), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "x.csv")
+	rrcsRun(t, "export", f.addr(), "--out", file, "--path", "node.61.port.1026")
+	header, rows := rrcsReadExport(t, file)
+	col := map[string]int{}
+	for i, h := range header {
+		col[h] = i
+	}
+	// The key itself, assigned or not.
+	label := rows["net.1.node.61.port.1026.key.0.1.5.LabelValue"]
+	if label == nil || label[col["oid"]] != "901" || label[col["value"]] != "GRP ALF" || label[col["access"]] != "R--" {
+		t.Errorf("key label row %v", label)
+	}
+	if empty := rows["net.1.node.61.port.1026.key.0.1.6.KeyMode"]; empty == nil || empty[col["oid"]] != "902" {
+		t.Errorf("an unassigned key is missing: %v", empty)
+	}
+	// The command on it, with the object ID of the command and its target.
+	typ := rows["net.1.node.61.port.1026.key.0.1.5.cmd.CommandType"]
+	if typ == nil || typ[col["oid"]] != "601" || typ[col["value"]] != "call-to-group" {
+		t.Errorf("command row %v", typ)
+	}
+	if target := rows["net.1.node.61.port.1026.key.0.1.5.cmd.Target"]; target == nil || target[col["value"]] != "group.200" {
+		t.Errorf("target row %v", target)
+	}
+	if target := rows["net.1.node.61.port.1026.key.0.1.1.cmd.Target"]; target == nil || target[col["value"]] != "net.1.node.61.port.7.out" {
+		t.Errorf("port target row %v", target)
+	}
+	// An import of that file changes nothing: none of it is writable.
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run"), "would apply 0,")
 }

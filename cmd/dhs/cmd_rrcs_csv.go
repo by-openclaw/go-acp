@@ -194,6 +194,29 @@ func rrcsRows(m *rrcsModel) []rrcsRow {
 	}
 	for _, p := range m.Ports {
 		rows = append(rows, rrcsRowsOf(target, p.Path, p.ObjectID, p.Raw)...)
+		// Each key position of a panel is an object of its own, and so
+		// is the command on it: both go out under the key, with their
+		// own object ID.
+		assigned := map[string]bool{}
+		for _, k := range p.Keys {
+			assigned[k.Path] = true
+		}
+		for _, kc := range p.KeyConfigs {
+			rows = append(rows, rrcsRowsOf(target, kc.Path, kc.ObjectID, kc.Props)...)
+		}
+		for _, k := range p.Keys {
+			cmd := map[string]any{}
+			for name, v := range k.Raw {
+				cmd[name] = v
+			}
+			if k.Target != "" {
+				cmd["Target"] = k.Target
+			}
+			if k.TargetName != "" {
+				cmd["TargetName"] = k.TargetName
+			}
+			rows = append(rows, rrcsRowsOf(target, k.Path+".cmd", k.ObjectID, cmd)...)
+		}
 	}
 	return rows
 }
@@ -251,7 +274,10 @@ func rrcsExport(ctx context.Context, args []string) error {
 	if err != nil {
 		return rrcsValErr("export", err.Error())
 	}
-	m, err := src.model(ctx, "export", fs.Args(), false, nil)
+	// The keys of the panels and their objects are part of an export:
+	// from a gateway that takes the key assignments and the key
+	// configurations, a request or two per port.
+	m, err := src.modelWith(ctx, "export", fs.Args(), rrcsCollectOpts{commands: true, values: true})
 	if err != nil {
 		return err
 	}

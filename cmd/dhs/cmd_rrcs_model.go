@@ -62,6 +62,9 @@ type rrcsPort struct {
 	InputGain  string     `json:"input_gain_db,omitempty"`
 	OutputGain string     `json:"output_gain_db,omitempty"`
 	Keys       []*rrcsKey `json:"-"`
+	// KeyConfigs is every key position of the panel, assigned or not,
+	// with its own object ID and properties (GetAllKeyConfiguration).
+	KeyConfigs []rrcsKeyConfig `json:"-"`
 	Raw      map[string]any `json:"-"`
 }
 
@@ -79,6 +82,13 @@ type rrcsKey struct {
 	ObjectID    int            `json:"object_id"`
 	Description string         `json:"description"`
 	Raw         map[string]any `json:"-"`
+}
+
+// rrcsKeyConfig is one key position of a panel and how the key behaves.
+type rrcsKeyConfig struct {
+	Path     string
+	ObjectID int
+	Props    map[string]any
 }
 
 type rrcsMemberRef struct {
@@ -305,6 +315,7 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 	m.buildObjects(lists, net)
 	m.buildKeys(jList(snap["commands"]))
 	m.buildPortValues(jList(snap["port_values"]))
+	m.buildKeyConfigs(jList(snap["key_configs"]))
 	// What walk listed by object type and the model has no table for:
 	// users, audio patches, logic destinations.
 	for typ, kind := range map[string]string{"user": "user", "audiopatch": "patch", "logic-destination": "logicdest"} {
@@ -560,5 +571,39 @@ func (m *rrcsModel) buildPortValues(calls []any) {
 				port.Raw["OutputGain"] = raw
 			}
 		}
+	}
+}
+
+// buildKeyConfigs reads GetAllKeyConfiguration of each panel: args are
+// node, port, input, pool port; the answer holds KeyList, each entry a
+// KeyPosition and its KeyProperties.
+func (m *rrcsModel) buildKeyConfigs(calls []any) {
+	for _, c := range calls {
+		call := jMap(c)
+		args := jList(call["args"])
+		if len(args) < 3 {
+			continue
+		}
+		node, _ := args[0].(float64)
+		number, _ := args[1].(float64)
+		in, _ := args[2].(bool)
+		port := m.find(int(node), int(number), in)
+		if port == nil {
+			continue
+		}
+		for _, e := range jList(jMap(call["payload"])["KeyList"]) {
+			entry := jMap(e)
+			pos, props := jMap(entry["KeyPosition"]), jMap(entry["KeyProperties"])
+			if pos == nil || props == nil {
+				continue
+			}
+			path := fmt.Sprintf("%s.key.%d.%d.%d", port.Path, jInt(pos, "ExpansionPanel"), jInt(pos, "Page"), jInt(pos, "KeyNumber"))
+			if typ := jStr(pos, "PositionType"); typ != "" && typ != "key" {
+				path = fmt.Sprintf("%s.%s.%d", port.Path, typ, jInt(pos, "KeyNumber"))
+			}
+			port.KeyConfigs = append(port.KeyConfigs, rrcsKeyConfig{Path: path, ObjectID: jInt(props, "ObjectID"), Props: props})
+		}
+		keys := port.KeyConfigs
+		sort.SliceStable(keys, func(i, j int) bool { return keys[i].Path < keys[j].Path })
 	}
 }
