@@ -1,0 +1,59 @@
+Frame 1: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 1, Ack: 1, Len: 14
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 100282000010104f010007171003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 82000010104f01000717
+    Command: rx 130 Crosspoint Connect (ext) (0x82) — rx 130 Crosspoint Connect (ext)
+    Command (dec): 130
+    Extended command: True
+    Byte Count: 7
+    [BTC OK: True]
+    Checksum: 0x17
+    [Checksum (calc): 0x17]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Matrix ID: 0
+    Level ID: 0
+    Destination: 4175
+    Source: 256
+
+Frame 2: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 1, Ack: 15, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+
+Frame 3: 69 bytes on wire (552 bits), 69 bytes captured (552 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 3, Ack: 15, Len: 15
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 100284000010104f01000008141003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 84000010104f0100000814
+    Command: tx 132 Crosspoint Connected (ext) (0x84) — tx 132 Crosspoint Connected (ext)
+    Command (dec): 132
+    Extended command: True
+    Byte Count: 8
+    [BTC OK: True]
+    Checksum: 0x14
+    [Checksum (calc): 0x14]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Matrix ID: 0
+    Level ID: 0
+    Destination: 4175
+    Source: 256
+    Status: 0x00
+
+Frame 4: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 15, Ack: 18, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+
