@@ -257,10 +257,17 @@ and so on every 5 seconds, per panel, for as long as the registration
 lives: 642 attempts in 54 minutes for 24 panels. No key or rotary
 notification was ever sent.
 
+Cause, told by the system's owner on 2026-10-07: that system has no licence
+for panel spy. So "No client card acknowledge received" is what an
+unlicensed system answers — RRCS accepts the registration and never says
+"not licensed". `GetLicenseInfo` does not show it either: it gives port
+counts only. On another project, read this error as "check the panel spy
+licence first".
+
 Consequences:
 
-- Nothing to change in the request. Whether this RRCS / firmware pair
-  supports panel spy on these cards is a question for Riedel.
+- Nothing to change in the request. Panel spy stays unproven until a
+  system that has the licence is at hand.
 - Do not leave `watch --spy` running on that system: it makes RRCS and the
   Artist system exchange registration events every 5 seconds per panel for
   nothing.

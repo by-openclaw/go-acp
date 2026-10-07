@@ -116,7 +116,7 @@ var rrcsCatalog = []rrcsMethod{
 	{"SetKeyLabelAndMarker", "8.11", "write", "set-key-label-and-marker", "no"},
 	{"SetKeyMarker", "8.11", "write", "set-key-marker", "no"},
 	// §8.12 Panel spy
-	{"ChangePanelSpyRegistry", "8.12", "register", "watch --spy", "accepted; no panel became active"},
+	{"ChangePanelSpyRegistry", "8.12", "register", "watch --spy", "accepted; refused by the system (no panel spy licence)"},
 	// §8.13 Port cloning
 	{"StartPortCloning", "8.13", "write", "start-port-cloning", "no"},
 	{"StopPortCloning", "8.13", "write", "stop-port-cloning", "no"},
