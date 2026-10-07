@@ -146,9 +146,9 @@ func TestRRCSTreeLive(t *testing.T) {
 	out := rrcsRun(t, "tree", f.addr())
 	rrcsWant(t, out,
 		"Version=9.0.1  State=Working",
-		"net.1.node.60  ARTIST_1024  FRAME A  (0 ports)",
-		"  card.1  AES67  CARD 1",
-		"net.1.node.61  (4 ports)",
+		"net.1.node.60  ARTIST_1024  FRAME A  oid=9  (4 ports)",
+		"  card.1  AES67  CARD 1  oid=8  (4 ports, addressed as node 61)",
+		"    node.61.port.1026      in+out  RSP-1232HL                 PNL2      PANEL-02  oid=100",
 		"port.7.in",
 		"port.7.out",
 		"key.0.1.1        call-to-port-cmd     net.1.node.61.port.7.out (O.-7)",

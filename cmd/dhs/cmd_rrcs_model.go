@@ -607,3 +607,35 @@ func (m *rrcsModel) buildKeyConfigs(calls []any) {
 		sort.SliceStable(keys, func(i, j int) bool { return keys[i].Path < keys[j].Path })
 	}
 }
+
+// cardOfNode links the node numbers that carry ports and are not in the
+// node list to the client cards, the way Director shows them: on an
+// Artist-1024 the ports of the first card are addressed as node 61, of
+// the second as 62, and so on (a real RRCS 9.0: node 60, cards in bay 1,
+// 2, 4, 5, 6, 7, ports on nodes 61 to 66). RRCS gives no field for the
+// link, so it is made by position, and only when the counts agree;
+// otherwise the map is empty and nothing is regrouped.
+func (m *rrcsModel) cardOfNode() map[int]*rrcsCard {
+	var orphans []int
+	for _, n := range m.Nodes {
+		if n.Type == "" && n.ObjectID == 0 {
+			orphans = append(orphans, n.Node)
+		}
+	}
+	if len(orphans) == 0 || len(orphans) != len(m.Cards) {
+		return nil
+	}
+	sort.Ints(orphans)
+	cards := append([]*rrcsCard(nil), m.Cards...)
+	sort.SliceStable(cards, func(i, j int) bool {
+		if cards[i].Node != cards[j].Node {
+			return cards[i].Node < cards[j].Node
+		}
+		return cards[i].Bay < cards[j].Bay
+	})
+	out := map[int]*rrcsCard{}
+	for i, at := range orphans {
+		out[at] = cards[i]
+	}
+	return out
+}

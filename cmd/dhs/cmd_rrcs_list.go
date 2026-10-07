@@ -394,6 +394,12 @@ func rrcsTree(ctx context.Context, args []string) error {
 		}
 	}
 	fmt.Printf("rrcs %s  %s\n", m.Target, strings.Join(status, "  "))
+	// Director's organisation: node, client card, the ports of the card.
+	cardOf := m.cardOfNode()
+	portsOn := map[int]int{}
+	for _, p := range m.Ports {
+		portsOn[p.Node]++
+	}
 	for _, n := range m.Nodes {
 		if *flt.node != 0 && n.Node != *flt.node {
 			continue
@@ -404,22 +410,50 @@ func rrcsTree(ctx context.Context, args []string) error {
 				head += "  " + part
 			}
 		}
-		fmt.Printf("%s  (%d ports)\n", head, n.Ports)
-		for _, c := range m.Cards {
+		if _, isCard := cardOf[n.Node]; isCard {
+			continue // its ports are shown under the card
+		}
+		ports := n.Ports
+		for at, c := range cardOf {
 			if c.Node == n.Node {
-				fmt.Printf("  card.%d  %s  %s\n", c.Bay, c.Type, c.LongName)
+				ports += portsOn[at]
 			}
 		}
-		for _, p := range m.Ports {
-			if p.Node != n.Node || !flt.port(p) {
+		if n.ObjectID != 0 {
+			head += fmt.Sprintf("  oid=%d", n.ObjectID)
+		}
+		fmt.Printf("%s  (%d ports)\n", head, ports)
+		show := func(indent, base string, at int) {
+			for _, p := range m.Ports {
+				if p.Node != at || !flt.port(p) {
+					continue
+				}
+				leaf := strings.TrimPrefix(p.Path, base)
+				fmt.Printf("%s%-22s %-7s %-26s %-9s %s  oid=%d\n", indent, leaf, rrcsDir(p), p.Type, p.Label, p.LongName, p.ObjectID)
+				for _, k := range p.Keys {
+					fmt.Printf("%s  %-16s %-20s %s\n", indent, strings.TrimPrefix(k.Path, p.Path+"."), k.CommandType, rrcsTarget(k))
+				}
+			}
+		}
+		for _, c := range m.Cards {
+			if c.Node != n.Node {
 				continue
 			}
-			leaf := strings.TrimPrefix(p.Path, n.Path+".")
-			fmt.Printf("  %-14s %-7s %-26s %-9s %s\n", leaf, rrcsDir(p), p.Type, p.Label, p.LongName)
-			for _, k := range p.Keys {
-				fmt.Printf("    %-16s %-20s %s\n", strings.TrimPrefix(k.Path, p.Path+"."), k.CommandType, rrcsTarget(k))
+			line := fmt.Sprintf("  card.%d  %s  %s  oid=%d", c.Bay, c.Type, c.LongName, c.ObjectID)
+			at, linked := 0, false
+			for a, cc := range cardOf {
+				if cc == c {
+					at, linked = a, true
+				}
 			}
+			if !linked {
+				fmt.Println(line)
+				continue
+			}
+			fmt.Printf("%s  (%d ports, addressed as node %d)\n", line, portsOn[at], at)
+			show("    ", fmt.Sprintf("net.%d.", n.Net), at)
 		}
+		show("  ", n.Path+".", n.Node)
 	}
 	if *flt.node != 0 || *flt.typ != "" {
 		return nil
