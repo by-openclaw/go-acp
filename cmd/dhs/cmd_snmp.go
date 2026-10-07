@@ -267,7 +267,7 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
 	var f snmpFlags
 	f.register(fs)
-	root := fs.String("oid", "1.3.6.1.2.1", "subtree root, by standard name or dotted number")
+	root := fs.String("oid", "1.3.6.1", "subtree root, by standard name or dotted number (default: the whole tree — the standard MIBs and the vendor's own)")
 	limit := fs.Int("limit", 0, "stop after this many objects (0 = no limit: the whole subtree is walked)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err

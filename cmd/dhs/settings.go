@@ -138,7 +138,7 @@ func applySettings(fs *flag.FlagSet, settings map[string]string) error {
 // unset flags from the file.
 func parseVerbFlags(fs *flag.FlagSet, args []string) error {
 	path, rest := stripSettingsFlag(args)
-	if err := fs.Parse(rest); err != nil {
+	if err := fs.Parse(flagsBeforePositionals(fs, rest)); err != nil {
 		return err
 	}
 	if path == "" {
