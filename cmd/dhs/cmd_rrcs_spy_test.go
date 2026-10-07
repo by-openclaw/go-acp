@@ -88,8 +88,9 @@ func TestRRCSWatchSpyAll(t *testing.T) {
 		t.Errorf("panel spy requests: %s", got)
 	}
 	methods := strings.Join(f.methods(), ",")
-	if !strings.HasSuffix(methods, "ChangePanelSpyRegistry,UnregisterForAllEvents") {
-		t.Errorf("panel spy was not turned off before the unregistration: %s", methods)
+	// The unregistration goes first: it is the request that must get out.
+	if !strings.HasSuffix(methods, "UnregisterForAllEvents,ChangePanelSpyRegistry") {
+		t.Errorf("order of the goodbye: %s", methods)
 	}
 }
 
