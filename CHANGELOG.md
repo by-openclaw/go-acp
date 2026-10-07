@@ -7,6 +7,16 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.40.4](https://github.com/by-openclaw/go-acp/compare/v0.40.3...v0.40.4) (2026-10-07)
+
+
+### Bug Fixes
+
+* **probel-sw08p:** a request ACKed and not answered is one verdict, whichever timer ends it ([34135db](https://github.com/by-openclaw/go-acp/commit/34135db4fa28cbb77d5716a9cd575fc6cf3cf2e1)), closes [#1433](https://github.com/by-openclaw/go-acp/issues/1433)
+* **probel-sw08p:** one verdict for an unanswered command; the consumer verbs against the real Neuron ([eae7262](https://github.com/by-openclaw/go-acp/commit/eae7262a67c44b0c2303d424f37eedb7a2e2e370))
+* **probel-sw08p:** the provider answers an all-names request with every name ([456e89b](https://github.com/by-openclaw/go-acp/commit/456e89bfddeb91df2cede48d256271f175074aff))
+* **probel-sw08p:** the provider answers an all-names request with every name ([ecef991](https://github.com/by-openclaw/go-acp/commit/ecef9913885ae88bdda9498702f07fdd2b21db4e)), closes [#1435](https://github.com/by-openclaw/go-acp/issues/1435)
+
 ## [0.40.3](https://github.com/by-openclaw/go-acp/compare/v0.40.2...v0.40.3) (2026-10-06)
 
 
