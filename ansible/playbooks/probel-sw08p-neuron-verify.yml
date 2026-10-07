@@ -1,0 +1,381 @@
+---
+# probel-sw08p Tier-3 oracle: the consumer verbs against the REAL EVS
+# Neuron CONVERT, Ansible-driven per ADR-0025 #3 — the read verbs, the
+# write verbs, and the verbs this matrix does not serve.
+#
+# What is written on the device, and nothing else:
+#   - ONE crosspoint: matrix 0, level 0, destination `sw_dst`. It is read
+#     first, moved to `sw_src` (a source no destination carries, so the
+#     `replace` verb can only touch this one route), read back from the
+#     device after each write verb, and put back on the source it was on
+#     — whatever happens in between (`always`).
+#   - ONE label: that destination's 8-character name, written, read back
+#     and put back the same way.
+#
+# NOT run here, on purpose: `maintenance` (reset / clear-protects) and
+# `bench --phase connect` act on every route of the matrix.
+#
+# A Neuron answers a command it does not implement with the link ACK and
+# nothing else (SW-P-08 has no "unsupported" reply). Those verbs are in
+# `sw_not_served`: each must end with the consumer's own verdict, "not
+# served by this matrix", not with a hang or a bare timeout. They are
+# proven against a matrix that serves them in the loopback and emulator
+# tiers, not here.
+#
+# Nothing differs on the hosts or on the device after a run (receipts
+# are evidence of the run; the route and the label are restored), so
+# run-twice = 0 changes.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/probel-sw08p-neuron-verify.yml
+
+- name: probel-sw08p — real-Neuron oracle, every verb
+  hosts: plant
+  gather_facts: false
+  vars:
+    sw_bin: /usr/local/bin/dhs
+    sw_target: "10.6.255.102:7800"
+    sw_matrix: 0
+    sw_level: 0
+    # The CONVERT's audio matrix is 4 176 x 4 176; a toy answer fails.
+    sw_min_size: 4000
+    # The one destination written ("Dd008-02") and the source it is
+    # moved to ("IP017-01"). Checked below before anything is written:
+    # no destination may carry that source.
+    sw_dst: 4175
+    sw_src: 256
+    sw_label: "DHSVERIF"
+    sw_watch_secs: 8
+    sw_m: "--matrix {{ sw_matrix }} --level {{ sw_level }}"
+    # The matrix's source count is given to every verb (--srcs): above
+    # 1 024 sources the consumer asks in the extended form, the only one a
+    # Neuron answers when the routed source does not fit the general
+    # form's 10 bits (internal/probel-sw08p/CLAUDE.md, known deviations).
+    sw_size: 4176
+    sw_cli: "{{ sw_bin }} consumer probel-sw08p --srcs {{ sw_size }}"
+    sw_not_served:
+      - { verb: dual-status, args: "" }
+      - { verb: protect-connect, args: "--matrix {{ sw_matrix }} --level {{ sw_level }} --dst {{ sw_dst }} --device 9" }
+      - { verb: master-protect, args: "--matrix {{ sw_matrix }} --level {{ sw_level }} --dst {{ sw_dst }} --device 9" }
+      - { verb: protect-dump, args: "--matrix {{ sw_matrix }} --level {{ sw_level }}" }
+      - { verb: protect-name, args: "--device 9" }
+      - { verb: all-source-assoc-names, args: "--matrix {{ sw_matrix }} --level {{ sw_level }}" }
+      - { verb: single-source-assoc-name, args: "--matrix {{ sw_matrix }} --level {{ sw_level }} --src {{ sw_src }}" }
+      - { verb: salvo-connect, args: "--matrix {{ sw_matrix }} --level {{ sw_level }} --src {{ sw_src }} --dsts {{ sw_dst }} --salvo 5" }
+  tasks:
+    - name: Receipts path (one timestamp for the whole run)
+      ansible.builtin.set_fact:
+        sw_out: "/root/probel-sw08p-neuron-verify/{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"
+
+    - name: Receipts directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: ["{{ sw_out }}", "{{ sw_out }}/export", "{{ sw_out }}/import"]
+      changed_when: false
+
+    - name: Released binary under test
+      ansible.builtin.command: "{{ sw_bin }} version"
+      register: sw_version
+      changed_when: false
+
+    # ---- read verbs --------------------------------------------------
+    - name: status / health — the session comes up
+      ansible.builtin.command: "{{ sw_cli }} {{ item }} {{ sw_target }}"
+      loop: [status, health]
+      register: sw_health
+      changed_when: false
+      failed_when: sw_health.rc != 0 or 'reachable=true' not in sw_health.stdout or 'connected=true' not in sw_health.stdout
+
+    - name: tally-dump — every crosspoint of the level, captured
+      ansible.builtin.command: >-
+        {{ sw_cli }} tally-dump {{ sw_target }} {{ sw_m }}
+        --capture {{ sw_out }}/tally-dump.jsonl
+      register: sw_tally
+      changed_when: false
+
+    - name: tally-dump — a real matrix, not a toy
+      ansible.builtin.assert:
+        that:
+          - (sw_tally.stdout | regex_search('tallies=[0-9]+') | regex_replace('[^0-9]', '') | int) >= sw_min_size
+        fail_msg: "tally-dump answered {{ sw_tally.stdout_lines[0] | default('nothing') }}"
+        quiet: true
+
+    - name: The test source is carried by no destination (so one route, and only one, can move)
+      ansible.builtin.assert:
+        that:
+          - sw_tally.stdout_lines | select('search', '<- src=' ~ sw_src ~ '$') | list | length == 0
+        fail_msg: >-
+          source {{ sw_src }} is in use on
+          {{ sw_tally.stdout_lines | select('search', '<- src=' ~ sw_src ~ '$') | list }}
+          — pick another sw_src
+        quiet: true
+
+    - name: interrogate — the route as it is before the run
+      ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+      register: sw_before
+      changed_when: false
+      failed_when: sw_before.rc != 0 or not (sw_before.stdout is regex('dst=' ~ sw_dst ~ ' <- src=[0-9]+'))
+
+    - name: single-dest-name — the label as it is before the run
+      ansible.builtin.command: "{{ sw_cli }} single-dest-name {{ sw_target }} --matrix {{ sw_matrix }} --dst {{ sw_dst }}"
+      register: sw_name_before
+      changed_when: false
+      failed_when: sw_name_before.rc != 0 or not (sw_name_before.stdout is regex('dst=' ~ sw_dst ~ '  "[^"]*"'))
+
+    - name: What the device holds for that destination
+      ansible.builtin.set_fact:
+        sw_home: "{{ sw_before.stdout | regex_search('<- src=[0-9]+') | regex_replace('[^0-9]', '') }}"
+        sw_home_label: "{{ sw_name_before.stdout.split('\"')[1] }}"
+
+    - name: discover — dual status, names and tallies in one pass
+      ansible.builtin.command: "{{ sw_cli }} discover {{ sw_target }} {{ sw_m }}"
+      register: sw_discover
+      changed_when: false
+      failed_when: sw_discover.rc != 0 or (sw_discover.stdout_lines | length) < sw_min_size
+
+    - name: names — all and single, sources and destinations
+      ansible.builtin.command: "{{ sw_cli }} {{ item.verb }} {{ sw_target }} {{ item.args }}"
+      loop:
+        - { verb: all-source-names, args: "{{ sw_m }}", want: "count=" }
+        - { verb: single-source-name, args: "{{ sw_m }} --src {{ sw_src }}", want: "src={{ sw_src }}  \"" }
+        - { verb: all-dest-names, args: "--matrix {{ sw_matrix }}", want: "count=" }
+      loop_control:
+        label: "{{ item.verb }}"
+      register: sw_names
+      changed_when: false
+      failed_when: sw_names.rc != 0 or item.want not in sw_names.stdout
+
+    - name: names — the whole table, not its first frame
+      ansible.builtin.assert:
+        that:
+          - (item.stdout | regex_search('count=[0-9]+') | regex_replace('[^0-9]', '') | int) >= sw_min_size
+        fail_msg: "{{ item.item.verb }} answered {{ item.stdout_lines[0] | default('nothing') }}"
+        quiet: true
+      loop: "{{ sw_names.results | selectattr('item.want', 'equalto', 'count=') | list }}"
+      loop_control:
+        label: "{{ item.item.verb }}"
+
+    - name: protect-interrogate — the protect state of the destination
+      ansible.builtin.command: "{{ sw_cli }} protect-interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+      register: sw_protect
+      changed_when: false
+      failed_when: sw_protect.rc != 0 or 'state=' not in sw_protect.stdout
+
+    - name: usage — where a source is assigned (reverse tally)
+      ansible.builtin.command: >-
+        {{ sw_cli }} usage {{ sw_target }} {{ sw_m }} --srce {{ sw_home }} --format ascii
+      register: sw_usage
+      changed_when: false
+      failed_when: sw_usage.rc != 0 or ('dst ' ~ sw_dst ~ ' ') not in sw_usage.stdout
+
+    - name: export — the level as CSV files
+      ansible.builtin.command: >-
+        {{ sw_cli }} export {{ sw_target }} --matrix {{ sw_matrix }} --levels {{ sw_level }}
+        --out {{ sw_out }}/export
+      register: sw_export
+      changed_when: false
+
+    - name: export — the three CSVs are there, with every row
+      ansible.builtin.command: "wc -l {{ sw_out }}/export/sw08p-{{ item }}.csv"
+      loop: [src, dst, xpoint]
+      register: sw_export_wc
+      changed_when: false
+      failed_when: sw_export_wc.rc != 0 or (sw_export_wc.stdout.split()[0] | int) <= sw_min_size
+
+    - name: bench — interrogate every destination on one session (read-only phase)
+      ansible.builtin.command: >-
+        {{ sw_cli }} bench {{ sw_target }} --matrix {{ sw_matrix }} --size {{ sw_min_size }}
+        --phase interrogate --progress 0 --md {{ sw_out }}/bench.md
+      register: sw_bench
+      changed_when: false
+      failed_when: sw_bench.rc != 0 or 'errors=0 ' not in sw_bench.stdout
+
+    # ---- verbs this matrix does not serve ----------------------------
+    - name: Not served by a Neuron — the consumer says so, each time
+      ansible.builtin.command: "{{ sw_cli }} {{ item.verb }} {{ sw_target }} {{ item.args }}"
+      loop: "{{ sw_not_served }}"
+      loop_control:
+        label: "{{ item.verb }}"
+      register: sw_ns
+      changed_when: false
+      failed_when: sw_ns.rc == 0 or 'not served by this matrix' not in sw_ns.stderr
+
+    - name: Not served — and the route did not move
+      ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+      register: sw_still
+      changed_when: false
+      failed_when: sw_still.rc != 0 or ('<- src=' ~ sw_home) not in sw_still.stdout
+
+    # ---- write verbs: one route, one label, both put back -------------
+    - name: Write verbs on the device
+      block:
+        - name: watch — a second session listens for the tally
+          ansible.builtin.shell: >-
+            {{ sw_cli }} watch {{ sw_target }} --timeout {{ sw_watch_secs }}s
+            > {{ sw_out }}/watch.txt 2> {{ sw_out }}/watch.err
+          async: "{{ sw_watch_secs + 20 }}"
+          poll: 0
+          register: sw_watch_job
+          changed_when: false
+
+        - name: watch — give the listener its session
+          ansible.builtin.wait_for:
+            path: "{{ sw_out }}/watch.err"
+            search_regex: "probel connected"
+            timeout: 10
+
+        - name: connect — the destination onto the test source
+          ansible.builtin.command: >-
+            {{ sw_cli }} connect {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }} --src {{ sw_src }}
+          register: sw_connect
+          changed_when: false
+          failed_when: sw_connect.rc != 0 or ('dst=' ~ sw_dst ~ ' src=' ~ sw_src) not in sw_connect.stdout
+
+        # The matrix confirms the connect before its own tally table
+        # shows it: the first read after it may still be the old route.
+        - name: connect — read back from the device
+          ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+          register: sw_rb1
+          retries: 10
+          delay: 1
+          until: ('<- src=' ~ sw_src) in sw_rb1.stdout
+          changed_when: false
+
+        - name: watch — the listener's run is over
+          ansible.builtin.async_status:
+            jid: "{{ sw_watch_job.ansible_job_id }}"
+          register: sw_watch_done
+          until: sw_watch_done.finished
+          retries: "{{ sw_watch_secs + 15 }}"
+          delay: 1
+          changed_when: false
+          failed_when: false
+
+        - name: watch — it saw the matrix announce the change
+          ansible.builtin.command: "grep -c '^event' {{ sw_out }}/watch.txt"
+          register: sw_watch_events
+          changed_when: false
+          failed_when: (sw_watch_events.stdout | int) < 1
+
+        - name: replace --check — one crosspoint carries the test source, nothing sent
+          ansible.builtin.command: >-
+            {{ sw_cli }} replace {{ sw_target }} --matrix {{ sw_matrix }} --level {{ sw_level }}
+            --srce {{ sw_src }} --with {{ sw_home }} --check
+          register: sw_repl_check
+          changed_when: false
+          failed_when: sw_repl_check.rc != 0 or 'would_change=1 ' not in sw_repl_check.stdout
+
+        - name: replace — the home source takes over on that one crosspoint
+          ansible.builtin.command: >-
+            {{ sw_cli }} replace {{ sw_target }} --matrix {{ sw_matrix }} --level {{ sw_level }}
+            --srce {{ sw_src }} --with {{ sw_home }}
+          register: sw_repl
+          changed_when: false
+
+        - name: replace — read back from the device
+          ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+          register: sw_rb2
+          retries: 10
+          delay: 1
+          until: ('<- src=' ~ sw_home) in sw_rb2.stdout
+          changed_when: false
+
+        - name: import — a one-row crosspoint file
+          ansible.builtin.copy:
+            dest: "{{ sw_out }}/import/sw08p-xpoint.csv"
+            content: |
+              dest,srce,levels,matrix_id
+              {{ sw_dst }},{{ sw_src }},{{ sw_level }},{{ sw_matrix }}
+            mode: "0644"
+          changed_when: false
+
+        - name: import --check — one crosspoint would change, nothing sent
+          ansible.builtin.command: >-
+            {{ sw_cli }} import {{ sw_target }} --in {{ sw_out }}/import --xpoints --check --output json
+          register: sw_imp_check
+          changed_when: false
+          failed_when: sw_imp_check.rc != 0 or (sw_imp_check.stdout | from_json).would_change | default(-1) | int != 1
+
+        - name: import --check — the route did not move
+          ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+          register: sw_rb3
+          changed_when: false
+          failed_when: ('<- src=' ~ sw_home) not in sw_rb3.stdout
+
+        - name: import — the row is applied
+          ansible.builtin.command: >-
+            {{ sw_cli }} import {{ sw_target }} --in {{ sw_out }}/import --xpoints --output json
+          register: sw_imp
+          changed_when: false
+
+        - name: import — read back from the device
+          ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+          register: sw_rb4
+          retries: 10
+          delay: 1
+          until: ('<- src=' ~ sw_src) in sw_rb4.stdout
+          changed_when: false
+
+        - name: import again — converged, nothing to change
+          ansible.builtin.command: >-
+            {{ sw_cli }} import {{ sw_target }} --in {{ sw_out }}/import --xpoints --check --output json
+          register: sw_imp_again
+          changed_when: false
+          failed_when: sw_imp_again.rc != 0 or (sw_imp_again.stdout | from_json).would_change | default(-1) | int != 0
+
+        - name: update-name — the destination's label (the matrix sends no reply, §3.2.26)
+          ansible.builtin.command: >-
+            {{ sw_cli }} update-name {{ sw_target }} --type dest-assoc --width 8
+            --matrix {{ sw_matrix }} --first-id {{ sw_dst }} --names {{ sw_label }}
+          register: sw_upd
+          changed_when: false
+          failed_when: sw_upd.rc != 0 or 'update-name sent' not in sw_upd.stdout
+
+        - name: update-name — what the device holds after it
+          ansible.builtin.command: "{{ sw_cli }} single-dest-name {{ sw_target }} --matrix {{ sw_matrix }} --dst {{ sw_dst }}"
+          register: sw_name_after
+          retries: 5
+          delay: 1
+          until: ('"' ~ sw_label ~ '"') in sw_name_after.stdout
+          changed_when: false
+          failed_when: false
+      always:
+        - name: Put the route back on its source
+          ansible.builtin.command: >-
+            {{ sw_cli }} connect {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }} --src {{ sw_home }}
+          changed_when: false
+
+        - name: Put the label back
+          ansible.builtin.command: >-
+            {{ sw_cli }} update-name {{ sw_target }} --type dest-assoc --width 8
+            --matrix {{ sw_matrix }} --first-id {{ sw_dst }} --names {{ sw_home_label }}
+          changed_when: false
+
+        - name: The route is back where it was
+          ansible.builtin.command: "{{ sw_cli }} interrogate {{ sw_target }} {{ sw_m }} --dst {{ sw_dst }}"
+          register: sw_restored
+          retries: 10
+          delay: 1
+          until: ('<- src=' ~ sw_home) in sw_restored.stdout
+          changed_when: false
+
+        - name: The label is back as it was
+          ansible.builtin.command: "{{ sw_cli }} single-dest-name {{ sw_target }} --matrix {{ sw_matrix }} --dst {{ sw_dst }}"
+          register: sw_name_restored
+          retries: 10
+          delay: 1
+          until: ('"' ~ sw_home_label ~ '"') in sw_name_restored.stdout
+          changed_when: false
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          probel-sw08p oracle green vs {{ sw_target }} — {{ sw_version.stdout_lines[0] }};
+          {{ sw_tally.stdout | regex_search('tallies=[0-9]+') }};
+          route dst {{ sw_dst }} moved by connect, replace and import, each read back, and back on src {{ sw_home }};
+          label {{ 'written and read back' if ('"' ~ sw_label ~ '"') in sw_name_after.stdout else 'NOT taken by the matrix (update-name is fire-and-forget)' }},
+          back as "{{ sw_home_label }}";
+          {{ sw_watch_events.stdout }} tally event(s) seen by a second session;
+          {{ sw_not_served | length }} verb(s) not served by this matrix, each reported as such;
+          receipts in {{ sw_out }}
