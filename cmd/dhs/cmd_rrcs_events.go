@@ -68,9 +68,54 @@ type rrcsChangeLine struct {
 	Min     string `json:"min,omitempty"`
 	Max     string `json:"max,omitempty"`
 	Default string `json:"default,omitempty"`
+	Enum    string `json:"enum_items,omitempty"`
 	Name    string `json:"name,omitempty"` // what the path names, for a reader
 	Detail  string `json:"detail,omitempty"`
 	Raw     any    `json:"raw,omitempty"`
+}
+
+// rrcsWatchCSVHeader is the header of watch --output csv: the columns of
+// export between the time and event in front and a description behind.
+func rrcsWatchCSVHeader() []string {
+	h := append([]string{"ts", "event"}, rrcsCSVHeader...)
+	return append(h, "description")
+}
+
+// kind names the type of the value the way export does.
+func (l rrcsChangeLine) kind() (kind, enum string) {
+	switch {
+	case l.Value == "on" || l.Value == "off":
+		return "enum", "off|on"
+	case l.Value == "true" || l.Value == "false":
+		return "bool", ""
+	case l.Unit == "dB" || l.Min != "" || l.Max != "":
+		if strings.Contains(l.Min+l.Max+l.Value, ".") {
+			return "float", l.Enum
+		}
+		return "int", l.Enum
+	case l.Enum != "":
+		return "enum", l.Enum
+	}
+	if _, err := strconv.Atoi(l.Value); err == nil {
+		return "int", ""
+	}
+	return "string", ""
+}
+
+// record is the line of watch --output csv.
+func (l rrcsChangeLine) record(target string) []string {
+	kind, enum := l.kind()
+	row := rrcsRow{IP: target, Protocol: rrcsProto, Path: l.Path + "." + l.Label, Label: l.Label, Kind: kind, Access: "r",
+		Value: l.Value, Unit: l.Unit, Min: l.Min, Max: l.Max, Default: l.Default, EnumItems: enum}
+	if l.OID != 0 {
+		row.ID = strconv.Itoa(l.OID)
+	}
+	desc := l.Name
+	if l.Detail != "" {
+		desc = strings.TrimSpace(desc + "  " + l.Detail)
+	}
+	rec := append([]string{l.Time, l.Event}, row.record()...)
+	return append(rec, desc)
 }
 
 // text is the line of the terminal.
@@ -217,6 +262,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 				meta := rrcsMetaOf["Xp.Volume"]
 				l := line("xp."+src+">"+dst, member, value)
 				l.OID, l.Name, l.Unit, l.Min, l.Max = oid, srcLabel+" > "+dstLabel, unit, meta.Min, meta.Max
+				l.Enum = "mute|unavailable"
 				out = append(out, l)
 			}
 		}

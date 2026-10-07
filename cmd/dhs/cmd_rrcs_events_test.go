@@ -490,3 +490,38 @@ func TestRRCSWatchVolume(t *testing.T) {
 		t.Error("bad --volume accepted")
 	}
 }
+
+// TestRRCSWatchCSV: a value of watch in the columns of export.
+func TestRRCSWatchCSV(t *testing.T) {
+	h := rrcsWatchCSVHeader()
+	if h[0] != "ts" || h[1] != "event" || h[len(h)-1] != "description" || len(h) != len(rrcsCSVHeader)+3 {
+		t.Fatalf("header: %v", h)
+	}
+	col := func(rec []string, name string) string {
+		for i, c := range h {
+			if c == name {
+				return rec[i]
+			}
+		}
+		t.Fatalf("no column %s", name)
+		return ""
+	}
+	level := rrcsChangeLine{Time: "t", Event: "XpVolumeChange", OID: 7, Path: "xp.a>b", Label: "SingleVolume", Value: "-14.5",
+		Unit: "dB", Min: "-114.5", Max: "12.5", Enum: "mute|unavailable", Name: "A > B"}.record("h")
+	if len(level) != len(h) {
+		t.Fatalf("record has %d fields, header %d", len(level), len(h))
+	}
+	for name, want := range map[string]string{"ip": "h", "oid": "7", "path": "xp.a>b.SingleVolume", "kind": "float", "value": "-14.5",
+		"unit": "dB", "min": "-114.5", "max": "12.5", "enum_items": "mute|unavailable", "description": "A > B", "event": "XpVolumeChange"} {
+		if got := col(level, name); got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+	state := rrcsChangeLine{Path: "xp.a>b", Label: "State", Value: "on"}.record("h")
+	if col(state, "kind") != "enum" || col(state, "enum_items") != "off|on" {
+		t.Errorf("state: %v", state)
+	}
+	if online := (rrcsChangeLine{Path: "p", Label: "Online", Value: "true"}).record("h"); col(online, "kind") != "bool" {
+		t.Errorf("online: %v", online)
+	}
+}

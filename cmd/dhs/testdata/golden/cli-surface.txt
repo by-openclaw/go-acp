@@ -3681,7 +3681,7 @@ Usage of rrcs info:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3701,7 +3701,7 @@ Usage of rrcs discover:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3731,7 +3731,7 @@ Usage of rrcs watch:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path string
     	URL path RRCS posts its events to (default "/RPC2")
   -spy string
@@ -3743,7 +3743,7 @@ Usage of rrcs watch:
   -timeout duration
     	per-request timeout (default 10s)
   -volume string
-    	crosspoint levels (RRCS sends these only for crosspoints registered one by one): no (default) | yes (follow every crosspoint that is made while watching; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB). EXPERIMENTAL: makes a second registration (RegisterForEventsEx) whose effect on the first is not known. Adds registrations on RRCS, removed on exit (default "no")
+    	crosspoint levels (RRCS sends these only for crosspoints registered one by one): yes (default: follow every crosspoint that is made while watching, in both directions; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB) | no. Adds registrations on RRCS, removed on exit (default "yes")
 
 ========== consumer/rrcs/walk ==========
 $ dhs consumer rrcs walk --help
@@ -3761,7 +3761,7 @@ Usage of rrcs walk:
   -out string
     	snapshot FILE the walk is written to. Literal "auto" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028) (default "auto")
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -skip string
     	leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)
   -syslog-addr string
@@ -3789,7 +3789,7 @@ Usage of rrcs get:
   -names string
     	with --id: yes = list the property names the object supports instead of the values (default "no")
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path string
     	path, as list and tree print it (e.g. net.1.node.61.port.1026, group.109136507): the properties the lists hold
   -prop string
@@ -3819,7 +3819,7 @@ Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|des
   -node int
     	keep what sits on this node number; 0 = every node
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3849,7 +3849,7 @@ Usage of rrcs tree:
   -node int
     	keep what sits on this node number; 0 = every node
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3873,7 +3873,7 @@ Usage of rrcs set:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path string
     	what to change: a port (net.1.node.61.port.1026, …port.7.out) or a client card (net.1.node.60.card.1)
   -prop value
@@ -3905,7 +3905,7 @@ Usage of rrcs export:
   -out string
     	output file (default: stdout)
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path value
     	keep the rows whose path contains this text; comma-separated or repeated (e.g. PortAes67Output, card, Ptp, node.63.port.1045)
   -syslog-addr string
@@ -3937,7 +3937,7 @@ skipped and listed.
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path value
     	apply only the rows whose path contains this text; comma-separated or repeated
   -syslog-addr string
@@ -3979,7 +3979,7 @@ changes something and is refused without --write-to HOST.
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4003,7 +4003,7 @@ Usage of rrcs xp:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -src string
     	source: the path of a port that has an input, as list sources prints it
   -state string
@@ -4046,7 +4046,7 @@ Only what the file names is touched. Without --check this WRITES and needs
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4081,7 +4081,7 @@ SetXpPrio: make a crosspoint with a priority. It WRITES: it needs --write-to HOS
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -priority string
     	priority
   -src string
@@ -4112,7 +4112,7 @@ SetXpDestructive: make a crosspoint and remove the routes it displaces. It WRITE
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -priority string
     	audio priority
   -src string
@@ -4145,7 +4145,7 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -single string
     	set the single volume
   -src string
@@ -4178,7 +4178,7 @@ SetPortAlias: set the alias of a port. It WRITES: it needs --write-to HOST, and 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -4207,7 +4207,7 @@ SetPortLabel: set the 8-character label of a port. It WRITES: it needs --write-t
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -4236,7 +4236,7 @@ SetInputGain: set the input gain of a port. It WRITES: it needs --write-to HOST,
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -4265,7 +4265,7 @@ SetOutputGain: set the output gain of a port. It WRITES: it needs --write-to HOS
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -4294,7 +4294,7 @@ SetGpOutput: switch a GP output. It WRITES: it needs --write-to HOST, and has no
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -slot string
@@ -4327,7 +4327,7 @@ GetGpInputState: read a GP input. It only reads.
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -slot string
@@ -4358,7 +4358,7 @@ GetGpOutputState: read a GP output. It only reads.
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -slot string
@@ -4389,7 +4389,7 @@ SetLogicSourceState: switch a logic source. It WRITES: it needs --write-to HOST,
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -state string
     	on or off
   -syslog-addr string
@@ -4416,7 +4416,7 @@ SetStateWorking: make this gateway the working one. It WRITES: it needs --write-
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4441,7 +4441,7 @@ SetStateStandby: make this gateway the standby one. It WRITES: it needs --write-
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4468,7 +4468,7 @@ SetNetName: set the long name of the net. It WRITES: it needs --write-to HOST, a
   -name string
     	long name
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4495,7 +4495,7 @@ ConfigurationChange: apply configuration changes, all or nothing. It WRITES: it 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4522,7 +4522,7 @@ BufferConfigurationChange: buffer configuration changes for a later apply. It WR
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4549,7 +4549,7 @@ BufferConfigurationChangeEx: buffer configuration changes, each handled on its o
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4574,7 +4574,7 @@ ApplyConfigurationChange: send the buffered changes, all or nothing. It WRITES: 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4599,7 +4599,7 @@ ApplyConfigurationChangeEx: send the buffered changes, each handled on its own. 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4626,7 +4626,7 @@ ClearKeyLabel: clear a key label set through RRCS. It WRITES: it needs --write-t
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4655,7 +4655,7 @@ ClearKeyLabelAndMarker: clear a key label and marker set through RRCS. It WRITES
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4684,7 +4684,7 @@ ClearKeyMarker: clear a key marker set through RRCS. It WRITES: it needs --write
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4715,7 +4715,7 @@ LockKey: lock or unlock a key. It WRITES: it needs --write-to HOST, and has not 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -pool-port string
     	pool port; -1 for a port without pool ports
   -syslog-addr string
@@ -4746,7 +4746,7 @@ PressKey: press or release a key. It WRITES: it needs --write-to HOST, and has n
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -pool-port string
     	pool port; -1 for a port without pool ports
   -press string
@@ -4779,7 +4779,7 @@ PressKeyEx: press or release a key with a trigger. It WRITES: it needs --write-t
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -pool-port string
     	pool port; -1 for a port without pool ports
   -press string
@@ -4816,7 +4816,7 @@ SetKeyLabel: set a key label. It WRITES: it needs --write-to HOST, and has not p
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4849,7 +4849,7 @@ SetKeyLabelAndMarker: set a key label and marker. It WRITES: it needs --write-to
   -marker string
     	index of the marker in the configuration
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4880,7 +4880,7 @@ SetKeyMarker: set a key marker. It WRITES: it needs --write-to HOST, and has not
   -marker string
     	index of the marker in the configuration
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4911,7 +4911,7 @@ StartPortCloning: clone the output of a port to a monitoring port. It WRITES: it
   -monitor string
     	port to monitor
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4940,7 +4940,7 @@ StopPortCloning: stop a port clone. It WRITES: it needs --write-to HOST, and has
   -monitor string
     	port to monitor
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4967,7 +4967,7 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -4998,7 +4998,7 @@ RemoveIFBVolumeMixMinus: return the mix-minus level of an IFB to unity. It WRITE
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -5027,7 +5027,7 @@ XpVolumeChangeRegistryReset: replace the crosspoints whose level is followed. It
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5058,7 +5058,7 @@ XpVolumeChangeRegistryRemove: stop following the level of crosspoints. It WRITES
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5089,7 +5089,7 @@ RegisterForEvents: register a receiver for the general events. It WRITES: it nee
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5118,7 +5118,7 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5147,7 +5147,7 @@ RegisterForGpInputChange: register a receiver for GP input changes. It WRITES: i
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5176,7 +5176,7 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5205,7 +5205,7 @@ RegisterForGpOutputChange: register a receiver for GP output changes. It WRITES:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5234,7 +5234,7 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5263,7 +5263,7 @@ SetTrunkingNetAddr: set the trunking net address of the ring. It WRITES: it need
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5290,7 +5290,7 @@ SetLTC: move the local trunk controller to a node. It WRITES: it needs --write-t
   -node string
     	node
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5317,7 +5317,7 @@ DialNumber: dial a number on a pool port. It WRITES: it needs --write-to HOST, a
   -number string
     	number to dial
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -5344,7 +5344,7 @@ HangUpCall: hang up the call of a port. It WRITES: it needs --write-to HOST, and
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -5371,7 +5371,7 @@ LineStatus: read the line status of a port. It only reads.
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
   -syslog-addr string
@@ -5398,7 +5398,7 @@ SetSystemTimeOnAllNodes: set the time of the gateway PC on every node. It WRITES
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5425,7 +5425,7 @@ ConnectToArtist: connect the gateway to an Artist system. It WRITES: it needs --
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -redundant string
     	the connection is redundant
   -syslog-addr string
@@ -5452,7 +5452,7 @@ DisconnectFromArtist: disconnect the gateway from the Artist system. It WRITES: 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5477,7 +5477,7 @@ ResetAllNodes: RESET every node that is on line. It WRITES: it needs --write-to 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5502,7 +5502,7 @@ DeletePortCommands: delete the commands of a command position. It WRITES: it nee
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -position string
     	a key path, a virtual function path, or a port path for every position of the port
   -syslog-addr string
@@ -5531,7 +5531,7 @@ SetStageNetAddr: set the stage net address. It WRITES: it needs --write-to HOST,
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5556,7 +5556,7 @@ SetStageRegistryUrl: set the stage registry URL. It WRITES: it needs --write-to 
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
-    	output: text | json (default "text")
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration

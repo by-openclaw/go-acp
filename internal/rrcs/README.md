@@ -152,9 +152,24 @@ RRCS sends the events to this machine on port 8195 (`--listen`). Stop with
 | Function key, rotary, numeric key (`--spy`) | One line per member |
 | Anything not known yet | `event <Method> = <parameters>` |
 
+Crosspoint levels are followed by default (`--volume yes`): each crosspoint
+that is made while watching is registered in both directions, because the
+level a panel sets on a key is how loud it hears that key's port, which is
+the crosspoint the other way round. `--volume no` turns it off.
+
+`--output csv` prints one record per value in the columns of `export`
+(`kind`, `value`, `unit`, `min`, `max`, `enum_items`, …), with `ts` and
+`event` in front and `description` at the end:
+
+```
+.\dhs.exe consumer rrcs watch HOST --output csv > watch.csv
+```
+
 `--spy all` adds key and rotary events for every panel on line; `--spy NODE.PORT`
-for chosen panels. `--events raw` prints method and parameters as received.
-`--alive show` also prints the keep-alive pings.
+for chosen panels. On an Artist-1024 with AES67 client cards (RRCS 9.0) every
+panel answered "No client card acknowledge received" and RRCS retried every
+5 s, so it is off by default. `--events raw` prints method and parameters as
+received. `--alive show` also prints the keep-alive pings.
 
 | Collect | Why |
 |---|---|

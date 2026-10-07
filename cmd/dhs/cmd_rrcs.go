@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -218,7 +219,7 @@ func (c *rrcsFlags) logValue(l rrcsChangeLine) {
 func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
 	c := &rrcsFlags{}
 	fs.DurationVar(&c.timeout, "timeout", rrcs.DefaultTimeout, "per-request timeout")
-	fs.StringVar(&c.output, "output", "text", "output: text | json")
+	fs.StringVar(&c.output, "output", "text", "output: text | json | csv (watch only: one record per value, in the columns of export)")
 	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format. Default \"auto\" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; \"off\" disables the local file")
 	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is")
 	fs.StringVar(&c.logLevel, "log-level", "info", "log level: debug | info | warn | error")
@@ -407,7 +408,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
 	spy := fs.String("spy", "none", "panel spy — key pressed and released, rotary encoders (RRCS sends these only for panels registered one by one): none (default) | all (every port that has keys and is on line) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
 	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
-	volume := fs.String("volume", "no", "crosspoint levels (RRCS sends these only for crosspoints registered one by one): no (default) | yes (follow every crosspoint that is made while watching; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB). EXPERIMENTAL: makes a second registration (RegisterForEventsEx) whose effect on the first is not known. Adds registrations on RRCS, removed on exit")
+	volume := fs.String("volume", "yes", "crosspoint levels (RRCS sends these only for crosspoints registered one by one): yes (default: follow every crosspoint that is made while watching, in both directions; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB) | no. Adds registrations on RRCS, removed on exit")
 	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
 	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
@@ -434,6 +435,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	}
 	if *events != "values" && *events != "raw" {
 		return rrcsValErr("watch", "--events must be values or raw")
+	}
+	if cf.output == "csv" && *events != "values" {
+		return rrcsValErr("watch", "--output csv needs --events values")
 	}
 	if *alive != "count" && *alive != "show" {
 		return rrcsValErr("watch", "--alive must be count or show")
@@ -495,6 +499,18 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	online := map[[2]int]bool{}
 	spyErrors := map[string]int{} // distinct panel spy error → how many panels gave it
 	jsonOut := cf.output == "json"
+	// levels holds the last level shown per crosspoint and member: RRCS
+	// sends both members each time, so the one that did not move is not
+	// repeated on the terminal (the log and the capture keep everything).
+	levels := map[string]string{}
+	// csv: the columns of export, with the time and the event in front
+	// and a description at the end.
+	var csvOut *csv.Writer
+	if cf.output == "csv" {
+		csvOut = csv.NewWriter(os.Stdout)
+		_ = csvOut.Write(rrcsWatchCSVHeader())
+		csvOut.Flush()
+	}
 	// follow carries the crosspoints whose level is to be followed, from
 	// the event handler to the loop that talks to RRCS.
 	follow := make(chan rrcs.Crosspoint, 256)
@@ -567,6 +583,20 @@ func rrcsWatch(ctx context.Context, args []string) error {
 						continue
 					}
 					l.Detail += "  (said once; other panels with the same answer are counted at the end)"
+				}
+				if e.Method == rrcs.MethodXpVolumeChange {
+					key := l.Path + "." + l.Label
+					last, seen := levels[key]
+					levels[key] = l.Value
+					if (seen && last == l.Value) || (!seen && l.Label == "ConferenceVolume" && l.Value == "mute") {
+						continue
+					}
+				}
+				if csvOut != nil {
+					l.Time = stamp
+					_ = csvOut.Write(l.record(fs.Arg(0)))
+					csvOut.Flush()
+					continue
 				}
 				if jsonOut {
 					l.Time = stamp
