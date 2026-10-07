@@ -85,7 +85,7 @@ func TestRRCSWalk(t *testing.T) {
 		t.Fatalf("snapshot: %v", err)
 	}
 	if !snap.Complete || snap.Proto != "rrcs" || len(snap.Status) != len(rrcsInfoMethods) ||
-		len(snap.Lists) != len(rrcsDiscoverMethods)+len(rrcsWalkLists) || len(snap.ObjectLists) != len(rrcsObjectTypes) {
+		len(snap.Lists) != len(rrcsDiscoverMethods)+len(rrcsWalkLists)-2 || len(snap.ObjectLists) != len(rrcsObjectTypes) {
 		t.Errorf("snapshot shape: %+v", snap)
 	}
 	if len(snap.Licenses) != 1 || snap.Licenses[0].Args[0] != float64(60) {
@@ -226,6 +226,15 @@ func TestRRCSWalkPortValues(t *testing.T) {
 				return codec.Array(k, codec.Int(24)), true
 			}
 			return codec.Array(k, codec.Int(0), codec.Int(-128)), true
+		case "GetAllKeyConfiguration":
+			// Node, Port, IsInput, PoolPort: a net in front is refused.
+			if len(call.Params) != 5 || call.Params[3].Kind != codec.KindBool || call.Params[1].Int != 61 || call.Params[4].Int != -1 {
+				return codec.Value{}, false
+			}
+			return codec.Array(k, codec.Array()), true
+		case "GetTrunklineSetup", "GetTrunklineActivities":
+			t.Errorf("%s asked on a system without trunk ports", call.Method)
+			return codec.Array(k, codec.Int(99)), true
 		}
 		return rrcsTreeAnswer(call)
 	})
@@ -245,6 +254,9 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	}
 	if snap.NotOnline != 2 {
 		t.Errorf("not online: %d", snap.NotOnline)
+	}
+	if len(snap.KeyConfigs) != 1 || snap.KeyConfigs[0].Error != "" {
+		t.Errorf("key configurations: %+v", snap.KeyConfigs)
 	}
 	for _, c := range snap.PortValues {
 		if strings.Contains(c.Error, "code 24") {
@@ -271,5 +283,40 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	var val *consumer.ValidationError
 	if err := runRRCS(context.Background(), []string{"walk", "h", "--skip", "values,everything"}); !errors.As(err, &val) {
 		t.Errorf("bad --skip: %v", err)
+	}
+}
+
+// A panel answers "port address invalid" to a gain request: counted
+// apart, not a failure. And the trunk line requests are asked where
+// there are trunk ports.
+func TestRRCSWalkNoGainAndTrunks(t *testing.T) {
+	asked := map[string]int{}
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		k := call.Params[0]
+		asked[call.Method]++
+		switch call.Method {
+		case "GetInputGain", "GetOutputGain":
+			return codec.Array(k, codec.Int(4)), true
+		case "GetPortLabel", "GetPortAlias":
+			return codec.Array(k, codec.Int(0), codec.String("")), true
+		case "GetAllKeyConfiguration":
+			return codec.Array(k, codec.Array()), true
+		case "GetTrunkPorts":
+			return codec.Array(k, codec.Array(codec.Struct(rrcsMember("Port", codec.Int(1))))), true
+		case "GetTrunklineSetup", "GetTrunklineActivities":
+			return codec.Array(k, codec.Array()), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "walk.json")
+	rrcsWant(t, rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,commands"), "port without gain    6")
+	raw, _ := os.ReadFile(file)
+	var snap rrcsWalkSnapshot
+	_ = json.Unmarshal(raw, &snap)
+	if snap.NoGain != 6 || snap.NotOnline != 0 {
+		t.Errorf("no gain %d, not online %d", snap.NoGain, snap.NotOnline)
+	}
+	if asked["GetTrunklineSetup"] != 1 || asked["GetTrunklineActivities"] != 1 {
+		t.Errorf("trunk line requests: %v", asked)
 	}
 }

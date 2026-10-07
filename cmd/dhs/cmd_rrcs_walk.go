@@ -74,6 +74,10 @@ type rrcsWalkSnapshot struct {
 	// NotOnline counts the requests a port answered with "not online"
 	// (error 24): expected for a port that is unplugged, not a failure.
 	NotOnline int `json:"not_online"`
+	// NoGain counts the gain requests a port answered with "port address
+	// invalid" (error 4). A real RRCS 9.0 answers so for every panel: a
+	// panel has no input or output gain. Not a failure either.
+	NoGain int `json:"no_gain"`
 }
 
 // rrcsWalker runs the requests of one walk and keeps the count.
@@ -93,9 +97,13 @@ func (w *rrcsWalker) call(method string, params ...codec.Value) (rrcsWalkCall, r
 	reply, err := w.client.Call(w.ctx, method, params...)
 	w.snap.Requests++
 	if err != nil {
-		if errors.Is(err, &codec.CodeError{Code: codec.CodePortNotOnline}) {
+		gain := method == "GetInputGain" || method == "GetOutputGain"
+		switch {
+		case errors.Is(err, &codec.CodeError{Code: codec.CodePortNotOnline}):
 			w.snap.NotOnline++
-		} else {
+		case gain && errors.Is(err, &codec.CodeError{Code: codec.ErrorCode(4)}):
+			w.snap.NoGain++
+		default:
 			w.snap.Failed++
 		}
 		rec.Error = err.Error()
@@ -175,7 +183,14 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 	if opts.full {
 		listMethods = append(append([]string{}, rrcsDiscoverMethods...), rrcsWalkLists...)
 	}
+	trunked := false
 	for _, m := range listMethods {
+		// A real RRCS 9.0 without trunk ports answers the two trunk line
+		// requests with a generic error (99): they are asked only where
+		// GetTrunkPorts listed something.
+		if (m == "GetTrunklineSetup" || m == "GetTrunklineActivities") && !trunked {
+			continue
+		}
 		rec, reply, ok := w.call(m)
 		snap.Lists = append(snap.Lists, rec)
 		if !ok {
@@ -186,6 +201,8 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			ports = rrcsListOf(reply)
 		case "GetAllNodes":
 			nodes = rrcsListOf(reply)
+		case "GetTrunkPorts":
+			trunked = len(rrcsListOf(reply)) > 0
 		case "GetAllCaps":
 			// "port#N": [net, node, port, pool port amount] (§8.8).
 			for _, m := range reply.Value.Members {
@@ -314,11 +331,20 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 				snap.PortValues = append(snap.PortValues, rec)
 			}
 			if keys, _ := rrcsFieldInt(p, "KeyCount"); keys > 0 {
-				rec, _, _ = w.call("GetAllKeyConfiguration", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput))
+				// §8.8: Node, Port, IsInput, PoolPort — no net. A real RRCS
+				// 9.0 refuses the net in front ("expects an input parameter
+				// 4 ('IsInput') of type 'boolean'"), although its own log
+				// prints the request with one.
+				pool := int32(-1)
+				if amount, known := pools[[2]int32{node, port}]; known && amount > 0 {
+					pool = 0
+				}
+				rec, _, _ = w.call("GetAllKeyConfiguration", codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(pool))
 				snap.KeyConfigs = append(snap.KeyConfigs, rec)
 			}
 		}
-		step("port values: %d requests, key configurations: %d, on ports not online: %d", len(snap.PortValues), len(snap.KeyConfigs), snap.NotOnline)
+		step("port values: %d requests, key configurations: %d, ports not online: %d, ports without gain: %d",
+			len(snap.PortValues), len(snap.KeyConfigs), snap.NotOnline, snap.NoGain)
 	}
 
 	snap.Complete = ctx.Err() == nil
@@ -407,7 +433,9 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	fmt.Printf("%-20s %d\n", "ports", portCount)
 	fmt.Printf("%-20s %d\n", "command lists", len(snap.Commands))
 	fmt.Printf("%-20s %d\n", "port values", len(snap.PortValues))
+	fmt.Printf("%-20s %d\n", "key configurations", len(snap.KeyConfigs))
 	fmt.Printf("%-20s %d\n", "port not online", snap.NotOnline)
+	fmt.Printf("%-20s %d\n", "port without gain", snap.NoGain)
 	fmt.Printf("%-20s %d of %d\n", "failed requests", snap.Failed, snap.Requests)
 	fmt.Printf("%-20s %s\n", "snapshot", *out)
 	return nil
