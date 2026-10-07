@@ -101,6 +101,9 @@ func TestRRCSDecode(t *testing.T) {
 		{"spy state", rrcsEvent("PanelSpyStateChange", spyState), []string{
 			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Key = active  (PNL2)",
 			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Rotate = error  (PNL2)  Port is not online"}},
+		{"spy state as a real RRCS sends it", rrcsEvent("PanelSpyStateChanged", codec.Array(st(mem("Node", i(61)), mem("Port", i(2)),
+			mem("Key", st(mem("State", i(3)), mem("ErrorCode", i(99)), mem("ErrorDescription", codec.String("No client card acknowledge received (time-out=5000 msec)."))))))), []string{
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Key = error  (PNL2)  No client card acknowledge received (time-out=5000 msec)."}},
 		{"alive", rrcs.Event{Time: rrcsEvent("x").Time, Method: "GetAlive"}, []string{"15:37:28.836  gateway Alive = ping"}},
 		{"unknown method", rrcsEvent("SendString", codec.String("hello")), []string{`15:37:28.836  event SendString = ["hello"]`}},
 		{"crosspoints in another shape", rrcsEvent("CrosspointChange", i(1)), []string{"15:37:28.836  event CrosspointChange = [1]"}},

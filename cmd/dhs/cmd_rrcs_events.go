@@ -129,6 +129,17 @@ func (m *rrcsModel) portRef(net, node, port int, wantInput bool) (string, int, s
 	return fmt.Sprintf("net.%d.node.%d.port.%d", net, node, port), 0, ""
 }
 
+// spyRef names the panel of a panel spy message. A real RRCS 9.0 on an
+// Artist-1024 gives the smart panels there with their port number less
+// 1024 (port 1026 comes back as 2), and the beltpacks unchanged; a number
+// that names no port is tried again with 1024 added.
+func (m *rrcsModel) spyRef(node, port int) (string, int, string) {
+	if m != nil && m.find(node, port, false) == nil && m.find(node, port+1024, false) != nil {
+		port += 1024
+	}
+	return m.portRef(1, node, port, false)
+}
+
 // rrcsVolume reads a crosspoint volume (§9.4): -1 unavailable, 0 mute,
 // 1..255 = (x - 230) / 2 dB.
 func rrcsVolume(x int) (value, unit string) {
@@ -266,7 +277,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 			break
 		}
 		d := p[0]
-		path, oid, label := m.portRef(1, rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false)
+		path, oid, label := m.spyRef(rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"))
 		action := map[int]string{0: "pressed", 1: "released", 2: "double-click", 3: "long-press"}[rrcsMemberInt(d, "KeyAction")]
 		if action == "" {
 			action = "action " + strconv.Itoa(rrcsMemberInt(d, "KeyAction"))
@@ -306,14 +317,14 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 			return out
 		}
 
-	case rrcs.MethodPanelSpyStateChange: // §9.9.2: array of panel states
+	case rrcs.MethodPanelSpyStateChange, rrcs.MethodPanelSpyStateChanged: // §9.9.2: array of panel states
 		if len(p) < 1 || p[0].Kind != codec.KindArray {
 			break
 		}
 		states := map[int]string{0: "unregistered", 1: "busy", 2: "active", 3: "error"}
 		var out []rrcsChangeLine
 		for _, panel := range p[0].Items {
-			path, oid, label := m.portRef(1, rrcsMemberInt(panel, "Node"), rrcsMemberInt(panel, "Port"), false)
+			path, oid, label := m.spyRef(rrcsMemberInt(panel, "Node"), rrcsMemberInt(panel, "Port"))
 			for _, kind := range []string{"Key", "FuncKey", "NumKey", "Rotate"} {
 				st, ok := panel.Field(kind)
 				if !ok {

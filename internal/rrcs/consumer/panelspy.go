@@ -11,7 +11,10 @@ import (
 // them for a panel after two steps: RegisterForAllEvents, then
 // ChangePanelSpyRegistry for that panel (§9.9.1).
 const (
-	MethodPanelSpyStateChange  = "PanelSpyStateChange"
+	MethodPanelSpyStateChange = "PanelSpyStateChange"
+	// MethodPanelSpyStateChanged is the name a real RRCS 9.0 sends; the
+	// specification prints it without the final d (§9.9.2).
+	MethodPanelSpyStateChanged = "PanelSpyStateChanged"
 	MethodPanelSpyRotateEvent  = "PanelSpyRotateEvent"
 	MethodPanelSpyKeyEvent     = "PanelSpyKeyEvent"
 	MethodPanelSpyFuncKeyEvent = "PanelSpyFuncKeyEvent"
