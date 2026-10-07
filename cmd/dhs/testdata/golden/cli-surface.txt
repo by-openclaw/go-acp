@@ -3714,6 +3714,8 @@ Usage of rrcs watch:
     	URL path RRCS posts its events to (default "/RPC2")
   -spy string
     	panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit (default "none")
+  -spy-events string
+    	with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys) (default "key,rotate")
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration

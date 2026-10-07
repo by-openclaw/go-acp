@@ -386,6 +386,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
 	spy := fs.String("spy", "none", "panel spy — key pressed and released, function keys, numeric keys, rotary encoders: none | all (every port that has keys) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
 	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
+	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
 	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
@@ -397,6 +398,14 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	spyAll, spyPanels, err := rrcsParseSpy(*spy)
 	if err != nil {
 		return rrcsValErr("watch", err.Error())
+	}
+	var spyKinds []string
+	for _, k := range strings.Split(*spyEvents, ",") {
+		name := map[string]string{"key": "Key", "rotate": "Rotate", "func": "FuncKey", "num": "NumKey"}[strings.TrimSpace(k)]
+		if name == "" {
+			return rrcsValErr("watch", "--spy-events takes key, rotate, func, num")
+		}
+		spyKinds = append(spyKinds, name)
 	}
 	if *events != "values" && *events != "raw" {
 		return rrcsValErr("watch", "--events must be values or raw")
@@ -455,7 +464,10 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		}
 	}
 
-	var mu sync.Mutex // one line at a time on stdout
+	var mu sync.Mutex // one line at a time on stdout; also guards online
+	// online is what the port notifications say: RRCS opens a registration
+	// with one PortActive per port that is on line.
+	online := map[[2]int]bool{}
 	jsonOut := cf.output == "json"
 	listener := &rrcs.Listener{
 		Path: *path,
@@ -473,6 +485,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			}
 			mu.Lock()
 			defer mu.Unlock()
+			if (e.Method == "PortActive" || e.Method == "PortInactive") && len(params) >= 3 {
+				online[[2]int{rrcsParamInt(params, 1), rrcsParamInt(params, 2)}] = e.Method == "PortActive"
+			}
 			stamp := e.Time.UTC().Format("2006-01-02T15:04:05.000Z")
 			if *events == "raw" {
 				if jsonOut {
@@ -524,6 +539,12 @@ func rrcsWatch(ctx context.Context, args []string) error {
 
 	// Panel spy is a second registration, per panel, on top of the first
 	// (§9.9.1). It is made again after every new registration.
+	//
+	// "all" means every port that has keys and is on line: on a real
+	// RRCS 9.0 a panel that is off line answers the registration with an
+	// error state per kind, and 59 of 83 were off line. The port
+	// notifications that open the registration say which are on.
+	var keyed [][2]int
 	if spyAll {
 		reply, err := client.Call(ctx, "GetAllPorts")
 		if err != nil {
@@ -533,14 +554,26 @@ func rrcsWatch(ctx context.Context, args []string) error {
 			if n, _ := rrcsFieldInt(p, "KeyCount"); n > 0 {
 				node, _ := rrcsFieldInt(p, "Node")
 				port, _ := rrcsFieldInt(p, "Port")
-				spyPanels = append(spyPanels, [2]int{int(node), int(port)})
+				keyed = append(keyed, [2]int{int(node), int(port)})
 			}
 		}
+		select {
+		case <-time.After(2 * time.Second): // the opening port notifications
+		case <-ctx.Done():
+		}
+		mu.Lock()
+		for _, panel := range keyed {
+			if online[panel] {
+				spyPanels = append(spyPanels, panel)
+			}
+		}
+		mu.Unlock()
+		cf.say("rrcs watch: panel spy: %d ports have keys, %d are on line", len(keyed), len(spyPanels))
 	}
 	setSpy := func(c context.Context, on bool) {
 		failed := 0
 		for _, panel := range spyPanels {
-			if _, err := client.PanelSpy(c, reg, panel[0], panel[1], on); err != nil {
+			if _, err := client.PanelSpy(c, reg, panel[0], panel[1], on, spyKinds...); err != nil {
 				failed++
 				cf.say("rrcs watch: panel spy node %d port %d: %v", panel[0], panel[1], err)
 			}

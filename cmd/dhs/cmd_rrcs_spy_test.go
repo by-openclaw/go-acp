@@ -50,6 +50,17 @@ func TestRRCSWatchSpyAll(t *testing.T) {
 		switch call.Method {
 		case "GetAllPorts":
 			return rrcsTreeAnswer(call)
+		case "RegisterForAllEvents":
+			// As a real RRCS opens a registration: one PortActive per
+			// port that is on line. Here the panel, not the 4-wire.
+			url := "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int)) + call.Params[2].Str
+			go func() {
+				doc, _ := codec.EncodeCall("PortActive", codec.String("R0000000001"), codec.Int(1), codec.Int(61), codec.Int(1026))
+				if resp, err := http.Post(url, "text/xml", bytes.NewReader(doc)); err == nil {
+					_ = resp.Body.Close()
+				}
+			}()
+			return k, true
 		case "ChangePanelSpyRegistry":
 			// §8.12: TransKey, TCPPort, URLPath, Node, Port, EventInfo.
 			info := call.Params[5]
@@ -84,7 +95,8 @@ func TestRRCSWatchSpyAll(t *testing.T) {
 		t.Errorf("output:\n%s", out)
 	}
 	// The stand-in has one port with keys: 61.1026.
-	if got := strings.Join(spy, " "); got != "61.1026=true/4 61.1026=false/4" {
+	// Key and rotary only by default: two members, not four.
+	if got := strings.Join(spy, " "); got != "61.1026=true/2 61.1026=false/2" {
 		t.Errorf("panel spy requests: %s", got)
 	}
 	methods := strings.Join(f.methods(), ",")
@@ -117,5 +129,34 @@ func TestRRCSWatchSpyRefused(t *testing.T) {
 	}
 	if asked != 4 {
 		t.Errorf("ChangePanelSpyRegistry sent %d times, want 4 (two on, two off)", asked)
+	}
+}
+
+// --spy-events chooses the kinds; an unknown one is refused.
+func TestRRCSWatchSpyEvents(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var members []string
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		if call.Method == "ChangePanelSpyRegistry" {
+			for _, m := range call.Params[5].Members {
+				members = append(members, m.Name)
+			}
+			cancel()
+		}
+		return call.Params[0], true
+	})
+	if _, err := rrcsStdout(t, func() error {
+		return runRRCS(ctx, []string{"watch", f.addr(), "--listen", "127.0.0.1:0", "--check", "0", "--spy", "61.1026",
+			"--spy-events", "key,func,num", "--events", "raw"})
+	}); err != nil {
+		t.Fatalf("watch: %v", err)
+	}
+	if got := strings.Join(members[:3], ","); got != "KeyEventsOn,FuncKeyEventsOn,NumKeyEventsOn" {
+		t.Errorf("members %v", members)
+	}
+	var val *consumer.ValidationError
+	if err := runRRCS(context.Background(), []string{"watch", "h", "--spy-events", "key,knob"}); !errors.As(err, &val) {
+		t.Errorf("bad --spy-events: %v", err)
 	}
 }
