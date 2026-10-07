@@ -1,0 +1,98 @@
+---
+# probel-sw08p provider fleet deploy: a resident SW-P-08 matrix on the
+# plant host, for a third-party controller to drive (ADR-0025 #2/#3 —
+# a producer is proven by a client we did not write; the lab's Cerebrum
+# is that client, see probel-sw08p-producer-verify.yml).
+#
+# The matrix served is the committed interop fixture: one matrix, one
+# level, 64 x 64, with names — small enough to configure by hand in a
+# controller, real enough to route and label.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/probel-sw08p-producer.yml
+
+- name: probel-sw08p — provider serve, resident
+  hosts: plant
+  gather_facts: false
+  vars:
+    swp_root: /etc/dhs/probel-sw08p
+    swp_port: 2008
+    swp_metrics: ":9103"
+    swp_tree: "{{ playbook_dir }}/../../internal/probel-sw08p/assets/interop_1mtx_64_1lvl.json"
+    swp_cli: "/usr/local/bin/dhs consumer probel-sw08p"
+  tasks:
+    - name: Fixture directory
+      ansible.builtin.file:
+        path: "{{ swp_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Committed matrix tree
+      ansible.builtin.copy:
+        src: "{{ swp_tree }}"
+        dest: "{{ swp_root }}/tree.json"
+        mode: "0644"
+      notify: restart dhs-probel-sw08p
+
+    - name: dhs-probel-sw08p.service
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/probel-sw08p-producer.yml.
+          [Unit]
+          Description=dhs probel-sw08p provider (64x64 interop matrix)
+          After=network.target
+          [Service]
+          ExecStart=/usr/local/bin/dhs producer probel-sw08p serve \
+            --tree {{ swp_root }}/tree.json \
+            --port {{ swp_port }} --host 0.0.0.0 \
+            --metrics-addr {{ swp_metrics }} \
+            --log-level info
+          Restart=always
+          RestartSec=2
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/dhs-probel-sw08p.service
+        mode: "0644"
+      notify: restart dhs-probel-sw08p
+
+    - name: Service enabled + running
+      ansible.builtin.systemd:
+        name: dhs-probel-sw08p
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Flush handlers (restart before verifying)
+      ansible.builtin.meta: flush_handlers
+
+    # ---- smoke: the service answers. Not the oracle — that is the
+    # controller's session, asserted by probel-sw08p-producer-verify.yml.
+    - name: The matrix answers a tally dump with its 64 destinations
+      ansible.builtin.command: "{{ swp_cli }} tally-dump 127.0.0.1:{{ swp_port }} --matrix 0 --level 0"
+      register: swp_tally
+      changed_when: false
+      retries: 5
+      delay: 2
+      until: swp_tally.rc == 0 and 'tallies=64' in swp_tally.stdout
+
+    - name: The matrix serves its source names
+      ansible.builtin.command: "{{ swp_cli }} all-source-names 127.0.0.1:{{ swp_port }} --matrix 0 --level 0"
+      register: swp_names
+      changed_when: false
+      failed_when: swp_names.rc != 0 or 'count=64' not in swp_names.stdout
+
+    - name: Metrics endpoint serves the connector scrape
+      ansible.builtin.uri:
+        url: "http://127.0.0.1{{ swp_metrics }}/metrics"
+        return_content: true
+      register: swp_metrics_probe
+      changed_when: false
+      failed_when: >-
+        swp_metrics_probe.status != 200
+        or 'rx_frames' not in swp_metrics_probe.content
+
+  handlers:
+    - name: restart dhs-probel-sw08p
+      ansible.builtin.systemd:
+        name: dhs-probel-sw08p
+        state: restarted
+        daemon_reload: true
