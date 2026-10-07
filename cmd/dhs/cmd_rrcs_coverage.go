@@ -169,7 +169,7 @@ var rrcsCatalog = []rrcsMethod{
 	{"GpInputChange", "9.2", "notify", "watch", "no"},
 	{"GpOutputChange", "9.2", "notify", "watch", "no"},
 	{"LogicSourceChange", "9.3", "notify", "watch", "no"},
-	{"XpVolumeChange", "9.4", "notify", "watch --volume", "yes, starting level only"},
+	{"XpVolumeChange", "9.4", "notify", "watch --volume", "yes"},
 	{"ConfigurationChange (notification)", "9.5", "notify", "watch", "yes"},
 	{"CrosspointChange", "9.6", "notify", "watch", "yes"},
 	{"UpstreamFailed", "9.7", "notify", "watch", "no"},
