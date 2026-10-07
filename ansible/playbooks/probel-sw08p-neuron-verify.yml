@@ -368,6 +368,45 @@
           until: ('"' ~ sw_home_label ~ '"') in sw_name_restored.stdout
           changed_when: false
 
+    # ---- the Go suite (internal/probel-sw08p/integration), same device,
+    # same released CLI. It is cross-compiled where there is a Go
+    # toolchain and handed over with -e sw08p_suite_dir=<dir holding
+    # probel-sw08p-integration.test>:
+    #   GOOS=linux GOARCH=amd64 go test -c -tags integration \
+    #       -o <dir>/probel-sw08p-integration.test ./internal/probel-sw08p/integration/
+    # Only its device test is run: the loopback tests of that package
+    # address destinations 0..15, live outputs on a real matrix.
+    - name: Go suite — staged beside the receipts
+      ansible.builtin.copy:
+        src: "{{ sw08p_suite_dir }}/probel-sw08p-integration.test"
+        dest: "{{ sw_out }}/probel-sw08p-integration.test"
+        mode: "0755"
+      changed_when: false
+      when: sw08p_suite_dir is defined
+
+    - name: Go suite — against the real Neuron, with the released CLI
+      ansible.builtin.command:
+        cmd: >-
+          {{ sw_out }}/probel-sw08p-integration.test -test.v -test.count=1
+          -test.timeout 10m -test.run TestDeviceCLIRoundTrip
+        chdir: "{{ sw_out }}"
+      environment:
+        PROBEL_SW08P_DEVICE: "{{ sw_target }}"
+        PROBEL_SW08P_DEVICE_DST: "{{ sw_dst }}"
+        PROBEL_SW08P_DEVICE_SRC: "{{ sw_src }}"
+        PROBEL_SW08P_DEVICE_SRCS: "{{ sw_size }}"
+        DHS_BIN: "{{ sw_bin }}"
+      register: sw_suite
+      changed_when: false
+      failed_when: >-
+        sw_suite.rc != 0 or '--- PASS: TestDeviceCLIRoundTrip' not in sw_suite.stdout
+      when: sw08p_suite_dir is defined
+
+    - name: Go suite — verdicts
+      ansible.builtin.debug:
+        msg: "{{ sw_suite.stdout_lines | select('search', '(--- |^ok|^PASS|^FAIL|device_test)') | list }}"
+      when: sw08p_suite_dir is defined
+
     - name: Verdict
       ansible.builtin.debug:
         msg: >-
