@@ -23,6 +23,7 @@ var rrcsWalkLists = []string{
 	"GetNodeTypes", "GetClientCardTypes", "GetPortExTypeList", "GetErrorCodeList",
 	"GetAllCaps", "GetTrunkPorts",
 	"GetTrunklineSetup", "GetTrunklineActivities", "GetTrunkIfbs", "GetTrunkingNetAddr", "GetStageNetAddr",
+	"GetNetName", "GetAllLogicSources", "GetAllActivePortClones", "GetLTC", "GetStageRegistryUrl",
 }
 
 // rrcsObjectTypes are the object types GetObjectList accepts (§8.9.1).

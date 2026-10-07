@@ -250,6 +250,28 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 		l.OID, l.Name, l.Detail = oid, label, "slot "+strconv.Itoa(rrcsParamInt(p, 3))
 		return []rrcsChangeLine{l}
 
+	case "SendString", "SendStringOff": // §9.1: String
+		text := ""
+		if len(p) > 0 {
+			text = p[0].Str
+		}
+		l := line("gateway", "SendString", text)
+		if e.Method == "SendStringOff" {
+			l.Detail = "off"
+		}
+		return []rrcsChangeLine{l}
+
+	case "SicFailed": // §9.7: {Bay, Description, Net, Node, Path, Severity, Status, Type}
+		if len(p) < 1 || p[0].Kind != codec.KindStruct {
+			break
+		}
+		d := p[0]
+		l := line(fmt.Sprintf("net.%d.node.%d.card.%d", rrcsMemberInt(d, "Net"), rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Bay")),
+			"SicFailed", strconv.FormatBool(rrcsFieldBool(d, "Status")))
+		desc, _ := d.Field("Description")
+		l.Detail = fmt.Sprintf("severity %d %s", rrcsMemberInt(d, "Severity"), desc.Str)
+		return []rrcsChangeLine{l}
+
 	case "ConfigurationChange": // §9.5
 		return []rrcsChangeLine{line("gateway", "Configuration", "changed")}
 

@@ -3632,6 +3632,9 @@ VERBS
   ensure    converge to a desired-state file (values, crosspoints): --file,
             --check to report and send nothing; the contract of every dhs
             ensure, for Ansible. Without --check it WRITES
+  coverage  every method and notification of the specification: the dhs
+            verb that uses it, and whether it has been seen working on a
+            real RRCS. Talks to no gateway
   xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
             --state on|off (SetXp, KillXp): --src PATH --dst PATH
   call      any method of the specification, parameters as JSON (--arg);
@@ -4031,6 +4034,14 @@ Only what the file names is touched. Without --check this WRITES and needs
     	per-request timeout (default 10s)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; writes are unproven until they pass on a test system
+
+========== consumer/rrcs/coverage ==========
+$ dhs consumer rrcs coverage --help
+Usage of rrcs coverage:
+  -only string
+    	keep one group: call (no verb of its own yet) | unproven (never seen working on a real RRCS) | read | write | register | notify
+  -output string
+    	output: text | json (default "text")
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help

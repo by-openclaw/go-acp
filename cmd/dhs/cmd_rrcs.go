@@ -72,6 +72,8 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsCall(ctx, args[1:])
 	case "ensure":
 		return rrcsEnsure(ctx, args[1:])
+	case "coverage":
+		return rrcsCoverage(ctx, args[1:])
 	case "xp":
 		return rrcsXpVerb(ctx, args[1:])
 	case "import":
@@ -124,6 +126,9 @@ VERBS
   ensure    converge to a desired-state file (values, crosspoints): --file,
             --check to report and send nothing; the contract of every dhs
             ensure, for Ansible. Without --check it WRITES
+  coverage  every method and notification of the specification: the dhs
+            verb that uses it, and whether it has been seen working on a
+            real RRCS. Talks to no gateway
   xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
             --state on|off (SetXp, KillXp): --src PATH --dst PATH
   call      any method of the specification, parameters as JSON (--arg);

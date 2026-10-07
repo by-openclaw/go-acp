@@ -105,8 +105,13 @@ func TestRRCSDecode(t *testing.T) {
 		{"spy state as a real RRCS sends it", rrcsEvent("PanelSpyStateChanged", codec.Array(st(mem("Node", i(61)), mem("Port", i(2)),
 			mem("Key", st(mem("State", i(3)), mem("ErrorCode", i(99)), mem("ErrorDescription", codec.String("No client card acknowledge received (time-out=5000 msec)."))))))), []string{
 			"15:37:28.836  oid=100 net.1.node.61.port.1026.spy Key = error  (PNL2)  No client card acknowledge received (time-out=5000 msec)."}},
+		{"send string", rrcsEvent("SendString", codec.String("CUE 12")), []string{"15:37:28.836  gateway SendString = CUE 12"}},
+		{"send string off", rrcsEvent("SendStringOff", codec.String("CUE 12")), []string{"15:37:28.836  gateway SendString = CUE 12  off"}},
+		{"sic failed", rrcsEvent("SicFailed", st(mem("Bay", i(4)), mem("Description", codec.String("SIC failed in bay 4")), mem("Net", i(1)),
+			mem("Node", i(60)), mem("Path", codec.String("Node/060/Bay/04")), mem("Severity", i(3)), mem("Status", b(true)), mem("Type", codec.String("SIC failed")))),
+			[]string{"15:37:28.836  net.1.node.60.card.4 SicFailed = true  severity 3 SIC failed in bay 4"}},
 		{"alive", rrcs.Event{Time: rrcsEvent("x").Time, Method: "GetAlive"}, []string{"15:37:28.836  gateway Alive = ping"}},
-		{"unknown method", rrcsEvent("SendString", codec.String("hello")), []string{`15:37:28.836  event SendString = ["hello"]`}},
+		{"unknown method", rrcsEvent("SomethingNew", codec.String("hello")), []string{`15:37:28.836  event SomethingNew = ["hello"]`}},
 		{"crosspoints in another shape", rrcsEvent("CrosspointChange", i(1)), []string{"15:37:28.836  event CrosspointChange = [1]"}},
 		{"key event without its struct", rrcsEvent("PanelSpyKeyEvent"), []string{"15:37:28.836  event PanelSpyKeyEvent = []"}},
 	}
