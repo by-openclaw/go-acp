@@ -72,6 +72,13 @@ type rrcsWalkSnapshot struct {
 	// (§8.8): the mode and labelling of every key, as another control
 	// system polls it on a real RRCS 9.0.
 	KeyConfigs []rrcsWalkCall `json:"key_configs"`
+	// Singles holds the reads that address one thing: GetNode,
+	// GetClientCard, GetPort, GetPoolPortInfo, GetLevelMeterValues per
+	// port, GetAllRemoteKeys per panel page, GetCommandList and
+	// GetRemoteKey for one key, GetXpVolume per active crosspoint,
+	// GetIFBVolumeMixMinus per IFB with a mix minus, and the three that
+	// stand alone: GetAlive, IsRegisteredForEvents, GetActiveXpsRange.
+	Singles []rrcsWalkCall `json:"singles"`
 	// NotOnline counts the requests a port answered with "not online"
 	// (error 24): expected for a port that is unplugged, not a failure.
 	NotOnline int `json:"not_online"`
@@ -146,6 +153,8 @@ type rrcsCollectOpts struct {
 	commands bool
 	// values asks label, alias and gains of each port.
 	values bool
+	// singles asks the reads that address one thing at a time.
+	singles bool
 	// onlyPort, when set, limits the commands to the ports it accepts.
 	onlyPort func(node, port int, isInput bool) bool
 	// step receives the progress lines.
@@ -178,7 +187,8 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 	step("status: %d requests", len(snap.Status))
 
 	// 2. Lists. The ports and the nodes are kept for the later steps.
-	var ports, nodes []codec.Value
+	var ports, nodes, cards, ifbs []codec.Value
+	var activeXps [][]codec.Value
 	pools := map[[2]int32]int32{} // node, port → pool port amount
 	listMethods := append(append([]string{}, rrcsDiscoverMethods...), "GetAllCaps")
 	if opts.full {
@@ -204,6 +214,17 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			nodes = rrcsListOf(reply)
 		case "GetTrunkPorts":
 			trunked = len(rrcsListOf(reply)) > 0
+		case "GetAllClientCards":
+			cards = rrcsListOf(reply)
+		case "GetAllIFBs":
+			ifbs = rrcsListOf(reply)
+		case "GetAllActiveXps":
+			// "XP#N": [source net, node, port, destination net, node, port].
+			for _, m := range reply.Value.Members {
+				if strings.HasPrefix(m.Name, "XP#") && m.Value.Kind == codec.KindArray && len(m.Value.Items) >= 6 {
+					activeXps = append(activeXps, m.Value.Items[:6])
+				}
+			}
 		case "GetAllCaps":
 			// "port#N": [net, node, port, pool port amount] (§8.8).
 			for _, m := range reply.Value.Members {
@@ -348,6 +369,115 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			len(snap.PortValues), len(snap.KeyConfigs), snap.NotOnline, snap.NoGain)
 	}
 
+	// 7. The reads that address one thing at a time (specification
+	// §8.1, §8.2, §8.5, §8.8, §8.9.2, §8.11, §8.14, §8.19).
+	if opts.singles && opts.onlyPort == nil {
+		single := func(method string, params ...codec.Value) (rrcs.Reply, bool) {
+			rec, reply, ok := w.call(method, params...)
+			snap.Singles = append(snap.Singles, rec)
+			return reply, ok
+		}
+		single("GetAlive")
+		single("IsRegisteredForEvents", codec.String(rrcsLocalIP("", client.Peer())), codec.Int(8195))
+		var net, loNode, hiNode, hiPort int32 = 1, 1 << 30, 0, 0
+		for _, p := range ports {
+			net, _ = rrcsFieldInt(p, "Net")
+			node, _ := rrcsFieldInt(p, "Node")
+			port, _ := rrcsFieldInt(p, "Port")
+			loNode, hiNode, hiPort = min(loNode, node), max(hiNode, node), max(hiPort, port)
+		}
+		if len(ports) > 0 {
+			single("GetActiveXpsRange", codec.Int(net), codec.Int(loNode), codec.Int(0), codec.Int(net), codec.Int(hiNode), codec.Int(hiPort))
+		}
+		for _, n := range nodes {
+			if addr, ok := rrcsFieldInt(n, "NodeAddress"); ok {
+				single("GetNode", codec.Int(addr))
+			}
+		}
+		for _, c := range cards {
+			node, _ := rrcsFieldInt(c, "Node")
+			bay, _ := rrcsFieldInt(c, "Bay")
+			single("GetClientCard", codec.Int(node), codec.Int(bay))
+		}
+		var firstKey *codec.Value
+		for _, p := range ports {
+			if ctx.Err() != nil {
+				break
+			}
+			node, _ := rrcsFieldInt(p, "Node")
+			port, _ := rrcsFieldInt(p, "Port")
+			isInput := !rrcsFieldBool(p, "Output")
+			pool := int32(-1)
+			if amount, known := pools[[2]int32{node, port}]; known && amount > 0 {
+				pool = 0
+			}
+			single("GetPort", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(pool))
+			single("GetPoolPortInfo", codec.Int(node), codec.Int(port))
+			if rrcsFieldBool(p, "Input") {
+				single("GetLevelMeterValues", codec.Int(node), codec.Int(port), codec.Int(pool))
+			}
+			pages, _ := rrcsFieldInt(p, "PageCount")
+			if keys, _ := rrcsFieldInt(p, "KeyCount"); keys > 0 {
+				for page := int32(1); page <= pages; page++ {
+					single("GetAllRemoteKeys", codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(page), codec.Int(0))
+				}
+			}
+		}
+		// One key, read the two ways a single key can be: the position
+		// RRCS itself returned is handed back as it came.
+		for _, c := range snap.Commands {
+			if firstKey != nil {
+				break
+			}
+			lists, _ := c.Payload.(map[string]any)["CommandLists"].([]any)
+			for _, e := range lists {
+				pos, _ := e.(map[string]any)["CommandPosition"].(map[string]any)
+				if pos == nil || pos["PositionType"] != "key" {
+					continue
+				}
+				num := func(name string) int32 {
+					switch v := pos[name].(type) {
+					case int32:
+						return v
+					case float64:
+						return int32(v)
+					}
+					return 0
+				}
+				isInput, _ := pos["IsInput"].(bool)
+				v := codec.Struct(
+					codec.Member{Name: "ExpansionPanel", Value: codec.Int(num("ExpansionPanel"))},
+					codec.Member{Name: "IsInput", Value: codec.Bool(isInput)},
+					codec.Member{Name: "KeyNumber", Value: codec.Int(num("KeyNumber"))},
+					codec.Member{Name: "Net", Value: codec.Int(num("Net"))},
+					codec.Member{Name: "Node", Value: codec.Int(num("Node"))},
+					codec.Member{Name: "Page", Value: codec.Int(num("Page"))},
+					codec.Member{Name: "Port", Value: codec.Int(num("Port"))},
+					codec.Member{Name: "PositionType", Value: codec.String("key")},
+				)
+				firstKey = &v
+				single("GetCommandList", v)
+				single("GetRemoteKey", codec.Int(num("Node")), codec.Int(num("Port")), codec.Bool(isInput),
+					codec.Int(num("Page")), codec.Int(num("ExpansionPanel")), codec.Int(num("KeyNumber")), codec.Bool(false))
+				break
+			}
+		}
+		for _, x := range activeXps {
+			single("GetXpVolume", x...)
+		}
+		for _, ifb := range ifbs {
+			mm, _ := ifb.Field("MixMinus")
+			node, _ := rrcsFieldInt(mm, "Node")
+			port, _ := rrcsFieldInt(mm, "Port")
+			number, _ := rrcsFieldInt(ifb, "Number")
+			if node == 0 && port == 0 { // no mix minus assigned
+				continue
+			}
+			single("GetIFBVolumeMixMinus", codec.Int(node), codec.Int(port), codec.Bool(rrcsFieldBool(mm, "IsInput")), codec.Int(number))
+		}
+		step("single reads: %d requests", len(snap.Singles))
+	}
+
 	snap.Complete = ctx.Err() == nil
 	return snap, len(ports), nil
 }
@@ -358,7 +488,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("rrcs walk", flag.ContinueOnError)
 	cf := newRRCSFlags(fs)
 	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
-	skip := fs.String("skip", "", "leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port)")
+	skip := fs.String("skip", "", "leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
@@ -371,10 +501,10 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		case "":
 		case "both": // kept from the first release
 			skips["properties"], skips["commands"] = true, true
-		case "properties", "commands", "values":
+		case "properties", "commands", "values", "singles":
 			skips[part] = true
 		default:
-			return rrcsValErr("walk", "--skip takes properties, commands, values, comma-separated")
+			return rrcsValErr("walk", "--skip takes properties, commands, values, singles, comma-separated")
 		}
 	}
 	client, _, closeFn, err := cf.open("walk", fs.Arg(0))
@@ -396,6 +526,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		properties: !skips["properties"],
 		commands:   !skips["commands"],
 		values:     !skips["values"],
+		singles:    !skips["singles"],
 		step:       func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) },
 	})
 	if err != nil {
@@ -437,6 +568,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	fmt.Printf("%-20s %d\n", "key configurations", len(snap.KeyConfigs))
 	fmt.Printf("%-20s %d\n", "port not online", snap.NotOnline)
 	fmt.Printf("%-20s %d\n", "port without gain", snap.NoGain)
+	fmt.Printf("%-20s %d\n", "single reads", len(snap.Singles))
 	fmt.Printf("%-20s %d of %d\n", "failed requests", snap.Failed, snap.Requests)
 	fmt.Printf("%-20s %s\n", "snapshot", *out)
 	return nil

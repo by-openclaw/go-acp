@@ -320,3 +320,49 @@ func TestRRCSWalkNoGainAndTrunks(t *testing.T) {
 		t.Errorf("trunk line requests: %v", asked)
 	}
 }
+
+// walk also sends the reads that address one thing at a time.
+func TestRRCSWalkSingles(t *testing.T) {
+	asked := map[string]int{}
+	var cmdPos codec.Value
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		asked[call.Method]++
+		k := call.Params[0]
+		switch call.Method {
+		case "GetCommandList":
+			cmdPos = call.Params[1]
+			return codec.Struct(rrcsMember("TransKey", k), rrcsMember("CommandList", codec.Array())), true
+		case "GetAlive", "GetNode", "GetClientCard", "GetPort", "GetPoolPortInfo", "GetLevelMeterValues",
+			"GetAllRemoteKeys", "GetRemoteKey", "GetActiveXpsRange", "GetXpVolume", "GetIFBVolumeMixMinus", "IsRegisteredForEvents":
+			return codec.Array(k, codec.Int(0)), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "walk.json")
+	rrcsWant(t, rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,values"), "single reads")
+	want := map[string]int{
+		"GetAlive": 1, "IsRegisteredForEvents": 1, "GetActiveXpsRange": 1,
+		"GetNode": 1, "GetClientCard": 1,
+		"GetPort": 4, "GetPoolPortInfo": 4,
+		"GetLevelMeterValues": 3, // the three ports that have an input
+		"GetAllRemoteKeys":    2, // the panel, two pages
+		"GetCommandList":      1, "GetRemoteKey": 1,
+		"GetXpVolume":          2, // the two active crosspoints of the stand-in
+		"GetIFBVolumeMixMinus": 0, // its IFB has no mix minus
+	}
+	for method, n := range want {
+		if asked[method] != n {
+			t.Errorf("%s sent %d times, want %d", method, asked[method], n)
+		}
+	}
+	// The key position goes back the way RRCS gave it.
+	if typ, _ := cmdPos.Field("PositionType"); typ.Str != "key" || rrcsMemberInt(cmdPos, "Port") != 1026 || rrcsMemberInt(cmdPos, "Page") != 1 {
+		t.Errorf("GetCommandList position: %+v", cmdPos)
+	}
+	// --skip singles leaves them out.
+	before := asked["GetPort"]
+	rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,values,commands,singles")
+	if asked["GetPort"] != before {
+		t.Error("--skip singles still asked GetPort")
+	}
+}

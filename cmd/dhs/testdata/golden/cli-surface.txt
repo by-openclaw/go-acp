@@ -3744,7 +3744,7 @@ Usage of rrcs walk:
   -output string
     	output: text | json (default "text")
   -skip string
-    	leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port)
+    	leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
