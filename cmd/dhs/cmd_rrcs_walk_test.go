@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -71,7 +76,7 @@ func TestRRCSWalk(t *testing.T) {
 	out := filepath.Join(dir, "deep", "walk.json")
 	capture := filepath.Join(dir, "walk.jsonl")
 	text, err := rrcsStdout(t, func() error {
-		return runRRCS(context.Background(), []string{"walk", f.addr(), "--out", out, "--capture", capture})
+		return runRRCS(context.Background(), []string{"walk", f.addr(), "--out", out, "--capture", capture, "--online", "no"})
 	})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
@@ -241,15 +246,20 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	dir := t.TempDir()
 	snapFile := filepath.Join(dir, "walk.json")
 	text := rrcsRun(t, "walk", f.addr(), "--out", snapFile, "--skip", "properties,commands")
-	rrcsWant(t, text, "port values          14", "port not online      2")
+	rrcsWant(t, text, "port values          12", "port not online      2")
 	raw, _ := os.ReadFile(snapFile)
 	var snap rrcsWalkSnapshot
 	if err := json.Unmarshal(raw, &snap); err != nil {
 		t.Fatal(err)
 	}
-	// Four ports: label and alias each, an input gain for three, an
-	// output gain for three.
-	if len(snap.PortValues) != 14 {
+	// Four ports: label and alias each, an input gain for two, an output
+	// gain for two. The panel is not asked for a gain.
+	for _, c := range snap.PortValues {
+		if strings.HasSuffix(c.Method, "Gain") && len(c.Args) == 3 && fmt.Sprint(c.Args[2]) == "1026" {
+			t.Errorf("the panel was asked for a gain: %s %v", c.Method, c.Args)
+		}
+	}
+	if len(snap.PortValues) != 12 {
 		t.Errorf("port value requests: %d", len(snap.PortValues))
 	}
 	if snap.NotOnline != 2 {
@@ -267,9 +277,9 @@ func TestRRCSWalkPortValues(t *testing.T) {
 		}
 	}
 	ports := rrcsRun(t, "list", "ports", "--from", snapFile)
-	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "PANEL-02   PNL TWO  -6.0     mute")
-	rrcsWant(t, rrcsRun(t, "get", "--from", snapFile, "--path", "net.1.node.61.port.1026", "--prop", "InputGain"), "InputGain                    -12")
-	out := rrcsRun(t, "export", "--from", snapFile, "--format", "csv", "--path", "port.1026.InputGain,port.1026.Alias")
+	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "PANEL-02   PNL TWO")
+	rrcsWant(t, rrcsRun(t, "get", "--from", snapFile, "--path", "net.1.node.61.port.7.in", "--prop", "InputGain"), "InputGain                    -12")
+	out := rrcsRun(t, "export", "--from", snapFile, "--format", "csv", "--path", "port.7.in.InputGain,port.1026.Alias")
 	rrcsWant(t, out, "net.1.node.61.port.1026.Alias,100,Alias,string,R--,PNL TWO", "InputGain,int,R--,-12,,0.5 dB,-128,36")
 
 	// --skip values leaves them out; an unknown part is refused.
@@ -286,8 +296,9 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	}
 }
 
-// A panel answers "port address invalid" to a gain request: counted
-// apart, not a failure. And the trunk line requests are asked where
+// A port that answers "port address invalid" to a gain request is counted
+// apart, not as a failure (the smart panels, which a real RRCS answers so,
+// are not asked at all). And the trunk line requests are asked where
 // there are trunk ports.
 func TestRRCSWalkNoGainAndTrunks(t *testing.T) {
 	asked := map[string]int{}
@@ -309,11 +320,11 @@ func TestRRCSWalkNoGainAndTrunks(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	file := filepath.Join(t.TempDir(), "walk.json")
-	rrcsWant(t, rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,commands"), "port without gain    6")
+	rrcsWant(t, rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,commands"), "port without gain    4")
 	raw, _ := os.ReadFile(file)
 	var snap rrcsWalkSnapshot
 	_ = json.Unmarshal(raw, &snap)
-	if snap.NoGain != 6 || snap.NotOnline != 0 {
+	if snap.NoGain != 4 || snap.NotOnline != 0 {
 		t.Errorf("no gain %d, not online %d", snap.NoGain, snap.NotOnline)
 	}
 	if asked["GetTrunklineSetup"] != 1 || asked["GetTrunklineActivities"] != 1 {
@@ -364,5 +375,69 @@ func TestRRCSWalkSingles(t *testing.T) {
 	rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,values,commands,singles")
 	if asked["GetPort"] != before {
 		t.Error("--skip singles still asked GetPort")
+	}
+}
+
+// walk first learns which ports are on line and does not ask the others
+// for gain and level: RRCS would refuse each and log a warning.
+func TestRRCSWalkOnlineFirst(t *testing.T) {
+	var mu sync.Mutex
+	asked := map[string][]int32{}
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		k := call.Params[0]
+		mu.Lock()
+		switch call.Method {
+		case "GetInputGain", "GetOutputGain":
+			asked[call.Method] = append(asked[call.Method], call.Params[3].Int)
+		case "GetLevelMeterValues":
+			asked[call.Method] = append(asked[call.Method], call.Params[2].Int)
+		}
+		mu.Unlock()
+		switch call.Method {
+		case "RegisterForAllEvents":
+			// RRCS answers a registration with the ports on line: here
+			// only the 4-wire port 1041.
+			base := "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int))
+			go func() {
+				doc := must(codec.EncodeCall("PortActive", codec.String("R0000000001"), codec.Int(1), codec.Int(61), codec.Int(1041)))
+				if resp, err := http.Post(base+"/RPC2", "text/xml", bytes.NewReader(doc)); err == nil {
+					_ = resp.Body.Close()
+				}
+			}()
+			return k, true
+		case "UnregisterForAllEvents":
+			return codec.Array(k, codec.Int(0)), true
+		case "GetInputGain", "GetOutputGain":
+			return codec.Array(k, codec.Int(0), codec.Int(0)), true
+		case "GetPortLabel", "GetPortAlias":
+			return codec.Array(k, codec.Int(0), codec.String("")), true
+		case "GetAllKeyConfiguration":
+			return codec.Array(k, codec.Array()), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "walk.json")
+	rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,commands", "--listen", "127.0.0.1:0")
+	raw, _ := os.ReadFile(file)
+	var snap rrcsWalkSnapshot
+	if err := json.Unmarshal(raw, &snap); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for method, ports := range asked {
+		for _, p := range ports {
+			if p != 1041 {
+				t.Errorf("%s asked for port %d, which is off line", method, p)
+			}
+		}
+	}
+	if len(asked["GetInputGain"]) != 1 || len(asked["GetOutputGain"]) != 1 {
+		t.Errorf("gains asked: %v", asked)
+	}
+	// Not sent: one gain each for 7.in and 7.out, and the level meter of
+	// 7.in and of the panel.
+	if snap.NotOnline != 4 {
+		t.Errorf("not online %d", snap.NotOnline)
 	}
 }

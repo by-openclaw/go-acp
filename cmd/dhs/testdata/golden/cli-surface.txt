@@ -3750,6 +3750,8 @@ $ dhs consumer rrcs walk --help
 Usage of rrcs walk:
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -listen string
+    	with --online yes: local [ip]:port RRCS sends the port states to (not while a watch runs on this machine) (default ":8195")
   -log string
     	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
   -log-format string
@@ -3758,6 +3760,8 @@ Usage of rrcs walk:
     	log level: debug | info | warn | error (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
+  -online string
+    	yes = first learn which ports are on line, by a registration of a second or two that is removed at once, and do not ask the others for gain and level (RRCS refuses those and logs a warning each time) | no = ask every port (default "yes")
   -out string
     	snapshot FILE the walk is written to. Literal "auto" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028) (default "auto")
   -output string

@@ -6,10 +6,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"dhs/internal/rrcs/codec"
@@ -80,7 +83,8 @@ type rrcsWalkSnapshot struct {
 	// stand alone: GetAlive, IsRegisteredForEvents, GetActiveXpsRange.
 	Singles []rrcsWalkCall `json:"singles"`
 	// NotOnline counts the requests a port answered with "not online"
-	// (error 24): expected for a port that is unplugged, not a failure.
+	// (error 24), and those not sent because RRCS had said the port is
+	// off line: expected for a port that is unplugged, not a failure.
 	NotOnline int `json:"not_online"`
 	// NoGain counts the gain requests a port answered with "port address
 	// invalid" (error 4). A real RRCS 9.0 answers so for every panel: a
@@ -157,6 +161,12 @@ type rrcsCollectOpts struct {
 	singles bool
 	// onlyPort, when set, limits the commands to the ports it accepts.
 	onlyPort func(node, port int, isInput bool) bool
+	// online, when not nil, holds the ports RRCS said are on line (node,
+	// port). A port that is not in it is not asked for what only a port
+	// on line answers: its gains and its level meter. A real RRCS 9.0
+	// refuses those with "is not online" and writes a warning in its log
+	// each time (592 per walk on one system).
+	online map[[2]int]bool
 	// step receives the progress lines.
 	step func(format string, a ...any)
 }
@@ -344,13 +354,30 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			snap.PortValues = append(snap.PortValues, rec)
 			rec, _, _ = w.call("GetPortAlias", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput))
 			snap.PortValues = append(snap.PortValues, rec)
-			if rrcsFieldBool(p, "Input") {
-				rec, _, _ = w.call("GetInputGain", codec.Int(net), codec.Int(node), codec.Int(port))
-				snap.PortValues = append(snap.PortValues, rec)
+			// A smart panel has no input or output gain: a real RRCS 9.0
+			// answers "Invalid port address" for every RSP-12xx and
+			// writes a warning in its own log each time (94 per walk on
+			// one system). They are not asked.
+			panel := false
+			if typ, ok := p.Field("PortType"); ok && strings.HasPrefix(typ.Str, "RSP-") {
+				panel = true
 			}
-			if rrcsFieldBool(p, "Output") {
-				rec, _, _ = w.call("GetOutputGain", codec.Int(net), codec.Int(node), codec.Int(port))
-				snap.PortValues = append(snap.PortValues, rec)
+			offline := opts.online != nil && !opts.online[[2]int{int(node), int(port)}]
+			if rrcsFieldBool(p, "Input") && !panel {
+				if offline {
+					snap.NotOnline++
+				} else {
+					rec, _, _ = w.call("GetInputGain", codec.Int(net), codec.Int(node), codec.Int(port))
+					snap.PortValues = append(snap.PortValues, rec)
+				}
+			}
+			if rrcsFieldBool(p, "Output") && !panel {
+				if offline {
+					snap.NotOnline++
+				} else {
+					rec, _, _ = w.call("GetOutputGain", codec.Int(net), codec.Int(node), codec.Int(port))
+					snap.PortValues = append(snap.PortValues, rec)
+				}
 			}
 			if keys, _ := rrcsFieldInt(p, "KeyCount"); keys > 0 {
 				// §8.8: Node, Port, IsInput, PoolPort — no net. A real RRCS
@@ -415,7 +442,11 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			single("GetPort", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput), codec.Int(pool))
 			single("GetPoolPortInfo", codec.Int(node), codec.Int(port))
 			if rrcsFieldBool(p, "Input") {
-				single("GetLevelMeterValues", codec.Int(node), codec.Int(port), codec.Int(pool))
+				if opts.online != nil && !opts.online[[2]int{int(node), int(port)}] {
+					snap.NotOnline++
+				} else {
+					single("GetLevelMeterValues", codec.Int(node), codec.Int(port), codec.Int(pool))
+				}
 			}
 		}
 		// One key, read the two ways a single key can be: the position
@@ -484,11 +515,16 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	cf := newRRCSFlags(fs)
 	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
 	skip := fs.String("skip", "", "leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)")
+	online := fs.String("online", "yes", "yes = first learn which ports are on line, by a registration of a second or two that is removed at once, and do not ask the others for gain and level (RRCS refuses those and logs a warning each time) | no = ask every port")
+	listen := fs.String("listen", ":8195", "with --online yes: local [ip]:port RRCS sends the port states to (not while a watch runs on this machine)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
 		return rrcsValErr("walk", "want exactly one host[:port] argument")
+	}
+	if *online != "yes" && *online != "no" {
+		return rrcsValErr("walk", "--online must be yes or no")
 	}
 	skips := map[string]bool{}
 	for _, part := range strings.Split(*skip, ",") {
@@ -516,7 +552,20 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		return fmt.Errorf("rrcs walk: %w", err)
 	}
 
+	// Which ports are on line, when something that depends on it is asked.
+	var onLine map[[2]int]bool
+	if *online == "yes" && (!skips["values"] || !skips["singles"]) {
+		ports, err := rrcsOnlinePorts(ctx, cf, client, *listen)
+		if err != nil {
+			cf.say("rrcs walk: the ports on line could not be learnt, every port is asked: %v", err)
+		} else {
+			onLine = ports
+			cf.say("rrcs walk: %d ports on line; the others are not asked for gain and level", len(ports))
+		}
+	}
+
 	snap, portCount, err := rrcsCollect(ctx, client, rrcsCollectOpts{
+		online:     onLine,
 		full:       true,
 		properties: !skips["properties"],
 		commands:   !skips["commands"],
@@ -621,4 +670,79 @@ func rrcsGet(ctx context.Context, args []string) error {
 		fmt.Printf("%-28s %s\n", m.Name, rrcsCompact(m.Value))
 	}
 	return nil
+}
+
+// rrcsOnlinePorts learns which ports are on line the only way RRCS tells
+// it: a registration is answered with one PortActive per port on line
+// (§8.15.1, §9.7). It registers, takes what comes until RRCS has been
+// silent for half a second, and unregisters.
+func rrcsOnlinePorts(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, listen string) (map[[2]int]bool, error) {
+	ln, err := net.Listen("tcp", listen)
+	if err != nil {
+		return nil, fmt.Errorf("listen %s: %w (is a watch running on this machine?)", listen, err)
+	}
+	var mu sync.Mutex
+	ports := map[[2]int]bool{}
+	last := time.Now()
+	listener := &rrcs.Listener{OnEvent: func(e rrcs.Event) {
+		if e.Method != "PortActive" && e.Method != "PortInactive" {
+			return
+		}
+		p := e.Params
+		if e.TransKey != "" {
+			p = p[1:]
+		}
+		if len(p) < 3 {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		ports[[2]int{rrcsParamInt(p, 1), rrcsParamInt(p, 2)}] = e.Method == "PortActive"
+		last = time.Now()
+	}}
+	srv := &http.Server{Handler: listener, ReadHeaderTimeout: rrcsListenerWait}
+	go func() { _ = srv.Serve(ln) }()
+	defer func() { _ = srv.Close() }()
+
+	reg := rrcs.Registration{Port: ln.Addr().(*net.TCPAddr).Port}
+	if _, err := client.Register(ctx, reg); err != nil {
+		return nil, err
+	}
+	defer func() {
+		bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
+		defer cancel()
+		if _, err := client.Unregister(bye, reg); err != nil {
+			cf.say("rrcs: ports on line: unregister: %v", err)
+		}
+	}()
+	mu.Lock()
+	last = time.Now()
+	mu.Unlock()
+	deadline := time.After(cf.timeout)
+	tick := time.NewTicker(100 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-deadline:
+		case <-tick.C:
+			mu.Lock()
+			quiet := time.Since(last) > 500*time.Millisecond
+			mu.Unlock()
+			if !quiet {
+				continue
+			}
+		}
+		break
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	out := map[[2]int]bool{}
+	for k, on := range ports {
+		if on {
+			out[k] = true
+		}
+	}
+	return out, nil
 }
