@@ -204,3 +204,83 @@ func TestRRCSLevelRaw(t *testing.T) {
 		t.Errorf("text: %q %q", rrcsLevelText(201), rrcsLevelText(0))
 	}
 }
+
+// An IFB is edited by its number; only what differs is sent.
+func TestRRCSEnsureIFB(t *testing.T) {
+	// The stand-in IFB (number 0): label "IFB A1", input 61.7, output
+	// 61.7, no mix minus.
+	desired := `{"ifbs": [{"number": 0, "label": "SPORT", "input": "net.1.node.61.port.7.in",
+	  "mix_minus": "net.1.node.61.port.1041", "dim_level": 4}]}`
+	_, changes, _ := rrcsCfgRun(t, desired, "--write-to", "HOST")
+	if len(changes) == 0 {
+		t.Fatal("nothing sent")
+	}
+	ch, _ := changes[0].Field("Change")
+	ot, _ := ch.Field("ObjectType")
+	sp, _ := ch.Field("SpecificParams")
+	label, _ := sp.Field("Label")
+	mm, _ := sp.Field("MixMinus")
+	if ot.Str != "ifb" || rrcsMemberInt(sp, "IFBNumber") != 0 || label.Str != "SPORT" || rrcsMemberInt(mm, "Port") != 1041 || rrcsMemberInt(sp, "DimLevel") != 4 {
+		t.Errorf("edit ifb: %s", rrcsCompact(sp))
+	}
+	if _, sent := sp.Field("Input"); sent {
+		t.Errorf("the input did not change and was sent: %s", rrcsCompact(sp))
+	}
+	out, changes, err := rrcsCfgRun(t, `{"ifbs": [{"number": 99, "label": "X"}]}`, "--check")
+	if err == nil || len(changes) != 0 || !strings.Contains(out, "cannot be created") {
+		t.Errorf("unknown IFB: %v\n%s", err, out)
+	}
+}
+
+// Label, alias and gains of a port: read, written when they differ, read
+// again; a second run changes nothing.
+func TestRRCSEnsurePorts(t *testing.T) {
+	var mu sync.Mutex
+	state := map[string]codec.Value{"Label": codec.String("OLD"), "Alias": codec.String(""), "InputGain": codec.Int(0), "OutputGain": codec.Int(-128)}
+	var writes []string
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		k := call.Params[0]
+		name := strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(call.Method, "Get"), "Set"), "Port")
+		if _, known := state[name]; !known {
+			return rrcsTreeAnswer(call)
+		}
+		if strings.HasPrefix(call.Method, "Get") {
+			return codec.Array(k, codec.Int(0), state[name]), true
+		}
+		// The value is the parameter before the last for label and
+		// alias (is input follows), the last for a gain.
+		v := call.Params[len(call.Params)-1]
+		if name == "Label" || name == "Alias" {
+			v = call.Params[len(call.Params)-2]
+		}
+		state[name] = v
+		writes = append(writes, call.Method)
+		return codec.Array(k, codec.Int(0)), true
+	})
+	file := filepath.Join(t.TempDir(), "ports.json")
+	_ = os.WriteFile(file, []byte(`{"ports": [{"port": "net.1.node.61.port.1041", "label": "CODEC1", "alias": "C 1",
+	  "input_gain": "-3.5", "output_gain": "mute"}]}`), 0o600)
+	out := rrcsRun(t, "ensure", f.addr(), "--file", file, "--check")
+	rrcsWant(t, out, "would change  net.1.node.61.port.1041.Label", "OLD -> CODEC1", "0.0 dB -> -3.5 dB", "would change 3, failed 0")
+	if strings.Contains(out, "OutputGain") {
+		t.Errorf("a gain that is already mute was planned:\n%s", out)
+	}
+	out = rrcsRun(t, "ensure", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, out, "changed 3, failed 0")
+	mu.Lock()
+	if got := strings.Join(writes, ","); got != "SetPortLabel,SetPortAlias,SetInputGain" || state["InputGain"].Int != -7 {
+		t.Errorf("writes %s, input gain %d", got, state["InputGain"].Int)
+	}
+	mu.Unlock()
+	rrcsWant(t, rrcsRun(t, "ensure", f.addr(), "--file", file, "--write-to", f.addr()), "changed 0, failed 0")
+	for text, want := range map[string]int{"mute": -128, "0": 0, "-18": -36, "18 dB": 36, "0.5": 1} {
+		if got, err := rrcsGainRaw(text); err != nil || got != want {
+			t.Errorf("gain %q = %d, %v", text, got, err)
+		}
+	}
+	if _, err := rrcsGainRaw("19"); err == nil {
+		t.Error("gain 19 accepted")
+	}
+}

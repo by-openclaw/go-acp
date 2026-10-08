@@ -38,6 +38,9 @@ type rrcsDesired struct {
 	Conferences []rrcsDesiredObject `json:"conferences"`
 	Groups      []rrcsDesiredObject `json:"groups"`
 	Levels      []rrcsDesiredLevel  `json:"levels"`
+	// IFBs, and label, alias and gains of ports: cmd_rrcs_ensure_more.go.
+	IFBs  []rrcsDesiredIFB  `json:"ifbs"`
+	Ports []rrcsDesiredPort `json:"ports"`
 }
 
 type rrcsDesiredXp struct {
@@ -115,7 +118,12 @@ and it may also hold keys, conferences, groups and crosspoint levels:
            {"panel": "net.1.node.61.port.1024", "key": "0.1.15", "state": "absent"}],
   "conferences": [{"name": "Conference 040", "label": "CONF 40"}],
   "groups": [{"name": "Group NOC", "label": "NOC", "members": ["net.1.node.61.port.1024"]}],
-  "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}]
+  "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}],
+  "ifbs": [{"number": 7, "label": "SPORT", "input": "net.1.node.61.port.1040", "mix_minus": "", "dim_level": 4}],
+  "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
+             "input_gain": "0", "output_gain": "-3.5"}]
+An IFB is named by its number and cannot be created; a leg is a port path or
+"" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
 call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
 momentary or latching. A conference or a group is named by "id" or, to
@@ -276,6 +284,7 @@ Only what the file names is touched. Without --check this WRITES and needs
 		return fmt.Errorf("rrcs ensure: %w", err)
 	}
 	record(d, f)
+	record(rrcsEnsurePorts(ctx, cf, client, want.Ports, check))
 
 	// The ADR-0007 shapes. The failures ride along; the exit code says
 	// whether the run reached its target.
@@ -311,8 +320,8 @@ Only what the file names is touched. Without --check this WRITES and needs
 		for _, f := range failures {
 			fmt.Printf("%-13s %-64s %s\n", "failed", f.Field, f.Reason)
 		}
-		fmt.Printf("%s %d, failed %d, of %d values, %d crosspoints, %d keys, %d conferences, %d groups and %d levels\n", verb, len(diff), len(failures),
-			len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.Levels))
+		fmt.Printf("%s %d, failed %d, of %d values, %d crosspoints, %d keys, %d conferences, %d groups, %d ifbs, %d levels and %d ports\n", verb, len(diff), len(failures),
+			len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.IFBs), len(want.Levels), len(want.Ports))
 	}
 	if len(failures) > 0 {
 		return fmt.Errorf("rrcs ensure: %d field(s) could not be brought to their target", len(failures))

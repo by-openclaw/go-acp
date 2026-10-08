@@ -405,6 +405,8 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 	}
 	object("conference", want.Conferences)
 	object("group", want.Groups)
+	ifbSteps, ifbProblems := rrcsPlanIFBs(m, want)
+	steps, problems = append(steps, ifbSteps...), append(problems, ifbProblems...)
 	return steps, problems
 }
 
@@ -435,7 +437,7 @@ func rrcsReadForConfig(ctx context.Context, client *rrcs.Client, want *rrcsDesir
 // created) is sent then; what is left after that was accepted and not
 // taken.
 func rrcsEnsureConfig(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, want *rrcsDesired, check bool) (diff []rrcsDiffEntry, failures []rrcsEnsureFailure, err error) {
-	if len(want.Keys)+len(want.Conferences)+len(want.Groups) == 0 {
+	if len(want.Keys)+len(want.Conferences)+len(want.Groups)+len(want.IFBs) == 0 {
 		return nil, nil, nil
 	}
 	seen := map[string]bool{}
