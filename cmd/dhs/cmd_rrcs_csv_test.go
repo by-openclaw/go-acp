@@ -190,7 +190,7 @@ func TestRRCSImportSkipsAndRefusals(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "hand.csv")
 	hand := "path,value,value_name\n" +
-		"net.1.node.61.port.7.out.PortAes67Output.Protocol,,NMOS\n" + // the word alone
+		"net.1.node.61.port.7.out.PortAes67Output.Protocol,,RTSP\n" + // the word alone
 		"net.1.node.61.port.7.out.PortAes67Output.MulticastPort,abc,\n" + // not a number
 		"net.1.node.61.port.999.PortAes67Output.Multicast,239.1.1.1,\n" + // no such port
 		"net.1.node.61.port.7.out.PortAes67Output.Channels,1,\n" + // unchanged
@@ -201,7 +201,7 @@ func TestRRCSImportSkipsAndRefusals(t *testing.T) {
 	_ = os.WriteFile(file, []byte(hand), 0o644)
 	out := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
 	rrcsWant(t, out,
-		"would_apply net.1.node.61.port.7.out.PortAes67Output.Protocol", "2 -> 5",
+		"would_apply net.1.node.61.port.7.out.PortAes67Output.Protocol", "2 -> 3",
 		"would_apply net.1.node.61.port.7.out.PortAes67Output.Channels", "1 -> 2",
 		"would apply 2, unchanged 1, skipped 5, failed 0",
 		"bad_path (1)", "bad_value (2)", "duplicate (1)", "not_on_device (1)")

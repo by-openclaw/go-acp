@@ -499,6 +499,9 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 	type plan struct {
 		change *rrcsChange
 		items  []*rrcsApplied
+		object string
+		// refused is why the change is not sent at all.
+		refused string
 	}
 	plans := map[string]*plan{}
 	var order []*plan
@@ -576,7 +579,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 				skips = append(skips, rrcsSkip{"bad_path", row.Path, err.Error()})
 				continue
 			}
-			p = &plan{change: change}
+			p = &plan{change: change, object: object}
 			plans[object] = p
 			order = append(order, p)
 		}
@@ -589,13 +592,29 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		applied = append(applied, item)
 	}
 
+	// An edit that would stop RRCS is refused in the dry run as well.
+	for _, p := range order {
+		props, _ := live.lookup(p.object)
+		if block := p.change.nmosStream(props); block != "" {
+			p.refused = block + ": " + rrcsNMOSRefusal
+			for _, it := range p.items {
+				it.Result, it.Error = "refused", p.refused
+			}
+			if dryRun {
+				failed += len(p.items)
+			}
+		}
+	}
+
 	if !dryRun && len(order) > 0 {
 		for _, p := range order {
 			if ctx.Err() != nil {
 				break
 			}
 			result, text := "applied", ""
-			if _, err := client.Call(ctx, rrcsChangeMethod, p.change.request()); err != nil {
+			if p.refused != "" {
+				result, text = "refused", p.refused
+			} else if _, err := client.Call(ctx, rrcsChangeMethod, p.change.request()); err != nil {
 				result, text = "failed", err.Error()
 			}
 			for _, it := range p.items {

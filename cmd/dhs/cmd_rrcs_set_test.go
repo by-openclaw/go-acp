@@ -307,3 +307,43 @@ func TestRRCSSetAlias(t *testing.T) {
 		t.Errorf("GetPortAlias sent %d times, want 4 (before and after, twice)", asked)
 	}
 }
+
+// An edit that gives stream fields to a stream that is, or becomes, NMOS
+// stopped a production RRCS twice: it is never sent.
+func TestRRCSNMOSStreamGuard(t *testing.T) {
+	change := func(props ...string) *rrcsChange {
+		c, err := rrcsChangeFor("net.1.node.63.port.1064.out")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range props {
+			name, value, _ := strings.Cut(p, "=")
+			if err := c.add(name, rrcsPropValue(value)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return c
+	}
+	nmos := map[string]any{"PortAes67Output": map[string]any{"Protocol": float64(5)}}
+	manual := map[string]any{"PortAes67Output": map[string]any{"Protocol": float64(2)}}
+	for name, tc := range map[string]struct {
+		c       *rrcsChange
+		current map[string]any
+		refused bool
+	}{
+		"address on an NMOS sender (2026-10-06)":  {change("PortAes67Output.Multicast=239.1.1.1"), nmos, true},
+		"manual back to NMOS (2026-10-08)":        {change("PortAes67Output.Protocol=5", "PortAes67Output.Multicast=0.0.0.0"), manual, true},
+		"NMOS to manual with an address (passed)": {change("PortAes67Output.Protocol=2", "PortAes67Output.Multicast=239.1.1.64"), nmos, false},
+		"address on a manual sender":              {change("PortAes67Output.Multicast=239.1.1.1"), manual, false},
+		"a label on an NMOS sender":               {change("Label=X"), nmos, false},
+	} {
+		if got := tc.c.nmosStream(tc.current) != ""; got != tc.refused {
+			t.Errorf("%s: refused %v, want %v", name, got, tc.refused)
+		}
+	}
+	card, _ := rrcsChangeFor("net.1.node.60.card.1")
+	_ = card.add("Ptp.PTP", rrcsPropValue("101"))
+	if card.nmosStream(nmos) != "" {
+		t.Error("a client card edit was taken for a stream edit")
+	}
+}

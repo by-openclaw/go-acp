@@ -183,6 +183,35 @@ func rrcsShow(title string, c *rrcsChange, props map[string]any) {
 	}
 }
 
+// rrcsNMOSRefusal is said when an edit would hand stream fields to a
+// stream in NMOS mode.
+const rrcsNMOSRefusal = "refused: this edit gives stream fields to a sender or receiver that is, or becomes, NMOS (Protocol 5). Two such edits stopped a production RRCS 9.0 at 'Applying change: Edit PortEx' (2026-10-06 with ConfigurationChangeEx, 2026-10-08 with ConfigurationChange); the same edit towards manual mode passed. It is not sent"
+
+// nmosStream names the stream block of the change that would be edited
+// while its protocol is, or becomes, NMOS; empty when there is none.
+// current is what the object holds now.
+func (c *rrcsChange) nmosStream(current map[string]any) string {
+	if c.objectType != "portex" {
+		return ""
+	}
+	for _, block := range []string{"PortAes67Output", "PortAes67Input"} {
+		fields, edited := c.blocks[block]
+		if !edited {
+			continue
+		}
+		protocol := jInt(jMap(current[block]), "Protocol")
+		for _, f := range fields {
+			if f.Name == "Protocol" && f.Value.Kind == codec.KindInt {
+				protocol = int(f.Value.Int)
+			}
+		}
+		if protocol == 5 {
+			return block
+		}
+	}
+	return ""
+}
+
 // rrcsSet edits properties of a port or of a client card.
 func rrcsSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("rrcs set", flag.ContinueOnError)
@@ -239,6 +268,12 @@ func rrcsSet(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("%s  %s  %s\n", *path, change.objectType, jStr(before, "LongName"))
 	rrcsShow("now:", change, before)
+	if block := change.nmosStream(before); block != "" {
+		fmt.Println(block + ": " + rrcsNMOSRefusal)
+		if *apply == "yes" {
+			return rrcsValErr("set", block+": "+rrcsNMOSRefusal)
+		}
+	}
 	if *apply == "no" {
 		fmt.Println("request that --apply yes would send (the transaction key is a placeholder):")
 		fmt.Println(string(doc))
