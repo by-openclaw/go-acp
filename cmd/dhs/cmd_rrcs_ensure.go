@@ -138,7 +138,7 @@ Only what the file names is touched. Without --check this WRITES and needs
 	cf := newRRCSFlags(fs)
 	file := fs.String("file", "", "desired-state file, JSON (required)")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
-	listen := fs.String("listen", ":8195", "for the levels of crosspoints: local [ip]:port RRCS sends them to (not while a watch runs on this machine)")
+	listen := fs.String("listen", ":8196", "for the levels of crosspoints: local [ip]:port RRCS sends them to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so a file with levels ends the level events of a watch on the same machine until it is started again")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
 		return err
 	}

@@ -202,7 +202,7 @@ func rrcsXpVerb(ctx context.Context, args []string) error {
 	state := fs.String("state", "", "on = SetXp | off = KillXp | empty = only read the state (GetXpStatus)")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	level := fs.String("level", "no", "yes = also read the level of the crosspoint. GetXpVolume does not work on an Artist-1024 (§8.2; a real RRCS 9.0 answers \"Node address invalid\"), so the level is read the way watch gets it: a registration for this crosspoint, whose first notification is its current level, removed at once. It needs --listen free: not while a watch runs on this machine")
-	listen := fs.String("listen", ":8195", "with --level yes: local [ip]:port RRCS sends the level to")
+	listen := fs.String("listen", ":8196", "with --level yes: local [ip]:port RRCS sends the level to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so this read ends the level events of a watch on the same machine until it is started again")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func rrcsXpVerb(ctx context.Context, args []string) error {
 func rrcsXpLevel(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, listen string, x rrcs.Crosspoint, name string) error {
 	ln, err := net.Listen("tcp", listen)
 	if err != nil {
-		return fmt.Errorf("rrcs xp: listen %s: %w (is a watch running on this machine?)", listen, err)
+		return fmt.Errorf("rrcs xp: listen %s: %w (is another dhs command listening there? --listen takes another port)", listen, err)
 	}
 	got := make(chan codec.Value, 1)
 	listener := &rrcs.Listener{AnyPath: true, OnEvent: func(e rrcs.Event) {

@@ -498,7 +498,7 @@ func rrcsEnsureConfig(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, w
 func rrcsReadLevels(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, listen string, xs []rrcs.Crosspoint) (map[rrcs.Crosspoint]int, error) {
 	ln, err := net.Listen("tcp", listen)
 	if err != nil {
-		return nil, fmt.Errorf("levels: listen %s: %w (is a watch running on this machine?)", listen, err)
+		return nil, fmt.Errorf("levels: listen %s: %w (is another dhs command listening there? --listen takes another port)", listen, err)
 	}
 	var mu sync.Mutex
 	got := map[rrcs.Crosspoint]int{}

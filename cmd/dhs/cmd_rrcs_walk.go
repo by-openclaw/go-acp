@@ -516,7 +516,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
 	skip := fs.String("skip", "", "leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)")
 	online := fs.String("online", "yes", "yes = first learn which ports are on line, by a registration of a second or two that is removed at once, and do not ask the others for gain and level (RRCS refuses those and logs a warning each time) | no = ask every port")
-	listen := fs.String("listen", ":8195", "with --online yes: local [ip]:port RRCS sends the port states to (not while a watch runs on this machine)")
+	listen := fs.String("listen", ":8196", "with --online yes: local [ip]:port RRCS sends the port states to. Not the port of watch, so a walk can run beside it")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
@@ -679,7 +679,7 @@ func rrcsGet(ctx context.Context, args []string) error {
 func rrcsOnlinePorts(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, listen string) (map[[2]int]bool, error) {
 	ln, err := net.Listen("tcp", listen)
 	if err != nil {
-		return nil, fmt.Errorf("listen %s: %w (is a watch running on this machine?)", listen, err)
+		return nil, fmt.Errorf("listen %s: %w (is another dhs command listening there? --listen takes another port)", listen, err)
 	}
 	var mu sync.Mutex
 	ports := map[[2]int]bool{}
