@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -47,8 +48,8 @@ func (s *rrcsSource) modelWith(ctx context.Context, verb string, hosts []string,
 	case *s.from != "" && len(hosts) > 0:
 		return nil, rrcsValErr(verb, "give a host or --from, not both")
 	case *s.from != "":
-		if s.cf.output != "text" && s.cf.output != "json" {
-			return nil, rrcsValErr(verb, "--output must be text or json")
+		if s.cf.output != "text" && s.cf.output != "json" && s.cf.output != "csv" {
+			return nil, rrcsValErr(verb, "--output must be text, json or csv")
 		}
 		raw, err := os.ReadFile(*s.from)
 		if err != nil {
@@ -247,7 +248,7 @@ func rrcsList(ctx context.Context, args []string) error {
 		}
 		rows = out
 	case "streams":
-		header = []string{"PATH", "ROLE", "LABEL", "MODE", "MULTICAST", "MULTICAST 2", "SOURCE", "CH", "BITS", "PTIME", "PT"}
+		header = []string{"PATH", "DIR", "NUMBER", "OID", "ROLE", "LABEL", "LONG NAME", "MODE", "CH", "SEL", "MULTICAST", "MULTICAST 2", "SOURCE", "BITS", "PTIME", "PT"}
 		var out []*rrcsStream
 		for _, p := range m.Ports {
 			if !flt.port(p) {
@@ -255,8 +256,9 @@ func rrcsList(ctx context.Context, args []string) error {
 			}
 			for _, st := range rrcsStreams(p) {
 				out = append(out, st)
-				cells = append(cells, []string{st.Port, st.Role, st.Label, st.Mode, st.Multicast, st.Multicast2, st.Source,
-					strconv.Itoa(st.Channels), strconv.Itoa(st.BitDepth), strconv.Itoa(st.PacketTime), strconv.Itoa(st.PayloadType)})
+				cells = append(cells, []string{st.Port, st.Direction, st.Number, strconv.Itoa(st.ObjectID), st.Role, st.Label, st.LongName, st.Mode,
+					strconv.Itoa(st.Channels), strconv.Itoa(st.Selection), st.Multicast, st.Multicast2, st.Source,
+					strconv.Itoa(st.BitDepth), strconv.Itoa(st.PacketTime), strconv.Itoa(st.PayloadType)})
 			}
 		}
 		rows = out
@@ -306,6 +308,20 @@ func rrcsList(ctx context.Context, args []string) error {
 		}
 		fmt.Println(string(b))
 		return nil
+	}
+	if src.cf.output == "csv" {
+		// The columns of the table, named as in the JSON.
+		w := csv.NewWriter(os.Stdout)
+		names := make([]string, len(header))
+		for i, h := range header {
+			names[i] = strings.ReplaceAll(strings.ToLower(h), " ", "_")
+		}
+		_ = w.Write(names)
+		for _, c := range cells {
+			_ = w.Write(c)
+		}
+		w.Flush()
+		return w.Error()
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(tw, strings.Join(header, "\t"))
@@ -538,10 +554,21 @@ func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, pro
 // rrcsStream is one AES67 stream of a port: what it receives (the input
 // of the port) or what it sends (its output).
 type rrcsStream struct {
-	Port        string `json:"port"`
-	Role        string `json:"role"` // receiver | sender
-	Label       string `json:"label"`
-	Mode        string `json:"mode"`
+	Port      string `json:"port"`
+	Direction string `json:"direction"` // in | out
+	// Number is the port as Director names it on an AES67 card of an
+	// Artist-1024: -7.41 is address 1064 (§6: the 2022-7 ports are 1024
+	// to 1151). Empty elsewhere.
+	Number   string `json:"number,omitempty"`
+	ObjectID int    `json:"object_id"`
+	Role     string `json:"role"` // receiver | sender
+	Label    string `json:"label"`
+	LongName string `json:"long_name"`
+	Mode     string `json:"mode"`
+	// Selection is the channel of the stream this port uses (§8.10.4.6).
+	// Above 1 it is a channel of the stream of another port: RRCS does
+	// not report which one (Mode, the port it is linked to, is write-only).
+	Selection   int    `json:"selection"`
 	Multicast   string `json:"multicast"`
 	Multicast2  string `json:"multicast_2"`
 	Source      string `json:"source,omitempty"`
@@ -564,7 +591,13 @@ func rrcsStreams(p *rrcsPort) []*rrcsStream {
 		if mode == "" {
 			mode = strconv.Itoa(jInt(a, "Protocol"))
 		}
-		st := &rrcsStream{Port: p.Path, Role: side.role, Label: p.Label, Mode: mode,
+		direction := map[string]string{"receiver": "in", "sender": "out"}[side.role]
+		number := ""
+		if p.Port >= 1024 && p.Port <= 1151 {
+			number = "-7." + strconv.Itoa(p.Port-1023)
+		}
+		st := &rrcsStream{Port: p.Path, Direction: direction, Number: number, ObjectID: p.ObjectID, LongName: p.LongName,
+			Selection: jInt(a, "Selection"), Role: side.role, Label: p.Label, Mode: mode,
 			Multicast:  jStr(a, "Multicast") + ":" + strconv.Itoa(jInt(a, "MulticastPort")),
 			Multicast2: jStr(a, "Multicast2") + ":" + strconv.Itoa(jInt(a, "MulticastPort2")),
 			Channels:   jInt(a, "Channels"), BitDepth: jInt(a, "BitDepth"),
