@@ -1,0 +1,104 @@
+---
+# SNMPv3 Tier-3 oracle: our manager against REAL v3 agents — the lab's two
+# Arista fabrics, whose SNMPv3 user (authPriv, SHA-256 + AES) is set by
+# arista-fabric.yml (role arista_mgmt). ADR-0025 #3: a v3 session proven
+# against an engine we did not write, on a device in service.
+#
+# Read-only: the fabrics' v3 group has a read view and nothing else.
+# The credentials come from the same secrets file the fabric play uses
+# and reach dhs through the environment (SNMP_V3_*), never a command
+# line; the tasks that carry them are no_log.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/snmp-v3-arista-verify.yml
+#   ... -e v3a_secrets=<path to arista.json>   # when it is not in this checkout's ansible/secrets/
+
+- name: snmp v3 — real engines (Arista fabrics)
+  hosts: plant
+  gather_facts: false
+  vars_files:
+    - "../sites/lab/site.yml"
+    - "{{ v3a_secrets | default('../secrets/arista.json') }}"
+  vars:
+    v3a_bin: /usr/local/bin/dhs
+    v3a_agents:
+      - { name: fabric-1, host: 10.6.224.21 }
+      - { name: fabric-2, host: 10.6.224.22 }
+    v3a_env:
+      SNMP_V3_USER: "{{ mgmt.snmp.user }}"
+      SNMP_V3_AUTH: "{{ mgmt.snmp.auth }}"
+      SNMP_V3_AUTH_PASS: "{{ arista_secrets.snmp_auth_pass }}"
+      SNMP_V3_PRIV: "{{ mgmt.snmp.priv }}"
+      SNMP_V3_PRIV_PASS: "{{ arista_secrets.snmp_priv_pass }}"
+    v3a_cli: "{{ v3a_bin }} consumer snmp"
+  tasks:
+    - name: Released binary under test
+      ansible.builtin.command: "{{ v3a_bin }} version"
+      register: v3a_version
+      changed_when: false
+
+    - name: get — engine discovery, then an authPriv read
+      ansible.builtin.command: "{{ v3a_cli }} get {{ item.host }} --version 3 --oid sysDescr.0,sysName.0,sysUpTime.0"
+      environment: "{{ v3a_env }}"
+      loop: "{{ v3a_agents }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: v3a_get
+      changed_when: false
+      no_log: true
+      failed_when: false
+
+    # The verdict is given here, where what dhs said can be shown: its
+    # output carries no credential, the task above (which has them in its
+    # environment) stays hidden.
+    - name: get — each engine answered as an Arista
+      ansible.builtin.assert:
+        that: item.rc == 0 and 'Arista' in item.stdout
+        fail_msg: "{{ item.item.name }}: rc={{ item.rc }} — {{ item.stderr_lines | default([]) | last | default('no output') }}"
+        quiet: true
+      loop: "{{ v3a_get.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: walk — the interface names, over GETBULK under v3
+      ansible.builtin.command: "{{ v3a_cli }} walk {{ item.host }} --version 3 --oid 1.3.6.1.2.1.31.1.1.1.1"
+      environment: "{{ v3a_env }}"
+      loop: "{{ v3a_agents }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: v3a_walk
+      changed_when: false
+      no_log: true
+      failed_when: v3a_walk.rc != 0 or 'Ethernet' not in v3a_walk.stdout
+
+    - name: health — a v3 agent that answers is reachable and live
+      ansible.builtin.command: "{{ v3a_cli }} health {{ item.host }}"
+      environment: "{{ v3a_env }}"
+      loop: "{{ v3a_agents }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: v3a_health
+      changed_when: false
+      no_log: true
+      failed_when: v3a_health.rc != 0 or 'reachable=true' not in v3a_health.stdout or 'live=true' not in v3a_health.stdout
+
+    - name: A wrong password is named as a refusal, not left as silence
+      ansible.builtin.command: "{{ v3a_cli }} get {{ v3a_agents[0].host }} --version 3 --oid sysName.0"
+      environment: "{{ v3a_env | combine({'SNMP_V3_AUTH_PASS': 'not-the-password-0000'}) }}"
+      register: v3a_wrong
+      changed_when: false
+      no_log: true
+      failed_when: v3a_wrong.rc == 0
+
+    - name: What the wrong password was answered with
+      ansible.builtin.assert:
+        that: v3a_wrong.stderr is search('(?i)authenticat|wrong digest|usmStats')
+        fail_msg: "a wrong v3 password ended as: {{ v3a_wrong.stderr | regex_replace('not-the-password-0000', '<pw>') }}"
+        quiet: true
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          snmp v3 green — {{ v3a_version.stdout_lines[0] }}; user {{ mgmt.snmp.user }}
+          ({{ mgmt.snmp.auth }} + {{ mgmt.snmp.priv }}) against
+          {% for r in v3a_walk.results %}{{ r.item.name }} ({{ r.stdout_lines | select('search', 'Ethernet') | list | length }} Ethernet interfaces){{ ', ' if not loop.last else '' }}{% endfor %};
+          get, walk and health under authPriv; a wrong password answered as a refusal
