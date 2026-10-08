@@ -3,7 +3,7 @@
 Measured, not claimed. "Released" is the binary the fleet runs. Each play
 was run twice from the control node with the second run changing nothing.
 
-## The six deliverables (2026-10-07, released v0.40.4)
+## The six deliverables (2026-10-09, released v0.43.0)
 
 | # | Deliverable | State | Evidence |
 |---|---|---|---|
@@ -71,3 +71,12 @@ pointing at `10.6.250.101:2008` yet, so there is no session to assert.
   depending on which of two 5 s timers fired first (#1433).
 - The producer answered an all-names request with its first message only
   (#1435).
+
+## Since then (v0.41.0 – v0.43.0)
+
+- `bench` exits non-zero when operations failed, naming how many and in
+  which phase; it used to print `errors=4000` and exit 0 (#1471).
+- Generated matrix labels are distinct within the eight characters the
+  protocol carries: `SRC00001`, `DST00001` (#1446).
+- The same plays, twice, on v0.43.0: `ok=45 changed=0` on the Neuron,
+  `ok=7 changed=0` for the producer.
