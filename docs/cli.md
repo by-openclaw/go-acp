@@ -1094,7 +1094,7 @@ Usage of walk:
   -mib string
     	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
   -oid string
-    	subtree root, by standard name or dotted number (default "1.3.6.1.2.1")
+    	subtree root, by standard name or dotted number; the default is the whole tree, standard MIBs and the vendor's own (default "1.3.6.1")
   -priv string
     	v3 privacy: des or aes
   -priv-pass string
