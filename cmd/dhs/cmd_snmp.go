@@ -9,6 +9,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -361,7 +362,7 @@ func runSNMPSet(ctx context.Context, args []string) error {
 	var f snmpFlags
 	f.register(fs)
 	oid := fs.String("oid", "", "the object to write, by standard name or dotted number")
-	typ := fs.String("type", "s", "value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters")
+	typ := fs.String("type", "s", "value type: i(nteger) s(tring) x (hex octets) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters")
 	value := fs.String("value", "", "the value to write")
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(fs.Output(), `dhs consumer snmp set — write one object
@@ -491,6 +492,16 @@ func parseSNMPValue(typ, raw string) (codec.Value, error) {
 			return codec.Value{}, err
 		}
 		return codec.ObjectID(o), nil
+	case "x", "hex":
+		// Octets given as hex, net-snmp's x: what an OCTET STRING that is
+		// not text needs. The ATEME DR5000 keeps a trap destination as
+		// four raw bytes (0A06FA65), which no text value can write.
+		clean := strings.NewReplacer(" ", "", ":", "", "-", "").Replace(raw)
+		b, err := hex.DecodeString(clean)
+		if err != nil || len(b) == 0 {
+			return codec.Value{}, fmt.Errorf("snmp: %q is not hex octets (e.g. 0A06FA65 or 0a:06:fa:65)", raw)
+		}
+		return codec.Value{Type: codec.TypeOctetString, Bytes: b}, nil
 	case "a", "address", "ipaddress":
 		ip := parseIPArg(raw)
 		if ip == nil {
@@ -499,7 +510,7 @@ func parseSNMPValue(typ, raw string) (codec.Value, error) {
 		return codec.IPAddress(ip), nil
 	}
 	return codec.Value{}, fmt.Errorf(
-		"snmp: unknown type %q (expected i, s, o, a, u or t)", typ)
+		"snmp: unknown type %q (expected i, s, x, o, a, u or t)", typ)
 }
 
 // printBinds renders a result the way snmpget does: one object a line,
