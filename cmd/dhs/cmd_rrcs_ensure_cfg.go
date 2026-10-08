@@ -261,10 +261,10 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 		edit := []codec.Member{}
 		var from, to []string
 		if absent && props != nil {
-			if !jBool(props, "AutoLabelFlag") || jStr(props, "LabelValue") != "" {
-				edit = append(edit,
-					codec.Member{Name: "AutoLabelFlag", Value: codec.Bool(true)},
-					codec.Member{Name: "LabelValue", Value: codec.String("")})
+			// The flag alone: a real RRCS 9.0 refuses an empty LabelValue
+			// ("LabelValue should contain at least 1 character(s)!").
+			if !jBool(props, "AutoLabelFlag") {
+				edit = append(edit, codec.Member{Name: "AutoLabelFlag", Value: codec.Bool(true)})
 				from, to = append(from, "label "+jStr(props, "LabelValue")), append(to, "label automatic")
 			}
 			if jInt(props, "KeyMode") != rrcsKeyModes["momentary"]+1 {
@@ -459,12 +459,17 @@ func rrcsEnsureConfig(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, w
 		}
 		refused := false
 		for _, s := range steps {
-			key := s.field + "|" + s.changeType + "|" + s.to
-			if !seen[key] {
-				seen[key] = true
-				diff = append(diff, rrcsDiffEntry{Field: s.field, From: s.from, To: s.to})
+			// A change counts once RRCS has accepted it; a refused one is
+			// a failure only.
+			count := func() {
+				key := s.field + "|" + s.changeType + "|" + s.to
+				if !seen[key] {
+					seen[key] = true
+					diff = append(diff, rrcsDiffEntry{Field: s.field, From: s.from, To: s.to})
+				}
 			}
 			if check {
+				count()
 				cf.say("rrcs ensure: would send %s %s", rrcsChangeMethod, rrcsCompact(s.request()))
 				continue
 			}
@@ -472,7 +477,9 @@ func rrcsEnsureConfig(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, w
 			if _, err := client.Call(ctx, rrcsChangeMethod, s.request()); err != nil {
 				failures = append(failures, rrcsEnsureFailure{Field: s.field, Reason: err.Error()})
 				refused = true
+				continue
 			}
+			count()
 		}
 		if check || refused {
 			return diff, failures, nil
