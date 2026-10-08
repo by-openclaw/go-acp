@@ -7,6 +7,28 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.41.0](https://github.com/by-openclaw/go-acp/compare/v0.40.4...v0.41.0) (2026-10-08)
+
+
+### Features
+
+* **ansible:** a resident probel-sw02p producer on the plant host, and its controller check ([490cd7c](https://github.com/by-openclaw/go-acp/commit/490cd7c37214fb6ca707d7ad2f4897a7b0e67004))
+* **ansible:** a resident probel-sw02p producer on the plant host, and its controller check ([9951348](https://github.com/by-openclaw/go-acp/commit/9951348f4178a00cc601bb6314412dd0ab46d746))
+* **ansible:** a resident probel-sw08p producer on the plant host, and its controller check ([ca89ee0](https://github.com/by-openclaw/go-acp/commit/ca89ee0ec3d5c936f3238b3c4334e0d1894747c3))
+* **ansible:** a resident probel-sw08p producer on the plant host, and its controller check ([f07a71b](https://github.com/by-openclaw/go-acp/commit/f07a71b88380d3643e199ac979e22728d26c0ed0)), closes [#1433](https://github.com/by-openclaw/go-acp/issues/1433)
+
+
+### Bug Fixes
+
+* **ci:** the lint job does not depend on a schema fetched from another site ([7f1ceb6](https://github.com/by-openclaw/go-acp/commit/7f1ceb67f99dc031f793aa43a6870029985f5ec2))
+* **ci:** the lint job does not depend on a schema fetched from another site ([6233ed1](https://github.com/by-openclaw/go-acp/commit/6233ed1fc5373de306b931119e2b7975a0ef499e))
+* **cli:** a flag written after the target is honoured; snmp walk starts at the whole tree ([c44368c](https://github.com/by-openclaw/go-acp/commit/c44368c51784d6d111b0296179c9d7ab3275d1aa))
+* **cli:** a flag written after the target is honoured; snmp walk starts at the whole tree ([c392da3](https://github.com/by-openclaw/go-acp/commit/c392da37fd435c355b77313e2dbd91bbe7d6f462)), closes [#1450](https://github.com/by-openclaw/go-acp/issues/1450)
+* **probel-sw02p:** an unrouted destination of the matrix is not "out of range" ([20a08d0](https://github.com/by-openclaw/go-acp/commit/20a08d0604ddb2ba7f40045e88f2d3eab029c091))
+* **probel-sw02p:** an unrouted destination of the matrix is not "out of range" ([35c2c54](https://github.com/by-openclaw/go-acp/commit/35c2c54b049f483f54ce58484be3a4b03d741ba4)), closes [#1447](https://github.com/by-openclaw/go-acp/issues/1447)
+* **probel:** generated labels are distinct within eight characters ([590b750](https://github.com/by-openclaw/go-acp/commit/590b750241a113fdd98c84672a0a46872aea6c4f))
+* **probel:** generated labels are distinct within eight characters ([fbbe717](https://github.com/by-openclaw/go-acp/commit/fbbe7175193a562a72b6851a68f700d14b03d245)), closes [#1445](https://github.com/by-openclaw/go-acp/issues/1445)
+
 ## [0.40.4](https://github.com/by-openclaw/go-acp/compare/v0.40.3...v0.40.4) (2026-10-07)
 
 
