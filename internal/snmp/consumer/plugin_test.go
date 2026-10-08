@@ -1074,7 +1074,7 @@ func TestAConfiguredV3UserIsTriedFirst(t *testing.T) {
 	// v1 and v2c put a password in clear on every datagram. A device
 	// that offers v3 must not be polled the weaker way because the
 	// connector happened to try v2c first.
-	p, _, _ := pluginUnder(t, provider.Communities{Read: "public"})
+	p := connected(t, provider.Communities{Read: "public"})
 	if got := p.versionOrder(nil); len(got) != 2 || got[0] != codec.Version2c {
 		t.Errorf("with no user = %v, want v2c then v1", got)
 	}
@@ -1152,5 +1152,16 @@ func TestTheNeutralConnectorPollsOverV3(t *testing.T) {
 	}
 	if got.Int != 42 {
 		t.Errorf("read back %+v", got)
+	}
+}
+
+// The agent's answer to Connect is traffic: a datagram protocol has no
+// connect to prove the path with, so the reply is the proof. `health` on an
+// agent that had just answered used to say "reachable=false, no rx yet".
+func TestHealthAfterConnectIsReachableAndLive(t *testing.T) {
+	p := connected(t, provider.Communities{Read: "public"})
+	h := p.SessionHealth(context.Background())
+	if !h.Connected || !h.Live || !h.Reachable {
+		t.Errorf("health right after Connect: connected=%v live=%v reachable=%v, want all three", h.Connected, h.Live, h.Reachable)
 	}
 }
