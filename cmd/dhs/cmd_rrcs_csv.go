@@ -484,7 +484,40 @@ type rrcsApplied struct {
 // writes what differs — one ConfigurationChange per port or client card
 // — then reads everything back. It is the core of import and of ensure.
 func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep func(string) bool, dryRun bool) (applied []*rrcsApplied, skips []rrcsSkip, unchanged, failed int, err error) {
+	// The objects the rows name. A handful of them is read one request
+	// each (GetPort, GetClientCard) where the lists of the whole system
+	// cost sixteen; more than that, or an object RRCS does not answer
+	// that way, and the lists are read.
+	var objects []string
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if !keep(row.Path) {
+			continue
+		}
+		if object, _, _, ok := rrcsSplitPath(row.Path); ok && !seen[object] {
+			seen[object] = true
+			objects = append(objects, object)
+		}
+	}
 	read := func() (*rrcsModel, error) {
+		if len(objects) > 0 && len(objects) < 16 {
+			m := &rrcsModel{Objects: map[string][]*rrcsObject{}}
+			for _, object := range objects {
+				props, ok := rrcsCurrentOne(ctx, client, object)
+				if !ok {
+					m = nil
+					break
+				}
+				if strings.Contains(object, ".card.") {
+					m.Cards = append(m.Cards, &rrcsCard{Path: object, Raw: props})
+				} else {
+					m.Ports = append(m.Ports, &rrcsPort{Path: object, Raw: props})
+				}
+			}
+			if m != nil {
+				return m, nil
+			}
+		}
 		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{})
 		if err != nil {
 			return nil, err

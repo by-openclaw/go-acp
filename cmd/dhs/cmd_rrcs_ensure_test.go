@@ -187,3 +187,40 @@ func TestRRCSEnsureFailuresAndRefusals(t *testing.T) {
 		t.Errorf("a refused ensure wrote: %v", writes())
 	}
 }
+
+// ensure reads the objects its values name, one request each, and not
+// the lists of the whole system.
+func TestRRCSEnsureReadsOnlyItsObjects(t *testing.T) {
+	var mu sync.Mutex
+	multicast := "239.1.2.3"
+	var methods []string
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		methods = append(methods, call.Method)
+		k := call.Params[0]
+		switch call.Method {
+		case "GetPort":
+			return codec.Array(k, codec.Int(0), codec.Struct(
+				rrcsMember("LongName", codec.String("Out seven")),
+				rrcsMember("PortAes67Output", codec.Struct(rrcsMember("Protocol", codec.Int(2)),
+					rrcsMember("Multicast", codec.String(multicast)), rrcsMember("MulticastPort", codec.Int(5004)))))), true
+		case "ConfigurationChange":
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			out, _ := sp.Field("PortAes67Output")
+			if m, ok := out.Field("Multicast"); ok {
+				multicast = m.Str
+			}
+			return k, true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "d.json")
+	_ = os.WriteFile(file, []byte(`{"values": {"net.1.node.61.port.7.out.PortAes67Output.Multicast": "239.9.9.9"}}`), 0o600)
+	rrcsWant(t, rrcsRun(t, "ensure", f.addr(), "--file", file, "--write-to", f.addr()), "239.1.2.3 -> 239.9.9.9", "changed 1, failed 0")
+	mu.Lock()
+	defer mu.Unlock()
+	if got := strings.Join(methods, ","); strings.Contains(got, "GetAllPorts") || !strings.Contains(got, "GetPort,ConfigurationChange,GetPort") {
+		t.Errorf("requests: %s", got)
+	}
+}
