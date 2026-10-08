@@ -7,6 +7,14 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.41.1](https://github.com/by-openclaw/go-acp/compare/v0.41.0...v0.41.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **snmp,ccm:** each snmp retry waits twice as long; ccm walk and export take their host after flags too ([6565add](https://github.com/by-openclaw/go-acp/commit/6565add8cdc31513eecbf29bfd136717e7d7bf7f))
+* **snmp,ccm:** each snmp retry waits twice as long; ccm walk and export take their host after flags too ([b2340e8](https://github.com/by-openclaw/go-acp/commit/b2340e8b34adb0627cccb7aed9363c2fdd5adee3)), closes [#1454](https://github.com/by-openclaw/go-acp/issues/1454)
+
 ## [0.41.0](https://github.com/by-openclaw/go-acp/compare/v0.40.4...v0.41.0) (2026-10-08)
 
 
