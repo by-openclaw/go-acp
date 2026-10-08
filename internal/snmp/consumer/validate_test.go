@@ -119,3 +119,18 @@ func TestValidateReportsWhatItCannotRead(t *testing.T) {
 		}
 	}
 }
+
+// A datagram that decodes to a message with no readable PDU — v3 under
+// privacy — is reported as that, not counted as read.
+func TestASealedPDUIsReportedNotCounted(t *testing.T) {
+	if err := unreadable(codec.Message{Version: codec.Version3}, nil); err == nil || !strings.Contains(err.Error(), "sealed") {
+		t.Errorf("a message with no PDU: %v", err)
+	}
+	boom := errors.New("malformed")
+	if err := unreadable(codec.Message{}, boom); !errors.Is(err, boom) {
+		t.Errorf("a decode error is passed on: %v", err)
+	}
+	if err := unreadable(codec.Message{PDU: &codec.PDU{}}, nil); err != nil {
+		t.Errorf("a readable message: %v", err)
+	}
+}

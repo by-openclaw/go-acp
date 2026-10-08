@@ -53,10 +53,7 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts dh
 			continue
 		}
 		m, err := codec.Decode(raw)
-		if err != nil || m.PDU == nil {
-			if err == nil {
-				err = errors.New("no PDU in the message")
-			}
+		if err = unreadable(m, err); err != nil {
 			report.Errors = append(report.Errors, dhsc.ValidateError{
 				TrameIndex: i, Direction: t.Direction, HexPrefix: shortHex(raw),
 				Err: fmt.Sprintf("snmp decode: %v", err),
@@ -85,6 +82,19 @@ func (p *Plugin) Validate(ctx context.Context, trames []wiretrace.Trame, opts dh
 		}
 	}
 	return report, nil
+}
+
+// unreadable is why a datagram cannot be checked offline: it does not
+// decode, or it decodes to a message whose PDU is sealed — a v3 message
+// under privacy, which only the session that holds the key can open.
+func unreadable(m codec.Message, err error) error {
+	if err != nil {
+		return err
+	}
+	if m.PDU == nil {
+		return errors.New("the PDU is sealed (v3 privacy): it cannot be read without the session's key")
+	}
+	return nil
 }
 
 // shortHex is the first sixteen bytes of a datagram, for an error line a
