@@ -122,7 +122,32 @@ func runProbelBench(ctx context.Context, args []string) error {
 		}
 		fmt.Fprintf(os.Stderr, "wrote %s\n", *mdPath)
 	}
-	return nil
+	return benchFailures(results)
+}
+
+// benchFailures is the benchmark's verdict: a run in which operations
+// failed is a failed run, with how many and in which phase. It used to
+// exit 0 whatever happened — against a Neuron that answered none of 4 000
+// interrogates it printed "errors=4000" and reported success, which is
+// what a script or a play reads.
+func benchFailures(results map[string]*phaseResult) error {
+	failed, total := 0, 0
+	var parts []string
+	for _, name := range []string{"interrogate", "connect"} {
+		r, ok := results[name]
+		if !ok {
+			continue
+		}
+		total += r.ops
+		if r.errs > 0 {
+			failed += r.errs
+			parts = append(parts, fmt.Sprintf("%s %d", name, r.errs))
+		}
+	}
+	if failed == 0 {
+		return nil
+	}
+	return fmt.Errorf("probel bench: %d of %d operation(s) failed (%s)", failed, total, strings.Join(parts, ", "))
 }
 
 // phaseResult captures one phase's outcome.
