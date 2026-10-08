@@ -109,6 +109,9 @@ func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int
 	if _, err := conn.Write(raw); err != nil {
 		return nil, fmt.Errorf("snmp: send: %w", err)
 	}
+	if s.opts.Tap != nil {
+		s.opts.Tap("tx", raw)
+	}
 
 	buf := make([]byte, codec.MaxMessageSize)
 	for {
@@ -119,6 +122,9 @@ func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int
 				return nil, ErrTimeout
 			}
 			return nil, fmt.Errorf("snmp: receive: %w", err)
+		}
+		if s.opts.Tap != nil {
+			s.opts.Tap("rx", buf[:n])
 		}
 
 		resp, aerr := s.acceptable(buf[:n], id)

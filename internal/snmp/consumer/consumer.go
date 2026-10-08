@@ -81,6 +81,12 @@ type Options struct {
 	// Compliance records what an agent did that the RFCs do not
 	// describe. Nil is fine — the profile answers every method.
 	Compliance compliance.Recorder
+
+	// Tap, when set, is handed every datagram of the session as it goes
+	// out ("tx") and as it comes in ("rx") — the request, each repeat of
+	// it, and whatever arrives, ours or not. It is what `--capture`
+	// records: a manager's view of the wire, to read again offline.
+	Tap func(dir string, datagram []byte)
 }
 
 // Defaults, chosen from what the devices in docs/testbed.md actually

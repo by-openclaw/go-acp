@@ -22,6 +22,7 @@ import (
 	"dhs/internal/snmp/codec"
 	snmpcons "dhs/internal/snmp/consumer"
 	"dhs/internal/snmp/mib"
+	"dhs/internal/transport"
 )
 
 // runSNMPConsumer dispatches `dhs consumer snmp <verb> [args]`.
@@ -116,12 +117,18 @@ type snmpFlags struct {
 	privProto string
 	privPass  string
 	context   string
+
+	// capture is the file every datagram of the session is recorded to
+	// (JSONL, the format `validate` reads and every other connector's
+	// --capture writes).
+	capture string
 }
 
 func (f *snmpFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK.")
 	fs.StringVar(&f.community, "community", "public", "read community (write community for `set`)")
 	fs.DurationVar(&f.timeout, "timeout", snmpcons.DefaultTimeout, "per-request timeout")
+	fs.StringVar(&f.capture, "capture", "", "record every datagram sent and received as JSONL to this file (read it back with `validate`)")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
 	fs.IntVar(&f.bulk, "max-repetitions", snmpcons.DefaultMaxRepetitions, "GETBULK window for `walk` (v2c only)")
 	fs.StringVar(&f.prefer, "mib", "", "comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)")
@@ -210,6 +217,13 @@ func (f *snmpFlags) options(addr string, prof compliance.Recorder) (snmpcons.Opt
 			return snmpcons.Options{}, err
 		}
 		opts.V3 = cred
+	}
+	if f.capture != "" {
+		rec, err := transport.NewRecorder(f.capture)
+		if err != nil {
+			return snmpcons.Options{}, fmt.Errorf("--capture: %w", err)
+		}
+		opts.Tap = func(dir string, datagram []byte) { rec.Record("snmp", dir, datagram) }
 	}
 	return opts, nil
 }
