@@ -16,10 +16,10 @@ import (
 )
 
 // rrcsChangeMethod is the method every configuration write of this
-// connector uses (§8.10.1). ConfigurationChange, not ConfigurationChangeEx:
-// the Ex form is the call that stopped a production RRCS 9.0 on
-// 2026-10-06, and the control system that edits keys, groups and
-// conferences on that same RRCS every day uses the plain form only.
+// connector uses (§8.10.1): all the changes of a request are applied, or
+// none. Keys, conferences and stream edits passed with it on a real RRCS
+// 9.0 on 2026-10-08. The form of the method is not what stops RRCS on an
+// NMOS stream edit: both forms did (ADR-0035).
 const rrcsChangeMethod = "ConfigurationChange"
 
 // The configuration part of the desired state: what is on the keys, and
