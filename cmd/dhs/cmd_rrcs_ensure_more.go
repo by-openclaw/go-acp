@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -235,4 +236,28 @@ func rrcsEnsurePorts(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, po
 		}
 	}
 	return diff, failures
+}
+
+// logChanges writes what a converging verb did to the sinks (file,
+// syslog): one record per value changed, with what it was and what it
+// is, and one per value that could not be brought to its target
+// (docs/logging.md; msg=config_change, msg=config_failed). A dry run is
+// logged as such, so the log tells a plan from an act.
+func (c *rrcsFlags) logChanges(ctx context.Context, verb, target string, dryRun bool, diff []rrcsDiffEntry, failures []rrcsEnsureFailure) {
+	if c.sink == nil {
+		return
+	}
+	mode := "applied"
+	if dryRun {
+		mode = "dry_run"
+	}
+	for _, d := range diff {
+		c.sink.Log(ctx, slog.LevelInfo, "config_change", slog.String("proto", rrcsProto), slog.String("verb", verb),
+			slog.String("target", target), slog.String("mode", mode), slog.String("path", d.Field),
+			slog.String("from", fmt.Sprint(d.From)), slog.String("to", fmt.Sprint(d.To)))
+	}
+	for _, f := range failures {
+		c.sink.Log(ctx, slog.LevelWarn, "config_failed", slog.String("proto", rrcsProto), slog.String("verb", verb),
+			slog.String("target", target), slog.String("mode", mode), slog.String("path", f.Field), slog.String("reason", f.Reason))
+	}
 }

@@ -284,3 +284,43 @@ func TestRRCSEnsurePorts(t *testing.T) {
 		t.Error("gain 19 accepted")
 	}
 }
+
+// Every change a converging verb makes, and every one it could not make,
+// is a record of the log: what, from what, to what.
+func TestRRCSEnsureLogsChanges(t *testing.T) {
+	label := "OLD"
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		k := call.Params[0]
+		switch call.Method {
+		case "GetPortLabel":
+			return codec.Array(k, codec.Int(0), codec.String(label)), true
+		case "SetPortLabel":
+			label = call.Params[3].Str
+			return codec.Array(k, codec.Int(0)), true
+		case "GetInputGain":
+			return codec.Array(k, codec.Int(24)), true // the port is not on line
+		}
+		return rrcsTreeAnswer(call)
+	})
+	dir := t.TempDir()
+	file, logFile := filepath.Join(dir, "d.json"), filepath.Join(dir, "ensure.log")
+	_ = os.WriteFile(file, []byte(`{"ports": [{"port": "net.1.node.61.port.1041", "label": "NEW", "input_gain": "0"}]}`), 0o600)
+	_, _ = rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", file, "--write-to", f.addr(), "--log", logFile, "--log-format", "json"})
+	})
+	// The log is one file per day: the date is in its name.
+	var raw []byte
+	names, _ := filepath.Glob(filepath.Join(dir, "ensure*.log"))
+	for _, name := range names {
+		b, _ := os.ReadFile(name)
+		raw = append(raw, b...)
+	}
+	for _, want := range []string{
+		`"msg":"config_change"`, `"verb":"ensure"`, `"mode":"applied"`, `"path":"net.1.node.61.port.1041.Label"`, `"from":"OLD"`, `"to":"NEW"`,
+		`"msg":"config_failed"`, `"path":"net.1.node.61.port.1041.InputGain"`, `"level":"WARN"`,
+	} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("log lacks %s:\n%s", want, raw)
+		}
+	}
+}

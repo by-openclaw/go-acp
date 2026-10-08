@@ -325,11 +325,21 @@ func rrcsSet(ctx context.Context, args []string) error {
 
 	// The change is done only if the object now holds every wanted value.
 	var differ []string
+	var logged []rrcsDiffEntry
+	var notTaken []rrcsEnsureFailure
+	defer func() { cf.logChanges(ctx, "set", fs.Arg(0), false, logged, notTaken) }()
 	for _, block := range change.order {
 		for _, f := range change.blocks[block] {
 			holder, name := after, f.Name
+			was := before
 			if block != "" {
 				holder, name = jMap(after[block]), block+"."+f.Name
+				was = jMap(before[block])
+			}
+			if fmt.Sprint(holder[f.Name]) == fmt.Sprint(rrcsJSON(f.Value)) || holder[f.Name] == nil {
+				logged = append(logged, rrcsDiffEntry{Field: *path + "." + name, From: fmt.Sprint(was[f.Name]), To: fmt.Sprint(rrcsJSON(f.Value))})
+			} else {
+				notTaken = append(notTaken, rrcsEnsureFailure{Field: *path + "." + name, Reason: "not_taken: RRCS accepted the request and still reports " + fmt.Sprint(holder[f.Name])})
 			}
 			// What RRCS never reports (Mode, the port a stream is linked
 			// to) cannot be read back; it is said, not counted.

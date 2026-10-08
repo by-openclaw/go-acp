@@ -288,6 +288,7 @@ Only what the file names is touched. Without --check this WRITES and needs
 
 	// The ADR-0007 shapes. The failures ride along; the exit code says
 	// whether the run reached its target.
+	cf.logChanges(ctx, "ensure", fs.Arg(0), check, diff, failures)
 	var doc any
 	if check {
 		doc = struct {
