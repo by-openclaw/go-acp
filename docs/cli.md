@@ -1049,6 +1049,8 @@ Usage of get:
     	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
   -auth-pass string
     	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
+  -capture validate
+    	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
     	read community (write community for set) (default "public")
   -context string
@@ -1083,6 +1085,8 @@ Usage of walk:
     	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
   -auth-pass string
     	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
+  -capture validate
+    	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
     	read community (write community for set) (default "public")
   -context string
@@ -1144,6 +1148,8 @@ FLAGS
     	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
   -auth-pass string
     	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
+  -capture validate
+    	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
     	read community (write community for set) (default "public")
   -context string

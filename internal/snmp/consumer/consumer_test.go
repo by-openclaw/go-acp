@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -571,5 +572,33 @@ func TestEachRetryWaitsTwiceAsLong(t *testing.T) {
 	}
 	if elapsed := time.Since(start); elapsed < 340*time.Millisecond {
 		t.Errorf("gave up after %s, want the 350 ms of three doubling waits", elapsed)
+	}
+}
+
+// A session with a tap hands over every datagram it sends and receives —
+// what `--capture` records. One GET to an agent that answers is one
+// datagram out and one in, and both decode as SNMP.
+func TestTheTapSeesEveryDatagramOfAnExchange(t *testing.T) {
+	addr := agentUnder(t, provider.Communities{Read: "public"})
+	var mu sync.Mutex
+	var seen []string
+	s := dial(t, addr, Options{
+		Version: codec.Version2c, Community: "public",
+		Tap: func(dir string, datagram []byte) {
+			if _, err := codec.Decode(datagram); err != nil {
+				t.Errorf("the tap was handed a %s datagram that does not decode: %v", dir, err)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			seen = append(seen, dir)
+		},
+	})
+	if _, err := s.Get(context.Background(), mib.SysDescr); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) != 2 || seen[0] != "tx" || seen[1] != "rx" {
+		t.Errorf("the tap saw %v, want one tx then one rx", seen)
 	}
 }
