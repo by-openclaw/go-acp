@@ -199,8 +199,13 @@ func TestRRCSWatchValues(t *testing.T) {
 	js, err := rrcsStdout(t, func() error {
 		return runRRCS(ctx2, []string{"watch", g.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--output", "json"})
 	})
+	// The first line is the watch's own: its registration. The event follows.
 	var line rrcsChangeLine
-	if err != nil || json.Unmarshal([]byte(strings.TrimSpace(js)), &line) != nil ||
+	lines := strings.Split(strings.TrimSpace(js), "\n")
+	if !strings.Contains(lines[0], `"label":"Registration","value":"registered"`) {
+		t.Errorf("first line: %s", lines[0])
+	}
+	if err != nil || json.Unmarshal([]byte(lines[len(lines)-1]), &line) != nil ||
 		line.Path != "logic.500" || line.Value != "on" || line.OID != 500 || line.Event != "LogicSourceChange" {
 		t.Errorf("%v\n%s", err, js)
 	}
@@ -293,7 +298,7 @@ func TestRRCSWatchLogsToSinks(t *testing.T) {
 	got := ""
 	deadline := time.After(2 * time.Second)
 collect:
-	for !strings.Contains(got, "value_change") {
+	for !strings.Contains(got, "path=net.1.node.61.port.1026") {
 		select {
 		case d := <-datagrams:
 			got += d + "\n"

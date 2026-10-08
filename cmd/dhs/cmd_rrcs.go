@@ -622,6 +622,36 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	}
 	cf.say("rrcs watch: registered at %s — events go to port %d path %s; Ctrl+C to stop",
 		client.Peer(), reg.Port, rrcs.NormalizePath(reg.Path))
+	// own reports a value of the watch itself, the way an event's value
+	// is: logged, judged by the alarm template, printed. The registration
+	// is the one that matters: without it RRCS sends nothing, and nothing
+	// else on the screen says so.
+	own := func(label, value, detail string) {
+		mu.Lock()
+		defer mu.Unlock()
+		now := time.Now().UTC()
+		l := rrcsChangeLine{Time: now.Format("15:04:05.000"), Event: "watch", Path: "gateway", Label: label, Value: value, Detail: detail}
+		cf.logValue(l)
+		if judge != nil {
+			if tr := judge.Eval(client.Peer(), consumer.Event{Path: l.Path + "." + l.Label, Label: l.Label,
+				Value: consumer.Value{Kind: consumer.KindString, Str: l.Value}}); tr != nil {
+				raise(*tr)
+			}
+		}
+		switch {
+		case csvOut != nil:
+			l.Time = now.Format("2006-01-02T15:04:05.000Z")
+			_ = csvOut.Write(l.record(fs.Arg(0)))
+			csvOut.Flush()
+		case jsonOut:
+			l.Time = now.Format("2006-01-02T15:04:05.000Z")
+			b, _ := json.Marshal(l)
+			fmt.Println(string(b))
+		case *events == "values":
+			fmt.Println(l.text())
+		}
+	}
+	own("Registration", "registered", "")
 
 	// Panel spy is a second registration, per panel, on top of the first
 	// (§9.9.1). It is made again after every new registration.
@@ -745,9 +775,11 @@ loop:
 				cf.say("rrcs watch: registration check: %v", err)
 			case !ok:
 				cf.say("rrcs watch: RRCS dropped the registration — registering again")
+				own("Registration", "lost", "RRCS no longer knows this receiver; events since the last check may be missing")
 				if _, err := client.Register(ctx, reg); err != nil {
 					cf.say("rrcs watch: %v", err)
 				} else {
+					own("Registration", "registered", "")
 					registrations++
 					setSpy(ctx, true)
 					setVolume(ctx)
