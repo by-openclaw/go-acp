@@ -1,0 +1,34 @@
+# Riedel RRCS — the keys of a panel, a conference and a level, as desired
+# state (ADR-0007 contract). An example to copy: the values are those of a
+# test bench, the shape is what matters.
+#
+# Dry-run (sends nothing):
+#   ansible-playbook playbooks/rrcs-panel.yml -e rrcs_host=10.0.0.12
+#
+# Apply:
+#   ansible-playbook playbooks/rrcs-panel.yml -e rrcs_host=10.0.0.12 \
+#     -e rrcs_check_only=false -e rrcs_write_to=10.0.0.12
+#
+# The apply runs twice and fails unless the second run changes nothing.
+# The paths are those `dhs consumer rrcs tree` and `list keys` print.
+- name: Riedel RRCS — one panel, its keys, a conference, a level
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ conn | default('local') }}"
+  gather_facts: false
+  vars:
+    panel: net.1.node.61.port.1024
+    other_panel: net.1.node.61.port.1026
+  roles:
+    - role: dhs_rrcs
+      vars:
+        rrcs_conferences:
+          - {name: "Conference 040", label: "CONF 40"}
+        rrcs_keys:
+          # Key 14 of the main panel, first page: talk to the other panel.
+          - {panel: "{{ panel }}", key: "0.1.14", function: call-to-port,
+             target: "{{ other_panel }}", label: OTHER, mode: momentary}
+          # Key 16: nothing on it.
+          - {panel: "{{ panel }}", key: "0.1.16", state: absent}
+        rrcs_levels:
+          # How loud this panel hears the other one.
+          - {source: "{{ other_panel }}", destination: "{{ panel }}", single: "-14.5"}

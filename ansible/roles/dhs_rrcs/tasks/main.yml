@@ -7,13 +7,24 @@
     fail_msg: >-
       dhs_rrcs needs rrcs_host. An apply (rrcs_check_only: false) also needs
       rrcs_write_to set to the same value as rrcs_host: it is the write
-      guard, and writes are unproven on a real RRCS.
+      guard of the verb, kept as a decision of its own per host.
 
 - name: Write the desired state
   ansible.builtin.copy:
     dest: "{{ rrcs_desired_file }}"
     mode: "0600"
-    content: "{{ {'values': rrcs_values, 'crosspoints': rrcs_crosspoints} | to_nice_json }}\n"
+    content: "{{ rrcs_desired | to_nice_json }}\n"
+  vars:
+    # Every section of the file `dhs consumer rrcs ensure --help` describes.
+    rrcs_desired:
+      values: "{{ rrcs_values }}"
+      crosspoints: "{{ rrcs_crosspoints }}"
+      keys: "{{ rrcs_keys }}"
+      conferences: "{{ rrcs_conferences }}"
+      groups: "{{ rrcs_groups }}"
+      ifbs: "{{ rrcs_ifbs }}"
+      levels: "{{ rrcs_levels }}"
+      ports: "{{ rrcs_ports }}"
   # The file is an input of the run, not a change on the gateway.
   changed_when: false
 

@@ -7,10 +7,12 @@
 # second run changes nothing. Ansible's changed status is the verb's own
 # {changed} field.
 #
-# WRITES ARE UNPROVEN ON A REAL RRCS. On 2026-10-06 a configuration edit
-# stopped a production RRCS 9.0 (internal/rrcs/CLAUDE.md). Run this role
-# with rrcs_check_only: true anywhere, and without it only against a test
-# system that has passed internal/rrcs/docs/oracle-test-plan.md.
+# WHAT HAS PASSED ON A REAL RRCS 9.0 (2026-10-08): crosspoint levels, keys
+# (create, label, mode, delete), conferences (create, delete), a stream put
+# in manual mode with its address. WHAT STOPS RRCS: an edit of a stream
+# that is, or becomes, NMOS — the verb refuses it (docs/adr/0035). Groups,
+# IFBs, port labels, aliases, gains and client card settings have not met
+# a real RRCS yet. Run with rrcs_check_only: true first, always.
 
 dhs_bin: /usr/local/bin/dhs
 
@@ -38,6 +40,42 @@ rrcs_values: {}
 
 # Crosspoints: [{source: PATH, destination: PATH, state: present|absent}].
 rrcs_crosspoints: []
+
+# Keys of panels. A key is EXPANSION.PAGE.KEY as `list keys` prints it
+# (0.1.14 = main panel, first page, key 14). function is call-to-port,
+# call-to-conference, call-to-group, call-to-ifb or reply; target is a port
+# path, conference.ID, group.ID or ifb.ID; mode is auto, momentary or
+# latching. state: absent empties the key and returns it to its automatic
+# label.
+#   - {panel: net.1.node.61.port.1024, key: "0.1.14", function: call-to-port,
+#      target: net.1.node.61.port.1026, label: NOC2, mode: momentary}
+#   - {panel: net.1.node.61.port.1024, key: "0.1.15", state: absent}
+rrcs_keys: []
+
+# Conferences, by id or — to create one — by name.
+#   - {name: "Conference 040", label: "CONF 40"}
+#   - {id: 257182184, state: absent}
+rrcs_conferences: []
+
+# Groups, by id or by name; members is the whole wanted list.
+#   - {name: "Group NOC", label: NOC, members: [net.1.node.61.port.1024, net.1.node.61.port.1026]}
+rrcs_groups: []
+
+# IFBs, by number (an IFB cannot be created through RRCS). A leg is a port
+# path, or "" for none. dim_level: 0 = 0 dB ... 6 = -24 dB, 7 = mute.
+#   - {number: 7, label: SPORT, input: net.1.node.61.port.1040, mix_minus: "", dim_level: 4}
+rrcs_ifbs: []
+
+# Crosspoint levels: the level the destination hears the source at, in dB
+# in steps of 0.5 (0 = unity), or mute. The level a panel sets on one of
+# its keys is the crosspoint from that key's port to the panel.
+#   - {source: net.1.node.61.port.1026, destination: net.1.node.61.port.1024, single: "-14.5"}
+rrcs_levels: []
+
+# Label, alias and gains of ports. A gain is dB in steps of 0.5 from -18
+# to 18, or mute.
+#   - {port: net.1.node.61.port.1040, label: CODIP01A, alias: "CODEC 1", input_gain: "0", output_gain: "-3.5"}
+rrcs_ports: []
 
 # Where the desired-state file is written on the managed host.
 rrcs_desired_file: "/tmp/dhs-rrcs-desired-{{ rrcs_host | regex_replace('[^A-Za-z0-9.]', '_') }}.json"

@@ -3,8 +3,8 @@
 # Dry-run, safe anywhere (sends nothing):
 #   ansible-playbook playbooks/rrcs-ensure.yml -e rrcs_host=10.0.0.12 -e @vars/rrcs-site.yml
 #
-# Apply, test system only — writes are unproven on a real RRCS
-# (internal/rrcs/CLAUDE.md, internal/rrcs/docs/oracle-test-plan.md):
+# Apply. What has passed on a real RRCS and what stops it is in the
+# defaults of the role and in docs/adr/0035; dry-run first, always:
 #   ansible-playbook playbooks/rrcs-ensure.yml -e rrcs_host=ORACLE \
 #     -e rrcs_check_only=false -e rrcs_write_to=ORACLE -e @vars/rrcs-site.yml
 #
