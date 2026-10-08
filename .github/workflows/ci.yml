@@ -460,6 +460,11 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.1.6
+          # The action's "config verify" step downloads a JSON schema from
+          # golangci-lint.run on every run. On 2026-10-07 that site did not
+          # answer and the Lint job failed before linting a line. The
+          # config is checked by the linter itself when it loads it.
+          verify: false
 
       # ADR-0005 rule 2. docs/adr/0005-deps.json has named this gate in its
       # own policy block since it was written; the script did not exist, so
