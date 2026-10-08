@@ -1169,7 +1169,7 @@ FLAGS
   -timeout duration
     	per-request timeout (default 2s)
   -type string
-    	value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
+    	value type: i(nteger) s(tring) x (hex octets) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
   -user string
     	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -value string
