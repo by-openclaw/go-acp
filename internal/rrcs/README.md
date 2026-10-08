@@ -64,12 +64,20 @@ IFBs with members, logic sources.
 | `nodes`, `cards` | Nodes; client cards with media networks, NMOS registry, PTP |
 | `ports`, `panels` | All ports; those with keys. Alias and gains appear only with `--from` a walk |
 | `keys` | What each key does and its target |
-| `streams` | AES67 receivers and senders: mode, multicast and port of both legs, source, format |
+| `streams` | AES67 receivers and senders, one row per port and direction: in or out, the number Director shows (-7.41), object ID, mode, channels, channel used (`SEL`), multicast and port of both legs, source, format |
 | `sources`, `dests`, `xp` | The two axes of the crosspoint matrix; the crosspoints active now |
 | `conferences`, `groups`, `ifbs`, `logic` | Those objects, with members or state |
 | `users`, `patches`, `logicdests` | Only with `--from` a walk |
 
-Filters: `--node N`, `--type TEXT`, `--match TEXT`.
+Filters: `--node N`, `--type TEXT`, `--match TEXT`. `--output csv` prints
+any of these tables as CSV, `--output json` as JSON:
+
+```
+.\dhs.exe consumer rrcs list streams HOST --node 63 --output csv > card4.csv
+```
+
+A port that uses a channel above 1 (`SEL`) takes it from the stream of
+another port. RRCS does not report which one: the link is write-only.
 
 ### get — one thing
 
@@ -94,9 +102,14 @@ one object.
 
 Status, every list, the licence, the properties of every object, the key
 assignments of every port, and per port label, alias, gains and key
-configuration. About 3,500 requests on a 500-port system; the same requests
-other control systems send all day. `--skip` leaves out `properties`,
-`commands` or `values`.
+configuration. About 3,500 requests on a 500-port system. `--skip` leaves
+out `properties`, `commands`, `values` or `singles`.
+
+A walk sends nothing RRCS has to refuse. It first learns which ports are on
+line, by a registration of a second that is removed at once (`--online yes`,
+the default; it listens on port 8196, not the port of `watch`), and does
+not ask the others for gain and level; smart panels, which have no gain,
+are not asked either. `--online no` asks every port.
 
 | Collect | Why |
 |---|---|
@@ -181,20 +194,40 @@ received. `--alive show` also prints the keep-alive pings.
 Only port on line, the connect message and the keep-alive have been seen
 from a real RRCS so far; the other lines are decoded from the specification.
 
-## 4. Change — test system only
+## 4. Change
 
-Every command of this part needs `--write-to TESTHOST`.
+Every command of this part that writes needs `--write-to HOST`: the host
+again, as a second look at the target. Each has a dry run; use it first.
 
-### xp — one crosspoint
+What has passed on a real RRCS 9.0 with an Artist-1024 (2026-10-08):
+
+| Change | Result |
+|---|---|
+| Crosspoint level | applied, read back |
+| Key: function, label, mode; emptied | applied, seen on the panel |
+| Conference: created, deleted | applied |
+| Stream put in manual mode with its address | applied |
+| Channel of a port (`Selection`) | applied |
+| Stream that is, or becomes, NMOS | **stops RRCS**; the verbs refuse it (ADR-0035) |
+| Port linked to the stream of another (`Mode`) | accepted, not applied (ADR-0035) |
+
+Groups, IFBs, port labels, aliases, gains and client card settings have
+not met a real RRCS yet.
+
+### xp — one crosspoint, and its level
 
 ```
 .\dhs.exe consumer rrcs xp HOST --src net.1.node.61.port.1026 --dst net.1.node.63.port.1043
-.\dhs.exe consumer rrcs xp TESTHOST --src SRC --dst DST --state on  --write-to TESTHOST --capture auto
-.\dhs.exe consumer rrcs xp TESTHOST --src SRC --dst DST --state off --write-to TESTHOST --capture auto
+.\dhs.exe consumer rrcs xp HOST --src SRC --dst DST --level yes
+.\dhs.exe consumer rrcs xp HOST --src SRC --dst DST --state on  --write-to HOST --capture auto
+.\dhs.exe consumer rrcs set-xp-volume HOST --src SRC --dst DST --single yes --conference no --volume 201 --write-to HOST
 ```
 
-Without `--state` it only reads. With it, it sets or removes the
-crosspoint and reads the state back.
+Without `--state` it only reads. `--level yes` also reads the level: on an
+Artist-1024 RRCS refuses the direct read (`GetXpVolume`), so the level is
+read the way `watch` gets it. The level a panel sets on one of its keys is
+the crosspoint from that key's port **to the panel**. A volume is 0 for
+mute, else `(dB × 2) + 230`: 201 is −14.5 dB.
 
 ### set — properties of a port or a client card
 
@@ -204,8 +237,16 @@ crosspoint and reads the state back.
 ```
 
 As written above it sends nothing: it shows the current values beside the
-wanted ones, and the request. Add `--apply yes --write-to TESTHOST` to send.
-The names are those `get --path` prints.
+wanted ones, and the request. Add `--apply yes --write-to HOST` to send.
+The names are those `get --path` prints. A set costs three requests: the
+object is read, changed, read again.
+
+An edit that gives stream fields to a stream in NMOS mode is refused before
+anything is sent. A link names the main port and the channel, nothing else:
+
+```
+.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.in --prop PortAes67Input.Mode=1072 --prop PortAes67Input.Selection=2
+```
 
 ### import — a whole file
 
@@ -242,14 +283,42 @@ their two ports. Only what the file names is touched.
 }
 ```
 
-`--check` reports `would_change` and the `diff` and sends nothing: safe
-anywhere. An apply reports `changed`; run again, it reports `changed:
-false`. The Ansible role `dhs_rrcs` and `playbooks/rrcs-ensure.yml` wrap
-it: the same content as `rrcs_values` and `rrcs_crosspoints` variables, a
-dry-run by default.
+The file has more sections; each is optional:
 
-Not covered yet: conferences, groups, IFBs, key assignment, creating
-ports. They need their shapes confirmed on a test system first.
+```json
+{
+  "keys": [
+    {"panel": "net.1.node.61.port.1024", "key": "0.1.14", "function": "call-to-port",
+     "target": "net.1.node.61.port.1026", "label": "NOC2", "mode": "momentary"},
+    {"panel": "net.1.node.61.port.1024", "key": "0.1.15", "state": "absent"}
+  ],
+  "conferences": [{"name": "Conference 040", "label": "CONF 40"}],
+  "groups": [{"name": "Group NOC", "label": "NOC", "members": ["net.1.node.61.port.1024"]}],
+  "ifbs": [{"number": 7, "label": "SPORT", "input": "net.1.node.61.port.1040", "mix_minus": ""}],
+  "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}],
+  "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "input_gain": "0", "output_gain": "mute"}]
+}
+```
+
+| Section | Named by | Can do |
+|---|---|---|
+| `keys` | panel and `EXPANSION.PAGE.KEY` (0.1.14), as `list keys` prints | function (call-to-port, call-to-conference, call-to-group, call-to-ifb, reply), target, label, mode (auto, momentary, latching); `"state": "absent"` empties the key |
+| `conferences` | `id`, or `name` to create | label, name; create; delete |
+| `groups` | `id`, or `name` to create | label, name, the whole member list; create; delete |
+| `ifbs` | `number` | label, name, input, output, mix minus (`""` = none), dim level; never created |
+| `levels` | source and destination | single level in dB, or `mute` |
+| `ports` | port path | label, alias, input and output gain in dB, or `mute` |
+
+`--check` reports `would_change` and the `diff`, prints each request it
+would send, and sends nothing: safe anywhere. An apply reports `changed`;
+run again, it reports `changed: false`. The Ansible role `dhs_rrcs` wraps
+it with one variable per section (`rrcs_values`, `rrcs_crosspoints`,
+`rrcs_keys`, `rrcs_conferences`, `rrcs_groups`, `rrcs_ifbs`, `rrcs_levels`,
+`rrcs_ports`), a dry-run by default; `playbooks/rrcs-ensure.yml` and
+`playbooks/rrcs-panel.yml` are the examples.
+
+Not covered yet: creating ports, and the streams of a card (main port and
+linked ports) — see ADR-0035.
 
 ### call — any method of the specification
 
@@ -280,7 +349,11 @@ Every verb that talks to a gateway logs, like the other dhs connectors:
 | `--log-level` | `info` | `debug`, `info`, `warn`, `error` |
 
 `watch` writes one `value_change` record per decoded event (`proto`,
-`event`, `oid`, `path`, `label`, `value`, `unit`, `name`).
+`event`, `oid`, `path`, `label`, `value`, `unit`, `name`). `set` and
+`ensure` write one `config_change` record per value changed (`verb`,
+`target`, `path`, `from`, `to`, and `mode`: `applied` or `dry_run`) and one
+`config_failed` record, at warning level, per value that could not be
+brought to its target, with the `reason`.
 
 ```
 .\dhs.exe consumer rrcs watch HOST --syslog-addr 10.0.0.5:514 --alarm RRCS@9.0.json
@@ -293,6 +366,7 @@ severity, each change of verdict:
 | Condition | Severity | Where the severity comes from |
 |---|---|---|
 | RRCS loses the Artist system | critical | Seen: nothing can be read or controlled in that state |
+| RRCS drops the registration of the watch | major | Seen: RRCS then sends nothing more; every other value is stale until it is registered again |
 | A port goes off line for 30 s | minor | RRCS itself rates "Panels offline" Minor |
 | Node and client card alarms | none yet | Neither the specification nor RRCS rates them; the plant has to |
 
