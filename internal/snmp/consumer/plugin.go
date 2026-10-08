@@ -145,7 +145,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			p.paths = nil
 		}
 		p.mu.Unlock()
-		p.Opened("udp", ip, port, dhsc.MetricsTimes{C: p.Metrics()})
+		// This connector stamps its traffic through RecordRx (every read
+		// below does), so health takes its times from that built-in sink.
+		// It was given the metrics Connector's instead, which nothing here
+		// feeds: `health` reported an agent that had just answered as
+		// "reachable=false, no rx yet" — and a datagram protocol has no
+		// connect to prove the path with, the agent's answer is the proof.
+		p.Opened("udp", ip, port, nil)
+		p.RecordRx()
 		return nil
 	}
 	return fmt.Errorf("snmp: %s answered no version this manager offered (%s): %w",
@@ -714,13 +721,14 @@ func (p *Plugin) firstNamed(ctx context.Context, sess *Session, suffixes ...stri
 }
 
 // MinOpTimeout is how long one exchange may honestly take here. UDP
-// loses datagrams, so a read is one attempt plus DefaultRetries, each
-// bounded by DefaultTimeout; the CLI's 1 s default is shorter than
+// loses datagrams, so a read is one attempt plus DefaultRetries, the
+// first bounded by DefaultTimeout and each retry by twice the wait
+// before it (2 s, 4 s, 8 s); the CLI's 1 s default is shorter than
 // that, and a device that answers in 700 ms then reads as "context
 // deadline exceeded". The floor is the retry budget plus a margin for
 // the walk of round trips a GET of six varbinds makes.
 func (p *Plugin) MinOpTimeout() time.Duration {
-	return time.Duration(DefaultRetries+1)*DefaultTimeout + 4*time.Second
+	return DefaultTimeout*time.Duration((1<<(DefaultRetries+1))-1) + 4*time.Second
 }
 
 // PathNative says the plugin resolves a path itself: the MIB is the
