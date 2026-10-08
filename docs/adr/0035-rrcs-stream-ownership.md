@@ -95,3 +95,14 @@ becomes, NMOS.
   names it as a case of its own ("When linking to a port, no further
   property than 'Selection' is allowed to be set"). The guard of decision 1
   lets it through. No link has passed on a real RRCS when this is written.
+- 2026-10-08 — first link sent to the production RRCS: `portex` edit of
+  input node 63 port 1073 with `PortAes67Input.Mode` 1072 and `Selection` 2.
+  RRCS accepted it and kept running; `Selection` reads back 2; the port is
+  not linked. The value is the documented one: `Mode` is "the Port ID you
+  want to link to, 0..1151" (§8.10.4.6) and a port address on an
+  Artist-1024 AES67 card is 1024 to 1151 on the 2022-7 interface (§6,
+  `{Port}`). How to tell a linked port by reading: on that system every port
+  linked in Director reports `PayloadType` 96 and every port with a stream
+  of its own 97 (7 of 7, 81 of 81); RRCS does not report `Mode`. Open
+  question 4 for the vendor: why the documented link request is accepted
+  and not applied.
