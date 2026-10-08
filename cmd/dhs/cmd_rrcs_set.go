@@ -199,6 +199,20 @@ func (c *rrcsChange) nmosStream(current map[string]any) string {
 		if !edited {
 			continue
 		}
+		// A link is not a stream edit: it names the port whose stream
+		// this one takes a channel of (Mode, §8.10.4.6) and the channel
+		// (Selection), and RRCS allows nothing else beside them ("When
+		// linking to a port, no further property than 'Selection' is
+		// allowed to be set").
+		link := true
+		for _, f := range fields {
+			if f.Name != "Mode" && f.Name != "Selection" {
+				link = false
+			}
+		}
+		if link {
+			continue
+		}
 		protocol := jInt(jMap(current[block]), "Protocol")
 		for _, f := range fields {
 			if f.Name == "Protocol" && f.Value.Kind == codec.KindInt {
@@ -301,6 +315,12 @@ func rrcsSet(ctx context.Context, args []string) error {
 			holder, name := after, f.Name
 			if block != "" {
 				holder, name = jMap(after[block]), block+"."+f.Name
+			}
+			// What RRCS never reports (Mode, the port a stream is linked
+			// to) cannot be read back; it is said, not counted.
+			if _, reported := holder[f.Name]; !reported {
+				fmt.Printf("  %s is not reported by RRCS: it cannot be checked here\n", name)
+				continue
 			}
 			if fmt.Sprint(holder[f.Name]) != fmt.Sprint(rrcsJSON(f.Value)) {
 				differ = append(differ, name)

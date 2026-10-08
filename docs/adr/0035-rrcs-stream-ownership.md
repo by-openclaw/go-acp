@@ -89,3 +89,9 @@ becomes, NMOS.
 
 - 2026-10-08 — first version, from the two production stops and the
   passing edit of the same day.
+- 2026-10-08 — a link is not a stream edit. Linking a port to the stream
+  of another (`Mode` = the main port, `Selection` = the channel, nothing
+  else in the block) carries no address and no protocol, and RRCS itself
+  names it as a case of its own ("When linking to a port, no further
+  property than 'Selection' is allowed to be set"). The guard of decision 1
+  lets it through. No link has passed on a real RRCS when this is written.

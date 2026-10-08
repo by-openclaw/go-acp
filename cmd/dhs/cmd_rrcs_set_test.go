@@ -347,3 +347,29 @@ func TestRRCSNMOSStreamGuard(t *testing.T) {
 		t.Error("a client card edit was taken for a stream edit")
 	}
 }
+
+// A link (Mode and Selection alone) is let through on an NMOS stream;
+// anything beside them is a stream edit again.
+func TestRRCSLinkIsNotAStreamEdit(t *testing.T) {
+	nmos := map[string]any{"PortAes67Input": map[string]any{"Protocol": float64(5)}}
+	c, _ := rrcsChangeFor("net.1.node.63.port.1073.in")
+	_ = c.add("PortAes67Input.Mode", rrcsPropValue("1072"))
+	_ = c.add("PortAes67Input.Selection", rrcsPropValue("2"))
+	if c.nmosStream(nmos) != "" {
+		t.Error("a link was refused")
+	}
+	doc, err := codec.EncodeCall("ConfigurationChange", codec.String("C0000000001"), c.request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"<name>IsInput</name><value><boolean>1</boolean>", "<name>Port</name><value><int>1073</int>",
+		"<name>Mode</name><value><int>1072</int>", "<name>Selection</name><value><int>2</int>"} {
+		if !strings.Contains(string(doc), want) {
+			t.Errorf("request lacks %s:\n%s", want, doc)
+		}
+	}
+	_ = c.add("PortAes67Input.Multicast", rrcsPropValue("239.1.1.1"))
+	if c.nmosStream(nmos) == "" {
+		t.Error("a link with an address was let through")
+	}
+}
