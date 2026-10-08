@@ -7,6 +7,20 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.43.0](https://github.com/by-openclaw/go-acp/compare/v0.42.0...v0.43.0) (2026-10-08)
+
+
+### Features
+
+* **snmp:** set takes hex octets (--type x) ([50af3f2](https://github.com/by-openclaw/go-acp/commit/50af3f24e756612ac28b440d9db2e3f8eb75e118))
+* **snmp:** set takes hex octets (--type x) ([0534306](https://github.com/by-openclaw/go-acp/commit/0534306733852721f4c0758983c99455d454c31c)), closes [#1467](https://github.com/by-openclaw/go-acp/issues/1467)
+
+
+### Bug Fixes
+
+* **probel-sw08p:** bench fails when operations failed ([4cc0f77](https://github.com/by-openclaw/go-acp/commit/4cc0f775ea133985c69dd8d0c3a0e4f8d783f7e1))
+* **probel-sw08p:** bench fails when operations failed ([8e3dcda](https://github.com/by-openclaw/go-acp/commit/8e3dcda8a70e087537839996c3d07ac731c6e7e9)), closes [#1470](https://github.com/by-openclaw/go-acp/issues/1470)
+
 ## [0.42.0](https://github.com/by-openclaw/go-acp/compare/v0.41.2...v0.42.0) (2026-10-08)
 
 
