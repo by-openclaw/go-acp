@@ -83,10 +83,10 @@ func TestTreeShapeMatchesTheRequest(t *testing.T) {
 				t.Errorf("matrix %d %s: %d target names, want one per target", i, lvl, len(names))
 			}
 		}
-		if got := m.TargetLabels["L0"]["0"]; !strings.HasPrefix(got, "TGT_M") {
+		if got := m.TargetLabels["L0"]["0"]; got != "DST00001" {
 			t.Errorf("target name = %q, want the positional label", got)
 		}
-		if got := m.SourceLabels["L0"]["0"]; !strings.HasPrefix(got, "SRC_M") {
+		if got := m.SourceLabels["L0"]["0"]; got != "SRC00001" {
 			t.Errorf("source name = %q, want the positional label", got)
 		}
 	}

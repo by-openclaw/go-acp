@@ -74,11 +74,13 @@
       delay: 2
       until: swp_tally.rc == 0 and 'tallies=64' in swp_tally.stdout
 
-    - name: The matrix serves its source names
+    - name: The matrix serves its source names, each distinct at eight characters
       ansible.builtin.command: "{{ swp_cli }} all-source-names 127.0.0.1:{{ swp_port }} --matrix 0 --level 0"
       register: swp_names
       changed_when: false
-      failed_when: swp_names.rc != 0 or 'count=64' not in swp_names.stdout
+      failed_when: >-
+        swp_names.rc != 0 or 'count=64' not in swp_names.stdout
+        or '"SRC00001"' not in swp_names.stdout or '"SRC00064"' not in swp_names.stdout
 
     - name: Metrics endpoint serves the connector scrape
       ansible.builtin.uri:
