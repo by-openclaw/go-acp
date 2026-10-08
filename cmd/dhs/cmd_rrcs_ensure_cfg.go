@@ -233,13 +233,18 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 					changeType: "create", objectType: wantType, params: params})
 			}
 		}
-		// Label and mode are properties of the key itself (§8.10.4.33).
-		if absent || (k.Label == nil && k.Mode == "") {
+		// Label and mode are properties of the key itself (§8.10.4.33),
+		// and they outlive the function: a key emptied on a real RRCS 9.0
+		// kept the label it had been given. An absent key goes back to
+		// what an untouched key holds: automatic label, momentary.
+		if !absent && k.Label == nil && k.Mode == "" {
 			continue
 		}
 		_, _, _, e, g, n, isKey := rrcsKeyOfPath(pos)
 		if !isKey {
-			bad(pos+".LabelValue", "a virtual function has no label or mode")
+			if !absent {
+				bad(pos+".LabelValue", "a virtual function has no label or mode")
+			}
 			continue
 		}
 		var props map[string]any
@@ -255,13 +260,25 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 		}
 		edit := []codec.Member{}
 		var from, to []string
-		if k.Label != nil && (props == nil || jStr(props, "LabelValue") != *k.Label || jBool(props, "AutoLabelFlag")) {
+		if absent && props != nil {
+			if !jBool(props, "AutoLabelFlag") || jStr(props, "LabelValue") != "" {
+				edit = append(edit,
+					codec.Member{Name: "AutoLabelFlag", Value: codec.Bool(true)},
+					codec.Member{Name: "LabelValue", Value: codec.String("")})
+				from, to = append(from, "label "+jStr(props, "LabelValue")), append(to, "label automatic")
+			}
+			if jInt(props, "KeyMode") != rrcsKeyModes["momentary"]+1 {
+				edit = append(edit, codec.Member{Name: "KeyMode", Value: codec.Int(int32(rrcsKeyModes["momentary"]))})
+				from, to = append(from, "mode "+strconv.Itoa(jInt(props, "KeyMode")-1)), append(to, "mode 1 momentary")
+			}
+		}
+		if k.Label != nil && !absent && (props == nil || jStr(props, "LabelValue") != *k.Label || jBool(props, "AutoLabelFlag")) {
 			edit = append(edit,
 				codec.Member{Name: "AutoLabelFlag", Value: codec.Bool(false)},
 				codec.Member{Name: "LabelValue", Value: codec.String(*k.Label)})
 			from, to = append(from, "label "+jStr(props, "LabelValue")), append(to, "label "+*k.Label)
 		}
-		if k.Mode != "" {
+		if k.Mode != "" && !absent {
 			mode, known := rrcsKeyModes[k.Mode]
 			if !known {
 				bad(pos+".KeyMode", "mode %q: want auto, momentary or latching", k.Mode)
@@ -400,7 +417,7 @@ func rrcsReadForConfig(ctx context.Context, client *rrcs.Client, want *rrcsDesir
 		if n, p, _, ok := rrcsPortOfPath(k.Panel); ok {
 			panels[[2]int{n, p}] = true
 		}
-		labels = labels || k.Label != nil || k.Mode != ""
+		labels = labels || k.Label != nil || k.Mode != "" || k.State == "absent"
 	}
 	snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{
 		commands: len(panels) > 0, values: labels,
