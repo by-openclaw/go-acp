@@ -61,7 +61,8 @@ type Options struct {
 	Version codec.Version
 	// Community is the v1/v2c password. Empty means "public".
 	Community string
-	// Timeout bounds one request. Zero means the default.
+	// Timeout bounds the first attempt of a request; each retry waits
+	// twice as long as the one before. Zero means the default.
 	Timeout time.Duration
 	// Retries is how many times a request is repeated before it is a
 	// timeout. UDP loses datagrams; a manager that did not retry would

@@ -94,13 +94,13 @@ func runCCMWalk(ctx context.Context, args []string) error {
 	timeout := fs.Duration("timeout", 0, "per-request timeout (default 8s)")
 	start := fs.String("start", "", "with --tree: comma-separated node paths to seed the walk (default: discover from the API root)")
 
-	host := ""
-	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
-		host, args = args[0], args[1:]
-	}
+	// The host is the positional argument, on whichever side of the flags
+	// it was written: `walk --tree <host>` used to be refused as "a host
+	// is required".
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	host := fs.Arg(0)
 	if host == "" {
 		return fmt.Errorf("consumer ccm walk: a host is required (e.g. 10.6.255.102)")
 	}

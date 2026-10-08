@@ -36,13 +36,13 @@ func runCCMExport(ctx context.Context, args []string) error {
 	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
 	apiSpec := fs.String("api-spec", "", "the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.")
 
-	host := ""
-	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
-		host, args = args[0], args[1:]
-	}
+	// The host is the positional argument, on whichever side of the flags
+	// it was written: `walk --tree <host>` used to be refused as "a host
+	// is required".
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	host := fs.Arg(0)
 	if host == "" {
 		return fmt.Errorf("consumer ccm export: a host is required")
 	}

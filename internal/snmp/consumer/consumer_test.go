@@ -546,3 +546,30 @@ func TestANilComplianceRecorderIsFine(t *testing.T) {
 		t.Errorf("a session with no profile must still work: %v", err)
 	}
 }
+
+// Each retry waits twice as long as the attempt before it: an agent that
+// did not answer in time is more often busy than gone, and a busy agent is
+// helped by time rather than by the same datagram at the same pace. With a
+// 50 ms timeout and two retries the manager is patient for 50 + 100 + 200
+// ms before it calls the agent silent — an ATEME DR5000 walk died after
+// forty minutes on one table that took longer than three equal waits.
+func TestEachRetryWaitsTwiceAsLong(t *testing.T) {
+	dead, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = dead.Close() })
+
+	s := dial(t, dead.LocalAddr().String(), Options{
+		Version: codec.Version2c, Timeout: 50 * time.Millisecond, Retries: 2,
+	})
+
+	start := time.Now()
+	_, err = s.Get(context.Background(), mib.SysDescr)
+	if !errors.Is(err, ErrTimeout) || !strings.Contains(err.Error(), "3 attempt(s)") {
+		t.Fatalf("= %v, want a timeout after 3 attempts", err)
+	}
+	if elapsed := time.Since(start); elapsed < 340*time.Millisecond {
+		t.Errorf("gave up after %s, want the 350 ms of three doubling waits", elapsed)
+	}
+}
