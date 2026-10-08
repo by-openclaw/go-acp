@@ -7,6 +7,14 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.42.0](https://github.com/by-openclaw/go-acp/compare/v0.41.2...v0.42.0) (2026-10-08)
+
+
+### Features
+
+* **snmp:** --capture records every datagram of a session ([5f16b0d](https://github.com/by-openclaw/go-acp/commit/5f16b0d29a7559a000abfc304310a1a5aca23a34))
+* **snmp:** validate reads a capture back offline ([b087b62](https://github.com/by-openclaw/go-acp/commit/b087b62118469077f3afbbd605ad82c1e1ab8f09)), closes [#1459](https://github.com/by-openclaw/go-acp/issues/1459)
+
 ## [0.41.2](https://github.com/by-openclaw/go-acp/compare/v0.41.1...v0.41.2) (2026-10-08)
 
 
