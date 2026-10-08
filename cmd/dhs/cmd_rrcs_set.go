@@ -142,11 +142,13 @@ func rrcsChangeFor(path string) (*rrcsChange, error) {
 }
 
 // rrcsCurrent reads what the gateway holds now for the object of a path.
-func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string) (map[string]any, error) {
-	// For a port, its label, alias and gains are read too: they come
-	// from requests of their own and may be what is being set.
+func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string, values bool) (map[string]any, error) {
+	// The label, alias and gains of a port come from requests of their
+	// own. They are asked only when one of them is what is being set: on
+	// a port that is off line RRCS answers the gain with a warning in its
+	// log, four lines per set on a real RRCS 9.0.
 	opts := rrcsCollectOpts{}
-	if node, port, _, isPort := rrcsPortOfPath(path); isPort {
+	if node, port, _, isPort := rrcsPortOfPath(path); isPort && values {
 		opts.values = true
 		opts.onlyPort = func(n, p int, _ bool) bool { return n == node && p == port }
 	}
@@ -271,7 +273,9 @@ func rrcsSet(ctx context.Context, args []string) error {
 	}
 	defer closeFn()
 
-	before, err := rrcsCurrent(ctx, client, *path)
+	// Top-level properties are where label, alias and gains live.
+	_, topLevel := change.blocks[""]
+	before, err := rrcsCurrent(ctx, client, *path, topLevel)
 	if err != nil {
 		return err
 	}
@@ -302,7 +306,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 		return fmt.Errorf("rrcs set: %w", err)
 	}
 	cf.say("rrcs set: answer %s", rrcsCompact(reply.Value))
-	after, err := rrcsCurrent(ctx, client, *path)
+	after, err := rrcsCurrent(ctx, client, *path, topLevel)
 	if err != nil {
 		return fmt.Errorf("rrcs set: sent, but the read back failed: %w", err)
 	}
