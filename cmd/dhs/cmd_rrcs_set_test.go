@@ -373,3 +373,40 @@ func TestRRCSLinkIsNotAStreamEdit(t *testing.T) {
 		t.Error("a link with an address was let through")
 	}
 }
+
+// One request reads the object a set is about; the lists are asked only
+// when RRCS does not answer it.
+func TestRRCSCurrentOne(t *testing.T) {
+	var mu sync.Mutex
+	var methods []string
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		methods = append(methods, call.Method)
+		mu.Unlock()
+		k := call.Params[0]
+		if call.Method == "GetPort" {
+			// §8.9: net, node, port, is input, pool port.
+			if len(call.Params) != 6 || call.Params[2].Int != 63 || call.Params[3].Int != 1073 || !call.Params[4].Bool || call.Params[5].Int != -1 {
+				return codec.Array(k, codec.Int(4)), true
+			}
+			return codec.Array(k, codec.Int(0), codec.Struct(
+				rrcsMember("LongName", codec.String("In. -7.50")),
+				rrcsMember("PortAes67Input", codec.Struct(rrcsMember("Protocol", codec.Int(5)), rrcsMember("Selection", codec.Int(2)))))), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	out := rrcsRun(t, "set", f.addr(), "--path", "net.1.node.63.port.1073.in", "--prop", "PortAes67Input.Selection=1")
+	rrcsWant(t, out, "In. -7.50", "PortAes67Input.Selection           2                      wanted 1", "nothing sent")
+	mu.Lock()
+	defer mu.Unlock()
+	for _, m := range methods {
+		if m == "GetAllPorts" {
+			t.Errorf("the lists were read although GetPort answered: %v", methods)
+		}
+	}
+	// The types are those of a snapshot: the guard still reads the protocol.
+	mu.Unlock()
+	guarded := rrcsRun(t, "set", f.addr(), "--path", "net.1.node.63.port.1073.in", "--prop", "PortAes67Input.Multicast=239.1.1.1")
+	mu.Lock()
+	rrcsWant(t, guarded, "PortAes67Input: refused: this edit gives stream fields")
+}
