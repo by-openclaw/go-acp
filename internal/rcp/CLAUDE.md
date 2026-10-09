@@ -15,11 +15,19 @@ difference is listed below and, where the client absorbs it, counted.
 
 ## Scope
 
-Built: the session and RouteMaster sources / destinations.
-Not built: every other area of the API (routes, mnemonics, locks, salvos,
-mixers, cameras, …) and the WebSocket back-channel.
+Built (`dhs consumer rcp …`): the session; RouteMaster sources / destinations
+in the four collections; crosspoints (`routes`, `take`); the router mnemonic
+tables; device discovery and device objects; and `ensure`, which converges
+the RouteMaster on a plan for `ansible/playbooks/rcp-routemaster-provision.yml`.
+
+Not built: the device-class areas (switchers, mixers, graphics, cameras,
+clip players, lighting, multiviewer), locks, salvos, signal paths, `/batch`,
+and the WebSocket back-channel.
 
 Consumer-only: Cerebrum is the server; there is no "serve RCP" role.
+
+The note sent to EVS about 2.5.3 against 2.6.1 is
+[`docs/evs-rcp-2.5.3-vs-2.6.1.md`](docs/evs-rcp-2.5.3-vs-2.6.1.md).
 
 ## Transport
 
@@ -80,7 +88,7 @@ Measured on `10.6.250.5`, 2026-10-09.
 | 1 | header names are case-insensitive (HTTP) | `reqid` must be lower-case; `Reqid` → 400 "reqid missing from message headers" | sends it lower-case |
 | 2 | a single IO answers under `source` / `destination` | answers under `sources` / `destinations` | reads both; counts `rcp_single_io_key` |
 | 3 | `GET /routemaster/levels`, `/levels/{id}` | 404 "Unknown RouteMaster collection" | not offered; level names are read from the IOs |
-| 4 | `tieLineGroup` on a destination create | 400 "Unknown field in the create request body" | sent as asked; set it with an update |
+| 4 | `tieLineGroup` on a destination create | 400 "Unknown field in the create request body" | sent as asked; the field is read-only on this server (see 12) |
 | 5 | `PATCH {"virtual":true}` makes an IO virtual | 202, and the IO is unchanged | none — the caller reads back |
 | 6 | federation create | 202 on a standalone, and nothing is created | `create` fails: no new id appeared |
 | 7 | `POST /heartbeat` has no body | a POST without `Content-Length` gets 411 from HTTP.sys, as HTML | declares length 0; counts `rcp_error_not_enveloped` if it happens |
@@ -88,8 +96,38 @@ Measured on `10.6.250.5`, 2026-10-09.
 | 9 | `typeId` examples are small positive ids | `-1073741824` for the SW-P-08 router | int64 |
 | 10 | `alternateMnemonics` keys are free | a name not configured in Cerebrum → 400, and the whole PATCH is refused | none |
 
+| 11 | ids are stable (the example list is sparse) | **an id is a position**: deleting an IO moves every IO after it down by one; routes follow | IOs are found by mnemonic; the collection is re-read after every delete |
+| 12 | `tieLineGroup` on a destination update | 400 "Unknown field in the update request body" | sent as asked |
+| 13 | mnemonic update body is the row | 400 "Error parsing request"; accepted keyed as `{"src_7":{…}}` | sends it keyed |
+| 14 | route take, mnemonic update, object write answer 202 | 200 | any 2xx |
+| 15 | object read answers 200, `current` a string | 202; a number, boolean or string; an enum as its index with `allowedValues` | `current` kept as sent |
+| 16 | an object path that does not exist | `{"object":{}}`, the same as a group node | reported as "no value here" |
+
+A virtual's source and destination do not share an id (source 9 with
+destination 8 was seen). The routes table reads source 0 on a level a
+destination does not exist on, and a large changing value (4294967284 …
+4294967294) on the fourth level of a virtual: neither is a source.
+
 A `clear` on a level the IO has no entry on leaves an entry carrying the
 level's default device and no `io`.
+
+## Routes, mnemonics, objects
+
+| Call | Purpose |
+|---|---|
+| `GET /devices` | registered devices, their sub-devices (slots) and resources |
+| `GET /devices/{name}/{index}/routers/routes[?DestinationId=N]` | crosspoints: `dest_<id>` → `destLevel_<id>` → source |
+| `PATCH …/routers/routes` | take: `{"dest_6":{"source":{"id":7}}}` (all levels) or per level under `levels` |
+| `GET / PATCH …/routers/{level,source,destination}-mnemonics[/{id}]` | the mnemonic tables |
+| `GET / PUT /devices/{name}/{index}/object/{dotted.path}` | one device object; PUT body `{"value":"…"}`, always a string |
+
+The RouteMaster is device `Cerebrum`, index 0. Its slots 1–4 are sub-devices
+(`00:System` is index 0, `02:Services` is index 2). There is no endpoint to
+list a device's objects: a path has to be known.
+
+Categories are not in RCP; the provisioning play converges them over the
+northbound connector (`cerebrum-nb import --cat-src/--cat-dst`), whose rows
+name IOs by id — so it resolves ids from mnemonics after the ensure.
 
 ## The WebSocket (not built)
 
@@ -101,6 +139,8 @@ there is no login on the socket.
 
 ## What NOT to do
 
+- Never keep an id across a delete: every IO after the deleted one has a
+  new id. Find IOs by mnemonic.
 - Never take a 202 as "done". Read the IO back.
 - Never use the position of an id in a list as an index: the order is a
   display order only.
