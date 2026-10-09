@@ -344,7 +344,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 			// What RRCS never reports (Mode, the port a stream is linked
 			// to) cannot be read back; it is said, not counted.
 			if _, reported := holder[f.Name]; !reported {
-				fmt.Printf("  %s is not reported by RRCS: it cannot be checked here\n", name)
+				fmt.Printf("  note: %s was sent and accepted. RRCS never reports this value back, so it is not an error that it shows as not reported\n", name)
 				continue
 			}
 			if fmt.Sprint(holder[f.Name]) != fmt.Sprint(rrcsJSON(f.Value)) {
