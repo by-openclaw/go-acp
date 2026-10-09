@@ -25,6 +25,7 @@
       ifbs: "{{ rrcs_ifbs }}"
       levels: "{{ rrcs_levels }}"
       ports: "{{ rrcs_ports }}"
+      streams: "{{ rrcs_streams }}"
   # The file is an input of the run, not a change on the gateway.
   changed_when: false
 

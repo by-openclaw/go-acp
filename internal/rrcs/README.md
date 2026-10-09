@@ -317,8 +317,21 @@ it with one variable per section (`rrcs_values`, `rrcs_crosspoints`,
 `rrcs_ports`), a dry-run by default; `playbooks/rrcs-ensure.yml` and
 `playbooks/rrcs-panel.yml` are the examples.
 
-Not covered yet: creating ports, and the streams of a card (main port and
-linked ports) — see ADR-0035.
+The streams of an AES67 card are a section too:
+
+```json
+{"streams": [{"main": "net.1.node.63.port.1072", "block": 8}]}
+```
+
+`"block": 8` links the seven ports after the main one to it, channel 2 to
+8, inputs and outputs (`"linked"` names the ports instead, `"directions":
+["in"]` keeps one side). The request of a link holds the main port (`Mode`)
+and the channel (`Selection`), nothing else. Two limits, both in ADR-0035:
+RRCS does not report a link, so a port counts as done when it uses the
+wanted channel; and the channel count of the main output is not set by the
+tool — it is an edit of a stream in NMOS mode — but reported as missing.
+
+Not covered yet: creating ports.
 
 ### call — any method of the specification
 

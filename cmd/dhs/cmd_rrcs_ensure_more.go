@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -260,4 +261,140 @@ func (c *rrcsFlags) logChanges(ctx context.Context, verb, target string, dryRun 
 		c.sink.Log(ctx, slog.LevelWarn, "config_failed", slog.String("proto", rrcsProto), slog.String("verb", verb),
 			slog.String("target", target), slog.String("mode", mode), slog.String("path", f.Field), slog.String("reason", f.Reason))
 	}
+}
+
+// The streams of an AES67 card: one port carries the stream (the main
+// port), others take a channel of it (linked ports).
+//
+//	"streams": [
+//	  {"main": "net.1.node.63.port.1072", "block": 8},
+//	  {"main": "net.1.node.63.port.1080", "linked": ["net.1.node.63.port.1081", "net.1.node.63.port.1082"]}
+//	]
+//
+// "block": 8 means the seven ports after the main one, in order; "linked"
+// names them instead. The first linked port takes channel 2, the next 3,
+// and so on. Both directions of each port are done unless "directions"
+// says ["in"] or ["out"].
+//
+// What the tool does is the link: Mode (the main port) and Selection (the
+// channel), nothing else in the request (§8.10.4.6). What it does not do
+// is give the main output its channel count: that is an edit of a stream
+// in NMOS mode, which stops RRCS (ADR-0035); it is reported as not done.
+//
+// RRCS never reports Mode. A linked port is taken as done when its
+// Selection is the wanted channel: the tool cannot see more.
+type rrcsDesiredStream struct {
+	Main       string   `json:"main"`
+	Block      int      `json:"block,omitempty"`
+	Linked     []string `json:"linked,omitempty"`
+	Directions []string `json:"directions,omitempty"`
+}
+
+// rrcsEnsureStreams links the ports of each stream to its main port.
+func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, streams []rrcsDesiredStream, check bool) (diff []rrcsDiffEntry, failures []rrcsEnsureFailure) {
+	fail := func(field, reason string) {
+		failures = append(failures, rrcsEnsureFailure{Field: field, Reason: reason})
+	}
+	for _, st := range streams {
+		node, mainPort, _, ok := rrcsPortOfPath(st.Main)
+		if !ok || len(strings.Split(st.Main, ".")) != 6 {
+			fail(st.Main, "main must be a port path without direction: net.N.node.N.port.P")
+			continue
+		}
+		base := strings.TrimSuffix(st.Main, strconv.Itoa(mainPort))
+		linked := st.Linked
+		switch {
+		case st.Block != 0 && len(linked) > 0:
+			fail(st.Main, "give block or linked, not both")
+			continue
+		case st.Block != 0:
+			if st.Block < 2 || st.Block > 16 {
+				fail(st.Main, "block is 2 to 16: a stream carries up to 16 channels")
+				continue
+			}
+			for i := 1; i < st.Block; i++ {
+				linked = append(linked, base+strconv.Itoa(mainPort+i))
+			}
+		case len(linked) == 0:
+			fail(st.Main, "give block or linked")
+			continue
+		}
+		directions := st.Directions
+		if len(directions) == 0 {
+			directions = []string{"in", "out"}
+		}
+		for _, dir := range directions {
+			block, known := map[string]string{"in": "PortAes67Input", "out": "PortAes67Output"}[dir]
+			if !known {
+				fail(st.Main, "directions are in and out")
+				continue
+			}
+			// The main port: its stream must have room for the channels.
+			mainProps, ok := rrcsCurrentOne(ctx, client, st.Main+"."+dir)
+			if !ok {
+				fail(st.Main+"."+dir, "RRCS does not report this port")
+				continue
+			}
+			if have := jInt(jMap(mainProps[block]), "Channels"); dir == "out" && have < len(linked)+1 {
+				fail(st.Main+".out."+block+".Channels", fmt.Sprintf("the main output has %d channel(s), %d wanted: an edit of a stream in NMOS mode, which the tool does not send (ADR-0035) — set it in Director", have, len(linked)+1))
+			}
+			for i, path := range linked {
+				n, p, _, ok := rrcsPortOfPath(path)
+				if !ok || n != node || len(strings.Split(path, ".")) != 6 {
+					fail(path, "a linked port is a port path of the same card as the main port, without direction")
+					continue
+				}
+				channel := i + 2
+				full := path + "." + dir
+				field := full + "." + block + ".Selection"
+				props, ok := rrcsCurrentOne(ctx, client, full)
+				if !ok {
+					fail(field, "RRCS does not report this port")
+					continue
+				}
+				have := jInt(jMap(props[block]), "Selection")
+				if have == channel {
+					continue
+				}
+				from, to := "channel "+strconv.Itoa(have), fmt.Sprintf("linked to port %d, channel %d", mainPort, channel)
+				change, err := rrcsChangeFor(full)
+				if err == nil {
+					err = change.add(block+".Mode", codec.Int(int32(mainPort)))
+				}
+				if err == nil {
+					err = change.add(block+".Selection", codec.Int(int32(channel)))
+				}
+				if err != nil {
+					fail(field, err.Error())
+					continue
+				}
+				_ = p
+				if check {
+					cf.say("rrcs ensure: would send %s %s", rrcsChangeMethod, rrcsCompact(change.request()))
+					diff = append(diff, rrcsDiffEntry{Field: field, From: from, To: to})
+					continue
+				}
+				cf.say("rrcs ensure: %s edit portex %s: %s", rrcsChangeMethod, full, to)
+				if _, err := client.Call(ctx, rrcsChangeMethod, change.request()); err != nil {
+					fail(field, err.Error())
+					// A refusal is an answer; a connection that drops is
+					// not one to repeat on the next port.
+					var coded *codec.CodeError
+					var fault *codec.Fault
+					if !errors.As(err, &coded) && !errors.As(err, &fault) {
+						fail(st.Main, "stopped: RRCS did not answer; the remaining ports were not sent")
+						return diff, failures
+					}
+					continue
+				}
+				after, ok := rrcsCurrentOne(ctx, client, full)
+				if !ok || jInt(jMap(after[block]), "Selection") != channel {
+					fail(field, "not_taken: RRCS accepted the request and the channel did not change")
+					continue
+				}
+				diff = append(diff, rrcsDiffEntry{Field: field, From: from, To: to})
+			}
+		}
+	}
+	return diff, failures
 }

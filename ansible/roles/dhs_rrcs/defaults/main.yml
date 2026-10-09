@@ -87,3 +87,11 @@ rrcs_extra_argv: []
 # Prove idempotency after an apply: run it again and fail unless the
 # second run reports changed=false.
 rrcs_assert_idempotent: true
+
+# Streams of an AES67 card: a main port and the ports linked to it. block: 8
+# links the seven ports after the main one, channel 2 to 8, inputs and
+# outputs; "linked" names them instead; "directions" keeps one side. RRCS
+# does not report a link: a port counts as done when it uses the wanted
+# channel. The channel count of the main output is not set (docs/adr/0035).
+#   - {main: net.1.node.63.port.1072, block: 8}
+rrcs_streams: []

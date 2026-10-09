@@ -4048,9 +4048,14 @@ and it may also hold keys, conferences, groups and crosspoint levels:
   "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}],
   "ifbs": [{"number": 7, "label": "SPORT", "input": "net.1.node.61.port.1040", "mix_minus": "", "dim_level": 4}],
   "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
-             "input_gain": "0", "output_gain": "-3.5"}]
+             "input_gain": "0", "output_gain": "-3.5"}],
+  "streams": [{"main": "net.1.node.63.port.1072", "block": 8}]
 An IFB is named by its number and cannot be created; a leg is a port path or
 "" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
+A stream names its main port; "block": 8 links the seven ports after it,
+channel 2 to 8, inputs and outputs ("linked" names them instead,
+"directions" keeps one side). RRCS does not report a link: a port counts as
+done when it uses the wanted channel.
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
 call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
 momentary or latching. A conference or a group is named by "id" or, to
