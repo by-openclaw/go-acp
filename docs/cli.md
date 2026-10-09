@@ -97,6 +97,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rcp):                 info, list, get, export, create, set, delete
+                               (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113

@@ -317,6 +317,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "cerebrum-nb" {
 		return runCerebrum(ctx, rest)
 	}
+	if proto == "rcp" {
+		return runRCP(ctx, rest)
+	}
 	if proto == "ccm" {
 		handled, remaining, err := runCCM(ctx, rest)
 		if handled {
@@ -592,6 +595,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rcp):                 info, list, get, export, create, set, delete
+                               (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113
