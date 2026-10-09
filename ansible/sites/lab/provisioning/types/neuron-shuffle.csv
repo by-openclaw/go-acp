@@ -9,7 +9,7 @@ ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,ste
 ,ccm,0,,network.services.nmos.enable,0,enable,bool,RW-,true,,,,,,,,,,,,,,,
 ,ccm,0,,network.services.nmos.label,0,label,string,RW-,{nmos_label},,,,,,,,14,,,,,,,
 ,ccm,0,,network.services.nmos.registry.discoveryMode,0,discoveryMode,string,RW-,Manual,,,,,,,None|Manual|mDNS|Unicast,6,,,,,,,
-,ccm,0,,network.services.nmos.registry.addressOverride,0,addressOverride,string,RW-,{registry_host},,,,,,,,12,,,,,,,dhs plant registry
+,ccm,0,,network.services.nmos.registry.addressOverride,0,addressOverride,string,RW-,{registry_host},,,,,,,,12,,,,,,,plant registry (site.csv)
 ,ccm,0,,network.services.nmos.registry.portOverride,0,portOverride,int,RW-,{registry_port},,,1,65535,,,,,,,,,,,
 ,ccm,0,,network.macs.[name=Control Port Mac 1].ipAddrMethod,0,ipAddrMethod,string,RW-,{ip_mode},,,,,,,Manual|DHCP,4,,,,,,RED,
 ,ccm,0,,network.macs.[name=Control Port Mac 1].manualIpV4Config.address,0,address,string,RW-,{red_ip},,,,,,,,11,,,,,,RED,stored while DHCP

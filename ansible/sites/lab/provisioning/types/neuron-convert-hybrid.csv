@@ -9,7 +9,7 @@ ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,ste
 ,ccm,0,,misc.nmos.mode,0,mode,bool,RW-,true,,,,,,,,,,,,,,,
 ,ccm,0,,misc.nmos.label,0,label,string,RW-,{nmos_label},,,,,,,,,,,,,,,
 ,ccm,0,,misc.nmos.registry.discoveryMode,0,discoveryMode,string,RW-,Manual,,,,,,,None|Manual|mDNS|Unicast,6,,,,,,,
-,ccm,0,,misc.nmos.registry.addressOverride,0,addressOverride,string,RW-,{registry_host},,,,,,,,23,,,,,,,dhs plant registry
+,ccm,0,,misc.nmos.registry.addressOverride,0,addressOverride,string,RW-,{registry_host},,,,,,,,23,,,,,,,plant registry (site.csv)
 ,ccm,0,,misc.nmos.registry.portOverride,0,portOverride,int,RW-,{registry_port},,,1,65535,,,,,,,,,,,
 ,ccm,0,,misc.macs.[name=Control Port Mac 1].ipAddrMethod,0,ipAddrMethod,string,RW-,{ip_mode},,,,,,,Manual|DHCP,4,,,,,,RED,
 ,ccm,0,,misc.macs.[name=Control Port Mac 1].ip,0,ip,string,RW-,{red_ip},,,,,,,,9,,,,,,RED,stored while DHCP: the static address of production
