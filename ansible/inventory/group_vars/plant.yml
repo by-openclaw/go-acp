@@ -1,0 +1,14 @@
+---
+# Devices the plant host configures. Roles and plays carry no address and
+# no layout of their own: they read them from here.
+
+# EVS Neuron VIEW (lab-view-01) — REST on the management address.
+neuronview:
+  api: https://10.6.255.104/api/v1
+  validate_certs: false
+  groups: 36
+  group_name: "IP GROUP %d"
+  audio_stream_name: "AUDIO STREAM %d"
+  # IP GROUP n = AUDIO STREAM 2n-1 + AUDIO STREAM 2n, 8 channels each.
+  audio_streams_per_group: 2
+  audio_channels_per_stream: 8
