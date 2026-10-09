@@ -387,3 +387,46 @@ func TestTheReqIDHeaderGoesOutInLowerCase(t *testing.T) {
 	}
 	t.Errorf("headers sent = %v, want a lower-case reqid", keys)
 }
+
+func TestGetObjectTellsAValueATableAndNeitherApart(t *testing.T) {
+	// Answers as Cerebrum 2.5.3 gave them, status 202 included.
+	accepted := func(body string) func(string) (int, string) {
+		return func(reqid string) (int, string) { return 202, `{"reqid":` + reqid + body + `}` }
+	}
+	c, f, _ := newSession(t, map[string]func(string) (int, string){
+		"GET /v2/devices/Cerebrum/0/object/Redundancy_Status.Overall":               accepted(`,"object":{"current":0,"writable":false,"allowedValues":["Error","OK"]}`),
+		"GET /v2/devices/Cerebrum/2/object/SERVERS":                                 accepted(`,"indices":[]`),
+		"GET /v2/devices/Cerebrum/0/object/License":                                 accepted(`,"object":{}`),
+		"GET /v2/devices/Neuron/1/object/PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay": accepted(`,"object":{"current":5,"writable":true}`),
+		"PUT /v2/devices/Neuron/1/object/PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay": ok(``),
+	})
+	ctx := context.Background()
+
+	a, err := c.GetObject(ctx, "Cerebrum", 0, "Redundancy_Status.Overall")
+	if err != nil || a.Value == nil || a.Value.Writable || len(a.Value.AllowedValues) != 2 || a.Value.Current != float64(0) {
+		t.Fatalf("value = %+v, %v", a.Value, err)
+	}
+	a, err = c.GetObject(ctx, "Cerebrum", 2, "SERVERS")
+	if err != nil || !a.IsTable || a.Indices == nil || a.Value != nil {
+		t.Fatalf("table = %+v, %v", a, err)
+	}
+	a, err = c.GetObject(ctx, "Cerebrum", 0, "License")
+	if err != nil || a.Value != nil || a.IsTable {
+		t.Fatalf("group = %+v, %v", a, err)
+	}
+
+	const delay = "PROCESSING AUDIO.AUDIO DELAY.BANK 1.Delay"
+	a, err = c.GetObject(ctx, "Neuron", 1, delay)
+	if err != nil || a.Value == nil || !a.Value.Writable {
+		t.Fatalf("delay = %+v, %v", a, err)
+	}
+	if err := c.SetObject(ctx, "Neuron", 1, delay, "0"); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.last(); got.method != "PUT" || got.body != `{"value":"0"}` {
+		t.Errorf("set request = %+v, want the value as a string", got)
+	}
+	if _, err := c.GetObject(ctx, "", 0, "x"); err == nil {
+		t.Error("an object read without a device was sent")
+	}
+}

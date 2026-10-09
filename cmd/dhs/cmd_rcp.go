@@ -42,6 +42,20 @@ const rcpUsage = `usage: dhs consumer rcp <verb> <host> [flags]
   set                     change one IO             --kind K --id N [body flags]
   delete                  remove one IO             --kind K --id N
 
+  routes                  the crosspoint table      [--dest N] [--json]
+  take                    make a crosspoint         --dest N --src N [--level L]
+  mnemonics               a router mnemonic table   --kind source|destination|level
+  set-mnemonic            change one mnemonic       --kind K --id N [--mnemonic M] [--alt NAME=VALUE]
+  ensure                  converge on a plan        --plan FILE [--check] [--state absent]
+                          [--federation-optional]   last line: changed=N pending=N
+
+  devices                 the devices registered in Cerebrum, with their slots
+  object                  read one device object    --device D --index N --path A.B.C
+  set-object              write one device object   --device D --index N --path A.B.C --value V
+
+  --device D   device for routes/take/mnemonics/object (default Cerebrum: the RouteMaster)
+  --index N    its sub-device (slot) index (default 0)
+
   --kind K     sources | destinations | federation-sources | federation-destinations
   body flags   --mnemonic M  --virtual[=false]  --tie-line-inhibit[=false]
                --tie-line-group N (destinations)  --federation-uid N (local IOs; 0 unlinks)
@@ -132,6 +146,20 @@ func runRCP(ctx context.Context, args []string) error {
 		return runRCPWrite(ctx, verb, rest)
 	case "delete":
 		return runRCPDelete(ctx, rest)
+	case "routes":
+		return runRCPRoutes(ctx, rest)
+	case "take":
+		return runRCPTake(ctx, rest)
+	case "mnemonics":
+		return runRCPMnemonics(ctx, rest)
+	case "set-mnemonic":
+		return runRCPSetMnemonic(ctx, rest)
+	case "ensure":
+		return runRCPEnsure(ctx, rest)
+	case "devices":
+		return runRCPDevices(ctx, rest)
+	case "object", "set-object":
+		return runRCPObject(ctx, verb, rest)
 	}
 	return fmt.Errorf("consumer rcp: unknown verb %q\n%s", verb, rcpUsage)
 }
