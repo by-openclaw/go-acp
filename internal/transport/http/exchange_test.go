@@ -95,3 +95,56 @@ func TestNewTLSClientCarriesThePosture(t *testing.T) {
 		t.Error("an unreadable CA file was accepted")
 	}
 }
+
+type failingBody struct{}
+
+func (failingBody) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+func (failingBody) Close() error             { return nil }
+
+func TestExchangeReportsEveryWayAnExchangeFails(t *testing.T) {
+	ctx := context.Background()
+
+	// A request that cannot be built.
+	if _, _, err := NewClient().Exchange(ctx, "BAD METHOD", "http://peer/x", nil, nil); err == nil {
+		t.Error("an invalid method was accepted")
+	}
+
+	// A token that cannot be obtained: nothing is sent.
+	sent := false
+	c := NewClient()
+	c.HTTP.Transport = roundTripFunc(func(*stdhttp.Request) (*stdhttp.Response, error) {
+		sent = true
+		return nil, io.EOF
+	})
+	c.TokenSource = func(context.Context) (string, error) { return "", io.ErrClosedPipe }
+	if _, _, err := c.Exchange(ctx, stdhttp.MethodGet, "http://peer/x", nil, nil); err == nil || sent {
+		t.Errorf("err = %v, sent = %v — want an error and nothing sent", err, sent)
+	}
+
+	// A peer that does not answer.
+	c.TokenSource = nil
+	if _, _, err := c.Exchange(ctx, stdhttp.MethodGet, "http://peer/x", nil, nil); err == nil {
+		t.Error("a transport failure was not reported")
+	}
+
+	// A body that breaks off: the status is still the peer's.
+	c.HTTP.Transport = roundTripFunc(func(*stdhttp.Request) (*stdhttp.Response, error) {
+		return &stdhttp.Response{StatusCode: 200, Header: stdhttp.Header{}, Body: failingBody{}}, nil
+	})
+	if status, _, err := c.Exchange(ctx, stdhttp.MethodGet, "http://peer/x", nil, nil); err == nil || status != 200 {
+		t.Errorf("status %d err %v — want 200 and a read error", status, err)
+	}
+
+	// No cap configured means the default one, and a body is sent as given.
+	var got string
+	c.MaxBody = 0
+	c.HTTP.Transport = roundTripFunc(func(r *stdhttp.Request) (*stdhttp.Response, error) {
+		b, _ := io.ReadAll(r.Body)
+		got = string(b)
+		return &stdhttp.Response{StatusCode: 202, Header: stdhttp.Header{}, Body: io.NopCloser(strings.NewReader("{}"))}, nil
+	})
+	status, body, err := c.Exchange(ctx, stdhttp.MethodPatch, "http://peer/x", nil, []byte(`{"a":1}`))
+	if err != nil || status != 202 || string(body) != "{}" || got != `{"a":1}` {
+		t.Errorf("status %d body %s sent %s err %v", status, body, got, err)
+	}
+}
