@@ -12,3 +12,33 @@ neuronview:
   # IP GROUP n = AUDIO STREAM 2n-1 + AUDIO STREAM 2n, 8 channels each.
   audio_streams_per_group: 2
   audio_channels_per_stream: 8
+
+# IS-05 connections, by label (playbooks/nmos-connect.yml).
+#
+# FusioN lab-fusion-01: the four channels our hardware has — CH2, CH4,
+# CH6, CH8 — each take the first output of the CONVERT: VTX-01 (video),
+# ATX-01 + ATX-02 (audio), DTX-01 (ANC). The FusioN labels its receivers
+# "<hostname> <Kind>Rx <c><n>0": c is the channel counted from 0 (CH2 is
+# 1), n the stream within the channel (0 video, 1-4 audio, 5 ANC).
+nmos_connections:
+  - receiver_node: http://10.6.40.54
+    receiver_version: v1.2
+    sender_node: http://10.6.255.102:3000
+    sender_version: v1.3
+    pairs:
+      - {receiver: "emsfp-a2-10-0c VidRx 100", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 110", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 120", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 150", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 300", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 310", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 320", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 350", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 500", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 510", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 520", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 550", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 700", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 710", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 720", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 750", sender: "DTX-01"}
