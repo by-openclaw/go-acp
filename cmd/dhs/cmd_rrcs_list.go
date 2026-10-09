@@ -19,6 +19,31 @@ var rrcsListKinds = []string{
 	"users", "patches", "logicdests",
 }
 
+// rrcsListsFor names, per kind of `list`, the requests its table is made
+// of. The ports come with the nodes because a node number that carries
+// ports and is no node (the client cards of an Artist-1024) is only seen
+// there. Conferences, groups and IFBs come alone: their members are then
+// printed as addresses, without the label a port list would give.
+var rrcsListsFor = map[string][]string{
+	"nodes":       {"GetAllNodes", "GetAllPorts"},
+	"cards":       {"GetAllClientCards"},
+	"ports":       {"GetAllPorts"},
+	"panels":      {"GetAllPorts"},
+	"streams":     {"GetAllPorts"},
+	"sources":     {"GetAllPorts"},
+	"dests":       {"GetAllPorts"},
+	"keys":        {"GetAllPorts"},
+	"xp":          {"GetAllActiveXps", "GetAllPorts"},
+	"conferences": {"GetAllConferences"},
+	"groups":      {"GetAllGroups"},
+	"ifbs":        {"GetAllIFBs"},
+	"logic":       {"GetAllLogicSources_v2"},
+	// Only a walk holds these; a live gateway is asked for nothing.
+	"users":      {},
+	"patches":    {},
+	"logicdests": {},
+}
+
 // rrcsSource is where a verb takes the system from: a gateway, or a
 // snapshot `walk` wrote.
 type rrcsSource struct {
@@ -31,13 +56,6 @@ func newRRCSSource(fs *flag.FlagSet) *rrcsSource {
 		cf:   newRRCSFlags(fs),
 		from: fs.String("from", "", "read a snapshot FILE written by walk instead of asking a gateway; no host argument then"),
 	}
-}
-
-// model builds the tree. commands says whether the keys are needed;
-// onlyPort limits them to some ports on a live gateway.
-func (s *rrcsSource) model(ctx context.Context, verb string, hosts []string, commands bool,
-	onlyPort func(node, port int, isInput bool) bool) (*rrcsModel, error) {
-	return s.modelWith(ctx, verb, hosts, rrcsCollectOpts{commands: commands, onlyPort: onlyPort})
 }
 
 // modelWith builds the tree from a snapshot file, or from a collection of
@@ -172,6 +190,7 @@ func rrcsList(ctx context.Context, args []string) error {
 	}
 	src := newRRCSSource(fs)
 	flt := newRRCSFilter(fs)
+	keys := fs.String("keys", "panels", "for list keys: panels (default: the ports that have keys, one request each) | all (every port, to see the virtual functions of the others too: one request per port)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
 		return err
 	}
@@ -182,7 +201,21 @@ func rrcsList(ctx context.Context, args []string) error {
 	if !known {
 		return rrcsValErr("list", "want one of: "+strings.Join(rrcsListKinds, ", "))
 	}
-	m, err := src.model(ctx, "list", fs.Args(), kind == "keys", nil)
+	if *keys != "panels" && *keys != "all" {
+		return rrcsValErr("list", "--keys must be panels or all")
+	}
+	// A table is asked from RRCS with the list it is made of, and nothing
+	// else: one request for the conferences, not the sixteen of the
+	// whole system.
+	opts := rrcsCollectOpts{only: rrcsListsFor[kind]}
+	if kind == "keys" {
+		opts.commands, opts.panelCommands = true, *keys == "panels"
+		if *flt.node != 0 {
+			node := *flt.node
+			opts.onlyPort = func(n, _ int, _ bool) bool { return n == node }
+		}
+	}
+	m, err := src.modelWith(ctx, "list", fs.Args(), opts)
 	if err != nil {
 		return err
 	}
@@ -351,14 +384,17 @@ func rrcsTree(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("rrcs tree", flag.ContinueOnError)
 	src := newRRCSSource(fs)
 	flt := newRRCSFilter(fs)
-	keys := fs.String("keys", "yes", "yes = show what is on the keys of each panel | no = ports only (one request per port less)")
+	keys := fs.String("keys", "panels", "panels (default) = show what is on the keys of each panel: one request per port that has keys | all = also the virtual functions of the other ports: one request per port | no = ports only")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
-	if *keys != "yes" && *keys != "no" {
-		return rrcsValErr("tree", "--keys must be yes or no")
+	if *keys == "yes" { // the name of the first releases
+		*keys = "all"
 	}
-	m, err := src.model(ctx, "tree", fs.Args(), *keys == "yes", nil)
+	if *keys != "panels" && *keys != "all" && *keys != "no" {
+		return rrcsValErr("tree", "--keys must be panels, all or no")
+	}
+	m, err := src.modelWith(ctx, "tree", fs.Args(), rrcsCollectOpts{commands: *keys != "no", panelCommands: *keys == "panels"})
 	if err != nil {
 		return err
 	}
@@ -516,13 +552,43 @@ func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, pro
 	if isPort {
 		only = func(n, p int, _ bool) bool { return n == node && p == port }
 	}
-	m, err := src.model(ctx, "get", hosts, isPort && (strings.Contains(path, ".key.") || strings.Contains(path, ".vfunc.")), only)
-	if err != nil {
-		return err
+	// One thing is asked from RRCS with the request that gives it. A port
+	// or a client card has one of its own (GetPort, GetClientCard); a
+	// conference, a group or an IFB comes with its list; a key needs the
+	// keys of its port.
+	parts := strings.Split(path, ".")
+	onKey := isPort && (strings.Contains(path, ".key.") || strings.Contains(path, ".vfunc."))
+	var props map[string]any
+	found := false
+	if *src.from == "" && len(hosts) == 1 && !onKey && (len(parts) == 6 || len(parts) == 7) && strings.HasPrefix(path, "net.") {
+		client, _, closeFn, err := src.cf.open("get", hosts[0])
+		if err != nil {
+			return err
+		}
+		props, found = rrcsCurrentOne(ctx, client, path)
+		closeFn()
 	}
-	props, ok := m.lookup(path)
-	if !ok {
-		return fmt.Errorf("rrcs get: nothing at %s", path)
+	if !found {
+		opts := rrcsCollectOpts{commands: onKey, onlyPort: only}
+		switch {
+		case onKey:
+			opts.only = []string{"GetAllPorts"}
+		case strings.HasPrefix(path, "conference."):
+			opts.only = []string{"GetAllConferences"}
+		case strings.HasPrefix(path, "group."):
+			opts.only = []string{"GetAllGroups"}
+		case strings.HasPrefix(path, "ifb."):
+			opts.only = []string{"GetAllIFBs"}
+		case strings.HasPrefix(path, "logic."):
+			opts.only = []string{"GetAllLogicSources_v2"}
+		}
+		m, err := src.modelWith(ctx, "get", hosts, opts)
+		if err != nil {
+			return err
+		}
+		if props, found = m.lookup(path); !found {
+			return fmt.Errorf("rrcs get: nothing at %s", path)
+		}
 	}
 	if prop != "" {
 		v, ok := props[prop]

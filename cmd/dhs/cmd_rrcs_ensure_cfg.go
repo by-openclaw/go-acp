@@ -435,8 +435,24 @@ func rrcsReadForConfig(ctx context.Context, client *rrcs.Client, want *rrcsDesir
 		}
 		labels = labels || k.Label != nil || k.Mode != "" || k.State == "absent"
 	}
+	// Only the lists the file's sections are compared with: the ports
+	// for the keys and for the members of a group, and the list of each
+	// kind of object the file names.
+	only := []string{}
+	if len(want.Keys) > 0 || len(want.Groups) > 0 {
+		only = append(only, "GetAllPorts")
+	}
+	if len(want.Conferences) > 0 {
+		only = append(only, "GetAllConferences")
+	}
+	if len(want.Groups) > 0 {
+		only = append(only, "GetAllGroups")
+	}
+	if len(want.IFBs) > 0 {
+		only = append(only, "GetAllIFBs")
+	}
 	snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{
-		commands: len(panels) > 0, values: labels,
+		only: only, commands: len(panels) > 0, values: labels, keyConfigOnly: true,
 		onlyPort: func(n, p int, _ bool) bool { return panels[[2]int{n, p}] },
 	})
 	if err != nil {

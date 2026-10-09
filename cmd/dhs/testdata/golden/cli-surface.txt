@@ -3812,6 +3812,8 @@ Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|des
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -from string
     	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -keys string
+    	for list keys: panels (default: the ports that have keys, one request each) | all (every port, to see the virtual functions of the others too: one request per port) (default "panels")
   -log string
     	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
   -log-format string
@@ -3841,7 +3843,7 @@ Usage of rrcs tree:
   -from string
     	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
   -keys string
-    	yes = show what is on the keys of each panel | no = ports only (one request per port less) (default "yes")
+    	panels (default) = show what is on the keys of each panel: one request per port that has keys | all = also the virtual functions of the other ports: one request per port | no = ports only (default "panels")
   -log string
     	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
   -log-format string

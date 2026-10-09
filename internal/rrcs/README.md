@@ -16,6 +16,32 @@ what it does, the command to copy, what to collect.
   `net.1.node.61.port.1026`, `…port.7.out`, `…port.1026.key.0.1.5`,
   `net.1.node.60.card.1`, `group.665663144`.
 
+## 0. What each verb costs RRCS
+
+Every verb except `watch` opens one connection, sends its requests, reads
+the answers and closes. `watch` keeps one connection and one listening
+port until it is stopped, then removes its registrations.
+
+A verb sends the requests its answer is made of, and no other:
+
+| Verb | Requests |
+|---|---|
+| `info` | 4 |
+| `get --path` of a port or a client card | 1 |
+| `get --path` of a conference, group, IFB | 1 |
+| `list conferences`, `groups`, `ifbs`, `cards`, `logic` | 1 |
+| `list ports`, `panels`, `streams`, `sources`, `dests` | 1 (the port list: one request, a large answer) |
+| `list xp` | 2 |
+| `list keys` | 2, plus 1 per panel (`--keys all`: 1 per port) |
+| `tree` | 16, plus 1 per panel (`--keys no`: 16) |
+| `xp` | 1 (`--level yes`: 6) |
+| `set` | 3: read, change, read back |
+| `ensure`, per value, port or stream link | 1 to 3 |
+| `ensure`, keys of one panel | about 4 to read, 1 per change, 4 to read back |
+| `ensure`, a conference, group or IFB | 1 to read, 1 per change, 1 to read back |
+| `watch`, at start | 16, plus 1 per panel, then 1 every 30 s to check its registration |
+| `walk`, `export` from a live gateway | thousands: the full copy, for once in a while |
+
 ## 1. Look
 
 ### info — is the gateway there

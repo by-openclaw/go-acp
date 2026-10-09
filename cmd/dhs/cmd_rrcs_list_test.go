@@ -143,7 +143,7 @@ func rrcsWant(t *testing.T, out string, wants ...string) {
 
 func TestRRCSTreeLive(t *testing.T) {
 	f := newRRCSFake(t, rrcsTreeAnswer)
-	out := rrcsRun(t, "tree", f.addr())
+	out := rrcsRun(t, "tree", f.addr(), "--keys", "all")
 	rrcsWant(t, out,
 		"Version=9.0.1  State=Working",
 		"net.1.node.60  ARTIST_1024  FRAME A  oid=9  (4 ports)",
@@ -334,5 +334,48 @@ func TestRRCSPortOfPath(t *testing.T) {
 		if _, _, _, ok := rrcsPortOfPath(bad); ok {
 			t.Errorf("%q read as a port path", bad)
 		}
+	}
+}
+
+// A read verb sends the requests its answer is made of, and no other.
+func TestRRCSAtomicReads(t *testing.T) {
+	for name, tc := range map[string]struct {
+		args []string
+		want string
+	}{
+		"list conferences": {[]string{"list", "conferences"}, "GetAllConferences"},
+		"list groups":      {[]string{"list", "groups"}, "GetAllGroups"},
+		"list ifbs":        {[]string{"list", "ifbs"}, "GetAllIFBs"},
+		"list cards":       {[]string{"list", "cards"}, "GetAllClientCards"},
+		"list ports":       {[]string{"list", "ports"}, "GetAllPorts"},
+		"list streams":     {[]string{"list", "streams"}, "GetAllPorts"},
+		"list xp":          {[]string{"list", "xp"}, "GetAllActiveXps,GetAllPorts"},
+		// The panel is the one port with keys: one request for its keys.
+		"list keys":      {[]string{"list", "keys"}, "GetAllPorts,GetAllCaps,GetPortsCommandLists"},
+		"get conference": {[]string{"get", "--path", "conference.300"}, "GetAllConferences"},
+		"tree":           {[]string{"tree"}, "GetVersion,GetState,IsConnectedToArtist,GetConfigurationID,GetAllNodes,GetAllClientCards,GetAllDevices,GetAllPorts,GetAllConferences,GetAllGroups,GetAllIFBs,GetAllLogicSources_v2,GetAllGpIns,GetAllGpOuts,GetAllActiveXps,GetAllCaps,GetPortsCommandLists"},
+	} {
+		f := newRRCSFake(t, rrcsTreeAnswer)
+		args := append(append([]string{}, tc.args[:1]...), tc.args[1:]...)
+		if tc.args[0] == "list" {
+			args = []string{"list", tc.args[1], f.addr()}
+		} else {
+			args = append(args, f.addr())
+		}
+		rrcsRun(t, args...)
+		if got := strings.Join(f.methods(), ","); got != tc.want {
+			t.Errorf("%s sent %s, want %s", name, got, tc.want)
+		}
+	}
+	// One port, one request.
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		if call.Method == "GetPort" {
+			return codec.Array(call.Params[0], codec.Int(0), codec.Struct(rrcsMember("LongName", codec.String("In seven")))), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	rrcsWant(t, rrcsRun(t, "get", f.addr(), "--path", "net.1.node.61.port.7.in"), `LongName                     "In seven"`)
+	if got := strings.Join(f.methods(), ","); got != "GetPort" {
+		t.Errorf("get of a port sent %s", got)
 	}
 }

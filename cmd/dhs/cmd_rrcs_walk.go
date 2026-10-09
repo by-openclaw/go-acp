@@ -164,6 +164,12 @@ type rrcsCollectOpts struct {
 	// panelCommands limits the commands to the ports that have keys: one
 	// request per panel instead of one per port.
 	panelCommands bool
+	// only, when not nil, names the list requests to send: nothing else
+	// of the status and of the lists is asked.
+	only []string
+	// keyConfigOnly, with values, asks the key configuration of a port
+	// and not its label, alias and gains.
+	keyConfigOnly bool
 	// online, when not nil, holds the ports RRCS said are on line (node,
 	// port). A port that is not in it is not asked for what only a port
 	// on line answers: its gains and its level meter. A real RRCS 9.0
@@ -189,15 +195,18 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 		step = func(string, ...any) {}
 	}
 
-	// 1. Status.
-	for _, m := range rrcsInfoMethods {
-		rec, _, _ := w.call(m)
-		snap.Status = append(snap.Status, rec)
+	// 1. Status — unless the caller named the lists it wants: a verb that
+	// prints one table asks for that table, nothing around it.
+	if opts.only == nil {
+		for _, m := range rrcsInfoMethods {
+			rec, _, _ := w.call(m)
+			snap.Status = append(snap.Status, rec)
+		}
+		if snap.Failed == len(rrcsInfoMethods) {
+			return nil, 0, fmt.Errorf("rrcs: no request was answered by %s", client.Peer())
+		}
+		step("status: %d requests", len(snap.Status))
 	}
-	if snap.Failed == len(rrcsInfoMethods) {
-		return nil, 0, fmt.Errorf("rrcs: no request was answered by %s", client.Peer())
-	}
-	step("status: %d requests", len(snap.Status))
 
 	// 2. Lists. The ports and the nodes are kept for the later steps.
 	var ports, nodes, cards, ifbs []codec.Value
@@ -206,6 +215,13 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 	listMethods := append(append([]string{}, rrcsDiscoverMethods...), "GetAllCaps")
 	if opts.full {
 		listMethods = append(append([]string{}, rrcsDiscoverMethods...), rrcsWalkLists...)
+	}
+	if opts.only != nil {
+		listMethods = append([]string{}, opts.only...)
+		// The pool ports are needed to ask a port for its keys.
+		if opts.commands || opts.values {
+			listMethods = append(listMethods, "GetAllCaps")
+		}
 	}
 	trunked := false
 	for _, m := range listMethods {
@@ -246,6 +262,9 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 				}
 			}
 		}
+	}
+	if opts.only != nil && snap.Requests > 0 && snap.Failed == snap.Requests {
+		return nil, 0, fmt.Errorf("rrcs: no request was answered by %s", client.Peer())
 	}
 	step("lists: %d requests, %d ports, %d nodes", len(snap.Lists), len(ports), len(nodes))
 
@@ -356,10 +375,13 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			if opts.onlyPort != nil && !opts.onlyPort(int(node), int(port), isInput) {
 				continue
 			}
-			rec, _, _ := w.call("GetPortLabel", codec.Int(node), codec.Int(port), codec.Bool(isInput))
-			snap.PortValues = append(snap.PortValues, rec)
-			rec, _, _ = w.call("GetPortAlias", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput))
-			snap.PortValues = append(snap.PortValues, rec)
+			var rec rrcsWalkCall
+			if !opts.keyConfigOnly {
+				rec, _, _ = w.call("GetPortLabel", codec.Int(node), codec.Int(port), codec.Bool(isInput))
+				snap.PortValues = append(snap.PortValues, rec)
+				rec, _, _ = w.call("GetPortAlias", codec.Int(net), codec.Int(node), codec.Int(port), codec.Bool(isInput))
+				snap.PortValues = append(snap.PortValues, rec)
+			}
 			// A smart panel has no input or output gain: a real RRCS 9.0
 			// answers "Invalid port address" for every RSP-12xx and
 			// writes a warning in its own log each time (94 per walk on
@@ -367,6 +389,9 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			panel := false
 			if typ, ok := p.Field("PortType"); ok && strings.HasPrefix(typ.Str, "RSP-") {
 				panel = true
+			}
+			if opts.keyConfigOnly {
+				panel = true // no gain is wanted either
 			}
 			offline := opts.online != nil && !opts.online[[2]int{int(node), int(port)}]
 			if rrcsFieldBool(p, "Input") && !panel {
