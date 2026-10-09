@@ -1,0 +1,121 @@
+---
+# Multicast group and port of NMOS senders, over IS-05, for a device that
+# takes them no other way (the Neuron VIEW: no CCM on its firmware).
+# CONVERT and SHUFFLE get theirs from the provisioning CSVs
+# (provision-plan.yml / provision-apply.yml).
+#
+#   nmos_senders:
+#     - node: http://10.6.255.104:3000      Node that owns the senders
+#       node_version: v1.3
+#       connection_version: v1.1
+#       label: "IP Output %d"               sender n, by label
+#       count: 8
+#       legs:                               one entry per leg of the sender
+#         - {ip: "239.20.1.%d", port: 20000, rtp_enabled: true}     RED
+#         - {ip: "239.84.1.%d", port: 20000, rtp_enabled: false}    BLUE
+#
+# Sender n takes the nth address of each leg. master_enable is left as the
+# device has it: this play addresses senders, it does not start them.
+# A sender that already holds its addresses is not written: run twice,
+# the second run changes nothing.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/nmos-senders.yml
+
+- name: nmos — multicast group and port of senders
+  hosts: plant
+  gather_facts: false
+  tasks:
+    - name: The senders are given by the inventory
+      ansible.builtin.assert:
+        that: nmos_senders is defined and nmos_senders | length > 0
+        fail_msg: set `nmos_senders` in the inventory
+        quiet: true
+
+    - name: Senders of each Node
+      ansible.builtin.uri:
+        url: "{{ item.node }}/x-nmos/node/{{ item.node_version }}/senders"
+        return_content: true
+      loop: "{{ nmos_senders }}"
+      loop_control:
+        label: "{{ item.node }}"
+      register: nms_list
+
+    - name: Every sender, with its id and the addresses it must hold
+      ansible.builtin.set_fact:
+        nms_wanted: >-
+          {%- set out = [] -%}
+          {%- for d in nmos_senders -%}
+          {%- set have = nms_list.results[loop.index0].json -%}
+          {%- for n in range(1, (d.count | int) + 1) -%}
+          {%- set s = have | selectattr('label', 'equalto', d.label | format(n)) | list -%}
+          {%- set legs = [] -%}
+          {%- for l in d.legs -%}
+          {%- set _ = legs.append({'destination_ip': l.ip | format(n), 'destination_port': l.port | int, 'rtp_enabled': l.rtp_enabled | bool}) -%}
+          {%- endfor -%}
+          {%- set _ = out.append({'label': d.label | format(n), 'id': (s[0].id if s | length == 1 else ''),
+                'url': d.node ~ '/x-nmos/connection/' ~ d.connection_version ~ '/single/senders/', 'legs': legs}) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ out }}
+
+    - name: Every label names exactly one sender
+      ansible.builtin.assert:
+        that: nms_wanted | selectattr('id', 'equalto', '') | list | length == 0
+        fail_msg: "not found or not unique: {{ nms_wanted | selectattr('id', 'equalto', '') | map(attribute='label') | list }}"
+        quiet: true
+
+    - name: What each sender holds
+      ansible.builtin.uri:
+        url: "{{ item.url }}{{ item.id }}/active"
+        return_content: true
+      loop: "{{ nms_wanted }}"
+      loop_control:
+        label: "{{ item.label }}"
+      register: nms_active
+
+    - name: Address the senders
+      ansible.builtin.uri:
+        url: "{{ item.0.url }}{{ item.0.id }}/staged"
+        method: PATCH
+        body_format: json
+        body:
+          transport_params: "{{ item.0.legs }}"
+          activation: {mode: activate_immediate}
+        status_code: [200, 202]
+      loop: "{{ nms_wanted | zip(nms_active.results) | list }}"
+      loop_control:
+        label: "{{ item.0.label }} -> {{ item.0.legs | map(attribute='destination_ip') | join(' / ') }}"
+      when: >-
+        (item.1.json.transport_params | map(attribute='destination_ip') | list) != (item.0.legs | map(attribute='destination_ip') | list)
+        or (item.1.json.transport_params | map(attribute='destination_port') | list) != (item.0.legs | map(attribute='destination_port') | list)
+        or (item.1.json.transport_params | map(attribute='rtp_enabled') | list) != (item.0.legs | map(attribute='rtp_enabled') | list)
+      changed_when: true
+      register: nms_set
+
+    - name: What each sender holds now
+      ansible.builtin.uri:
+        url: "{{ item.url }}{{ item.id }}/active"
+        return_content: true
+      loop: "{{ nms_wanted }}"
+      loop_control:
+        label: "{{ item.label }}"
+      register: nms_after
+
+    - name: Every sender holds its addresses
+      ansible.builtin.assert:
+        that: nms_wrong | length == 0
+        fail_msg: "not addressed as asked: {{ nms_wrong }}"
+        success_msg: >-
+          {{ nms_wanted | length }} sender(s) addressed as asked —
+          {{ nms_set.results | selectattr('changed', 'defined') | selectattr('changed') | list | length }} written in this run
+      vars:
+        nms_wrong: >-
+          {%- set out = [] -%}
+          {%- for w in nms_wanted -%}
+          {%- set a = nms_after.results[loop.index0].json.transport_params -%}
+          {%- if (a | map(attribute='destination_ip') | list) != (w.legs | map(attribute='destination_ip') | list)
+                or (a | map(attribute='destination_port') | list) != (w.legs | map(attribute='destination_port') | list) -%}
+          {%- set _ = out.append(w.label) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ out }}

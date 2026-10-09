@@ -13,6 +13,21 @@ neuronview:
   audio_streams_per_group: 2
   audio_channels_per_stream: 8
 
+# Sender addresses set over IS-05 (playbooks/nmos-senders.yml) — only for
+# a device the provisioning CSVs cannot reach. The Neuron VIEW holds video
+# block 1 of the plan (sites/lab/provisioning/devices.csv): 239.20.1.n,
+# BLUE = RED + 64. It has no BLUE link today, so that leg is addressed and
+# left off.
+nmos_senders:
+  - node: http://10.6.255.104:3000
+    node_version: v1.3
+    connection_version: v1.1
+    label: "IP Output %d"
+    count: 8
+    legs:
+      - {ip: "239.20.1.%d", port: 20000, rtp_enabled: true}
+      - {ip: "239.84.1.%d", port: 20000, rtp_enabled: false}
+
 # IS-05 connections, by label (playbooks/nmos-connect.yml).
 #
 # FusioN lab-fusion-01: the four channels our hardware has — CH2, CH4,
