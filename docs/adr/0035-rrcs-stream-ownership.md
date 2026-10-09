@@ -106,3 +106,8 @@ becomes, NMOS.
   of its own 97 (7 of 7, 81 of 81); RRCS does not report `Mode`. Open
   question 4 for the vendor: why the documented link request is accepted
   and not applied.
+- 2026-10-09 — from the engineer of the plant: Director shows a change made
+  through RRCS only when its notification of changes is enabled, and it was
+  not during the tests of 2026-10-08. So what Director showed for the linked
+  port ("Port -7.50") proves nothing either way. The link test is to be run
+  again with that option on.
