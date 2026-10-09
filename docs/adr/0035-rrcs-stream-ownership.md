@@ -111,3 +111,9 @@ becomes, NMOS.
   not during the tests of 2026-10-08. So what Director showed for the linked
   port ("Port -7.50") proves nothing either way. The link test is to be run
   again with that option on.
+- 2026-10-09 — the link works. With the change notification of Director on,
+  `portex` edit of input node 63 port 1081 (In. -7.58) with
+  `PortAes67Input.Mode` 1080 and `Selection` 2 was accepted and the plant
+  confirmed the port linked to -7.57 on channel 2. Open question 4 is
+  closed: the documented request is right, and `Mode` is the address of the
+  main port. Not yet tried: the same on an output, and a whole block.
