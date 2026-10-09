@@ -134,7 +134,7 @@
              + (['--federation-optional'] if rcp_federation_optional | bool else []) }}
       environment: "{{ rcp_env }}"
       register: rcp_ensure
-      changed_when: (rcp_ensure.stdout_lines | last | regex_search('changed=(\d+)', '\1') | first | int) > 0
+      changed_when: "'changed=0 ' not in (rcp_ensure.stdout_lines | last)"
 
     - name: What the ensure did
       ansible.builtin.debug:
