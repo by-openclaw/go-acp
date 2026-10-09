@@ -427,3 +427,22 @@ func TestRRCSEnsureStreams(t *testing.T) {
 		}
 	}
 }
+
+// A call over a trunk is named by the far net and port, to place it and
+// to remove it.
+func TestRRCSCommandParamsTrunk(t *testing.T) {
+	params, err := rrcsCommandParams("call-to-port-cmd", "net.1.node.61.port.1026.key.0.1.9", "trunk.2.109")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := codec.Struct(params...)
+	if rrcsMemberInt(v, "TrunkingNetAddr") != 2 || rrcsMemberInt(v, "TrunkingPortAddr") != 109 {
+		t.Errorf("trunk call: %s", rrcsCompact(v))
+	}
+	if _, has := v.Field("DestinationPortAddress"); has {
+		t.Errorf("a trunk call carries no local destination: %s", rrcsCompact(v))
+	}
+	if _, err := rrcsCommandParams("call-to-port-cmd", "net.1.node.61.port.1026.key.0.1.9", "trunk.x"); err == nil {
+		t.Error("bad trunk target accepted")
+	}
+}

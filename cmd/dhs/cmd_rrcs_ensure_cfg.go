@@ -148,6 +148,20 @@ func rrcsCommandParams(objectType, position, target string) ([]codec.Member, err
 	}
 	switch objectType {
 	case "call-to-port-cmd":
+		// A call over a trunk names the far net and its port instead of
+		// a port of this system (§8.10.4.12); the model prints it as
+		// trunk.NET.PORT.
+		if rest, isTrunk := strings.CutPrefix(target, "trunk."); isTrunk {
+			netText, portText, _ := strings.Cut(rest, ".")
+			farNet, err1 := strconv.Atoi(netText)
+			farPort, err2 := strconv.Atoi(portText)
+			if err1 != nil || err2 != nil {
+				return nil, fmt.Errorf("target %q: want trunk.NET.PORT", target)
+			}
+			return []codec.Member{at,
+				{Name: "TrunkingNetAddr", Value: codec.Int(int32(farNet))},
+				{Name: "TrunkingPortAddr", Value: codec.Int(int32(farPort))}}, nil
+		}
 		node, port, _, ok := rrcsPortOfPath(target)
 		if !ok {
 			return nil, fmt.Errorf("target %q: want a port path", target)
