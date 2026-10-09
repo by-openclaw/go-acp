@@ -165,6 +165,12 @@ RRCS sends the events to this machine on port 8195 (`--listen`). Stop with
 | Function key, rotary, numeric key (`--spy`) | One line per member |
 | Anything not known yet | `event <Method> = <parameters>` |
 
+When RRCS says the configuration changed, it does not say what. `watch`
+then reads the system again and prints what differs — a key, a conference,
+a group, an IFB, a port, a client card — one line per value, with what it
+was (`--changes yes`, the default; one request per panel at start and at
+each change). `--changes no` prints only `gateway Configuration = changed`.
+
 Crosspoint levels are followed by default (`--volume yes`): each crosspoint
 that is made while watching is registered in both directions, because the
 level a panel sets on a key is how loud it hears that key's port, which is

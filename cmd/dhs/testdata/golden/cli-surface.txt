@@ -3716,6 +3716,8 @@ Usage of rrcs watch:
     	GetAlive pings: count (summary only) | show (one line each) (default "count")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -changes string
+    	what to do when RRCS says the configuration changed (it never says what): yes (default: read the system again and print what differs — a key, a conference, a group, an IFB, a port, a client card; costs one request per panel at start and at each change) | no (print only that it changed) (default "yes")
   -check duration
     	ask RRCS this often whether we are still registered, and register again if not; 0 = never (default 30s)
   -events string

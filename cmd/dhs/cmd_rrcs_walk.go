@@ -161,6 +161,9 @@ type rrcsCollectOpts struct {
 	singles bool
 	// onlyPort, when set, limits the commands to the ports it accepts.
 	onlyPort func(node, port int, isInput bool) bool
+	// panelCommands limits the commands to the ports that have keys: one
+	// request per panel instead of one per port.
+	panelCommands bool
 	// online, when not nil, holds the ports RRCS said are on line (node,
 	// port). A port that is not in it is not asked for what only a port
 	// on line answers: its gains and its level meter. A real RRCS 9.0
@@ -313,6 +316,9 @@ func rrcsCollect(ctx context.Context, client *rrcs.Client, opts rrcsCollectOpts)
 			port, _ := rrcsFieldInt(p, "Port")
 			isInput := !rrcsFieldBool(p, "Output")
 			if opts.onlyPort != nil && !opts.onlyPort(int(node), int(port), isInput) {
+				continue
+			}
+			if keys, _ := rrcsFieldInt(p, "KeyCount"); opts.panelCommands && keys == 0 {
 				continue
 			}
 			// A real RRCS 9.0 answers "does not exist" to pool port 0

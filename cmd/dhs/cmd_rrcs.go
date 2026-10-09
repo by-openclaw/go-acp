@@ -412,6 +412,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
 	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
+	changes := fs.String("changes", "yes", "what to do when RRCS says the configuration changed (it never says what): yes (default: read the system again and print what differs — a key, a conference, a group, an IFB, a port, a client card; costs one request per panel at start and at each change) | no (print only that it changed)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
@@ -438,6 +439,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	}
 	if cf.output == "csv" && *events != "values" {
 		return rrcsValErr("watch", "--output csv needs --events values")
+	}
+	if *changes != "yes" && *changes != "no" {
+		return rrcsValErr("watch", "--changes must be yes or no")
 	}
 	if *alive != "count" && *alive != "show" {
 		return rrcsValErr("watch", "--alive must be count or show")
@@ -482,16 +486,26 @@ func rrcsWatch(ctx context.Context, args []string) error {
 
 	// The names behind the numbers of the events: read once, before the
 	// registration, so no event meets a half-built tree.
+	//
+	// With --changes yes the keys of the panels are read too: they are
+	// what the reading after a configuration change is compared with.
 	var model *rrcsModel
-	if *events == "values" {
-		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{commands: spyAll || len(spyPanels) > 0})
-		if err == nil {
-			model, err = rrcsModelOf(snap)
-		}
+	readModel := func() (*rrcsModel, error) {
+		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{
+			commands: spyAll || len(spyPanels) > 0 || *changes == "yes", panelCommands: true})
 		if err != nil {
+			return nil, err
+		}
+		return rrcsModelOf(snap)
+	}
+	if *events == "values" {
+		var err error
+		if model, err = readModel(); err != nil {
 			cf.say("rrcs watch: the system could not be read, events are printed with numbers only: %v", err)
 		}
 	}
+	// changed says that RRCS announced a configuration change.
+	changed := make(chan struct{}, 1)
 
 	var mu sync.Mutex // one line at a time on stdout; also guards online
 	// online is what the port notifications say: RRCS opens a registration
@@ -540,6 +554,12 @@ func rrcsWatch(ctx context.Context, args []string) error {
 						default: // the loop is behind; the next change of this crosspoint asks again
 						}
 					}
+				}
+			}
+			if e.Method == "ConfigurationChange" && *changes == "yes" {
+				select {
+				case changed <- struct{}{}:
+				default: // a reading is already due
 				}
 			}
 			if (e.Method == "PortActive" || e.Method == "PortInactive") && len(params) >= 3 {
@@ -626,11 +646,12 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	// is: logged, judged by the alarm template, printed. The registration
 	// is the one that matters: without it RRCS sends nothing, and nothing
 	// else on the screen says so.
-	own := func(label, value, detail string) {
+	// emit reports one line that does not come from a notification.
+	emit := func(l rrcsChangeLine) {
 		mu.Lock()
 		defer mu.Unlock()
 		now := time.Now().UTC()
-		l := rrcsChangeLine{Time: now.Format("15:04:05.000"), Event: "watch", Path: "gateway", Label: label, Value: value, Detail: detail}
+		l.Time = now.Format("15:04:05.000")
 		cf.logValue(l)
 		if judge != nil {
 			if tr := judge.Eval(client.Peer(), consumer.Event{Path: l.Path + "." + l.Label, Label: l.Label,
@@ -650,6 +671,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		case *events == "values":
 			fmt.Println(l.text())
 		}
+	}
+	own := func(label, value, detail string) {
+		emit(rrcsChangeLine{Event: "watch", Path: "gateway", Label: label, Value: value, Detail: detail})
 	}
 	own("Registration", "registered", "")
 
@@ -741,6 +765,39 @@ loop:
 		select {
 		case <-ctx.Done():
 			break loop
+		case <-changed:
+			// RRCS sends one notification per change: a moment is left
+			// for a burst to end, then the system is read once.
+			select {
+			case <-ctx.Done():
+				break loop
+			case <-time.After(500 * time.Millisecond):
+			}
+			select {
+			case <-changed:
+			default:
+			}
+			mu.Lock()
+			old := model
+			mu.Unlock()
+			if old == nil {
+				continue
+			}
+			fresh, err := readModel()
+			if err != nil {
+				cf.say("rrcs watch: the configuration changed and could not be read again: %v", err)
+				continue
+			}
+			lines := rrcsModelDiff(old, fresh)
+			mu.Lock()
+			model = fresh
+			mu.Unlock()
+			for _, l := range lines {
+				emit(l)
+			}
+			if len(lines) == 0 {
+				cf.say("rrcs watch: the configuration changed; nothing differs in keys, conferences, groups, IFBs, ports or client cards")
+			}
 		case x := <-follow:
 			// Both directions, one request each so that a refusal of one
 			// does not cost the other: the level a panel sets for a key
