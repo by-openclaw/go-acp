@@ -11,11 +11,13 @@
 #       label: "IP Output %d"               sender n, by label
 #       count: 8
 #       legs:                               one entry per leg of the sender
-#         - {ip: "239.20.1.%d", port: 20000, rtp_enabled: true}     RED
-#         - {ip: "239.84.1.%d", port: 20000, rtp_enabled: false}    BLUE
+#         - {ip: "239.20.1.%d", port: 20000}     RED
+#         - {ip: "239.84.1.%d", port: 20000}     BLUE
 #
-# Sender n takes the nth address of each leg. master_enable is left as the
-# device has it: this play addresses senders, it does not start them.
+# Sender n takes the nth address of each leg. master_enable and the
+# rtp_enabled of each leg are left as the device has them: this play
+# addresses senders, it does not start them. (The Neuron VIEW sets
+# rtp_enabled on both legs from master_enable and ignores a per-leg value.)
 # A sender that already holds its addresses is not written: run twice,
 # the second run changes nothing.
 #
@@ -50,7 +52,7 @@
           {%- set s = have | selectattr('label', 'equalto', d.label | format(n)) | list -%}
           {%- set legs = [] -%}
           {%- for l in d.legs -%}
-          {%- set _ = legs.append({'destination_ip': l.ip | format(n), 'destination_port': l.port | int, 'rtp_enabled': l.rtp_enabled | bool}) -%}
+          {%- set _ = legs.append({'destination_ip': l.ip | format(n), 'destination_port': l.port | int}) -%}
           {%- endfor -%}
           {%- set _ = out.append({'label': d.label | format(n), 'id': (s[0].id if s | length == 1 else ''),
                 'url': d.node ~ '/x-nmos/connection/' ~ d.connection_version ~ '/single/senders/', 'legs': legs}) -%}
@@ -88,7 +90,6 @@
       when: >-
         (item.1.json.transport_params | map(attribute='destination_ip') | list) != (item.0.legs | map(attribute='destination_ip') | list)
         or (item.1.json.transport_params | map(attribute='destination_port') | list) != (item.0.legs | map(attribute='destination_port') | list)
-        or (item.1.json.transport_params | map(attribute='rtp_enabled') | list) != (item.0.legs | map(attribute='rtp_enabled') | list)
       changed_when: true
       register: nms_set
 
