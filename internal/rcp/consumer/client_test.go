@@ -12,6 +12,7 @@ import (
 
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/rcp/codec"
+	transporthttp "dhs/internal/transport/http"
 )
 
 // call is one request the fake server received.
@@ -375,7 +376,7 @@ func TestTheReqIDHeaderGoesOutInLowerCase(t *testing.T) {
 		return &http.Response{StatusCode: 200, Header: http.Header{},
 			Body: io.NopCloser(strings.NewReader(`{"reqid":1,"api":{"majorVersion":2,"minorVersion":5}}`))}, nil
 	})}
-	c := New(Options{Host: "cerebrum", HTTP: hc})
+	c := New(Options{Host: "cerebrum", HTTP: &transporthttp.Client{HTTP: hc}})
 	if _, err := c.API(context.Background()); err != nil {
 		t.Fatal(err)
 	}

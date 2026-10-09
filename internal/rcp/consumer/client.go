@@ -9,13 +9,10 @@
 package consumer
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -25,6 +22,8 @@ import (
 
 	"dhs/internal/consumer/compliance"
 	"dhs/internal/rcp/codec"
+	"dhs/internal/transport"
+	transporthttp "dhs/internal/transport/http"
 )
 
 // DefaultPort is the HTTP port of the API document's development server.
@@ -71,7 +70,7 @@ type Options struct {
 	Timeout time.Duration
 	// HTTP, when set, is the client used instead of one built from the
 	// options above — a test substitutes its own.
-	HTTP *http.Client
+	HTTP *transporthttp.Client
 	// Profile counts the deviations absorbed. Nil is allowed.
 	Profile *compliance.Profile
 }
@@ -79,7 +78,7 @@ type Options struct {
 // Client is one RCP session.
 type Client struct {
 	base    string
-	http    *http.Client
+	http    *transporthttp.Client
 	profile *compliance.Profile
 	reqid   atomic.Int64
 	token   string
@@ -102,12 +101,18 @@ func New(o Options) *Client {
 		if timeout <= 0 {
 			timeout = DefaultTimeout
 		}
-		hc = &http.Client{
-			Timeout: timeout,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: !o.VerifyTLS, MinVersion: tls.VersionTLS12}, //nolint:gosec // lab self-signed by default, --verify-tls turns it on
-			},
+		// Posture only: the transport layer builds the client. Skip-verify
+		// is the default because the lab servers are self-signed; VerifyTLS
+		// opts back in.
+		var err error
+		hc, err = transporthttp.NewTLSClient(transport.TLSOptions{Enable: o.TLS, Insecure: !o.VerifyTLS}, timeout)
+		if err != nil {
+			// Unreachable: no CA or client-certificate file is configured,
+			// and those are the only ways building a posture fails.
+			hc = transporthttp.NewClient()
 		}
+		hc.MaxBody = MaxBody
+		hc.Proto = "rcp"
 	}
 	return &Client{base: scheme + host + "/v2", http: hc, profile: o.Profile}
 }
@@ -128,51 +133,35 @@ func (c *Client) do(ctx context.Context, method, path string, body any, auth boo
 	if auth && c.token == "" {
 		return nil, ErrNotLoggedIn
 	}
-	// A request without a body still declares its length: the HTTP stack
-	// in front of Cerebrum answers 411 to a POST that does not.
-	var rd io.Reader = http.NoBody
+	var raw []byte
 	if body != nil {
-		raw, err := json.Marshal(body)
-		if err != nil {
+		var err error
+		if raw, err = json.Marshal(body); err != nil {
 			return nil, fmt.Errorf("rcp: marshal %s %s: %w", method, path, err)
 		}
-		rd = bytes.NewReader(raw)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, c.base+path, rd)
-	if err != nil {
-		return nil, fmt.Errorf("rcp: build %s %s: %w", method, path, err)
 	}
 	id := c.reqid.Add(1)
-	// Written straight into the map, in lower case: Cerebrum 2.5.3 matches
-	// the header name case-sensitively and answers "reqid missing from
-	// message headers" to the canonical "Reqid" that Header.Set sends.
-	req.Header["reqid"] = []string{strconv.FormatInt(id, 10)}
-	req.Header.Set("Accept", "application/json")
+	// The header name is written in lower case, as given: Cerebrum 2.5.3
+	// matches it case-sensitively and answers "reqid missing from message
+	// headers" to the canonical "Reqid".
+	headers := map[string]string{"reqid": strconv.FormatInt(id, 10), "Accept": "application/json"}
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		headers["Content-Type"] = "application/json"
 	}
 	if auth {
-		req.Header.Set("Authorization", "Bearer "+c.token)
+		headers["Authorization"] = "Bearer " + c.token
 	}
 
-	resp, err := c.http.Do(req)
+	status, answer, err := c.http.Exchange(ctx, method, c.base+path, headers, raw)
 	if err != nil {
 		return nil, fmt.Errorf("rcp: %s %s: %w", method, path, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxBody+1))
-	if err != nil {
-		return nil, fmt.Errorf("rcp: read %s %s: %w", method, path, err)
-	}
-	if len(raw) > MaxBody {
-		return nil, fmt.Errorf("rcp: %s %s: answer exceeds %d bytes", method, path, MaxBody)
-	}
 
 	var env map[string]json.RawMessage
-	enveloped := json.Unmarshal(raw, &env) == nil
+	enveloped := json.Unmarshal(answer, &env) == nil
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		re := &RequestError{Method: method, Path: path, Status: resp.StatusCode}
+	if status < 200 || status > 299 {
+		re := &RequestError{Method: method, Path: path, Status: status}
 		var ae codec.APIError
 		if enveloped && env["error"] != nil && json.Unmarshal(env["error"], &ae) == nil {
 			re.Code, re.Message = ae.Code, ae.Message
@@ -182,7 +171,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any, auth boo
 		return nil, re
 	}
 	if !enveloped {
-		return nil, fmt.Errorf("rcp: %s %s: HTTP %d with a body that is not a JSON object", method, path, resp.StatusCode)
+		return nil, fmt.Errorf("rcp: %s %s: HTTP %d with a body that is not a JSON object", method, path, status)
 	}
 	var echoed int64
 	if env["reqid"] == nil || json.Unmarshal(env["reqid"], &echoed) != nil || echoed != id {
