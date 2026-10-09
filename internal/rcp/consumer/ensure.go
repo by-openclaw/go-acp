@@ -57,6 +57,10 @@ type EnsureOptions struct {
 	// and did not create as pending instead of failing — a server with
 	// no federation answers a federation create that way.
 	FederationOptional bool
+	// Prune makes the plan the whole RouteMaster: every named IO the
+	// plan does not name is removed. Without it, an IO taken out of a
+	// plan stays on the server.
+	Prune bool
 	// Settle bounds the wait for an accepted write to show. 0 → 5s.
 	Settle time.Duration
 }
@@ -74,6 +78,9 @@ type Report struct {
 	// Pending are federation entries the server accepted and did not
 	// create (FederationOptional).
 	Pending []string
+	// Unnamed are IOs without a mnemonic that a prune left alone: a plan
+	// finds IOs by mnemonic and cannot name them.
+	Unnamed []string
 }
 
 // Validate refuses a plan that cannot be applied as written.
@@ -137,6 +144,9 @@ func (c *Client) Ensure(ctx context.Context, plan Plan, opts EnsureOptions) (Rep
 	if err := plan.Validate(); err != nil {
 		return Report{}, err
 	}
+	if opts.Prune && opts.Absent {
+		return Report{}, errors.New("rcp: prune removes what a plan does not name, absent removes what it names — not both")
+	}
 	if opts.Settle <= 0 {
 		opts.Settle = 5 * time.Second
 	}
@@ -159,6 +169,11 @@ func (c *Client) Ensure(ctx context.Context, plan Plan, opts EnsureOptions) (Rep
 			continue
 		}
 		if err := e.collection(ctx, s.name, s.col, s.ios, s.virtual); err != nil {
+			return e.report, err
+		}
+	}
+	if opts.Prune {
+		if err := e.pruneAll(ctx, plan); err != nil {
 			return e.report, err
 		}
 	}

@@ -17,6 +17,12 @@
 # true) those entries are reported as PENDING and the play passes; set it
 # to false once the federation exists and they become a failure.
 #
+# Removed from the plan: with -e rcp_prune=true the plan is the whole
+# RouteMaster. The ensure compares it with the server and removes every
+# named IO the plan no longer names; nothing is remembered between runs.
+# IOs are matched by mnemonic, never by id (an id changes when an IO
+# before it is deleted). An IO with no mnemonic is reported, not removed.
+#
 # Idempotent: run twice, the second run reports changed=0.
 # Removal: -e rcp_state=absent deletes the categories and everything the
 # plan names, and nothing else.
@@ -39,6 +45,13 @@
     rcp_nb_port: 40009
     rcp_state: present
     rcp_federation_optional: true
+    # true: the plan is the WHOLE RouteMaster — every named IO it does not
+    # name is removed. Start from the server itself:
+    #   dhs consumer rcp export <host> --port 9080 --plan > plan.json
+    # false: an IO taken out of the plan stays on the server.
+    rcp_prune: false
+    # Levels to make sure exist, by id and name. A level is never removed.
+    rcp_levels: []
     rcp_dir: /root/rcp-provision
     rcp_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
@@ -125,13 +138,47 @@
         label: "{{ item.name }}"
       when: rcp_state == 'absent' and item.name in (rcp_cats.stdout_lines | default([]))
 
+    # ---- levels: RCP cannot create one; northbound does, by naming a
+    # level id that does not exist yet. It is created empty — the IOs of
+    # the plan put their device on it.
+    - name: Levels on the server
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, list-levels, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --output, json]
+      environment: "{{ rcp_env }}"
+      register: rcp_levels_now
+      changed_when: false
+      when: rcp_state == 'present' and rcp_levels | length > 0
+
+    - name: "Levels: present"
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, set-mnemonic, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off",
+               --kind, LEVEL_MNE, --level, "{{ item.id | string }}", --mnemonic, "{{ item.name }}"]
+      environment: "{{ rcp_env }}"
+      loop: "{{ rcp_levels }}"
+      loop_control:
+        label: "{{ item.id }} {{ item.name }}"
+      register: rcp_levels_set
+      when: >-
+        rcp_state == 'present' and
+        ((rcp_levels_now.stdout_lines | last | from_json).level
+          | selectattr('id', 'equalto', item.id | string)
+          | selectattr('mnemonic', 'equalto', item.name) | list | length) == 0
+
+    # Cerebrum stopped answering once when its routes were read within a
+    # second of a level being created. Give a new level a moment.
+    - name: Let a new level settle
+      ansible.builtin.pause:
+        seconds: 10
+      when: rcp_levels_set is changed
+
     # ---- the RouteMaster.
     - name: "RouteMaster: {{ rcp_state }}"
       ansible.builtin.command:
         argv: >-
           {{ [rcp_bin, 'consumer', 'rcp', 'ensure', rcp_host, '--port', rcp_port | string,
               '--plan', rcp_dir ~ '/plan.json', '--state', rcp_state]
-             + (['--federation-optional'] if rcp_federation_optional | bool else []) }}
+             + (['--federation-optional'] if rcp_federation_optional | bool else [])
+             + (['--prune'] if (rcp_prune | bool and rcp_state == 'present') else []) }}
       environment: "{{ rcp_env }}"
       register: rcp_ensure
       changed_when: "'changed=0 ' not in (rcp_ensure.stdout_lines | last)"

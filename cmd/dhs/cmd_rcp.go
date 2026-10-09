@@ -38,6 +38,7 @@ const rcpUsage = `usage: dhs consumer rcp <verb> <host> [flags]
   list                    ids of one RouteMaster collection, or of all four
   get                     one IO in full            --kind K --id N [--json]
   export                  every IO of every collection as JSON   [--out-dir D]
+                          --plan: the RouteMaster as an ensure plan, to edit and apply
   create                  append IOs                --kind K [--count N] [body flags]
   set                     change one IO             --kind K --id N [body flags]
   delete                  remove one IO             --kind K --id N
@@ -47,6 +48,8 @@ const rcpUsage = `usage: dhs consumer rcp <verb> <host> [flags]
   mnemonics               a router mnemonic table   --kind source|destination|level
   set-mnemonic            change one mnemonic       --kind K --id N [--mnemonic M] [--alt NAME=VALUE]
   ensure                  converge on a plan        --plan FILE [--check] [--state absent]
+                          [--prune]  the plan is the whole RouteMaster: what it does not
+                                     name is removed (IOs are matched by mnemonic)
                           [--federation-optional]   last line: changed=N pending=N
 
   devices                 the devices registered in Cerebrum, with their slots
@@ -323,9 +326,22 @@ func printJSON(v any) error {
 func runRCPExport(ctx context.Context, args []string) error {
 	f := newRCPFlags("export")
 	outDir := f.fs.String("out-dir", "", "write one <collection>.json per collection here (default: one document on stdout)")
+	asPlan := f.fs.Bool("plan", false, "print the RouteMaster as an ensure plan (IOs by mnemonic, crosspoints) instead of the raw IOs")
 	c, p, err := f.client(args)
 	if err != nil {
 		return err
+	}
+	if *asPlan {
+		return f.session(ctx, c, p, func() error {
+			plan, unnamed, err := c.PlanOf(ctx, rcpc.RouteMaster)
+			if err != nil {
+				return err
+			}
+			for _, u := range unnamed {
+				fmt.Fprintln(os.Stderr, "rcp export: left out of the plan, no mnemonic: "+u)
+			}
+			return printJSON(plan)
+		})
 	}
 	all := map[string][]codec.IO{}
 	err = f.session(ctx, c, p, func() error {

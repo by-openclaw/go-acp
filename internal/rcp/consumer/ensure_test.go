@@ -45,6 +45,9 @@ func (rm *routeMaster) add(col codec.Collection, mnemonic string, virtual bool) 
 }
 
 func (rm *routeMaster) idOf(col codec.Collection, mnemonic string) int64 {
+	if mnemonic == "" {
+		return 0 // no route, not "the IO without a name"
+	}
 	for i, io := range rm.ios[col] {
 		if io.Mnemonic.Original == mnemonic {
 			return int64(i + 1)
@@ -581,5 +584,138 @@ func TestRoutedToIgnoresLevelsThatHoldNoSource(t *testing.T) {
 		if got := routedTo(tc.d, 7, tc.level, known); got != tc.want {
 			t.Errorf("%s: %v, want %v", name, got, tc.want)
 		}
+	}
+}
+
+func mnemonics(rm *routeMaster, col codec.Collection) string {
+	var out []string
+	for _, io := range rm.ios[col] {
+		out = append(out, io.Mnemonic.Original)
+	}
+	return strings.Join(out, ",")
+}
+
+func TestPruneRemovesWhatThePlanNoLongerNamesAndNothingElse(t *testing.T) {
+	rm := newRouteMaster()
+	c := session(t, rm)
+	ctx := context.Background()
+	opts := fast
+	opts.FederationOptional = true
+	if _, err := c.Ensure(ctx, fullPlan(), opts); err != nil {
+		t.Fatal(err)
+	}
+	rm.add(codec.Sources, "", false) // an IO nobody named
+
+	// The same plan, pruned: nothing to do.
+	opts.Prune = true
+	same, err := c.Ensure(ctx, fullPlan(), opts)
+	if err != nil || len(same.Changes) != 0 {
+		t.Fatalf("pruning with the plan that made it: %s, %v", actions(same), err)
+	}
+	if len(same.Unnamed) != 1 || same.Unnamed[0] != "sources id 4" {
+		t.Errorf("unnamed = %v, want the one IO without a mnemonic", same.Unnamed)
+	}
+
+	// One source and the virtual leave the plan.
+	less := fullPlan()
+	less.Sources = less.Sources[:1]
+	less.Virtuals = nil
+	less.Routes = less.Routes[:1]
+
+	check := opts
+	check.Check = true
+	writes := len(rm.writes)
+	would, err := c.Ensure(ctx, less, check)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A check deletes nothing, so the virtual's destination is still there
+	// to be listed; the federation entries would be tried again.
+	wantCheck := "create federation-sources DHS-FED-0001; create federation-destinations DHS-FED-D001; " +
+		"delete sources DHS-VIRT-0001; delete sources DHS-SRC-0002; delete destinations DHS-VIRT-0001; "
+	if got, want := actions(would), wantCheck; got != want {
+		t.Errorf("check:\n got %s\nwant %s", got, want)
+	}
+	if len(rm.writes) != writes {
+		t.Errorf("a check wrote: %v", rm.writes[writes:])
+	}
+
+	done, err := c.Ensure(ctx, less, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Highest id first, so no id still to be deleted moves.
+	if got, want := actions(done), "delete sources DHS-VIRT-0001; delete sources DHS-SRC-0002; "; got != want {
+		t.Errorf("prune:\n got %s\nwant %s", got, want)
+	}
+	if got := mnemonics(rm, codec.Sources); got != "DHS-SRC-0001," {
+		t.Errorf("sources left = %q", got)
+	}
+	// The virtual's destination went with its source; the rest stayed.
+	if got := mnemonics(rm, codec.Destinations); got != "DHS-DST-0001" {
+		t.Errorf("destinations left = %q", got)
+	}
+
+	again, err := c.Ensure(ctx, less, opts)
+	if err != nil || len(again.Changes) != 0 {
+		t.Errorf("second prune: %s, %v", actions(again), err)
+	}
+}
+
+func TestPruneAndAbsentTogetherAreRefused(t *testing.T) {
+	c := session(t, newRouteMaster())
+	if _, err := c.Ensure(context.Background(), Plan{}, EnsureOptions{Prune: true, Absent: true}); err == nil {
+		t.Error("prune with absent was accepted")
+	}
+}
+
+func TestPlanOfRoundTrips(t *testing.T) {
+	rm := newRouteMaster()
+	c := session(t, rm)
+	ctx := context.Background()
+	if _, err := c.Ensure(ctx, fullPlan(), fast); err != nil {
+		t.Fatal(err)
+	}
+	rm.add(codec.Sources, "", false)
+
+	plan, unnamed, err := c.PlanOf(ctx, RouteMaster)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unnamed) != 1 {
+		t.Errorf("unnamed = %v", unnamed)
+	}
+	if len(plan.Sources) != 2 || len(plan.Destinations) != 1 || len(plan.Virtuals) != 1 || plan.Router != nil {
+		t.Errorf("plan = %+v", plan)
+	}
+	first := plan.Sources[0]
+	l := first.Levels["level_1"]
+	if first.Mnemonic != "DHS-SRC-0001" || l.Device == nil || *l.Device.IO != 11 || l.Tags == nil || len(*l.Tags) != 2 {
+		t.Errorf("first source = %+v", first)
+	}
+	if plan.Sources[1].TieLineInhibit == nil || !*plan.Sources[1].TieLineInhibit {
+		t.Errorf("second source lost its tie line inhibit: %+v", plan.Sources[1])
+	}
+	routes := map[string]PlanRoute{}
+	for _, r := range plan.Routes {
+		routes[r.Destination] = r
+	}
+	if r := routes["DHS-DST-0001"]; r.Source != "DHS-SRC-0001" || r.Level != 0 {
+		t.Errorf("route of DHS-DST-0001 = %+v", r)
+	}
+	if r := routes["DHS-VIRT-0001"]; r.Source != "DHS-SRC-0002" {
+		t.Errorf("route of DHS-VIRT-0001 = %+v", r)
+	}
+
+	// Applied with prune to the server it came from, it changes nothing.
+	opts := fast
+	opts.Prune = true
+	writes := len(rm.writes)
+	r, err := c.Ensure(ctx, plan, opts)
+	if err != nil || len(r.Changes) != 0 || len(rm.writes) != writes {
+		t.Errorf("round trip: %s, %v, %d write(s)", actions(r), err, len(rm.writes)-writes)
+	}
+	if _, _, err := c.PlanOf(ctx, Router{Device: "Nowhere"}); err == nil {
+		t.Error("a plan was read from a router that does not exist")
 	}
 }

@@ -189,6 +189,7 @@ func runRCPEnsure(ctx context.Context, args []string) error {
 	planFile := f.fs.String("plan", "", "the plan as a JSON file")
 	check := f.fs.Bool("check", false, "report what would change, write nothing")
 	state := f.fs.String("state", "present", "present | absent (absent removes everything the plan names)")
+	prune := f.fs.Bool("prune", false, "the plan is the whole RouteMaster: remove every named IO it does not name (see with --check first)")
 	fedOptional := f.fs.Bool("federation-optional", false, "a federation entry the server accepts and does not create is reported as pending, not as a failure")
 	c, p, err := f.client(args)
 	if err != nil {
@@ -213,7 +214,7 @@ func runRCPEnsure(ctx context.Context, args []string) error {
 	var report rcpc.Report
 	err = f.session(ctx, c, p, func() error {
 		var err error
-		report, err = c.Ensure(ctx, plan, rcpc.EnsureOptions{Check: *check, Absent: *state == "absent", FederationOptional: *fedOptional})
+		report, err = c.Ensure(ctx, plan, rcpc.EnsureOptions{Check: *check, Absent: *state == "absent", Prune: *prune, FederationOptional: *fedOptional})
 		return err
 	})
 	for _, ch := range report.Changes {
@@ -225,6 +226,9 @@ func runRCPEnsure(ctx context.Context, args []string) error {
 	}
 	for _, pending := range report.Pending {
 		fmt.Println("pending  " + pending + "  (the server accepted the create and created nothing: no federation)")
+	}
+	for _, u := range report.Unnamed {
+		fmt.Println("unnamed  " + u + "  (no mnemonic: a plan cannot name it, so it was left alone)")
 	}
 	// The last line is the verdict a play reads.
 	word := "changed"
