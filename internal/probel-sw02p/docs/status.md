@@ -41,5 +41,3 @@ device pointing at the producer yet, so there is no session to assert.
 - **Third-party proof** (deliverables 1–3): a Cerebrum router device on
   `10.6.250.101:2002`, then `probel-sw02p-producer-verify.yml`.
 - **Replay fixtures**: captured from that Cerebrum session.
-- `salvo-connect --dsts` cannot be reached from the CLI — see
-  [`runbook.md`](runbook.md) "Known issues".

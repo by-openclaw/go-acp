@@ -146,22 +146,11 @@ emulators on the same host appear as distinct addresses.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `interrogate` reports source 1023 for every dst | destination has no route in the served tree (1023 = "destination out of range" sentinel, §3.2.5) | connect a crosspoint, or check the tree's `targetCount`/`sourceCount` |
+| `interrogate` reports source 1023 | the destination is outside the served matrix (1023 = "destination out of range", §3.2.5); an unrouted destination inside it reads source 0 | check `--dst` against the tree's `targetCount` |
 | `watch` shows no events | `--dsts` not set, so no bootstrap rx 01 sweep fires | pass `--dsts N` (and `--srcs N`) to drive the sweep |
-| `salvo-connect` errors `--dsts: strconv.ParseUint` or `--dsts is required` | the global matrix-config `--dsts` swallows the subcommand's range `--dsts` | known CLI limitation (see [consumer.md](consumer.md) "Known CLI limitation"); use the loopback integration test for the salvo path until fixed |
 | `session desync: dropping byte` in provider logs | a non-`0xFF` byte arrived where a SOM was expected | check the controller is speaking SW-P-02 (not SW-P-08 with DLE framing) on this port |
 | remote CONNECT silently dropped | destination is protected by another device, or `ProBelOverride` | only the owning device may change it; inspect the `probel_sw02p_protect_*` compliance counters |
 | `--mtx-id: 200 exceeds 127` | matrix id out of the wire range | use 0-127 (narrow addressing tops out lower) |
-
-## Known issues
-
-- **`salvo-connect --dsts` is unreachable from the CLI.** The global
-  matrix-config flag parser consumes `--dsts` (single uint only) before
-  subcommand dispatch, colliding with the salvo verb's own CSV/range
-  `--dsts`. The salvo wire path (rx 35/36 → tx 37/38) is fully implemented
-  and proven by the loopback integration test `TestSalvoConnectOnGoThenGo`;
-  only the CLI flag plumbing needs a fix (rename one of the flags or
-  exempt `salvo-connect` from the global `--dsts` capture).
 
 ## Pointers
 
