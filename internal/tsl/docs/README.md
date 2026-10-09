@@ -10,6 +10,7 @@ reason.
 
 | Role | Doc | Status |
 |---|---|---|
+| **Where it stands (ADR-0025)** | [status.md](status.md) | the six deliverables, with evidence |
 | **Verbs & config reference** | [verbs.md](verbs.md) | every verb + transport/version/serve/dmsg/wireshark/ansible, with real captures |
 | Consumer (MV receiver) | [consumer.md](consumer.md) | ✓ listens on UDP (v3.1/v4.0/v5.0) + DLE/STX TCP (v5.0); decodes + fires compliance events |
 | Provider (tally source) | [provider.md](provider.md) | ✓ pushes frames to one or more MVs; `send` (one-shot) + `serve` (refresh loop) |

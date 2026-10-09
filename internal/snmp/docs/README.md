@@ -2,6 +2,7 @@
 
 | Role | Doc | Status |
 |---|---|---|
+| **Where it stands (ADR-0025)** | [status.md](status.md) | the six deliverables, with evidence |
 | Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer (the manager) | [consumer.md](consumer.md) | ✓ shipping — v1/v2c polling, traps in every version |
 | Provider (the agent) | [provider.md](provider.md) | ✓ shipping — serves DHS-MIB, answers GET/GETNEXT/GETBULK/SET, emits traps |
