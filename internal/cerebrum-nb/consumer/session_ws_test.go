@@ -308,7 +308,11 @@ func TestActionWrappers_AllAck(t *testing.T) {
 		{"lock", func() error { return sess.Lock(ctx, "DEST_LOCK", codec.LockProtect, tgt, "", "60", "1", "") }},
 		{"unlock", func() error { return sess.Lock(ctx, "DEST_LOCK", codec.LockRelease, tgt, "", "60", "1", "") }},
 		{"set-mnemonic", func() error { return sess.SetMnemonic(ctx, "DEST_MNE", tgt, "", "60", "1", "CAM1", "") }},
-		{"set-tags", func() error { return sess.SetTags(ctx, "RM_DEST_TAGS", tgt, "", "60", "live,hd") }},
+		{"set-tags", func() error { return sess.SetTags(ctx, "RM_DEST_TAGS", tgt, "", "60", "1", "live,hd") }},
+		{"assoc", func() error {
+			return sess.Assoc(ctx, tgt, codec.RoutingAction{Type: "SRCE_ASSOC", LogicalSrceID: "7", LogicalLevelID: "1",
+				TargetDeviceName: "Snell SW-P-08", TargetDeviceType: "ROUTER", TargetLevelID: "1", TargetSrceID: "31"})
+		}},
 		{"salvo-run", func() error { return sess.Salvo(ctx, "RUN", "G", "I", "", "") }},
 		{"salvo-save", func() error { return sess.Salvo(ctx, "SAVE", "G", "I", "", "desc") }},
 		{"salvo-rename", func() error { return sess.Salvo(ctx, "RENAME", "G", "I", "NEW", "") }},

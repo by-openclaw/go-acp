@@ -69,7 +69,7 @@ func (s *Session) SetMnemonic(ctx context.Context, mneType string, addr RouteTar
 // RM_SRCE_TAGS / RM_DEST_TAGS routing action. tagsType selects which.
 // The spec only documents tag REMOVAL on the routing path; tags carries
 // the comma-separated tag list.
-func (s *Session) SetTags(ctx context.Context, tagsType string, addr RouteTarget, srceID, destID, tags string) error {
+func (s *Session) SetTags(ctx context.Context, tagsType string, addr RouteTarget, srceID, destID, levelID, tags string) error {
 	body := &codec.RoutingAction{
 		Type:       tagsType,
 		IPAddress:  addr.IPAddress,
@@ -77,9 +77,21 @@ func (s *Session) SetTags(ctx context.Context, tagsType string, addr RouteTarget
 		DeviceType: addr.DeviceType,
 		SrceID:     srceID,
 		DestID:     destID,
+		LevelID:    levelID,
 		Tags:       tags,
 	}
 	return s.Action(ctx, body)
+}
+
+// Assoc issues a §4.1 association action — SRCE_ASSOC / DEST_ASSOC (a
+// device input or output) or SRCE_ASSOC_IP / DEST_ASSOC_IP (an IP sender
+// or receiver): it binds one RouteMaster source or destination, on one
+// RouteMaster level, to the device IO behind it. The caller fills the
+// LOGICAL_* and TARGET_* fields of the action; the router addressing is
+// taken from addr.
+func (s *Session) Assoc(ctx context.Context, addr RouteTarget, a codec.RoutingAction) error {
+	a.IPAddress, a.DeviceName, a.DeviceType = addr.IPAddress, addr.DeviceName, addr.DeviceType
+	return s.Action(ctx, &a)
 }
 
 // RouteTarget is the common router-addressing tuple shared by the routing
