@@ -11,6 +11,10 @@ cerebrum:
   nb_port: 40009
   # Name of the Network Media Server in Cerebrum's System View (1.0.0.1).
   nmos_device: NMOS
+  # Its node table, and the two fields of a row the SubID play uses.
+  nmos_table: Nodes
+  nmos_key: Label
+  nmos_field: SubID
 
 # SubID of each NMOS node on the Network Media Server, by IS-04 node label
 # (playbooks/cerebrum-nmos-subid.yml). Plant data: NetBox will own these.
@@ -43,6 +47,8 @@ cerebrum_routemaster:
 neuronview:
   api: https://10.6.255.104/api/v1
   validate_certs: false
+  # NMOS on: the node registers with the site registry (playbooks/neuronview-nmos.yml).
+  nmos_enabled: true
   groups: 36
   group_name: "IP GROUP %d"
   audio_stream_name: "AUDIO STREAM %d"
