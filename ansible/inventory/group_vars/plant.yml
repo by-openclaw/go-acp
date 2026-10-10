@@ -19,15 +19,15 @@ cerebrum:
 # SubID of each NMOS node on the Network Media Server, by IS-04 node label
 # (playbooks/cerebrum-nmos-subid.yml). Plant data: NetBox will own these.
 cerebrum_nmos_subids:
+  # The order of the signal chain (operator, 2026-10-10); the RouteMaster
+  # links follow the same order.
   - {label: lab-convert-01, subid: 1}
-  - {label: "emsfp-a2-10-0c st2110 node", subid: 2}
-  # With its SubID the Shuffler (3 088 streams) made Cerebrum drop and
-  # re-register every node about every 20 s on 2026-10-10; set again on the
-  # operator's decision.
-  - {label: lab-shuffle-01, subid: 3}
-  # The Neuron VIEW announces its node at http://127.0.0.1:3000/; Cerebrum
-  # accepted the write and kept 0 on 2026-10-10.
-  - {label: lab-view-01, subid: 4}
+  # With a SubID the Shuffler (3 088 streams) made Cerebrum drop and
+  # re-register every node about every 20 s, twice on 2026-10-10, with
+  # Cerebrum's registry and with ours. Set on the operator's decision.
+  - {label: lab-shuffle-01, subid: 2}
+  - {label: lab-view-01, subid: 3}
+  - {label: "emsfp-a2-10-0c st2110 node", subid: 4}
 
 # RouteMaster content (playbooks/rcp-routemaster-provision.yml). Empty
 # until the levels and the IP routing are in place:
