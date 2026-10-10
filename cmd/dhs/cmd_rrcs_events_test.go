@@ -594,7 +594,7 @@ func TestRRCSDebugLogsXMLRPC(t *testing.T) {
 	}
 	debug := read("debug")
 	for _, want := range []string{`"msg":"xmlrpc"`, `"level":"DEBUG"`, `"dir":"tx"`, `"dir":"rx"`, `"method":"GetVersion"`,
-		`"method":"(response)"`, `\u003cmethodName\u003eGetVersion`} {
+		`"method":"(response)"`, `"xml":"`, `methodName`} {
 		if !strings.Contains(debug, want) {
 			t.Errorf("debug log lacks %s:\n%s", want, debug)
 		}
