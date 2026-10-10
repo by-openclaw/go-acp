@@ -38,58 +38,23 @@
   hosts: plant
   gather_facts: false
   vars:
-    rcp_bin: /usr/local/bin/dhs
-    rcp_host: 10.6.250.5
-    # HTTP port of Cerebrum's "Enable RCP" configuration.
-    rcp_port: 9080
-    rcp_nb_port: 40009
+    # Nothing is set here: the server, the plan, the categories and the
+    # levels come from the inventory (group_vars/plant.yml,  and
+    # ). -e dhs_bin=… selects another binary.
+    rcp_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    rcp_host: "{{ cerebrum.host }}"
+    rcp_port: "{{ cerebrum.rcp_port }}"
+    rcp_nb_port: "{{ cerebrum.nb_port }}"
     rcp_state: present
-    rcp_federation_optional: true
-    # true: the plan is the WHOLE RouteMaster — every named IO it does not
-    # name is removed. Start from the server itself:
-    #   dhs consumer rcp export <host> --port 9080 --plan > plan.json
-    # false: an IO taken out of the plan stays on the server.
-    rcp_prune: false
-    # Levels to make sure exist, by id and name. A level is never removed.
-    rcp_levels: []
+    rcp_federation_optional: "{{ cerebrum_routemaster.federation_optional | default(true) }}"
+    rcp_prune: "{{ cerebrum_routemaster.prune | default(false) }}"
+    rcp_levels: "{{ cerebrum_routemaster.levels | default([]) }}"
+    rcp_plan: "{{ cerebrum_routemaster.plan | default({}) }}"
+    rcp_categories: "{{ cerebrum_routemaster.categories | default([]) }}"
     rcp_dir: /root/rcp-provision
     rcp_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
       DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
-
-    # The plan. Replace it with the plant's own (-e @plan.yml).
-    #   levels: keyed level_<id>; device.io is the input/output number on
-    #   the level's device, counted from 1.
-    rcp_plan:
-      sources:
-        - mnemonic: DHS-SRC-0001
-          levels:
-            level_1: {tags: [Camera, HD], device: {io: 11}}
-        - mnemonic: DHS-SRC-0002
-          levels:
-            level_1: {tags: [Camera, HD], device: {io: 12}}
-      destinations:
-        - mnemonic: DHS-DST-0001
-          levels:
-            level_1: {tags: [Monitor], device: {io: 11}}
-        - mnemonic: DHS-DST-0002
-          levels:
-            level_1: {tags: [Monitor], device: {io: 12}}
-      virtuals:
-        - mnemonic: DHS-VIRT-0001
-      federation-sources:
-        - mnemonic: DHS-FED-SRC-0001
-      federation-destinations:
-        - mnemonic: DHS-FED-DST-0001
-      routes:
-        - {destination: DHS-DST-0001, source: DHS-SRC-0001}
-        - {destination: DHS-DST-0002, source: DHS-SRC-0002}
-        - {destination: DHS-VIRT-0001, source: DHS-SRC-0001}
-
-    # Categories, members by mnemonic. kind: source | destination.
-    rcp_categories:
-      - {name: DHS-SRC, kind: source, members: [DHS-SRC-0001, DHS-SRC-0002]}
-      - {name: DHS-DST, kind: destination, members: [DHS-DST-0001, DHS-DST-0002]}
 
   tasks:
     - name: The Cerebrum account is in the environment

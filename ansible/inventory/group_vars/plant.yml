@@ -2,6 +2,38 @@
 # Devices the plant host configures. Roles and plays carry no address and
 # no layout of their own: they read them from here.
 
+# EVS Cerebrum (staging). RCP is the HTTP port of its "Enable RCP"
+# setting; northbound is its own port. The account is NOT here: plays take
+# it from DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment.
+cerebrum:
+  host: 10.6.250.5
+  rcp_port: 9080
+  nb_port: 40009
+  # Name of the Network Media Server in Cerebrum's System View (1.0.0.1).
+  nmos_device: NMOS
+
+# SubID of each NMOS node on the Network Media Server, by IS-04 node label
+# (playbooks/cerebrum-nmos-subid.yml). Plant data: NetBox will own these.
+cerebrum_nmos_subids:
+  - {label: lab-convert-01, subid: 1}
+  - {label: "emsfp-a2-10-0c st2110 node", subid: 2}
+  - {label: lab-shuffle-01, subid: 3}
+  - {label: lab-view-01, subid: 4}
+
+# RouteMaster content (playbooks/rcp-routemaster-provision.yml). Empty
+# until the levels and the IP routing are in place:
+#   levels:      [{id: 1, name: Video}, …]            created over northbound
+#   plan:        sources / destinations / virtuals / routes, by mnemonic
+#                (see )
+#   categories:  [{name, kind: source|destination, members: [mnemonic…]}]
+#   prune: true  the plan is the WHOLE RouteMaster
+cerebrum_routemaster:
+  federation_optional: true
+  prune: false
+  levels: []
+  plan: {}
+  categories: []
+
 # EVS Neuron VIEW (lab-view-01) — REST on the management address.
 neuronview:
   api: https://10.6.255.104/api/v1
