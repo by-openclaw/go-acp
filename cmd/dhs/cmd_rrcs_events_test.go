@@ -576,3 +576,33 @@ func TestRRCSXpLevel(t *testing.T) {
 		t.Errorf("methods: %s", got)
 	}
 }
+
+// --log-level debug: every XML-RPC document is a log record, with its
+// method and its XML; at info none is.
+func TestRRCSDebugLogsXMLRPC(t *testing.T) {
+	f := newRRCSFake(t, rrcsTreeAnswer)
+	read := func(level string) string {
+		dir := t.TempDir()
+		rrcsRun(t, "info", f.addr(), "--log", filepath.Join(dir, "info.log"), "--log-format", "json", "--log-level", level)
+		var all []byte
+		names, _ := filepath.Glob(filepath.Join(dir, "info*.log"))
+		for _, name := range names {
+			b, _ := os.ReadFile(name)
+			all = append(all, b...)
+		}
+		return string(all)
+	}
+	debug := read("debug")
+	for _, want := range []string{`"msg":"xmlrpc"`, `"level":"DEBUG"`, `"dir":"tx"`, `"dir":"rx"`, `"method":"GetVersion"`,
+		`"method":"(response)"`, `\u003cmethodName\u003eGetVersion`} {
+		if !strings.Contains(debug, want) {
+			t.Errorf("debug log lacks %s:\n%s", want, debug)
+		}
+	}
+	if info := read("info"); strings.Contains(info, `"msg":"xmlrpc"`) {
+		t.Errorf("XML-RPC documents logged at info:\n%s", info)
+	}
+	if rrcsMethodOf([]byte("<methodResponse/>")) != "(response)" || rrcsMethodOf([]byte("<methodName>X</methodName>")) != "X" {
+		t.Error("method name")
+	}
+}

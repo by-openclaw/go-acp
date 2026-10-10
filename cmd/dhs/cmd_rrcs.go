@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/csv"
@@ -268,12 +269,51 @@ func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), err
 			logClose()
 		}
 	}
+	// At --log-level debug every XML-RPC document, sent and received, is
+	// a log record: the method, the direction, the size and the XML
+	// itself — to the log file and to syslog. A long answer (the port
+	// list is megabytes) is cut in the log; --capture holds it whole.
+	if c.sink != nil && parseLogLevel(c.logLevel) <= slog.LevelDebug {
+		inner, sink := tap, c.sink
+		tap = func(dir wiretrace.Direction, peer string, doc []byte) {
+			if inner != nil {
+				inner(dir, peer, doc)
+			}
+			text, cut := string(doc), false
+			if len(text) > rrcsLogXMLMax {
+				text, cut = text[:rrcsLogXMLMax], true
+			}
+			sink.Debug("xmlrpc", slog.String("proto", rrcsProto), slog.String("dir", string(dir)), slog.String("peer", peer),
+				slog.String("method", rrcsMethodOf(doc)), slog.Int("bytes", len(doc)), slog.Bool("cut", cut), slog.String("xml", text))
+		}
+	}
 	client, err := rrcs.NewClient(rrcs.Config{Addr: addr, Timeout: c.timeout, Tap: tap})
 	if err != nil {
 		closeFn()
 		return nil, nil, nil, rrcsValErr(verb, err.Error())
 	}
 	return client, tap, closeFn, nil
+}
+
+// rrcsLogXMLMax is how much of one XML-RPC document a debug log record
+// holds: enough for any request and any ordinary answer, and small enough
+// for a syslog datagram.
+const rrcsLogXMLMax = 1200
+
+// rrcsMethodOf reads the method name of an XML-RPC request; an answer has
+// none and is named "(response)".
+func rrcsMethodOf(doc []byte) string {
+	const open, shut = "<methodName>", "</methodName>"
+	i := bytes.Index(doc, []byte(open))
+	if i < 0 {
+		return "(response)"
+	}
+	rest := doc[i+len(open):]
+	j := bytes.Index(rest, []byte(shut))
+	if j < 0 {
+		return "(response)"
+	}
+	return string(rest[:j])
 }
 
 // rrcsJSON turns an XML-RPC value into what encoding/json prints.
