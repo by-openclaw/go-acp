@@ -3880,6 +3880,8 @@ Usage of rrcs set:
     	log level: debug | info | warn | error (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
+  -nmos-test string
+    	yes = let one edit through that the tool refuses otherwise: a stream put in NMOS mode with the mode alone (--prop PortAes67Output.Protocol=5 and nothing else). A test, for a system that can be restarted: two edits towards NMOS that also carried an address stopped RRCS (ADR-0035) (default "no")
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path string

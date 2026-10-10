@@ -248,6 +248,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 	fs.Var(&props, "prop", "NAME=VALUE or BLOCK.NAME=VALUE, with the names get --path prints; repeat for several. Streams: PortAes67Output.Multicast=239.1.1.1 PortAes67Output.MulticastPort=5004 PortAes67Input.SourceIp=… (.Protocol 2 Manual, 3 RTSP, 5 NMOS). Cards: Ptp.PTP=100 Ptp.PtpPriority=128 Nmos.RegistrationIp=… Nmos.RegistrationMode=2 Media_1.DefaultGateway=…")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	apply := fs.String("apply", "no", "no = show the change and what the object holds now, send nothing | yes = send it (ConfigurationChange) and read the object back")
+	nmosTest := fs.String("nmos-test", "no", "yes = let one edit through that the tool refuses otherwise: a stream put in NMOS mode with the mode alone (--prop PortAes67Output.Protocol=5 and nothing else). A test, for a system that can be restarted: two edits towards NMOS that also carried an address stopped RRCS (ADR-0035)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
 	}
@@ -298,9 +299,19 @@ func rrcsSet(ctx context.Context, args []string) error {
 	fmt.Printf("%s  %s  %s\n", *path, change.objectType, jStr(before, "LongName"))
 	rrcsShow("now:", change, before)
 	if block := change.nmosStream(before); block != "" {
-		fmt.Println(block + ": " + rrcsNMOSRefusal)
-		if *apply == "yes" {
-			return rrcsValErr("set", block+": "+rrcsNMOSRefusal)
+		switch {
+		case *nmosTest != "yes":
+			fmt.Println(block + ": " + rrcsNMOSRefusal)
+			if *apply == "yes" {
+				return rrcsValErr("set", block+": "+rrcsNMOSRefusal)
+			}
+		case len(change.blocks[block]) != 1 || change.blocks[block][0].Name != "Protocol":
+			// The test is one question: does the mode alone pass. A
+			// request that also carries an address is the one that
+			// stopped RRCS, and stays refused.
+			return rrcsValErr("set", "--nmos-test yes takes one property and no other: "+block+".Protocol=5")
+		default:
+			fmt.Println(block + ": TEST of an edit towards NMOS mode with the mode alone, no address field. Both edits that stopped RRCS carried address fields; this form has never been sent.")
 		}
 	}
 	if *apply == "no" {
