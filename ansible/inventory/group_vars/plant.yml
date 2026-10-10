@@ -24,7 +24,7 @@ cerebrum_nmos_subids:
 # until the levels and the IP routing are in place:
 #   levels:      [{id: 1, name: Video}, …]            created over northbound
 #   plan:        sources / destinations / virtuals / routes, by mnemonic
-#                (see )
+#                (start from: dhs consumer rcp export <host> --plan)
 #   categories:  [{name, kind: source|destination, members: [mnemonic…]}]
 #   prune: true  the plan is the WHOLE RouteMaster
 cerebrum_routemaster:

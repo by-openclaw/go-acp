@@ -39,8 +39,8 @@
   gather_facts: false
   vars:
     # Nothing is set here: the server, the plan, the categories and the
-    # levels come from the inventory (group_vars/plant.yml,  and
-    # ). -e dhs_bin=… selects another binary.
+    # levels come from the inventory (group_vars/plant.yml: cerebrum and
+    # cerebrum_routemaster). -e dhs_bin=… selects another binary.
     rcp_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
     rcp_host: "{{ cerebrum.host }}"
     rcp_port: "{{ cerebrum.rcp_port }}"
