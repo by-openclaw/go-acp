@@ -1,18 +1,36 @@
 ---
 # One device of provision-apply.yml. `entry` is a stat result over a
 # devices.csv row: entry.item is the device, entry.stat its values file.
+#
+# -e match=<regex> narrows the run to the rows of the values file whose
+# path matches (e.g. match=nmos\.registry): only those rows are read
+# and written, with `import --path`. A device with no such row is left.
+
+- name: "{{ entry.item.name }} — rows selected by match"
+  ansible.builtin.read_csv:
+    path: "{{ site_dir }}/values/{{ entry.item.name }}.csv"
+  register: values_rows
+  when: match is defined
+
+- name: "{{ entry.item.name }} — the import command"
+  ansible.builtin.set_fact:
+    import_paths: "{{ (values_rows.list | map(attribute='path') | select('search', match) | unique | list) if match is defined else [] }}"
+    import_argv: >-
+      {{ [dhs, 'consumer', proto_of[entry.item.type], 'import', entry.item.mgmt_ip,
+          '--file', site_dir ~ '/values/' ~ entry.item.name ~ '.csv']
+         + ((values_rows.list | map(attribute='path') | select('search', match) | unique | list
+             | map('regex_replace', '^', '--path=') | list) if match is defined else []) }}
+
+- name: "{{ entry.item.name }} — match selects at least one row"
+  ansible.builtin.assert:
+    that: import_paths | length > 0
+    fail_msg: "no row of {{ entry.item.name }}.csv has a path matching {{ match | default('') }}"
+    quiet: true
+  when: match is defined
 
 - name: "{{ entry.item.name }} — what would change"
   ansible.builtin.command:
-    argv:
-      - "{{ dhs }}"
-      - consumer
-      - "{{ proto_of[entry.item.type] }}"
-      - import
-      - "{{ entry.item.mgmt_ip }}"
-      - --file
-      - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
-      - --check
+    argv: "{{ import_argv + ['--check'] }}"
   register: before
   changed_when: false
   check_mode: false
@@ -31,14 +49,7 @@
 # it and reports it as the change it would be.
 - name: "{{ entry.item.name }} — apply ({{ to_apply }} row(s))"
   ansible.builtin.command:
-    argv:
-      - "{{ dhs }}"
-      - consumer
-      - "{{ proto_of[entry.item.type] }}"
-      - import
-      - "{{ entry.item.mgmt_ip }}"
-      - --file
-      - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
+    argv: "{{ import_argv }}"
   when: to_apply | int > 0
   register: applied
   changed_when: true
@@ -46,15 +57,7 @@
 
 - name: "{{ entry.item.name }} — verify: nothing left to apply"
   ansible.builtin.command:
-    argv:
-      - "{{ dhs }}"
-      - consumer
-      - "{{ proto_of[entry.item.type] }}"
-      - import
-      - "{{ entry.item.mgmt_ip }}"
-      - --file
-      - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
-      - --check
+    argv: "{{ import_argv + ['--check'] }}"
   # A module may commit a document a few seconds after it answered the
   # PUT (the FusioN's interfaces): read again until it holds the file,
   # up to half a minute, before calling that a failure.

@@ -1,0 +1,199 @@
+---
+# Cerebrum RouteMaster provisioning over RCP — sources, destinations,
+# virtuals, federation IOs, crosspoints and categories, from one plan.
+#
+# What it does, in order:
+#   1. `dhs consumer rcp ensure` converges the RouteMaster on rcp_plan.
+#      IOs are found by MNEMONIC: Cerebrum allocates the ids and
+#      renumbers them when an IO is deleted, so a plan never names one.
+#      Every write is read back; a write the server accepted and did not
+#      apply fails the play.
+#   2. Categories (rcp_categories) are converged over the northbound
+#      connector — RCP has no category endpoint. Their members are named
+#      by mnemonic here and resolved to the ids of the moment.
+#
+# Federation: on a Cerebrum with no federation, a federation create is
+# accepted and creates nothing. With rcp_federation_optional (default
+# true) those entries are reported as PENDING and the play passes; set it
+# to false once the federation exists and they become a failure.
+#
+# Removed from the plan: with -e rcp_prune=true the plan is the whole
+# RouteMaster. The ensure compares it with the server and removes every
+# named IO the plan no longer names; nothing is remembered between runs.
+# IOs are matched by mnemonic, never by id (an id changes when an IO
+# before it is deleted). An IO with no mnemonic is reported, not removed.
+#
+# Idempotent: run twice, the second run reports changed=0.
+# Removal: -e rcp_state=absent deletes the categories and everything the
+# plan names, and nothing else.
+#
+# Credentials are the Cerebrum (northbound) account, from the environment
+# of the control node — never on a command line:
+#   DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/rcp-routemaster-provision.yml
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/rcp-routemaster-provision.yml -e rcp_state=absent
+
+- name: rcp — provision the Cerebrum RouteMaster from a plan
+  hosts: plant
+  gather_facts: false
+  vars:
+    # Nothing is set here: the server, the plan, the categories and the
+    # levels come from the inventory (group_vars/plant.yml: cerebrum and
+    # cerebrum_routemaster). -e dhs_bin=… selects another binary.
+    rcp_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    rcp_host: "{{ cerebrum.host }}"
+    rcp_port: "{{ cerebrum.rcp_port }}"
+    rcp_nb_port: "{{ cerebrum.nb_port }}"
+    rcp_state: present
+    rcp_federation_optional: "{{ cerebrum_routemaster.federation_optional | default(true) }}"
+    rcp_prune: "{{ cerebrum_routemaster.prune | default(false) }}"
+    rcp_levels: "{{ cerebrum_routemaster.levels | default([]) }}"
+    rcp_plan: "{{ cerebrum_routemaster.plan | default({}) }}"
+    rcp_categories: "{{ cerebrum_routemaster.categories | default([]) }}"
+    rcp_dir: /root/rcp-provision
+    rcp_env:
+      DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+      DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+
+  tasks:
+    - name: The Cerebrum account is in the environment
+      ansible.builtin.assert:
+        that:
+          - rcp_env.DHS_CEREBRUM_USER | length > 0
+          - rcp_env.DHS_CEREBRUM_PASS | length > 0
+          - rcp_state in ['present', 'absent']
+        fail_msg: set DHS_CEREBRUM_USER and DHS_CEREBRUM_PASS on the control node; rcp_state is present or absent
+        quiet: true
+
+    - name: Working directory
+      ansible.builtin.file:
+        path: "{{ rcp_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: The plan
+      ansible.builtin.copy:
+        content: "{{ rcp_plan | to_nice_json }}\n"
+        dest: "{{ rcp_dir }}/plan.json"
+        mode: "0600"
+
+    - name: Binary and server
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, rcp, info, "{{ rcp_host }}", --port, "{{ rcp_port | string }}"]
+      environment: "{{ rcp_env }}"
+      register: rcp_info
+      changed_when: false
+
+    # ---- removal: categories go first, while their members still exist.
+    - name: Categories on the server
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, list-categories, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off"]
+      environment: "{{ rcp_env }}"
+      register: rcp_cats
+      changed_when: false
+      when: rcp_state == 'absent' and rcp_categories | length > 0
+
+    - name: Remove the plan's categories
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, category, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --op, delete, --category, "{{ item.name }}"]
+      environment: "{{ rcp_env }}"
+      loop: "{{ rcp_categories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: rcp_state == 'absent' and item.name in (rcp_cats.stdout_lines | default([]))
+
+    # ---- levels: RCP cannot create one; northbound does, by naming a
+    # level id that does not exist yet. It is created empty — the IOs of
+    # the plan put their device on it.
+    - name: Levels on the server
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, list-levels, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --output, json]
+      environment: "{{ rcp_env }}"
+      register: rcp_levels_now
+      changed_when: false
+      when: rcp_state == 'present' and rcp_levels | length > 0
+
+    - name: "Levels: present"
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, set-mnemonic, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off",
+               --kind, LEVEL_MNE, --level, "{{ item.id | string }}", --mnemonic, "{{ item.name }}"]
+      environment: "{{ rcp_env }}"
+      loop: "{{ rcp_levels }}"
+      loop_control:
+        label: "{{ item.id }} {{ item.name }}"
+      register: rcp_levels_set
+      when: >-
+        rcp_state == 'present' and
+        ((rcp_levels_now.stdout_lines | last | from_json).level
+          | selectattr('id', 'equalto', item.id | string)
+          | selectattr('mnemonic', 'equalto', item.name) | list | length) == 0
+
+    # Cerebrum stopped answering once when its routes were read within a
+    # second of a level being created. Give a new level a moment.
+    - name: Let a new level settle
+      ansible.builtin.pause:
+        seconds: 10
+      when: rcp_levels_set is changed
+
+    # ---- the RouteMaster.
+    - name: "RouteMaster: {{ rcp_state }}"
+      ansible.builtin.command:
+        argv: >-
+          {{ [rcp_bin, 'consumer', 'rcp', 'ensure', rcp_host, '--port', rcp_port | string,
+              '--plan', rcp_dir ~ '/plan.json', '--state', rcp_state]
+             + (['--federation-optional'] if rcp_federation_optional | bool else [])
+             + (['--prune'] if (rcp_prune | bool and rcp_state == 'present') else []) }}
+      environment: "{{ rcp_env }}"
+      register: rcp_ensure
+      changed_when: "'changed=0 ' not in (rcp_ensure.stdout_lines | last)"
+
+    - name: What the ensure did
+      ansible.builtin.debug:
+        msg: "{{ rcp_ensure.stdout_lines }}"
+
+    # ---- categories: members by mnemonic -> the ids of the moment.
+    - name: The RouteMaster as it now is
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, rcp, export, "{{ rcp_host }}", --port, "{{ rcp_port | string }}"]
+      environment: "{{ rcp_env }}"
+      register: rcp_export
+      changed_when: false
+      when: rcp_state == 'present' and rcp_categories | length > 0
+
+    - name: Category files
+      ansible.builtin.copy:
+        content: |
+          category,type,value
+          {% set ios = (rcp_export.stdout | from_json)[item.collection] %}
+          {% for cat in rcp_categories if cat.kind == item.kind %}
+          {% for m in cat.members %}
+          {{ cat.name }},{{ item.type }},{{ (ios | selectattr('mnemonic.originalMnemonic', 'equalto', m) | map(attribute='id') | list | first) }}
+          {% endfor %}
+          {% endfor %}
+        dest: "{{ rcp_dir }}/{{ item.file }}"
+        mode: "0600"
+      loop:
+        - {kind: source, collection: sources, type: SOURCE, file: cat-src.csv}
+        - {kind: destination, collection: destinations, type: DEST, file: cat-dst.csv}
+      loop_control:
+        label: "{{ item.file }}"
+      when: rcp_state == 'present' and rcp_categories | length > 0
+
+    - name: "Categories: present"
+      ansible.builtin.command:
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, import, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off",
+               --cat-src, "{{ rcp_dir }}/cat-src.csv", --cat-dst, "{{ rcp_dir }}/cat-dst.csv", --output, json]
+      environment: "{{ rcp_env }}"
+      register: rcp_cat_import
+      changed_when: (rcp_cat_import.stdout | from_json).changed | default(false)
+      when: rcp_state == 'present' and rcp_categories | length > 0
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: >-
+          rcp RouteMaster {{ rcp_state }} on {{ rcp_host }}:{{ rcp_port }} —
+          {{ rcp_info.stdout_lines | select('search', 'api_version') | first | default('') }};
+          {{ rcp_ensure.stdout_lines | last }};
+          categories {{ rcp_categories | map(attribute='name') | join(', ') }}
+          {{ 'converged' if rcp_state == 'present' else 'removed' }}
