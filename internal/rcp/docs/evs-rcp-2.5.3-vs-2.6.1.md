@@ -2,8 +2,8 @@
 
 **From:** BY-SYSTEMS SRL — integration team
 **To:** EVS Cerebrum support
-**Date:** 2026-10-09
-**Server tested:** Cerebrum staging, RCP enabled, `GET /v2/api` → `2.5.3`
+**Date:** 2026-10-09, updated 2026-10-10
+**Server tested:** Cerebrum 2.9.2 build 15432 (staging), RCP enabled, `GET /v2/api` → `2.5.3`
 **Document used:** *EVS Cerebrum RCP*, OpenAPI 3.0.3, version **2.6.1** ("Cerebrum RCP API-2_6_1.json")
 
 ## 1. Why we are writing
@@ -82,6 +82,18 @@ and the level mnemonics from `/routers/level-mnemonics`.
 provisioning scope, we would welcome create / update / delete of levels,
 which the document says is not supported through this API.
 
+What we do today, through the Northbound API, and where it stops:
+
+| # | Level operation | Northbound today |
+|---|---|---|
+| 1 | Create | works: `LEVEL_MNE` on an unused level id creates the level, empty |
+| 2 | Rename | works |
+| 3 | Delete | not available: an empty mnemonic is refused; we delete levels by hand in the UI |
+| 4 | Set the level's device, "multiple devices", IP filter | not available |
+| 5 | Set the default source and destination tags | not available |
+
+*Request:* rows 3 to 5 on either API would close the level scope.
+
 ### 4.2 `tieLineGroup` — not writable
 
 | Request | Answer |
@@ -133,6 +145,12 @@ once the path is known. We found no way to *list* the objects of a
 device: 0.2.5 of the document had `GET /devices/{deviceName}/{deviceIndex}/schema`,
 which is neither in 2.6.1 nor on the server (`404`). *Question:* is there
 an endpoint to browse a device's object tree, or is one planned?
+
+One path form took us a while to find and may deserve a line in the
+document: an object inside a table row is addressed with the row key in
+square brackets, for example `Nodes.[<node uuid>].SubID` on the `NMOS`
+device. Without the brackets the server answers `{"object":{}}`, the same
+as for an unknown path.
 
 ### 4.7 Categories
 
@@ -252,6 +270,106 @@ WebSocket port answered and the HTTP port did not, until an inbound rule
 for the HTTP port was added by hand. A line in the installation guide, or
 a rule added by the installer, would save the next integrator an hour.
 
+### 6.10 Default names on a create without mnemonics
+
+A `POST` that creates an IO without a mnemonic gives it a default name
+(`Src 6`, `Dst 6`). That is convenient. For automation it means two
+clients can no longer tell their own IO from another's by name.
+*Question:* is the default name pattern stable, and can a client rely on
+it?
+
+### 6.11 One server stop after a level was created
+
+Once, Cerebrum stopped a few seconds after we created a level through
+Northbound (`LEVEL_MNE` on a new id) and then read `GET /routers/routes`
+through RCP. We could not reproduce it: with the level present, the same
+read works every time, and our playbook now waits 10 s after creating a
+level. We mention it in case the log of that moment is useful to you; we
+can send the time of the event.
+
+### 6.12 Giving an NMOS node its SubID
+
+We give each NMOS node its SubID from our inventory by writing
+`Nodes.[<node uuid>].SubID` on the Network Media Server (device `NMOS`).
+The object answers over RCP and over the Northbound API alike, and this
+is exactly what we need: thank you.
+
+We first got this wrong on our side, and we mention it so the next
+integrator does not: our automation wrote four SubIDs within a few
+seconds. A SubID moves the node from slot 00 to its own slot with all
+its devices, senders and receivers, and that takes Cerebrum some time.
+Writing the next one in the middle of a move made nodes leave and
+register again, each coming back with SubID 0.
+
+What works, and has been stable since (2026-10-10), also thanks to your
+advice to keep the registry page closed during the operation:
+
+| # | Rule we now follow |
+|---|---|
+| 1 | one node at a time; one write per node |
+| 2 | the next node only when the move is finished: the node's entry on slot 00 lists no device any more, and slot N lists every device with all its senders and receivers |
+| 3 | then a quiet period with no request, and one more read |
+
+Times we measured for a move, read from the object tables: about 5 s
+for a node with 8 senders and 144 receivers or with 176 and 176, about
+15 s for 1 544 senders and 1 544 receivers, about 25 s for a node with
+eight devices.
+
+*Questions:*
+
+- Is there a value or an event that tells a client "the move is
+  finished" — the counterpart of the busy indicator of the user
+  interface? We deduce it from the two tables of rule 2.
+- A node that leaves and registers again comes back with SubID 0. Is
+  that intended, and can a SubID be kept for a node that returns?
+- While the node with 1 544 senders and 1 544 receivers was being moved,
+  the registry's Query API once gave no answer for about 10 s and one
+  other node left and came back. Is there a sizing guide for the number
+  of streams of one node?
+
+### 6.13 Removing a node: "Forget"
+
+Removing a node works well and we could automate it over Northbound:
+SubID back to 0, NMOS off on the device, wait until the node's line has
+no address (`HRef` no longer available), then `Nodes.[<node uuid>].Forget`
+= `1`; the line is gone a few seconds later. *Question:* is `1` the
+intended value, and is "the line has no address" the right condition to
+wait for?
+
+### 6.14 A node behind an external registry (Network Media)
+
+For one test we registered the devices with our own IS-04 registry and
+pointed a *Network Media* device at it. Cerebrum found the registry by
+DNS-SD and read it over WebSocket subscriptions at v1.3, and the three
+nodes registered at v1.3 appeared at once.
+
+One node (IS-04 v1.2 only) did not appear: a v1.3 query does not return
+a v1.2 resource unless the client adds `query.downgrade`. With "Force
+Fixed server" ticked and "Fixed Server Version" `v1.2`, the Servers tab
+listed no query server and no node server at all, although the registry
+announces `api_ver=v1.0,v1.1,v1.2,v1.3`. With Cerebrum's own registry
+(*Network Media Server*) the same node shows, as before.
+
+*Questions:* can Network Media ask for older nodes (`query.downgrade`),
+or read a registry at a chosen version while still discovering it? And
+where is the address of the fixed server entered?
+
+### 6.15 A node that announces a second, unreachable address
+
+One node (Neuron VIEW) at first registered with `href`
+`http://10.41.40.160:3000/`, an address on none of its interfaces, and
+earlier with `127.0.0.1`; after its NMOS service was switched off and on
+it registers with its management address, and Cerebrum reaches it. Its
+node document still lists a second endpoint, `172.0.0.1`, and its DNS-SD
+name is the library default (`nmos-cpp_node_<address>`), where the other
+Neurons announce `neuron-<serial>`. This is on the node side, not on
+Cerebrum; we report it here because both are EVS products. *Question:*
+how does the node choose the addresses it announces?
+
+On the same unit, after a reboot, the second media port took no DHCP
+lease although the switch showed the link up; it recovered after the
+port was set to static and back to DHCP.
+
 ## 7. Summary of what we ask
 
 | # | Request | Why |
@@ -265,6 +383,11 @@ a rule added by the installer, would save the next integrator an hour.
 | 7 | The `/batch` request form (4.5) | performance on large systems |
 | 8 | An object browse endpoint (4.6) | device parameters without prior knowledge of paths |
 | 9 | Confirmation of the points in section 5, so we know which side will change | a client that keeps working across versions |
+| 10 | Level delete, level device, IP filter and default tags on either API (4.1) | levels provisioned without the UI |
+| 11 | A "move finished" signal for a SubID change, a SubID kept for a node that returns, and sizing guidance for large nodes (6.12) | provisioning one device at a time without guessing delays |
+| 12 | Confirmation of the "Forget" procedure (6.13) | devices removed as cleanly as they are added |
+| 13 | `query.downgrade`, or a chosen version with discovery, in Network Media (6.14) | every node visible behind an external registry |
+| 14 | The way a Neuron node chooses the addresses it announces (6.15) | every node reachable from Cerebrum |
 
 Thank you for RCP, and for your time on this. We can share the exact
 requests and answers behind every line of this note, and we are glad to

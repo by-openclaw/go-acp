@@ -11,10 +11,6 @@ cerebrum:
   nb_port: 40009
   # Name of the Network Media Server in Cerebrum's System View (1.0.0.1).
   nmos_device: NMOS
-  # Its node table, and the two fields of a row the SubID play uses.
-  nmos_table: Nodes
-  nmos_key: Label
-  nmos_field: SubID
   # SubID play: a node is moved to its slot before the next one is touched.
   # Each condition is read every nmos_wait_delay seconds, nmos_wait_retries
   # times at most; then nothing is asked for nmos_settle seconds and the
