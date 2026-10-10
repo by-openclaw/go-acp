@@ -577,13 +577,15 @@ func TestRRCSXpLevel(t *testing.T) {
 	}
 }
 
-// --log-level debug: every XML-RPC document is a log record, with its
-// method and its XML; at info none is.
-func TestRRCSDebugLogsXMLRPC(t *testing.T) {
+// The log levels are those of every dhs connector: debug adds one record
+// per XML-RPC document (method, direction, size), trace adds the XML;
+// info has neither. --verbose is the shortcut for debug.
+func TestRRCSLogLevels(t *testing.T) {
 	f := newRRCSFake(t, rrcsTreeAnswer)
-	read := func(level string) string {
+	read := func(flags ...string) string {
 		dir := t.TempDir()
-		rrcsRun(t, "info", f.addr(), "--log", filepath.Join(dir, "info.log"), "--log-format", "json", "--log-level", level)
+		args := append([]string{"info", f.addr(), "--log", filepath.Join(dir, "info.log"), "--log-format", "json"}, flags...)
+		rrcsRun(t, args...)
 		var all []byte
 		names, _ := filepath.Glob(filepath.Join(dir, "info*.log"))
 		for _, name := range names {
@@ -592,14 +594,25 @@ func TestRRCSDebugLogsXMLRPC(t *testing.T) {
 		}
 		return string(all)
 	}
-	debug := read("debug")
-	for _, want := range []string{`"msg":"xmlrpc"`, `"level":"DEBUG"`, `"dir":"tx"`, `"dir":"rx"`, `"method":"GetVersion"`,
-		`"method":"(response)"`, `"xml":"`, `methodName`} {
-		if !strings.Contains(debug, want) {
-			t.Errorf("debug log lacks %s:\n%s", want, debug)
+	summary := []string{`"msg":"xmlrpc"`, `"dir":"tx"`, `"dir":"rx"`, `"method":"GetVersion"`, `"method":"(response)"`, `"bytes":`}
+	for name, log := range map[string]string{"debug": read("--log-level", "debug"), "verbose": read("--verbose")} {
+		for _, want := range append(summary, `"level":"DEBUG"`) {
+			if !strings.Contains(log, want) {
+				t.Errorf("%s log lacks %s:\n%s", name, want, log)
+			}
+		}
+		if strings.Contains(log, `"xml":"`) {
+			t.Errorf("%s log carries the XML, which is for trace:\n%s", name, log)
 		}
 	}
-	if info := read("info"); strings.Contains(info, `"msg":"xmlrpc"`) {
+	trace := read("--log-level", "trace")
+	// The shared sink writes the trace level as slog names it: DEBUG-4.
+	for _, want := range append(summary, `"level":"DEBUG-4"`, `"xml":"`, `methodName`) {
+		if !strings.Contains(trace, want) {
+			t.Errorf("trace log lacks %s:\n%s", want, trace)
+		}
+	}
+	if info := read("--log-level", "info"); strings.Contains(info, `"msg":"xmlrpc"`) {
 		t.Errorf("XML-RPC documents logged at info:\n%s", info)
 	}
 	if rrcsMethodOf([]byte("<methodResponse/>")) != "(response)" || rrcsMethodOf([]byte("<methodName>X</methodName>")) != "X" {

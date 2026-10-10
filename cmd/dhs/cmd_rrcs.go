@@ -22,6 +22,7 @@ import (
 	"dhs/internal/clock"
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/alarm"
+	"dhs/internal/logging"
 	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
 	"dhs/internal/transport"
@@ -172,6 +173,7 @@ type rrcsFlags struct {
 	logPath      string
 	logFormat    string
 	logLevel     string
+	verbose      bool
 	syslogAddr   string
 	logRetention int
 	// sink receives the operational lines and the event stream; nil
@@ -223,7 +225,8 @@ func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
 	fs.StringVar(&c.output, "output", "text", "output: text | json | csv (watch only: one record per value, in the columns of export)")
 	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format. Default \"auto\" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; \"off\" disables the local file")
 	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is")
-	fs.StringVar(&c.logLevel, "log-level", "info", "log level: debug | info | warn | error")
+	fs.StringVar(&c.logLevel, "log-level", "info", "log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical")
+	fs.BoolVar(&c.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward the logs as RFC 5424 UDP datagrams to host:port")
 	fs.IntVar(&c.logRetention, "log-retention", 0, "days of daily log files to keep; 0 = keep every day")
 	fs.StringVar(&c.capture, "capture", "", "record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal \"auto\" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
@@ -234,6 +237,10 @@ func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
 func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), error) {
 	if c.output != "text" && c.output != "json" {
 		return nil, nil, nil, rrcsValErr(verb, "--output must be text or json")
+	}
+	// --verbose is the shortcut every dhs connector has for debug.
+	if c.verbose && c.logLevel == "info" {
+		c.logLevel = "debug"
 	}
 	var tap rrcs.Tap
 	_, sink, logClose, _, lerr := buildConsumerLoggers(parseLogLevel(c.logLevel), c.logFormat, c.logPath, c.syslogAddr,
@@ -269,22 +276,29 @@ func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), err
 			logClose()
 		}
 	}
-	// At --log-level debug every XML-RPC document, sent and received, is
-	// a log record: the method, the direction, the size and the XML
-	// itself — to the log file and to syslog. A long answer (the port
-	// list is megabytes) is cut in the log; --capture holds it whole.
-	if c.sink != nil && parseLogLevel(c.logLevel) <= slog.LevelDebug {
+	// The levels are those of every dhs connector (internal/logging):
+	// debug adds one record per XML-RPC document, sent and received —
+	// its method, direction and size; trace adds the XML itself, the raw
+	// wire data. Both go to the log file and to syslog. A long answer
+	// (the port list is megabytes) is cut in the log; --capture holds it
+	// whole.
+	if level := parseLogLevel(c.logLevel); c.sink != nil && level <= slog.LevelDebug {
 		inner, sink := tap, c.sink
 		tap = func(dir wiretrace.Direction, peer string, doc []byte) {
 			if inner != nil {
 				inner(dir, peer, doc)
 			}
+			attrs := []any{slog.String("proto", rrcsProto), slog.String("dir", string(dir)), slog.String("peer", peer),
+				slog.String("method", rrcsMethodOf(doc)), slog.Int("bytes", len(doc))}
+			if level > logging.LevelTrace {
+				sink.Debug("xmlrpc", attrs...)
+				return
+			}
 			text, cut := string(doc), false
 			if len(text) > rrcsLogXMLMax {
 				text, cut = text[:rrcsLogXMLMax], true
 			}
-			sink.Debug("xmlrpc", slog.String("proto", rrcsProto), slog.String("dir", string(dir)), slog.String("peer", peer),
-				slog.String("method", rrcsMethodOf(doc)), slog.Int("bytes", len(doc)), slog.Bool("cut", cut), slog.String("xml", text))
+			sink.Log(context.Background(), logging.LevelTrace, "xmlrpc", append(attrs, slog.Bool("cut", cut), slog.String("xml", text))...)
 		}
 	}
 	client, err := rrcs.NewClient(rrcs.Config{Addr: addr, Timeout: c.timeout, Tap: tap})

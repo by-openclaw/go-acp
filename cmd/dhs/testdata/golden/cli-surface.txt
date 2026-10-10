@@ -3677,7 +3677,7 @@ Usage of rrcs info:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -3686,6 +3686,8 @@ Usage of rrcs info:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/discover ==========
 $ dhs consumer rrcs discover --help
@@ -3697,7 +3699,7 @@ Usage of rrcs discover:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -3706,6 +3708,8 @@ Usage of rrcs discover:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/watch ==========
 $ dhs consumer rrcs watch --help
@@ -3729,7 +3733,7 @@ Usage of rrcs watch:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -3744,6 +3748,8 @@ Usage of rrcs watch:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -volume string
     	crosspoint levels (RRCS sends these only for crosspoints registered one by one): yes (default: follow every crosspoint that is made while watching, in both directions; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB) | no. Adds registrations on RRCS, removed on exit (default "yes")
 
@@ -3759,7 +3765,7 @@ Usage of rrcs walk:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -online string
@@ -3774,6 +3780,8 @@ Usage of rrcs walk:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/get ==========
 $ dhs consumer rrcs get --help
@@ -3789,7 +3797,7 @@ Usage of rrcs get:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -names string
@@ -3804,6 +3812,8 @@ Usage of rrcs get:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/list ==========
 $ dhs consumer rrcs list --help
@@ -3819,7 +3829,7 @@ Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|des
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -match string
@@ -3834,6 +3844,8 @@ Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|des
     	per-request timeout (default 10s)
   -type string
     	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/tree ==========
 $ dhs consumer rrcs tree --help
@@ -3849,7 +3861,7 @@ Usage of rrcs tree:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -match string
@@ -3864,6 +3876,8 @@ Usage of rrcs tree:
     	per-request timeout (default 10s)
   -type string
     	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/set ==========
 $ dhs consumer rrcs set --help
@@ -3877,7 +3891,7 @@ Usage of rrcs set:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -nmos-test string
@@ -3892,6 +3906,8 @@ Usage of rrcs set:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -3909,7 +3925,7 @@ Usage of rrcs export:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -out string
@@ -3922,6 +3938,8 @@ Usage of rrcs export:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/import ==========
 $ dhs consumer rrcs import --help
@@ -3943,7 +3961,7 @@ skipped and listed.
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -3954,6 +3972,8 @@ skipped and listed.
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -3985,7 +4005,7 @@ changes something and is refused without --write-to HOST.
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -3994,6 +4014,8 @@ changes something and is refused without --write-to HOST.
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4013,7 +4035,7 @@ Usage of rrcs xp:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4026,6 +4048,8 @@ Usage of rrcs xp:
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4081,7 +4105,7 @@ Only what the file names is touched. Without --check this WRITES and needs
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4090,6 +4114,8 @@ Only what the file names is touched. Without --check this WRITES and needs
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4116,7 +4142,7 @@ SetXpPrio: make a crosspoint with a priority. It WRITES: it needs --write-to HOS
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4129,6 +4155,8 @@ SetXpPrio: make a crosspoint with a priority. It WRITES: it needs --write-to HOS
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4147,7 +4175,7 @@ SetXpDestructive: make a crosspoint and remove the routes it displaces. It WRITE
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4160,6 +4188,8 @@ SetXpDestructive: make a crosspoint and remove the routes it displaces. It WRITE
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4180,7 +4210,7 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4193,6 +4223,8 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -volume string
     	0 mute, 1..255 = (volume - 230) / 2 dB
   -write-to string
@@ -4213,7 +4245,7 @@ SetPortAlias: set the alias of a port. It WRITES: it needs --write-to HOST, and 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4224,6 +4256,8 @@ SetPortAlias: set the alias of a port. It WRITES: it needs --write-to HOST, and 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4242,7 +4276,7 @@ SetPortLabel: set the 8-character label of a port. It WRITES: it needs --write-t
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4253,6 +4287,8 @@ SetPortLabel: set the 8-character label of a port. It WRITES: it needs --write-t
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4271,7 +4307,7 @@ SetInputGain: set the input gain of a port. It WRITES: it needs --write-to HOST,
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4282,6 +4318,8 @@ SetInputGain: set the input gain of a port. It WRITES: it needs --write-to HOST,
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4300,7 +4338,7 @@ SetOutputGain: set the output gain of a port. It WRITES: it needs --write-to HOS
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4311,6 +4349,8 @@ SetOutputGain: set the output gain of a port. It WRITES: it needs --write-to HOS
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4329,7 +4369,7 @@ SetGpOutput: switch a GP output. It WRITES: it needs --write-to HOST, and has no
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4344,6 +4384,8 @@ SetGpOutput: switch a GP output. It WRITES: it needs --write-to HOST, and has no
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4362,7 +4404,7 @@ GetGpInputState: read a GP input. It only reads.
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4375,6 +4417,8 @@ GetGpInputState: read a GP input. It only reads.
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4393,7 +4437,7 @@ GetGpOutputState: read a GP output. It only reads.
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4406,6 +4450,8 @@ GetGpOutputState: read a GP output. It only reads.
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4424,7 +4470,7 @@ SetLogicSourceState: switch a logic source. It WRITES: it needs --write-to HOST,
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4435,6 +4481,8 @@ SetLogicSourceState: switch a logic source. It WRITES: it needs --write-to HOST,
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4451,7 +4499,7 @@ SetStateWorking: make this gateway the working one. It WRITES: it needs --write-
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4460,6 +4508,8 @@ SetStateWorking: make this gateway the working one. It WRITES: it needs --write-
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4476,7 +4526,7 @@ SetStateStandby: make this gateway the standby one. It WRITES: it needs --write-
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4485,6 +4535,8 @@ SetStateStandby: make this gateway the standby one. It WRITES: it needs --write-
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4501,7 +4553,7 @@ SetNetName: set the long name of the net. It WRITES: it needs --write-to HOST, a
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -name string
@@ -4512,6 +4564,8 @@ SetNetName: set the long name of the net. It WRITES: it needs --write-to HOST, a
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4530,7 +4584,7 @@ ConfigurationChange: apply configuration changes, all or nothing. It WRITES: it 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4539,6 +4593,8 @@ ConfigurationChange: apply configuration changes, all or nothing. It WRITES: it 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4557,7 +4613,7 @@ BufferConfigurationChange: buffer configuration changes for a later apply. It WR
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4566,6 +4622,8 @@ BufferConfigurationChange: buffer configuration changes for a later apply. It WR
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4584,7 +4642,7 @@ BufferConfigurationChangeEx: buffer configuration changes, each handled on its o
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4593,6 +4651,8 @@ BufferConfigurationChangeEx: buffer configuration changes, each handled on its o
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4609,7 +4669,7 @@ ApplyConfigurationChange: send the buffered changes, all or nothing. It WRITES: 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4618,6 +4678,8 @@ ApplyConfigurationChange: send the buffered changes, all or nothing. It WRITES: 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4634,7 +4696,7 @@ ApplyConfigurationChangeEx: send the buffered changes, each handled on its own. 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4643,6 +4705,8 @@ ApplyConfigurationChangeEx: send the buffered changes, each handled on its own. 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4661,7 +4725,7 @@ ClearKeyLabel: clear a key label set through RRCS. It WRITES: it needs --write-t
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4670,6 +4734,8 @@ ClearKeyLabel: clear a key label set through RRCS. It WRITES: it needs --write-t
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4690,7 +4756,7 @@ ClearKeyLabelAndMarker: clear a key label and marker set through RRCS. It WRITES
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4699,6 +4765,8 @@ ClearKeyLabelAndMarker: clear a key label and marker set through RRCS. It WRITES
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4719,7 +4787,7 @@ ClearKeyMarker: clear a key marker set through RRCS. It WRITES: it needs --write
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4728,6 +4796,8 @@ ClearKeyMarker: clear a key marker set through RRCS. It WRITES: it needs --write
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4750,7 +4820,7 @@ LockKey: lock or unlock a key. It WRITES: it needs --write-to HOST, and has not 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4761,6 +4831,8 @@ LockKey: lock or unlock a key. It WRITES: it needs --write-to HOST, and has not 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4781,7 +4853,7 @@ PressKey: press or release a key. It WRITES: it needs --write-to HOST, and has n
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4794,6 +4866,8 @@ PressKey: press or release a key. It WRITES: it needs --write-to HOST, and has n
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4814,7 +4888,7 @@ PressKeyEx: press or release a key with a trigger. It WRITES: it needs --write-t
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4829,6 +4903,8 @@ PressKeyEx: press or release a key with a trigger. It WRITES: it needs --write-t
     	per-request timeout (default 10s)
   -trigger string
     	1 primary, 2 secondary
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4851,7 +4927,7 @@ SetKeyLabel: set a key label. It WRITES: it needs --write-to HOST, and has not p
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -4860,6 +4936,8 @@ SetKeyLabel: set a key label. It WRITES: it needs --write-to HOST, and has not p
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4882,7 +4960,7 @@ SetKeyLabelAndMarker: set a key label and marker. It WRITES: it needs --write-to
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -marker string
@@ -4893,6 +4971,8 @@ SetKeyLabelAndMarker: set a key label and marker. It WRITES: it needs --write-to
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4913,7 +4993,7 @@ SetKeyMarker: set a key marker. It WRITES: it needs --write-to HOST, and has not
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -marker string
@@ -4924,6 +5004,8 @@ SetKeyMarker: set a key marker. It WRITES: it needs --write-to HOST, and has not
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -virtual string
     	the key is a virtual key
   -write-to string
@@ -4944,7 +5026,7 @@ StartPortCloning: clone the output of a port to a monitoring port. It WRITES: it
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -monitor string
@@ -4955,6 +5037,8 @@ StartPortCloning: clone the output of a port to a monitoring port. It WRITES: it
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -4973,7 +5057,7 @@ StopPortCloning: stop a port clone. It WRITES: it needs --write-to HOST, and has
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -monitor string
@@ -4984,6 +5068,8 @@ StopPortCloning: stop a port clone. It WRITES: it needs --write-to HOST, and has
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5002,7 +5088,7 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5013,6 +5099,8 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -volume string
     	0 mute, 1..255 = (volume - 230) / 2 dB
   -write-to string
@@ -5033,7 +5121,7 @@ RemoveIFBVolumeMixMinus: return the mix-minus level of an IFB to unity. It WRITE
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5044,6 +5132,8 @@ RemoveIFBVolumeMixMinus: return the mix-minus level of an IFB to unity. It WRITE
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5062,7 +5152,7 @@ XpVolumeChangeRegistryReset: replace the crosspoints whose level is followed. It
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5073,6 +5163,8 @@ XpVolumeChangeRegistryReset: replace the crosspoints whose level is followed. It
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
   -xp value
@@ -5093,7 +5185,7 @@ XpVolumeChangeRegistryRemove: stop following the level of crosspoints. It WRITES
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5104,6 +5196,8 @@ XpVolumeChangeRegistryRemove: stop following the level of crosspoints. It WRITES
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
   -xp value
@@ -5124,7 +5218,7 @@ RegisterForEvents: register a receiver for the general events. It WRITES: it nee
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5135,6 +5229,8 @@ RegisterForEvents: register a receiver for the general events. It WRITES: it nee
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5153,7 +5249,7 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5164,6 +5260,8 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5182,7 +5280,7 @@ RegisterForGpInputChange: register a receiver for GP input changes. It WRITES: i
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5193,6 +5291,8 @@ RegisterForGpInputChange: register a receiver for GP input changes. It WRITES: i
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5211,7 +5311,7 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5222,6 +5322,8 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5240,7 +5342,7 @@ RegisterForGpOutputChange: register a receiver for GP output changes. It WRITES:
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5251,6 +5353,8 @@ RegisterForGpOutputChange: register a receiver for GP output changes. It WRITES:
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5269,7 +5373,7 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5280,6 +5384,8 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
     	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5298,7 +5404,7 @@ SetTrunkingNetAddr: set the trunking net address of the ring. It WRITES: it need
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5307,6 +5413,8 @@ SetTrunkingNetAddr: set the trunking net address of the ring. It WRITES: it need
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5323,7 +5431,7 @@ SetLTC: move the local trunk controller to a node. It WRITES: it needs --write-t
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -node string
@@ -5334,6 +5442,8 @@ SetLTC: move the local trunk controller to a node. It WRITES: it needs --write-t
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5350,7 +5460,7 @@ DialNumber: dial a number on a pool port. It WRITES: it needs --write-to HOST, a
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -number string
@@ -5363,6 +5473,8 @@ DialNumber: dial a number on a pool port. It WRITES: it needs --write-to HOST, a
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5379,7 +5491,7 @@ HangUpCall: hang up the call of a port. It WRITES: it needs --write-to HOST, and
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5390,6 +5502,8 @@ HangUpCall: hang up the call of a port. It WRITES: it needs --write-to HOST, and
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5406,7 +5520,7 @@ LineStatus: read the line status of a port. It only reads.
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5417,6 +5531,8 @@ LineStatus: read the line status of a port. It only reads.
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5433,7 +5549,7 @@ SetSystemTimeOnAllNodes: set the time of the gateway PC on every node. It WRITES
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5442,6 +5558,8 @@ SetSystemTimeOnAllNodes: set the time of the gateway PC on every node. It WRITES
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5460,7 +5578,7 @@ ConnectToArtist: connect the gateway to an Artist system. It WRITES: it needs --
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5471,6 +5589,8 @@ ConnectToArtist: connect the gateway to an Artist system. It WRITES: it needs --
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5487,7 +5607,7 @@ DisconnectFromArtist: disconnect the gateway from the Artist system. It WRITES: 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5496,6 +5616,8 @@ DisconnectFromArtist: disconnect the gateway from the Artist system. It WRITES: 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5512,7 +5634,7 @@ ResetAllNodes: RESET every node that is on line. It WRITES: it needs --write-to 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5521,6 +5643,8 @@ ResetAllNodes: RESET every node that is on line. It WRITES: it needs --write-to 
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5537,7 +5661,7 @@ DeletePortCommands: delete the commands of a command position. It WRITES: it nee
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5548,6 +5672,8 @@ DeletePortCommands: delete the commands of a command position. It WRITES: it nee
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5566,7 +5692,7 @@ SetStageNetAddr: set the stage net address. It WRITES: it needs --write-to HOST,
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5575,6 +5701,8 @@ SetStageNetAddr: set the stage net address. It WRITES: it needs --write-to HOST,
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
     	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5591,7 +5719,7 @@ SetStageRegistryUrl: set the stage registry URL. It WRITES: it needs --write-to 
   -log-format string
     	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
   -log-level string
-    	log level: debug | info | warn | error (default "info")
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -output string
@@ -5602,6 +5730,8 @@ SetStageRegistryUrl: set the stage registry URL. It WRITES: it needs --write-to 
     	per-request timeout (default 10s)
   -url string
     	URL
+  -verbose
+    	debug log output (shortcut for --log-level debug)
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
