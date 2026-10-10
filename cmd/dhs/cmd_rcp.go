@@ -38,9 +38,26 @@ const rcpUsage = `usage: dhs consumer rcp <verb> <host> [flags]
   list                    ids of one RouteMaster collection, or of all four
   get                     one IO in full            --kind K --id N [--json]
   export                  every IO of every collection as JSON   [--out-dir D]
+                          --plan: the RouteMaster as an ensure plan, to edit and apply
   create                  append IOs                --kind K [--count N] [body flags]
   set                     change one IO             --kind K --id N [body flags]
   delete                  remove one IO             --kind K --id N
+
+  routes                  the crosspoint table      [--dest N] [--json]
+  take                    make a crosspoint         --dest N --src N [--level L]
+  mnemonics               a router mnemonic table   --kind source|destination|level
+  set-mnemonic            change one mnemonic       --kind K --id N [--mnemonic M] [--alt NAME=VALUE]
+  ensure                  converge on a plan        --plan FILE [--check] [--state absent]
+                          [--prune]  the plan is the whole RouteMaster: what it does not
+                                     name is removed (IOs are matched by mnemonic)
+                          [--federation-optional]   last line: changed=N pending=N
+
+  devices                 the devices registered in Cerebrum, with their slots
+  object                  read one device object    --device D --index N --path A.B.C
+  set-object              write one device object   --device D --index N --path A.B.C --value V
+
+  --device D   device for routes/take/mnemonics/object (default Cerebrum: the RouteMaster)
+  --index N    its sub-device (slot) index (default 0)
 
   --kind K     sources | destinations | federation-sources | federation-destinations
   body flags   --mnemonic M  --virtual[=false]  --tie-line-inhibit[=false]
@@ -132,6 +149,20 @@ func runRCP(ctx context.Context, args []string) error {
 		return runRCPWrite(ctx, verb, rest)
 	case "delete":
 		return runRCPDelete(ctx, rest)
+	case "routes":
+		return runRCPRoutes(ctx, rest)
+	case "take":
+		return runRCPTake(ctx, rest)
+	case "mnemonics":
+		return runRCPMnemonics(ctx, rest)
+	case "set-mnemonic":
+		return runRCPSetMnemonic(ctx, rest)
+	case "ensure":
+		return runRCPEnsure(ctx, rest)
+	case "devices":
+		return runRCPDevices(ctx, rest)
+	case "object", "set-object":
+		return runRCPObject(ctx, verb, rest)
 	}
 	return fmt.Errorf("consumer rcp: unknown verb %q\n%s", verb, rcpUsage)
 }
@@ -295,9 +326,22 @@ func printJSON(v any) error {
 func runRCPExport(ctx context.Context, args []string) error {
 	f := newRCPFlags("export")
 	outDir := f.fs.String("out-dir", "", "write one <collection>.json per collection here (default: one document on stdout)")
+	asPlan := f.fs.Bool("plan", false, "print the RouteMaster as an ensure plan (IOs by mnemonic, crosspoints) instead of the raw IOs")
 	c, p, err := f.client(args)
 	if err != nil {
 		return err
+	}
+	if *asPlan {
+		return f.session(ctx, c, p, func() error {
+			plan, unnamed, err := c.PlanOf(ctx, rcpc.RouteMaster)
+			if err != nil {
+				return err
+			}
+			for _, u := range unnamed {
+				fmt.Fprintln(os.Stderr, "rcp export: left out of the plan, no mnemonic: "+u)
+			}
+			return printJSON(plan)
+		})
 	}
 	all := map[string][]codec.IO{}
 	err = f.session(ctx, c, p, func() error {

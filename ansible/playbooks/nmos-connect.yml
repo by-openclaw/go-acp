@@ -1,0 +1,119 @@
+---
+# NMOS IS-05 connections from the inventory: each receiver named in
+# `nmos_connections` is connected to its sender, by LABEL — ids are read
+# from the two Nodes at run time.
+#
+#   nmos_connections:
+#     - receiver_node: http://10.6.40.54          Node that owns the receivers
+#       receiver_version: v1.2                    its IS-04 version
+#       sender_node: http://10.6.255.102:3000     Node that owns the senders
+#       sender_version: v1.3
+#       pairs:
+#         - {receiver: "emsfp-a2-10-0c VidRx 100", sender: "VTX-01"}
+#
+# The connection is made by `dhs consumer nmos connect`, which fetches
+# the sender's SDP from the sender's own Node and stages it on the
+# receiver. A receiver already subscribed to its sender is left alone:
+# run twice, the second run changes nothing.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/nmos-connect.yml
+
+- name: nmos — connect receivers to senders, by label
+  hosts: plant
+  gather_facts: false
+  vars:
+    nmc_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+  tasks:
+    - name: The connections are given by the inventory
+      ansible.builtin.assert:
+        that: nmos_connections is defined and nmos_connections | length > 0
+        fail_msg: set `nmos_connections` in the inventory
+        quiet: true
+
+    - name: Receivers of each receiving Node
+      ansible.builtin.uri:
+        url: "{{ item.receiver_node }}/x-nmos/node/{{ item.receiver_version }}/receivers"
+        return_content: true
+      loop: "{{ nmos_connections }}"
+      loop_control:
+        label: "{{ item.receiver_node }}"
+      register: nmc_receivers
+
+    - name: Senders of each sending Node
+      ansible.builtin.uri:
+        url: "{{ item.sender_node }}/x-nmos/node/{{ item.sender_version }}/senders"
+        return_content: true
+      loop: "{{ nmos_connections }}"
+      loop_control:
+        label: "{{ item.sender_node }}"
+      register: nmc_senders
+
+    - name: Every pair, with its ids
+      ansible.builtin.set_fact:
+        nmc_pairs: >-
+          {%- set out = [] -%}
+          {%- for c in nmos_connections -%}
+          {%- set rx = nmc_receivers.results[loop.index0].json -%}
+          {%- set tx = nmc_senders.results[loop.index0].json -%}
+          {%- for p in c.pairs -%}
+          {%- set r = rx | selectattr('label', 'equalto', p.receiver) | list -%}
+          {%- set s = tx | selectattr('label', 'equalto', p.sender) | list -%}
+          {%- set _ = out.append({
+                'receiver_node': c.receiver_node, 'sender_node': c.sender_node,
+                'receiver': p.receiver, 'sender': p.sender,
+                'receiver_id': (r[0].id if r | length == 1 else ''),
+                'sender_id': (s[0].id if s | length == 1 else ''),
+                'current': (r[0].subscription.sender_id | default('', true) if r | length == 1 else ''),
+                'active': (r[0].subscription.active | default(false) if r | length == 1 else false)}) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ out }}
+
+    - name: Every label names exactly one receiver and one sender
+      ansible.builtin.assert:
+        that: nmc_pairs | selectattr('receiver_id', 'equalto', '') | list | length == 0
+              and nmc_pairs | selectattr('sender_id', 'equalto', '') | list | length == 0
+        fail_msg: >-
+          not found or not unique:
+          {{ nmc_pairs | selectattr('receiver_id', 'equalto', '') | map(attribute='receiver') | list }}
+          {{ nmc_pairs | selectattr('sender_id', 'equalto', '') | map(attribute='sender') | list }}
+        quiet: true
+
+    - name: Connect
+      ansible.builtin.command:
+        argv: ["{{ nmc_bin }}", consumer, nmos, connect, --node, "{{ item.receiver_node }}",
+               --receiver, "{{ item.receiver_id }}", --sender, "{{ item.sender_id }}",
+               --sender-node, "{{ item.sender_node }}"]
+      loop: "{{ nmc_pairs }}"
+      loop_control:
+        label: "{{ item.receiver }} <- {{ item.sender }}"
+      when: item.current != item.sender_id or not item.active
+      register: nmc_done
+
+    - name: Receivers after the connections
+      ansible.builtin.uri:
+        url: "{{ item.receiver_node }}/x-nmos/node/{{ item.receiver_version }}/receivers"
+        return_content: true
+      loop: "{{ nmos_connections }}"
+      loop_control:
+        label: "{{ item.receiver_node }}"
+      register: nmc_after
+
+    - name: Every receiver is subscribed to its sender
+      ansible.builtin.assert:
+        that: nmc_wrong | length == 0
+        fail_msg: "not subscribed as asked: {{ nmc_wrong }}"
+        success_msg: >-
+          {{ nmc_pairs | length }} receiver(s) subscribed as asked —
+          {{ nmc_done.results | selectattr('changed', 'defined') | selectattr('changed') | list | length }} connected in this run
+      vars:
+        nmc_all: "{{ nmc_after.results | map(attribute='json') | flatten }}"
+        nmc_wrong: >-
+          {%- set out = [] -%}
+          {%- for p in nmc_pairs -%}
+          {%- set r = nmc_all | selectattr('id', 'equalto', p.receiver_id) | first -%}
+          {%- if (r.subscription.sender_id | default('', true)) != p.sender_id or not (r.subscription.active | default(false)) -%}
+          {%- set _ = out.append(p.receiver) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ out }}

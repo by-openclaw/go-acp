@@ -1,0 +1,89 @@
+---
+# EVS Neuron VIEW: the NMOS registry it registers with.
+#
+# The Neuron VIEW has no dhs protocol for its settings yet, so the
+# provisioning import does not reach it; its own REST API does
+# (`/misc/nmos`, as its served API document describes it).
+#
+# Everything comes from the inventory and the site:
+#   neuronview.api / neuronview.validate_certs      group_vars/plant.yml
+#   neuronview.nmos_enabled                         group_vars/plant.yml
+#   registry_host / registry_port                   sites/<site>/provisioning/site.csv
+#                                                   (the same registry as every other device)
+#
+# Idempotent, one pass: read, write only when a field differs, read once.
+# The label and the description of the node are left as the device holds
+# them.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/neuronview-nmos.yml
+#   ... --check                       report, write nothing
+
+- name: neuron view — NMOS registry
+  hosts: plant
+  gather_facts: false
+  vars:
+    nvn_site_dir: "{{ playbook_dir }}/../sites/{{ site | default('lab') }}/provisioning"
+    nvn_url: "{{ neuronview.api }}/misc/nmos"
+  tasks:
+    - name: The device and the switch are given by the inventory
+      ansible.builtin.assert:
+        that:
+          - neuronview.api is defined
+          - neuronview.nmos_enabled is defined
+        fail_msg: set `neuronview.api` and `neuronview.nmos_enabled` in the inventory
+        quiet: true
+
+    - name: The site
+      ansible.builtin.read_csv:
+        path: "{{ nvn_site_dir }}/site.csv"
+        key: key
+      register: nvn_site
+      check_mode: false
+
+    - name: NMOS settings on the device
+      ansible.builtin.uri:
+        url: "{{ nvn_url }}"
+        validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+        return_content: true
+      register: nvn_now
+      check_mode: false
+
+    - name: The settings the site asks for
+      ansible.builtin.set_fact:
+        nvn_want: >-
+          {{ nvn_now.json | combine({
+               'discoveryMode': 'manual',
+               'addressOverride': nvn_site.dict.registry_host.value,
+               'portOverride': nvn_site.dict.registry_port.value | int,
+               'enabled': neuronview.nmos_enabled | bool}) }}
+
+    - name: Set the registry, once, when a field differs
+      ansible.builtin.uri:
+        url: "{{ nvn_url }}"
+        method: PUT
+        body_format: json
+        body: "{{ nvn_want }}"
+        status_code: [200, 204]
+        validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+      when: nvn_now.json != nvn_want
+      register: nvn_put
+      changed_when: true
+
+    - name: NMOS settings on the device now
+      ansible.builtin.uri:
+        url: "{{ nvn_url }}"
+        validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+        return_content: true
+      register: nvn_after
+      when: nvn_put is changed and not ansible_check_mode
+
+    - name: The device holds the settings
+      ansible.builtin.assert:
+        that: nvn_after.json == nvn_want
+        fail_msg: "the device accepted the settings and holds {{ nvn_after.json | default({}) }}"
+        quiet: true
+      when: nvn_after is not skipped
+
+    - name: Result
+      ansible.builtin.debug:
+        msg: "{{ nvn_now.json }} -> {{ nvn_want if nvn_now.json != nvn_want else 'unchanged' }}"

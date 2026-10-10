@@ -1,0 +1,81 @@
+---
+# Cerebrum Network Media Server: the SubID of each NMOS node.
+#
+# A node registered with Cerebrum's NMOS registry sits on slot 00 with
+# SubID 0. Given a SubID N it is MOVED to slot N, with its devices,
+# senders and receivers; only then do they show in IP routing. The move
+# takes Cerebrum seconds to tens of seconds, and it must not be disturbed:
+#
+#   - ONE NODE AT A TIME, in the order of the inventory. The next node is
+#     not touched until the move of the previous one is finished.
+#   - ONE WRITE per node. A write is never repeated.
+#   - "Finished" is read from Cerebrum, not guessed from a delay: the
+#     node's entry on slot 00 holds no device any more, AND slot N holds
+#     every device of the node with all its senders and receivers (the
+#     numbers the registry gives for that node), AND a second read after
+#     `cerebrum.nmos_settle` seconds finds the same.
+#   - While it waits the play only reads. A wait that runs out fails the
+#     play, which then stops: no further node is written.
+#   - EVS support (2026-10-10): the registry page of the Network Media
+#     Server must be CLOSED in the Cerebrum UI while SubIDs change.
+#
+# Over northbound (XML over WebSocket), not RCP. Everything comes from
+# the inventory and the site:
+#   cerebrum.host / cerebrum.nb_port / cerebrum.nmos_device
+#   cerebrum.nmos_settle / cerebrum.nmos_wait_retries / cerebrum.nmos_wait_delay
+#   cerebrum_nmos_subids: [{label: <IS-04 node label>, subid: <n>}]
+#   registry_host / registry_port          sites/<site>/provisioning/site.csv
+# A node that is not registered is reported and skipped. Run twice, the
+# second run writes nothing.
+#
+# Credentials: the Cerebrum account, from the environment of the control
+# node (DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS).
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/cerebrum-nmos-subid.yml
+#   ... -e only=lab-convert-01        one node
+
+- name: cerebrum — SubID of the NMOS nodes, one node at a time
+  hosts: plant
+  gather_facts: false
+  vars:
+    csi_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    csi_env:
+      DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+      DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+    csi_site_dir: "{{ playbook_dir }}/../sites/{{ site | default('lab') }}/provisioning"
+    csi_registry: "http://{{ csi_site.dict.registry_host.value }}:{{ csi_site.dict.registry_port.value }}/x-nmos/query/v1.2"
+    csi_nb: ["{{ csi_bin }}", consumer, cerebrum-nb]
+    csi_target: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}"]
+    csi_read: "{{ csi_nb + ['device-value'] + csi_target + ['--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device, '--by-name'] }}"
+    csi_wanted: "{{ cerebrum_nmos_subids | selectattr('label', 'equalto', only) | list if only is defined else cerebrum_nmos_subids }}"
+  tasks:
+    - name: The server, the nodes and the account are given
+      ansible.builtin.assert:
+        that:
+          - cerebrum.host is defined and cerebrum.nb_port is defined and cerebrum.nmos_device is defined
+          - cerebrum.nmos_settle is defined and cerebrum.nmos_read_timeout is defined and cerebrum.nmos_page_limit is defined and cerebrum.nmos_wait_retries is defined and cerebrum.nmos_wait_delay is defined
+          - csi_wanted | length > 0
+          - csi_env.DHS_CEREBRUM_USER | length > 0 and csi_env.DHS_CEREBRUM_PASS | length > 0
+        fail_msg: set `cerebrum` and `cerebrum_nmos_subids` in the inventory, and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
+        quiet: true
+
+    - name: The site
+      ansible.builtin.read_csv:
+        path: "{{ csi_site_dir }}/site.csv"
+        key: key
+      register: csi_site
+
+    # Cerebrum's registry pages 10 resources by default: ask for the page
+    # size, and read the devices per node (cerebrum-nmos-subid-node.yml).
+    - name: Nodes in the registry
+      ansible.builtin.uri:
+        url: "{{ csi_registry }}/nodes?paging.limit={{ cerebrum.nmos_page_limit }}"
+        return_content: true
+      register: csi_reg_nodes
+
+    - name: One node at a time
+      ansible.builtin.include_tasks: cerebrum-nmos-subid-node.yml
+      loop: "{{ csi_wanted }}"
+      loop_control:
+        loop_var: csi_node
+        label: "{{ csi_node.label }} -> {{ csi_node.subid }}"

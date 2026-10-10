@@ -1,0 +1,142 @@
+---
+# One node of cerebrum-nmos-subid.yml. `csi_node` is {label, subid}.
+# One write at most, then reads until the move is finished.
+# A read that fails (Cerebrum is slow to answer in the middle of a move)
+# is not an answer: it is read again, it never counts as "empty".
+
+- name: "{{ csi_node.label }} — the node and its devices, as the registry has them"
+  ansible.builtin.set_fact:
+    csi_id: "{{ (csi_reg_nodes.json | selectattr('label', 'equalto', csi_node.label) | map(attribute='id') | list | first) | default('') }}"
+    csi_slot: "{{ csi_node.subid | string }}"
+
+- name: "{{ csi_node.label }} — not registered: skipped"
+  ansible.builtin.debug:
+    msg: "{{ csi_node.label }} is not in the registry — nothing written"
+  when: csi_id == ''
+
+- name: "{{ csi_node.label }} — its devices in the registry"
+  ansible.builtin.uri:
+    url: "{{ csi_registry }}/devices?node_id={{ csi_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+    return_content: true
+  register: csi_reg_devs
+  when: csi_id != ''
+
+- name: "{{ csi_node.label }} — SubID, move, confirm"
+  when: csi_id != ''
+  environment: "{{ csi_env }}"
+  vars:
+    csi_devs: "{{ csi_reg_devs.json }}"
+    csi_subid_obj: "Nodes.[{{ csi_id }}].SubID"
+    csi_entry_obj: "Nodes.[{{ csi_id }}].Devices"
+  block:
+    - name: "{{ csi_node.label }} — SubID it holds"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', '0', '--object', csi_subid_obj] }}"
+      register: csi_now
+      changed_when: false
+
+    - name: "{{ csi_node.label }} — the node is in Cerebrum's node table"
+      ansible.builtin.assert:
+        that: csi_now.stdout is search('value="')
+        fail_msg: "{{ csi_node.label }} is in the registry and not in Cerebrum's node table"
+        quiet: true
+
+    - name: "{{ csi_node.label }} — the registry lists its devices"
+      ansible.builtin.assert:
+        that: csi_devs | length > 0
+        fail_msg: "{{ csi_node.label }} has no device in the registry yet — nothing written"
+        quiet: true
+
+    - name: "{{ csi_node.label }} — set the SubID, once"
+      ansible.builtin.command:
+        argv: "{{ csi_nb + ['set-value'] + csi_target + ['--device', cerebrum.nmos_device, '--sub-device', '0',
+                                                         '--object', csi_subid_obj, '--value', csi_slot] }}"
+      when: (csi_now.stdout | regex_search('value="([^"]*)"', '\\1') | first) != csi_slot
+      register: csi_set
+
+    # From here on: reads only.
+    - name: "{{ csi_node.label }} — its entry on slot 00 is empty"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', '0', '--object', csi_entry_obj] }}"
+      register: csi_entry
+      until: csi_entry.rc == 0 and csi_entry.stdout_lines | select('search', (csi_entry_obj ~ '.[') | regex_escape) | list | length == 0
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+      when: csi_slot != '0'
+
+    - name: "{{ csi_node.label }} — slot {{ csi_slot }} holds every device"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices'] }}"
+      register: csi_slot_devs
+      until: csi_slot_devs.rc == 0 and csi_slot_devs.stdout_lines | select('search', 'Devices.[' | regex_escape) | list | length == csi_devs | length
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+      when: csi_slot != '0'
+
+    - name: "{{ csi_node.label }} — slot {{ csi_slot }} holds every sender"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices.[' ~ item.label ~ '].Senders'] }}"
+      register: csi_snd
+      until: csi_snd.rc == 0 and csi_snd.stdout_lines | select('search', ('Devices.[' ~ item.label ~ '].Senders.[') | regex_escape) | list | length == item.senders | length
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+      loop: "{{ csi_devs }}"
+      loop_control:
+        label: "{{ item.label }}: {{ item.senders | length }}"
+      when: csi_slot != '0'
+
+    - name: "{{ csi_node.label }} — slot {{ csi_slot }} holds every receiver"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices.[' ~ item.label ~ '].Receivers'] }}"
+      register: csi_rcv
+      until: csi_rcv.rc == 0 and csi_rcv.stdout_lines | select('search', ('Devices.[' ~ item.label ~ '].Receivers.[') | regex_escape) | list | length == item.receivers | length
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+      loop: "{{ csi_devs }}"
+      loop_control:
+        label: "{{ item.label }}: {{ item.receivers | length }}"
+      when: csi_slot != '0'
+
+    - name: "{{ csi_node.label }} — leave Cerebrum alone before the second read"
+      ansible.builtin.pause:
+        seconds: "{{ cerebrum.nmos_settle }}"
+      when: csi_set is changed
+
+    - name: "{{ csi_node.label }} — second read: SubID"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', '0', '--object', csi_subid_obj] }}"
+      register: csi_after
+      changed_when: false
+      when: csi_set is changed
+
+    - name: "{{ csi_node.label }} — second read: senders and receivers of slot {{ csi_slot }}"
+      ansible.builtin.command:
+        argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices.[' ~ item.0.label ~ '].' ~ item.1] }}"
+      register: csi_again
+      changed_when: false
+      loop: "{{ csi_devs | product(['Senders', 'Receivers']) | list }}"
+      loop_control:
+        label: "{{ item.0.label }} {{ item.1 }}"
+      when: csi_set is changed and csi_slot != '0'
+
+    - name: "{{ csi_node.label }} — the move held"
+      ansible.builtin.assert:
+        that:
+          - (csi_after.stdout | regex_search('value="([^"]*)"', '\\1') | first) == csi_slot
+          - csi_again is skipped or (csi_again.results | map(attribute='stdout_lines') | map('select', 'search', '\]\.(Senders|Receivers)\.\[') | map('list') | map('length') | sum)
+            == (csi_devs | map(attribute='senders') | map('length') | sum) + (csi_devs | map(attribute='receivers') | map('length') | sum)
+        fail_msg: "{{ csi_node.label }}: after {{ cerebrum.nmos_settle }} s the SubID or the content of slot {{ csi_slot }} is not what it was — stopped, nothing more written"
+        quiet: true
+      when: csi_set is changed
+
+    - name: "{{ csi_node.label }}"
+      ansible.builtin.debug:
+        msg: >-
+          SubID {{ csi_slot }}{{ ' set' if csi_set is changed else ' already held' }} —
+          {{ csi_devs | length }} device(s),
+          {{ csi_devs | map(attribute='senders') | map('length') | sum }} sender(s),
+          {{ csi_devs | map(attribute='receivers') | map('length') | sum }} receiver(s) on slot {{ csi_slot }}

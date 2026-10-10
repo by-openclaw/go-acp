@@ -1,0 +1,109 @@
+---
+# Devices the plant host configures. Roles and plays carry no address and
+# no layout of their own: they read them from here.
+
+# EVS Cerebrum (staging). RCP is the HTTP port of its "Enable RCP"
+# setting; northbound is its own port. The account is NOT here: plays take
+# it from DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment.
+cerebrum:
+  host: 10.6.250.5
+  rcp_port: 9080
+  nb_port: 40009
+  # Name of the Network Media Server in Cerebrum's System View (1.0.0.1).
+  nmos_device: NMOS
+  # SubID play: a node is moved to its slot before the next one is touched.
+  # Each condition is read every nmos_wait_delay seconds, nmos_wait_retries
+  # times at most; then nothing is asked for nmos_settle seconds and the
+  # slot is read once more.
+  nmos_wait_delay: 3
+  nmos_wait_retries: 20
+  nmos_settle: 10
+  # A northbound read may take this long while Cerebrum moves a large node.
+  nmos_read_timeout: 20s
+  # Cerebrum's registry answers 10 resources a page unless asked.
+  nmos_page_limit: 100
+
+# SubID of each NMOS node on the Network Media Server, by IS-04 node label
+# (playbooks/cerebrum-nmos-subid.yml). Plant data: NetBox will own these.
+cerebrum_nmos_subids:
+  # The order of the signal chain (operator, 2026-10-10); the RouteMaster
+  # links follow the same order.
+  - {label: lab-convert-01, subid: 1}
+  # With a SubID the Shuffler (3 088 streams) made Cerebrum drop and
+  # re-register every node about every 20 s, twice on 2026-10-10, with
+  # Cerebrum's registry and with ours. Set on the operator's decision.
+  - {label: lab-shuffle-01, subid: 2}
+  - {label: lab-view-01, subid: 3}
+  - {label: "emsfp-a2-10-0c st2110 node", subid: 4}
+
+# RouteMaster content (playbooks/rcp-routemaster-provision.yml). Empty
+# until the levels and the IP routing are in place:
+#   levels:      [{id: 1, name: Video}, …]            created over northbound
+#   plan:        sources / destinations / virtuals / routes, by mnemonic
+#                (start from: dhs consumer rcp export <host> --plan)
+#   categories:  [{name, kind: source|destination, members: [mnemonic…]}]
+#   prune: true  the plan is the WHOLE RouteMaster
+cerebrum_routemaster:
+  federation_optional: true
+  prune: false
+  levels: []
+  plan: {}
+  categories: []
+
+# EVS Neuron VIEW (lab-view-01) — REST on the management address.
+neuronview:
+  api: https://10.6.255.104/api/v1
+  validate_certs: false
+  # NMOS on: the node registers with the site registry (playbooks/neuronview-nmos.yml).
+  nmos_enabled: true
+  groups: 36
+  group_name: "IP GROUP %d"
+  audio_stream_name: "AUDIO STREAM %d"
+  # IP GROUP n = AUDIO STREAM 2n-1 + AUDIO STREAM 2n, 8 channels each.
+  audio_streams_per_group: 2
+  audio_channels_per_stream: 8
+
+# Sender addresses set over IS-05 (playbooks/nmos-senders.yml) — only for
+# a device the provisioning CSVs cannot reach. The Neuron VIEW holds video
+# block 1 of the plan (sites/lab/provisioning/devices.csv): 239.20.1.n,
+# BLUE = RED + 64. It has no BLUE link today; the leg is addressed all the
+# same. Video senders only: the device has no audio or data output.
+nmos_senders:
+  - node: http://10.6.255.104:3000
+    node_version: v1.3
+    connection_version: v1.1
+    label: "IP Output %d"
+    count: 8
+    legs:
+      - {ip: "239.20.1.%d", port: 20000}
+      - {ip: "239.84.1.%d", port: 20000}
+
+# IS-05 connections, by label (playbooks/nmos-connect.yml).
+#
+# FusioN lab-fusion-01: the four channels our hardware has — CH2, CH4,
+# CH6, CH8 — each take the first output of the CONVERT: VTX-01 (video),
+# ATX-01 + ATX-02 (audio), DTX-01 (ANC). The FusioN labels its receivers
+# "<hostname> <Kind>Rx <c><n>0": c is the channel counted from 0 (CH2 is
+# 1), n the stream within the channel (0 video, 1-4 audio, 5 ANC).
+nmos_connections:
+  - receiver_node: http://10.6.40.54
+    receiver_version: v1.2
+    sender_node: http://10.6.255.102:3000
+    sender_version: v1.3
+    pairs:
+      - {receiver: "emsfp-a2-10-0c VidRx 100", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 110", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 120", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 150", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 300", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 310", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 320", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 350", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 500", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 510", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 520", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 550", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 700", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 710", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 720", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 750", sender: "DTX-01"}

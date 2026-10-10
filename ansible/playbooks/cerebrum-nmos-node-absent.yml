@@ -1,0 +1,190 @@
+---
+# Cerebrum Network Media Server: remove ONE NMOS node — the absent of
+# provision-apply.yml (registry) + cerebrum-nmos-subid.yml (SubID).
+#
+# One device per run (`-e only=<IS-04 node label>`, required). Each step
+# is one write, then reads until Cerebrum shows it done; a wait that runs
+# out stops the play:
+#
+#   1. SubID -> 0           wait: the node's entry on slot 00 lists every
+#                           device again
+#   2. NMOS off on the device (by its type, from devices.csv)
+#                           wait: the node's line has no address
+#   3. Forget               wait: the line is gone
+#
+# A node that has no line is already absent: nothing is written. Bring it
+# back with provision-apply.yml (-e only=<device> -e match=…registr) and
+# cerebrum-nmos-subid.yml.
+#
+# Over northbound. Inventory: cerebrum.* (see cerebrum-nmos-subid.yml),
+# neuronview.api; site: devices.csv (type, mgmt_ip, nmos_label).
+# EVS support: keep the registry page closed in the Cerebrum UI meanwhile.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/cerebrum-nmos-node-absent.yml -e only="lab-view-01"
+
+- name: cerebrum — remove one NMOS node
+  hosts: plant
+  gather_facts: false
+  environment:
+    DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+    DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  vars:
+    cna_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    cna_site_dir: "{{ playbook_dir }}/../sites/{{ site | default('lab') }}/provisioning"
+    cna_nb: ["{{ cna_bin }}", consumer, cerebrum-nb]
+    cna_target: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}"]
+    cna_read: "{{ cna_nb + ['device-value'] + cna_target + ['--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device, '--by-name', '--sub-device'] }}"
+    cna_write: "{{ cna_nb + ['set-value'] + cna_target + ['--device', cerebrum.nmos_device, '--sub-device', '0', '--object'] }}"
+    cna_value: 'value="([^"]*)"'
+    # How NMOS is switched off, per device type. The Neuron CONVERT and
+    # Shuffler are not proven yet: the play refuses them.
+    cna_off_types: [fusion6, neuron-view]
+  tasks:
+    - name: One node is named, and the account is given
+      ansible.builtin.assert:
+        that:
+          - only is defined and only | length > 0
+          - lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | length > 0
+        fail_msg: "name the node: -e only=<IS-04 node label>; DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment"
+        quiet: true
+
+    - name: The site
+      ansible.builtin.read_csv:
+        path: "{{ cna_site_dir }}/site.csv"
+        key: key
+      register: cna_site
+
+    - name: The device behind the node
+      ansible.builtin.read_csv:
+        path: "{{ cna_site_dir }}/devices.csv"
+      register: cna_devices
+
+    - name: Its type is one this play can switch off
+      ansible.builtin.assert:
+        that:
+          - cna_dev | length == 1
+          - cna_dev[0].type in cna_off_types
+        fail_msg: "{{ only }}: {{ cna_dev | length }} row(s) in devices.csv with this nmos_label, type {{ cna_dev[0].type | default('?') }} — supported: {{ cna_off_types }}"
+        quiet: true
+      vars:
+        cna_dev: "{{ cna_devices.list | selectattr('nmos_label', 'equalto', only) | list }}"
+
+    - name: Node lines in Cerebrum
+      ansible.builtin.command:
+        argv: "{{ cna_read + ['0', '--object', 'Nodes'] }}"
+      register: cna_nodes
+      changed_when: false
+
+    - name: Label of each line
+      ansible.builtin.command:
+        argv: "{{ cna_read + ['0', '--object', 'Nodes.[' ~ item ~ '].Label'] }}"
+      loop: "{{ cna_nodes.stdout | regex_findall('Nodes\\.\\[([0-9a-f-]{36})\\]') | unique }}"
+      register: cna_labels
+      changed_when: false
+
+    - name: The line of this node
+      ansible.builtin.set_fact:
+        cna_id: "{{ cna_labels.results | selectattr('stdout', 'search', 'value=\"' ~ (only | regex_escape) ~ '\"') | map(attribute='item') | list | first | default('') }}"
+        cna_device: "{{ cna_devices.list | selectattr('nmos_label', 'equalto', only) | first }}"
+
+    - name: Already absent
+      ansible.builtin.debug:
+        msg: "{{ only }} has no line in Cerebrum — nothing written"
+      when: cna_id == ''
+
+    - name: SubID 0, NMOS off, Forget
+      when: cna_id != ''
+      vars:
+        cna_row: "Nodes.[{{ cna_id }}]"
+      block:
+        - name: SubID the node holds
+          ansible.builtin.command:
+            argv: "{{ cna_read + ['0', '--object', cna_row ~ '.SubID'] }}"
+          register: cna_subid
+          changed_when: false
+
+        - name: SubID -> 0, once
+          ansible.builtin.command:
+            argv: "{{ cna_write + [cna_row ~ '.SubID', '--value', '0'] }}"
+          when: cna_slot != '0'
+          vars:
+            cna_slot: "{{ cna_subid.stdout | regex_search(cna_value, '\\1') | first }}"
+
+        # A slot that no longer exists cannot be read: the move back is
+        # read on slot 00, where the node's entry lists its devices again.
+        - name: Its devices, as the registry has them
+          ansible.builtin.uri:
+            url: "http://{{ cna_site.dict.registry_host.value }}:{{ cna_site.dict.registry_port.value }}/x-nmos/query/v1.2/devices?node_id={{ cna_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+            return_content: true
+          register: cna_reg_devs
+          when: cna_slot != '0'
+          vars:
+            cna_slot: "{{ cna_subid.stdout | regex_search(cna_value, '\\1') | first }}"
+
+        - name: The node is back on slot 00 with every device
+          ansible.builtin.command:
+            argv: "{{ cna_read + ['0', '--object', cna_row ~ '.Devices'] }}"
+          register: cna_entry
+          until: cna_entry.rc == 0 and cna_entry.stdout_lines | select('search', (cna_row ~ '.Devices.[') | regex_escape) | list | length == cna_reg_devs.json | length
+          retries: "{{ cerebrum.nmos_wait_retries }}"
+          delay: "{{ cerebrum.nmos_wait_delay }}"
+          changed_when: false
+          when: cna_slot != '0'
+          vars:
+            cna_slot: "{{ cna_subid.stdout | regex_search(cna_value, '\\1') | first }}"
+
+        - name: Leave Cerebrum alone before the device is touched
+          ansible.builtin.pause:
+            seconds: "{{ cerebrum.nmos_settle }}"
+          when: (cna_subid.stdout | regex_search(cna_value, '\\1') | first) != '0'
+
+        - name: NMOS off — FusioN (no registry in either slot)
+          ansible.builtin.command:
+            argv: ["{{ cna_bin }}", consumer, mnset, set, "{{ cna_device.mgmt_ip }}", --path, "self.diag.nmos.{{ item }}", --value, "0.0.0.0:0"]
+          loop: [registry_address, registry_address_2]
+          when: cna_device.type == 'fusion6'
+
+        - name: NMOS settings — Neuron VIEW
+          ansible.builtin.uri:
+            url: "{{ neuronview.api }}/misc/nmos"
+            validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+            return_content: true
+          register: cna_view
+          when: cna_device.type == 'neuron-view'
+
+        - name: NMOS off — Neuron VIEW
+          ansible.builtin.uri:
+            url: "{{ neuronview.api }}/misc/nmos"
+            method: PUT
+            body_format: json
+            body: "{{ cna_view.json | combine({'enabled': false}) }}"
+            status_code: [200, 204]
+            validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+          when: cna_device.type == 'neuron-view' and cna_view.json.enabled
+          changed_when: true
+
+        - name: The line has no address
+          ansible.builtin.command:
+            argv: "{{ cna_read + ['0', '--object', cna_row ~ '.HRef'] }}"
+          register: cna_href
+          until: cna_href.rc == 0 and cna_href.stdout is search('HRef available=0')
+          retries: "{{ cerebrum.nmos_wait_retries }}"
+          delay: "{{ cerebrum.nmos_wait_delay }}"
+          changed_when: false
+
+        - name: Forget, once
+          ansible.builtin.command:
+            argv: "{{ cna_write + [cna_row ~ '.Forget', '--value', '1'] }}"
+
+        - name: The line is gone
+          ansible.builtin.command:
+            argv: "{{ cna_read + ['0', '--object', 'Nodes'] }}"
+          register: cna_after
+          until: cna_after.rc == 0 and cna_after.stdout is not search(cna_id)
+          retries: "{{ cerebrum.nmos_wait_retries }}"
+          delay: "{{ cerebrum.nmos_wait_delay }}"
+          changed_when: false
+
+        - name: Result
+          ansible.builtin.debug:
+            msg: "{{ only }} removed from Cerebrum (was SubID {{ cna_subid.stdout | regex_search(cna_value, '\\1') | first }})"

@@ -18,6 +18,7 @@
 # device refuses fails the play with dhs's own message.
 #
 # -e only=lab-shuffle-01 limits the run to one device.
+# -e match=nmos\.registry limits it to the rows whose path matches.
 
 - name: Provisioning apply — dhs import, checked before and after
   hosts: "{{ provision_host | default('control') }}"
