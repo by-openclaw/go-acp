@@ -6,8 +6,8 @@
 # is one write, then reads until Cerebrum shows it done; a wait that runs
 # out stops the play:
 #
-#   1. SubID -> 0           wait: slot N lists no device (the node is back
-#                           on slot 00)
+#   1. SubID -> 0           wait: the node's entry on slot 00 lists every
+#                           device again
 #   2. NMOS off on the device (by its type, from devices.csv)
 #                           wait: the node's line has no address
 #   3. Forget               wait: the line is gone
@@ -47,6 +47,12 @@
           - lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | length > 0
         fail_msg: "name the node: -e only=<IS-04 node label>; DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment"
         quiet: true
+
+    - name: The site
+      ansible.builtin.read_csv:
+        path: "{{ cna_site_dir }}/site.csv"
+        key: key
+      register: cna_site
 
     - name: The device behind the node
       ansible.builtin.read_csv:
@@ -104,11 +110,22 @@
           vars:
             cna_slot: "{{ cna_subid.stdout | regex_search(cna_value, '\\1') | first }}"
 
-        - name: Its slot lists no device any more
+        # A slot that no longer exists cannot be read: the move back is
+        # read on slot 00, where the node's entry lists its devices again.
+        - name: Its devices, as the registry has them
+          ansible.builtin.uri:
+            url: "http://{{ cna_site.dict.registry_host.value }}:{{ cna_site.dict.registry_port.value }}/x-nmos/query/v1.2/devices?node_id={{ cna_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+            return_content: true
+          register: cna_reg_devs
+          when: cna_slot != '0'
+          vars:
+            cna_slot: "{{ cna_subid.stdout | regex_search(cna_value, '\\1') | first }}"
+
+        - name: The node is back on slot 00 with every device
           ansible.builtin.command:
-            argv: "{{ cna_read + [cna_slot, '--object', 'Devices'] }}"
-          register: cna_slot_devs
-          until: cna_slot_devs.rc == 0 and cna_slot_devs.stdout_lines | select('search', 'Devices.[' | regex_escape) | list | length == 0
+            argv: "{{ cna_read + ['0', '--object', cna_row ~ '.Devices'] }}"
+          register: cna_entry
+          until: cna_entry.rc == 0 and cna_entry.stdout_lines | select('search', (cna_row ~ '.Devices.[') | regex_escape) | list | length == cna_reg_devs.json | length
           retries: "{{ cerebrum.nmos_wait_retries }}"
           delay: "{{ cerebrum.nmos_wait_delay }}"
           changed_when: false
