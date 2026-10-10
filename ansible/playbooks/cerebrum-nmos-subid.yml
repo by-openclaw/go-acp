@@ -46,14 +46,14 @@
     csi_registry: "http://{{ csi_site.dict.registry_host.value }}:{{ csi_site.dict.registry_port.value }}/x-nmos/query/v1.2"
     csi_nb: ["{{ csi_bin }}", consumer, cerebrum-nb]
     csi_target: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}"]
-    csi_read: "{{ csi_nb + ['device-value'] + csi_target + ['--device', cerebrum.nmos_device, '--by-name'] }}"
+    csi_read: "{{ csi_nb + ['device-value'] + csi_target + ['--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device, '--by-name'] }}"
     csi_wanted: "{{ cerebrum_nmos_subids | selectattr('label', 'equalto', only) | list if only is defined else cerebrum_nmos_subids }}"
   tasks:
     - name: The server, the nodes and the account are given
       ansible.builtin.assert:
         that:
           - cerebrum.host is defined and cerebrum.nb_port is defined and cerebrum.nmos_device is defined
-          - cerebrum.nmos_settle is defined and cerebrum.nmos_page_limit is defined and cerebrum.nmos_wait_retries is defined and cerebrum.nmos_wait_delay is defined
+          - cerebrum.nmos_settle is defined and cerebrum.nmos_read_timeout is defined and cerebrum.nmos_page_limit is defined and cerebrum.nmos_wait_retries is defined and cerebrum.nmos_wait_delay is defined
           - csi_wanted | length > 0
           - csi_env.DHS_CEREBRUM_USER | length > 0 and csi_env.DHS_CEREBRUM_PASS | length > 0
         fail_msg: set `cerebrum` and `cerebrum_nmos_subids` in the inventory, and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment

@@ -22,6 +22,8 @@ cerebrum:
   nmos_wait_delay: 3
   nmos_wait_retries: 20
   nmos_settle: 10
+  # A northbound read may take this long while Cerebrum moves a large node.
+  nmos_read_timeout: 20s
   # Cerebrum's registry answers 10 resources a page unless asked.
   nmos_page_limit: 100
 

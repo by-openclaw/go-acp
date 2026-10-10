@@ -1,6 +1,8 @@
 ---
 # One node of cerebrum-nmos-subid.yml. `csi_node` is {label, subid}.
 # One write at most, then reads until the move is finished.
+# A read that fails (Cerebrum is slow to answer in the middle of a move)
+# is not an answer: it is read again, it never counts as "empty".
 
 - name: "{{ csi_node.label }} — the node and its devices, as the registry has them"
   ansible.builtin.set_fact:
@@ -57,7 +59,7 @@
       ansible.builtin.command:
         argv: "{{ csi_read + ['--sub-device', '0', '--object', csi_entry_obj] }}"
       register: csi_entry
-      until: csi_entry.stdout_lines | select('search', (csi_entry_obj ~ '.[') | regex_escape) | list | length == 0
+      until: csi_entry.rc == 0 and csi_entry.stdout_lines | select('search', (csi_entry_obj ~ '.[') | regex_escape) | list | length == 0
       retries: "{{ cerebrum.nmos_wait_retries }}"
       delay: "{{ cerebrum.nmos_wait_delay }}"
       changed_when: false
@@ -67,7 +69,7 @@
       ansible.builtin.command:
         argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices'] }}"
       register: csi_slot_devs
-      until: csi_slot_devs.stdout_lines | select('search', 'Devices.[' | regex_escape) | list | length == csi_devs | length
+      until: csi_slot_devs.rc == 0 and csi_slot_devs.stdout_lines | select('search', 'Devices.[' | regex_escape) | list | length == csi_devs | length
       retries: "{{ cerebrum.nmos_wait_retries }}"
       delay: "{{ cerebrum.nmos_wait_delay }}"
       changed_when: false
@@ -77,7 +79,7 @@
       ansible.builtin.command:
         argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices.[' ~ item.label ~ '].Senders'] }}"
       register: csi_snd
-      until: csi_snd.stdout_lines | select('search', ('Devices.[' ~ item.label ~ '].Senders.[') | regex_escape) | list | length == item.senders | length
+      until: csi_snd.rc == 0 and csi_snd.stdout_lines | select('search', ('Devices.[' ~ item.label ~ '].Senders.[') | regex_escape) | list | length == item.senders | length
       retries: "{{ cerebrum.nmos_wait_retries }}"
       delay: "{{ cerebrum.nmos_wait_delay }}"
       changed_when: false
@@ -90,7 +92,7 @@
       ansible.builtin.command:
         argv: "{{ csi_read + ['--sub-device', csi_slot, '--object', 'Devices.[' ~ item.label ~ '].Receivers'] }}"
       register: csi_rcv
-      until: csi_rcv.stdout_lines | select('search', ('Devices.[' ~ item.label ~ '].Receivers.[') | regex_escape) | list | length == item.receivers | length
+      until: csi_rcv.rc == 0 and csi_rcv.stdout_lines | select('search', ('Devices.[' ~ item.label ~ '].Receivers.[') | regex_escape) | list | length == item.receivers | length
       retries: "{{ cerebrum.nmos_wait_retries }}"
       delay: "{{ cerebrum.nmos_wait_delay }}"
       changed_when: false
