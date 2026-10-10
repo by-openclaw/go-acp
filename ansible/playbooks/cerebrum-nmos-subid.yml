@@ -1,30 +1,40 @@
 ---
 # Cerebrum Network Media Server: the SubID of each NMOS node.
 #
-# A SubID is static: one per node, set once. A node registered with
-# Cerebrum's NMOS registry has SubID 0 until it is given one; only then
-# does it become a sub-device (slot) of the Network Media Server, and its
-# senders and receivers show in IP routing.
+# A node registered with Cerebrum's NMOS registry sits on slot 00 with
+# SubID 0. Given a SubID N it is MOVED to slot N, with its devices,
+# senders and receivers; only then do they show in IP routing. The move
+# takes Cerebrum seconds to tens of seconds, and it must not be disturbed:
 #
-# Everything comes from the inventory (group_vars/plant.yml):
-#   cerebrum.host / cerebrum.rcp_port / cerebrum.nmos_device
+#   - ONE NODE AT A TIME, in the order of the inventory. The next node is
+#     not touched until the move of the previous one is finished.
+#   - ONE WRITE per node. A write is never repeated.
+#   - "Finished" is read from Cerebrum, not guessed from a delay: the
+#     node's entry on slot 00 holds no device any more, AND slot N holds
+#     every device of the node with all its senders and receivers (the
+#     numbers the registry gives for that node), AND a second read after
+#     `cerebrum.nmos_settle` seconds finds the same.
+#   - While it waits the play only reads. A wait that runs out fails the
+#     play, which then stops: no further node is written.
+#   - EVS support (2026-10-10): the registry page of the Network Media
+#     Server must be CLOSED in the Cerebrum UI while SubIDs change.
+#
+# Over northbound (XML over WebSocket), not RCP. Everything comes from
+# the inventory and the site:
+#   cerebrum.host / cerebrum.nb_port / cerebrum.nmos_device
+#   cerebrum.nmos_settle / cerebrum.nmos_wait_retries / cerebrum.nmos_wait_delay
 #   cerebrum_nmos_subids: [{label: <IS-04 node label>, subid: <n>}]
-# Nodes are matched by their LABEL: the uuid in Cerebrum's table is read
-# at run time. The values are plant data (NetBox, later).
+#   registry_host / registry_port          sites/<site>/provisioning/site.csv
+# A node that is not registered is reported and skipped. Run twice, the
+# second run writes nothing.
 #
-# ONE PASS, no loop and no retry: read the nodes, write the SubID of each
-# node that does not hold its own, read once to report. A node that is not
-# registered is reported and skipped. Run twice, the second run writes
-# nothing.
-#
-# The object is `Nodes.[<uuid>].SubID` on the Network Media Server, over
-# RCP. Credentials: the Cerebrum account, from the environment of the
-# control node (DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS).
+# Credentials: the Cerebrum account, from the environment of the control
+# node (DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS).
 #
 #   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/cerebrum-nmos-subid.yml
 #   ... -e only=lab-convert-01        one node
 
-- name: cerebrum — SubID of the NMOS nodes
+- name: cerebrum — SubID of the NMOS nodes, one node at a time
   hosts: plant
   gather_facts: false
   vars:
@@ -32,104 +42,40 @@
     csi_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
       DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
-    csi_obj: ["{{ csi_bin }}", consumer, rcp, object, "{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}",
-              --device, "{{ cerebrum.nmos_device }}", --index, "0", --path]
+    csi_site_dir: "{{ playbook_dir }}/../sites/{{ site | default('lab') }}/provisioning"
+    csi_registry: "http://{{ csi_site.dict.registry_host.value }}:{{ csi_site.dict.registry_port.value }}/x-nmos/query/v1.2"
+    csi_nb: ["{{ csi_bin }}", consumer, cerebrum-nb]
+    csi_target: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}"]
+    csi_read: "{{ csi_nb + ['device-value'] + csi_target + ['--device', cerebrum.nmos_device, '--by-name'] }}"
     csi_wanted: "{{ cerebrum_nmos_subids | selectattr('label', 'equalto', only) | list if only is defined else cerebrum_nmos_subids }}"
   tasks:
     - name: The server, the nodes and the account are given
       ansible.builtin.assert:
         that:
-          - cerebrum.host is defined and cerebrum.rcp_port is defined and cerebrum.nmos_device is defined
+          - cerebrum.host is defined and cerebrum.nb_port is defined and cerebrum.nmos_device is defined
+          - cerebrum.nmos_settle is defined and cerebrum.nmos_page_limit is defined and cerebrum.nmos_wait_retries is defined and cerebrum.nmos_wait_delay is defined
           - csi_wanted | length > 0
           - csi_env.DHS_CEREBRUM_USER | length > 0 and csi_env.DHS_CEREBRUM_PASS | length > 0
         fail_msg: set `cerebrum` and `cerebrum_nmos_subids` in the inventory, and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
         quiet: true
 
-    - name: Nodes known to the Network Media Server
-      ansible.builtin.command:
-        argv: "{{ csi_obj + ['Nodes'] }}"
-      environment: "{{ csi_env }}"
-      register: csi_table
-      changed_when: false
+    - name: The site
+      ansible.builtin.read_csv:
+        path: "{{ csi_site_dir }}/site.csv"
+        key: key
+      register: csi_site
 
-    - name: Label of each node
-      ansible.builtin.command:
-        argv: "{{ csi_obj + ['Nodes.[' ~ item ~ '].Label'] }}"
-      environment: "{{ csi_env }}"
-      loop: "{{ (csi_table.stdout | regex_search('indices=\\[([^\\]]*)\\]', '\\1') | first).split(',') | reject('equalto', '') | list }}"
-      register: csi_labels
-      changed_when: false
+    # Cerebrum's registry pages 10 resources by default: ask for the page
+    # size, and read the devices per node (cerebrum-nmos-subid-node.yml).
+    - name: Nodes in the registry
+      ansible.builtin.uri:
+        url: "{{ csi_registry }}/nodes?paging.limit={{ cerebrum.nmos_page_limit }}"
+        return_content: true
+      register: csi_reg_nodes
 
-    - name: Each wanted node, with its uuid when it is registered
-      ansible.builtin.set_fact:
-        csi_nodes: >-
-          {%- set out = [] -%}
-          {%- for w in csi_wanted -%}
-          {%- set hit = [] -%}
-          {%- for r in csi_labels.results -%}
-          {%- if (r.stdout_lines | select('match', '^value = ') | first | default('')) == 'value = ' ~ w.label -%}
-          {%- set _ = hit.append(r.item) -%}
-          {%- endif -%}
-          {%- endfor -%}
-          {%- set _ = out.append({'label': w.label, 'subid': w.subid | int, 'uuid': (hit[0] if hit | length == 1 else '')}) -%}
-          {%- endfor -%}
-          {{ out }}
-
-    - name: SubID each registered node holds
-      ansible.builtin.command:
-        argv: "{{ csi_obj + ['Nodes.[' ~ item.uuid ~ '].SubID'] }}"
-      environment: "{{ csi_env }}"
-      loop: "{{ csi_nodes | rejectattr('uuid', 'equalto', '') | list }}"
+    - name: One node at a time
+      ansible.builtin.include_tasks: cerebrum-nmos-subid-node.yml
+      loop: "{{ csi_wanted }}"
       loop_control:
-        label: "{{ item.label }}"
-      register: csi_now
-      changed_when: false
-
-    - name: Set the SubID, once, where the node does not hold its own
-      ansible.builtin.command:
-        argv: ["{{ csi_bin }}", consumer, rcp, set-object, "{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}",
-               --device, "{{ cerebrum.nmos_device }}", --index, "0",
-               --path, "Nodes.[{{ item.item.uuid }}].SubID", --value, "{{ item.item.subid | string }}"]
-      environment: "{{ csi_env }}"
-      loop: "{{ csi_now.results }}"
-      loop_control:
-        label: "{{ item.item.label }} -> {{ item.item.subid }}"
-      when: (item.stdout_lines | select('match', '^value = ') | first | default('')) != 'value = ' ~ item.item.subid
-      register: csi_set
-
-    - name: Give Cerebrum a moment before the one read-back
-      ansible.builtin.pause:
-        seconds: 5
-      when: csi_set is changed
-
-    - name: SubID each registered node holds now
-      ansible.builtin.command:
-        argv: "{{ csi_obj + ['Nodes.[' ~ item.uuid ~ '].SubID'] }}"
-      environment: "{{ csi_env }}"
-      loop: "{{ csi_nodes | rejectattr('uuid', 'equalto', '') | list }}"
-      loop_control:
-        label: "{{ item.label }}"
-      register: csi_after
-      changed_when: false
-
-    - name: Result
-      ansible.builtin.debug:
-        msg: >-
-          {%- set out = [] -%}
-          {%- for r in csi_after.results -%}
-          {%- set got = (r.stdout_lines | select('match', '^value = ') | first | default('value = ?')) | replace('value = ', '') -%}
-          {%- set _ = out.append(r.item.label ~ ': SubID ' ~ got ~ (' (ok)' if got == r.item.subid | string else ' — WANTED ' ~ r.item.subid)) -%}
-          {%- endfor -%}
-          {%- for n in csi_nodes | selectattr('uuid', 'equalto', '') -%}
-          {%- set _ = out.append(n.label ~ ': not registered with Cerebrum — skipped') -%}
-          {%- endfor -%}
-          {{ out }}
-
-    - name: Every registered node holds its SubID
-      ansible.builtin.assert:
-        that: item.stdout_lines | select('match', '^value = ') | first | default('') == 'value = ' ~ item.item.subid
-        fail_msg: "{{ item.item.label }}: Cerebrum accepted SubID {{ item.item.subid }} and the node does not hold it"
-        quiet: true
-      loop: "{{ csi_after.results }}"
-      loop_control:
-        label: "{{ item.item.label }}"
+        loop_var: csi_node
+        label: "{{ csi_node.label }} -> {{ csi_node.subid }}"
