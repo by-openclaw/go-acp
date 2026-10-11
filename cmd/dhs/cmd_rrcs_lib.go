@@ -95,3 +95,27 @@ func rrcsLocalIP(listen, peer string) string {
 	host, _, _ := net.SplitHostPort(conn.LocalAddr().String())
 	return host
 }
+
+type (
+	rrcsMeta = rrcs.Meta
+	rrcsRow  = rrcs.Row
+)
+
+var (
+	rrcsCSVHeader = rrcs.CSVHeader
+	rrcsEnums     = rrcs.Enums
+	rrcsWritable  = rrcs.Writable
+	rrcsMetaOf    = rrcs.MetaOf
+)
+
+func rrcsMetaFor(block, field string) rrcsMeta { return rrcs.MetaFor(block, field) }
+
+func rrcsRows(m *rrcsModel) []rrcsRow { return rrcs.Rows(m) }
+
+func rrcsRowsOf(target, object, path string, id int, props map[string]any) []rrcsRow {
+	return rrcs.RowsOf(target, object, path, id, props)
+}
+
+func rrcsScalar(field string, v any) (value, kind, name, items string, ok bool) {
+	return rrcs.Scalar(field, v)
+}

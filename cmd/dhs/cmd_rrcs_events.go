@@ -10,52 +10,6 @@ import (
 	rrcs "dhs/internal/rrcs/consumer"
 )
 
-// rrcsMeta is what the specification says about the values of a
-// property: its range, its default, its unit, its named values.
-type rrcsMeta struct {
-	Min, Max, Default, Unit, Enum string
-}
-
-// rrcsMetaOf holds the ranges printed in the 9.0.1 text, by block and
-// member (§8.10.4.6 for the streams, §8.10.4.34 for the client cards,
-// §6.5 for the volumes). A member without an entry has none printed.
-var rrcsMetaOf = map[string]rrcsMeta{
-	"Ptp.PTP":                 {Min: "0", Max: "127"},
-	"Ptp.PtpPriority":         {Min: "0", Max: "255"},
-	"Ptp.PtpPriority2":        {Min: "0", Max: "255"},
-	"Ptp.PtpMode":             {Enum: "0=Multicast|1=Hybrid"},
-	"Ptp.PtpAnnounceInterval": {Min: "-3", Max: "4", Unit: "log2 s"},
-	"Nmos.LocalPort":          {Min: "1024", Max: "65535"},
-	"Nmos.RegistrationPort":   {Min: "1", Max: "65535"},
-	"Nmos.RegistrationMode":   {Enum: "0=Automatic|1=Peer2Peer|2=Manual"},
-	"Nmos.NetworkInterface":   {Enum: "0=Media_1|1=Media_2|2=Config"},
-	"Media.TcpUdpPort":        {Min: "1024", Max: "65535"},
-	"Media.ServiceCodePoint":  {Min: "0", Max: "63"},
-	"Media.IGMPVersion":       {Min: "0", Max: "1"},
-	"Media.NetworkSpeed":      {Enum: "0=Auto|1=FullDuplex 1G"},
-	"Stream.Protocol":         {Enum: "2=Manual|3=RTSP|5=NMOS"},
-	"Stream.BitDepth":         {Enum: "16=L16|24=L24"},
-	"Stream.PacketTime":       {Enum: "125|250|333|1000|1333", Unit: "us"},
-	"Stream.PayloadType":      {Min: "96", Max: "127"},
-	"Stream.Channels":         {Min: "1", Max: "16"},
-	"Stream.ReceiveBuffer":    {Default: "3", Unit: "packets"},
-	"Stream.PlayMode":         {Enum: "0=Synton|1=Synchron"},
-	"Xp.Volume":               {Min: "-114.5", Max: "12.5", Unit: "dB"},
-	".InputGain":              {Min: "-36", Max: "36", Unit: "0.5 dB", Enum: "-128=mute"},
-	".OutputGain":             {Min: "-36", Max: "36", Unit: "0.5 dB", Enum: "-128=mute"},
-}
-
-// rrcsMetaFor finds the entry of a member of a block.
-func rrcsMetaFor(block, field string) rrcsMeta {
-	switch block {
-	case "PortAes67Input", "PortAes67Output":
-		block = "Stream"
-	case "Media_1", "Media_2":
-		block = "Media"
-	}
-	return rrcsMetaOf[block+"."+field]
-}
-
 // rrcsChangeLine is one value an event carries, the way watch prints it:
 // the object ID where the thing has one, the path, the member, the value.
 type rrcsChangeLine struct {
@@ -115,7 +69,7 @@ func (l rrcsChangeLine) record(target string) []string {
 	if l.Detail != "" {
 		desc = strings.TrimSpace(desc + "  " + l.Detail)
 	}
-	rec := append([]string{l.Time, l.Event}, row.record()...)
+	rec := append([]string{l.Time, l.Event}, row.Record()...)
 	return append(rec, desc)
 }
 
