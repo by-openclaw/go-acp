@@ -1,0 +1,110 @@
+---
+# absent: SubID 0 -> back on slot 00 -> NMOS off (device) -> line without
+# address -> Forget -> line gone. A node with no line is already absent.
+
+- name: "{{ cerebrum_nmos_node_label }} — node lines in Cerebrum"
+  ansible.builtin.command:
+    argv: "{{ cnn_read + ['0', '--object', 'Nodes'] }}"
+  register: cnn_nodes
+  changed_when: false
+  environment: &cnn_env
+    DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+    DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — label of each line"
+  ansible.builtin.command:
+    argv: "{{ cnn_read + ['0', '--object', 'Nodes.[' ~ item ~ '].Label'] }}"
+  loop: "{{ cnn_nodes.stdout | regex_findall('Nodes\\.\\[([0-9a-f-]{36})\\]') | unique }}"
+  register: cnn_labels
+  changed_when: false
+  environment: *cnn_env
+
+- name: "{{ cerebrum_nmos_node_label }} — its line"
+  ansible.builtin.set_fact:
+    cnn_id: "{{ cnn_labels.results | selectattr('stdout', 'search', 'value=\"' ~ (cerebrum_nmos_node_label | regex_escape) ~ '\"') | map(attribute='item') | list | first | default('') }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — NMOS off (no line in Cerebrum)"
+  ansible.builtin.include_tasks: nmos_switch.yml
+  vars:
+    cnn_on: false
+    cnn_sw: "{{ cerebrum_nmos_node_switch[cnn_device.type] }}"
+  when: cnn_id == ''
+
+- name: "{{ cerebrum_nmos_node_label }}"
+  ansible.builtin.debug:
+    msg: "absent — no line in Cerebrum"
+  when: cnn_id == ''
+
+- name: "{{ cerebrum_nmos_node_label }} — SubID 0, NMOS off, Forget"
+  when: cnn_id != ''
+  environment: *cnn_env
+  vars:
+    cnn_row: "Nodes.[{{ cnn_id }}]"
+  block:
+    - name: "{{ cerebrum_nmos_node_label }} — SubID it holds"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.SubID'] }}"
+      register: cnn_now
+      changed_when: false
+
+    - name: "{{ cerebrum_nmos_node_label }} — its devices, as the registry has them"
+      ansible.builtin.uri:
+        url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+        return_content: true
+      register: cnn_reg_devs
+      when: (cnn_now.stdout | regex_search(cnn_value, '\\1') | first) != '0'
+
+    - name: "{{ cerebrum_nmos_node_label }} — SubID -> 0, once"
+      ansible.builtin.command:
+        argv: "{{ cnn_write + [cnn_row ~ '.SubID', '--value', '0'] }}"
+      when: (cnn_now.stdout | regex_search(cnn_value, '\\1') | first) != '0'
+      register: cnn_set
+
+    # A slot that no longer exists cannot be read: the move back is read
+    # on slot 00, where the entry of the node lists its devices again.
+    - name: "{{ cerebrum_nmos_node_label }} — back on slot 00 with every device"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.Devices'] }}"
+      register: cnn_entry
+      until: cnn_entry.rc == 0 and cnn_entry.stdout_lines | select('search', (cnn_row ~ '.Devices.[') | regex_escape) | list | length == cnn_reg_devs.json | length
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+      when: cnn_set is changed
+
+    - name: "{{ cerebrum_nmos_node_label }} — leave Cerebrum alone before the device is touched"
+      ansible.builtin.pause:
+        seconds: "{{ cerebrum.nmos_settle }}"
+      when: cnn_set is changed
+
+    - name: "{{ cerebrum_nmos_node_label }} — NMOS off"
+      ansible.builtin.include_tasks: nmos_switch.yml
+      vars:
+        cnn_on: false
+        cnn_sw: "{{ cerebrum_nmos_node_switch[cnn_device.type] }}"
+
+    - name: "{{ cerebrum_nmos_node_label }} — the line has no address"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.HRef'] }}"
+      register: cnn_href
+      until: cnn_href.rc == 0 and cnn_href.stdout is search('HRef available=0')
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+
+    - name: "{{ cerebrum_nmos_node_label }} — Forget, once"
+      ansible.builtin.command:
+        argv: "{{ cnn_write + [cnn_row ~ '.Forget', '--value', '1'] }}"
+
+    - name: "{{ cerebrum_nmos_node_label }} — the line is gone"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', 'Nodes'] }}"
+      register: cnn_after
+      until: cnn_after.rc == 0 and cnn_after.stdout is not search(cnn_id)
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+
+    - name: "{{ cerebrum_nmos_node_label }}"
+      ansible.builtin.debug:
+        msg: "absent — removed from Cerebrum (was SubID {{ cnn_now.stdout | regex_search(cnn_value, '\\1') | first }})"
