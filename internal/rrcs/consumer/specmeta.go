@@ -5,17 +5,17 @@
 // Where the specification abbreviates a list of named values with dots,
 // only the values it prints are here.
 
-package main
+package consumer
 
-// rrcsSpecProp is what the specification prints about one property: its
+// SpecProp is what the specification prints about one property: its
 // type, its default, its range, its longest text, its named values.
-type rrcsSpecProp struct {
+type SpecProp struct {
 	Type, Default, Min, Max, MaxLen, Enum string
 }
 
-// rrcsSpecMeta is keyed by object type, then by the struct the property
+// specMeta is keyed by object type, then by the struct the property
 // sits in ("" for the object itself), then by property name.
-var rrcsSpecMeta = map[string]map[string]map[string]rrcsSpecProp{
+var specMeta = map[string]map[string]map[string]SpecProp{
 	"auto-listen-off-cmd": {
 		"": {
 			"ForceFail": {"bool", "true", "", "", "", ""},
