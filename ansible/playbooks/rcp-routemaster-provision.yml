@@ -169,7 +169,7 @@
       environment: "{{ rcp_env }}"
       register: rcp_ensure
       check_mode: false
-      changed_when: "'changed=0 ' not in (rcp_ensure.stdout_lines | last)"
+      changed_when: (rcp_ensure.stdout_lines | last) is not search('^(changed|would_change)=0 ')
 
     - name: What the ensure did
       ansible.builtin.debug:
