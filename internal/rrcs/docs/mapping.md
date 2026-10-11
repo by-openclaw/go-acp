@@ -57,7 +57,7 @@ numbered positions is not.
 | Rule | Why |
 |---|---|
 | The `oid` of an object is the `ObjectID` RRCS gives it, as the export and the tree show today (`oid` column: card 621747382, port 1064 in 86064587, port 1064 out 477631554). One number, given by RRCS; the connector invents none and builds no dotted path of positions | a number per position cannot follow objects that come and go |
-| The path is the address RRCS uses: net, node, card or port, direction; key position. Path and `oid` are both exported for every object | the path is what a write needs; the `oid` is what RRCS itself calls the object |
+| The path is the reference: the address RRCS uses (net, node, card or port, direction; key position), which is what Director shows. Every verb takes a path. The `oid` is exported beside it and is never needed to address anything | Director does not show the `ObjectID`; an operator can only check a path against it |
 | A dynamic object (conference, group, IFB) has an `oid` too, given by RRCS when it is created. A wanted state names it by its name, or by its `oid` when that is known, as `ensure` does today | the object does not exist before it is created, so its `oid` cannot be written in advance. Whether RRCS gives the same `oid` again after delete and create is not tested |
 | A dynamic object that appears or disappears is an event of its own (`created`, `deleted`), not a change of value | a client must not have to compare two walks to learn it |
 
