@@ -235,3 +235,93 @@ func TestPluginWalkEmpty(t *testing.T) {
 		t.Errorf("Walk(5) = %d objects, %v", len(objs), err)
 	}
 }
+
+// §8.1: the six numbers of a crosspoint come from two port paths, the
+// methods send them in the order of the specification, and the active
+// crosspoints come back with the paths of their ports.
+func TestCrosspoints(t *testing.T) {
+	var sent []codec.Call
+	f := newFakeRRCS(t, func(call codec.Call) (codec.Value, *codec.Fault) {
+		sent = append(sent, call)
+		key := call.Params[0]
+		switch call.Method {
+		case "GetVersion":
+			return codec.Array(key, codec.String("9.0.1")), nil
+		case "SetXp", "KillXp", "SetXpPrio", "SetXpDestructive":
+			return codec.Array(key, codec.Int(0)), nil
+		case "GetXpStatus":
+			return codec.Array(key, codec.Int(0), codec.Bool(true)), nil
+		case "GetAllActiveXps":
+			return codec.Struct(
+				codec.Member{Name: "XP Count", Value: codec.Int(1)},
+				codec.Member{Name: "XP#1", Value: codec.Array(codec.Int(1), codec.Int(61), codec.Int(1024), codec.Int(1), codec.Int(62), codec.Int(1024))},
+			), nil
+		case "GetAllPorts":
+			port := func(node int32, label string) codec.Value {
+				return codec.Struct(
+					codec.Member{Name: "Net", Value: codec.Int(1)},
+					codec.Member{Name: "Node", Value: codec.Int(node)},
+					codec.Member{Name: "Port", Value: codec.Int(1024)},
+					codec.Member{Name: "Input", Value: codec.Bool(true)},
+					codec.Member{Name: "Output", Value: codec.Bool(true)},
+					codec.Member{Name: "Label", Value: codec.String(label)},
+				)
+			}
+			return codec.Array(key, codec.Array(port(61, "NOC1"), port(62, "MCR"))), nil
+		}
+		return codec.Value{}, &codec.Fault{Code: 1, String: "unexpected " + call.Method}
+	})
+	p := pluginConnect(t, f)
+	ctx := context.Background()
+
+	if _, err := XpOfPaths("net.1.node.61.port.1024", "conference.3"); err == nil {
+		t.Error("XpOfPaths took a path that is not a port")
+	}
+	a, err := XpOfPaths("net.1.node.61.port.1024.in", "net.1.node.62.port.1024.out")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (XpAddress{1, 61, 1024, 1, 62, 1024}); a != want {
+		t.Fatalf("XpOfPaths = %+v, want %+v", a, want)
+	}
+
+	if _, err := p.client.SetXp(ctx, a); err != nil {
+		t.Fatalf("SetXp: %v", err)
+	}
+	if _, err := p.client.SetXpPrio(ctx, a, 3); err != nil {
+		t.Fatalf("SetXpPrio: %v", err)
+	}
+	on, err := p.client.XpStatus(ctx, a)
+	if err != nil || !on {
+		t.Fatalf("XpStatus = %v, %v, want made", on, err)
+	}
+	if _, err := p.client.KillXp(ctx, a); err != nil {
+		t.Fatalf("KillXp: %v", err)
+	}
+	numbers := func(call codec.Call) string {
+		var out []string
+		for _, v := range call.Params[1:] {
+			out = append(out, strconv.Itoa(int(v.Int)))
+		}
+		return call.Method + " " + strings.Join(out, " ")
+	}
+	want := []string{"SetXp 1 61 1024 1 62 1024", "SetXpPrio 1 61 1024 1 62 1024 3", "GetXpStatus 1 61 1024 1 62 1024", "KillXp 1 61 1024 1 62 1024"}
+	for i, w := range want {
+		if got := numbers(sent[i+1]); got != w {
+			t.Errorf("request %d = %q, want %q", i+1, got, w)
+		}
+	}
+
+	active, err := p.client.ActiveXps(ctx)
+	if err != nil || len(active) != 1 || active[0] != a {
+		t.Fatalf("ActiveXps = %+v, %v, want the one crosspoint", active, err)
+	}
+	xps, err := p.Crosspoints(ctx)
+	if err != nil || len(xps) != 1 {
+		t.Fatalf("Crosspoints = %+v, %v", xps, err)
+	}
+	if xps[0].Source != "net.1.node.61.port.1024" || xps[0].SourceLabel != "NOC1" ||
+		xps[0].Destination != "net.1.node.62.port.1024" || xps[0].DestinationLabel != "MCR" {
+		t.Errorf("crosspoint = %+v, want NOC1 > MCR by path", xps[0])
+	}
+}
