@@ -52,7 +52,38 @@ cerebrum_routemaster:
     - {id: 2, name: StrAudio1}
     - {id: 3, name: StrAudio2}
     - {id: 4, name: ANC}
-  plan: {}
+  # Local sources and destinations of the first chain (operator, 2026-10-11):
+  # SAT -> CONVERT -> Shuffler -> Neuron VIEW and FusioN. Each level is bound to
+  # the NMOS sender (source) or receiver (destination) of that name; level_1
+  # Video, level_2 StrAudio1, level_3 StrAudio2, level_4 ANC. The Shuffler
+  # carries audio only, the Neuron VIEW sends video only.
+  plan:
+    sources:
+      - {mnemonic: "CONVERT 1", levels: {level_1: {device: {senderReceiver: "VTX-01"}}, level_2: {device: {senderReceiver: "ATX-01"}}, level_3: {device: {senderReceiver: "ATX-02"}}, level_4: {device: {senderReceiver: "DTX-01"}}}}
+      - {mnemonic: "CONVERT 2", levels: {level_1: {device: {senderReceiver: "VTX-02"}}, level_2: {device: {senderReceiver: "ATX-03"}}, level_3: {device: {senderReceiver: "ATX-04"}}, level_4: {device: {senderReceiver: "DTX-02"}}}}
+      - {mnemonic: "SHUFFLER 1", levels: {level_2: {device: {senderReceiver: "ATX-0001"}}, level_3: {device: {senderReceiver: "ATX-0002"}}}}
+      - {mnemonic: "SHUFFLER 2", levels: {level_2: {device: {senderReceiver: "ATX-0003"}}, level_3: {device: {senderReceiver: "ATX-0004"}}}}
+      - {mnemonic: "VIEW OUT 1", levels: {level_1: {device: {senderReceiver: "IP Output 1"}}}}
+      - {mnemonic: "VIEW OUT 2", levels: {level_1: {device: {senderReceiver: "IP Output 2"}}}}
+      - {mnemonic: "VIEW OUT 3", levels: {level_1: {device: {senderReceiver: "IP Output 3"}}}}
+      - {mnemonic: "VIEW OUT 4", levels: {level_1: {device: {senderReceiver: "IP Output 4"}}}}
+      - {mnemonic: "VIEW OUT 5", levels: {level_1: {device: {senderReceiver: "IP Output 5"}}}}
+      - {mnemonic: "VIEW OUT 6", levels: {level_1: {device: {senderReceiver: "IP Output 6"}}}}
+      - {mnemonic: "VIEW OUT 7", levels: {level_1: {device: {senderReceiver: "IP Output 7"}}}}
+      - {mnemonic: "VIEW OUT 8", levels: {level_1: {device: {senderReceiver: "IP Output 8"}}}}
+    destinations:
+      - {mnemonic: "CONVERT 1", levels: {level_1: {device: {senderReceiver: "VRX-01"}}, level_2: {device: {senderReceiver: "ARX-01"}}, level_3: {device: {senderReceiver: "ARX-02"}}, level_4: {device: {senderReceiver: "DRX-01"}}}}
+      - {mnemonic: "CONVERT 2", levels: {level_1: {device: {senderReceiver: "VRX-02"}}, level_2: {device: {senderReceiver: "ARX-03"}}, level_3: {device: {senderReceiver: "ARX-04"}}, level_4: {device: {senderReceiver: "DRX-02"}}}}
+      - {mnemonic: "SHUFFLER 1", levels: {level_2: {device: {senderReceiver: "ARX-0001"}}, level_3: {device: {senderReceiver: "ARX-0002"}}}}
+      - {mnemonic: "SHUFFLER 2", levels: {level_2: {device: {senderReceiver: "ARX-0003"}}, level_3: {device: {senderReceiver: "ARX-0004"}}}}
+      - {mnemonic: "VIEW 1", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 1"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 1"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 2"}}, level_4: {device: {senderReceiver: "DATA STREAM 1"}}}}
+      - {mnemonic: "VIEW 2", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 2"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 3"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 4"}}, level_4: {device: {senderReceiver: "DATA STREAM 2"}}}}
+      - {mnemonic: "VIEW 3", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 3"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 5"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 6"}}, level_4: {device: {senderReceiver: "DATA STREAM 3"}}}}
+      - {mnemonic: "VIEW 4", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 4"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 7"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 8"}}, level_4: {device: {senderReceiver: "DATA STREAM 4"}}}}
+      - {mnemonic: "FUSION CH2", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 100"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 110"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 120"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 150"}}}}
+      - {mnemonic: "FUSION CH4", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 300"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 310"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 320"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 350"}}}}
+      - {mnemonic: "FUSION CH6", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 500"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 510"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 520"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 550"}}}}
+      - {mnemonic: "FUSION CH8", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 700"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 710"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 720"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 750"}}}}
   categories: []
 
 # EVS Neuron VIEW (lab-view-01) — REST on the management address.
