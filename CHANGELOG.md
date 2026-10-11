@@ -7,6 +7,22 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.44.0](https://github.com/by-openclaw/go-acp/compare/v0.43.0...v0.44.0) (2026-10-11)
+
+
+### Features
+
+* **rcp:** Cerebrum RCP connector — session and RouteMaster CRUD ([d3759be](https://github.com/by-openclaw/go-acp/commit/d3759be8517d67c8cbb5b0ccaf603db47ac1e033))
+* **rcp:** Cerebrum RCP connector — session and RouteMaster CRUD ([dbe2aa7](https://github.com/by-openclaw/go-acp/commit/dbe2aa7f09f2cbee783ecffca761a8dc520f9a28)), closes [#1480](https://github.com/by-openclaw/go-acp/issues/1480)
+* **rcp:** crosspoints, mnemonics, device objects, ensure and the provisioning play ([#1482](https://github.com/by-openclaw/go-acp/issues/1482)) ([d73823c](https://github.com/by-openclaw/go-acp/commit/d73823c106a6e7f803caaedef74533a84579d529))
+
+
+### Bug Fixes
+
+* **ansible:** a registry answer that is not a list is read again ([a00ff2f](https://github.com/by-openclaw/go-acp/commit/a00ff2fe8112042c2588ed058925a521c080c0cc))
+* **ansible:** the reference of a move is the registry once it has stopped changing ([d567c3c](https://github.com/by-openclaw/go-acp/commit/d567c3cc2075ea8f27756c3ead00da4054fd7b6d))
+* **ansible:** the registry re-read counter is a fact, not a variable of itself ([fa9535b](https://github.com/by-openclaw/go-acp/commit/fa9535beb6a355a997424674db71c0b42ebf4239))
+
 ## [0.43.0](https://github.com/by-openclaw/go-acp/compare/v0.42.0...v0.43.0) (2026-10-08)
 
 
