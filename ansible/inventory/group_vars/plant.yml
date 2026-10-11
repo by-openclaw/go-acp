@@ -53,6 +53,8 @@ cerebrum_routemaster:
 # EVS Neuron VIEW (lab-view-01) — REST on the management address.
 neuronview:
   api: https://10.6.255.104/api/v1
+  # The API document the device serves: its version picks the driver.
+  spec: https://10.6.255.104/swagger/api.yml
   validate_certs: false
   groups: 36
   group_name: "IP GROUP %d"
