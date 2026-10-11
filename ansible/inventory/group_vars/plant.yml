@@ -46,7 +46,12 @@ cerebrum_nmos_subids:
 cerebrum_routemaster:
   federation_optional: true
   prune: false
-  levels: []
+  # The levels of the RouteMaster (operator, 2026-10-09): one per essence.
+  levels:
+    - {id: 1, name: Video}
+    - {id: 2, name: StrAudio1}
+    - {id: 3, name: StrAudio2}
+    - {id: 4, name: ANC}
   plan: {}
   categories: []
 

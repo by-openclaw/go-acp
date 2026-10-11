@@ -24,6 +24,9 @@
 # before it is deleted). An IO with no mnemonic is reported, not removed.
 #
 # Idempotent: run twice, the second run reports changed=0.
+# Dry run: --check reads everything, tells what would change (the ensure and
+# the category import run their own --check), and writes nothing to Cerebrum.
+#
 # Removal: -e rcp_state=absent deletes the categories and everything the
 # plan names, and nothing else.
 #
@@ -71,12 +74,14 @@
         path: "{{ rcp_dir }}"
         state: directory
         mode: "0700"
+      check_mode: false
 
     - name: The plan
       ansible.builtin.copy:
         content: "{{ rcp_plan | to_nice_json }}\n"
         dest: "{{ rcp_dir }}/plan.json"
         mode: "0600"
+      check_mode: false
 
     - name: Binary and server
       ansible.builtin.command:
@@ -84,6 +89,7 @@
       environment: "{{ rcp_env }}"
       register: rcp_info
       changed_when: false
+      check_mode: false
 
     # ---- removal: categories go first, while their members still exist.
     - name: Categories on the server
@@ -92,6 +98,7 @@
       environment: "{{ rcp_env }}"
       register: rcp_cats
       changed_when: false
+      check_mode: false
       when: rcp_state == 'absent' and rcp_categories | length > 0
 
     - name: Remove the plan's categories
@@ -112,6 +119,7 @@
       environment: "{{ rcp_env }}"
       register: rcp_levels_now
       changed_when: false
+      check_mode: false
       when: rcp_state == 'present' and rcp_levels | length > 0
 
     - name: "Levels: present"
@@ -125,6 +133,19 @@
       register: rcp_levels_set
       when: >-
         rcp_state == 'present' and
+        ((rcp_levels_now.stdout_lines | last | from_json).level
+          | selectattr('id', 'equalto', item.id | string)
+          | selectattr('mnemonic', 'equalto', item.name) | list | length) == 0
+
+    - name: "Levels a dry run would create or rename"
+      ansible.builtin.debug:
+        msg: "{{ item.id }} {{ item.name }}"
+      loop: "{{ rcp_levels }}"
+      loop_control:
+        label: "{{ item.id }} {{ item.name }}"
+      changed_when: true
+      when: >-
+        ansible_check_mode and rcp_state == 'present' and
         ((rcp_levels_now.stdout_lines | last | from_json).level
           | selectattr('id', 'equalto', item.id | string)
           | selectattr('mnemonic', 'equalto', item.name) | list | length) == 0
@@ -143,10 +164,12 @@
           {{ [rcp_bin, 'consumer', 'rcp', 'ensure', rcp_host, '--port', rcp_port | string,
               '--plan', rcp_dir ~ '/plan.json', '--state', rcp_state]
              + (['--federation-optional'] if rcp_federation_optional | bool else [])
-             + (['--prune'] if (rcp_prune | bool and rcp_state == 'present') else []) }}
+             + (['--prune'] if (rcp_prune | bool and rcp_state == 'present') else [])
+             + (['--check'] if ansible_check_mode else []) }}
       environment: "{{ rcp_env }}"
       register: rcp_ensure
-      changed_when: "'changed=0 ' not in (rcp_ensure.stdout_lines | last)"
+      check_mode: false
+      changed_when: (rcp_ensure.stdout_lines | last) is not search('^(changed|would_change)=0 ')
 
     - name: What the ensure did
       ansible.builtin.debug:
@@ -159,6 +182,7 @@
       environment: "{{ rcp_env }}"
       register: rcp_export
       changed_when: false
+      check_mode: false
       when: rcp_state == 'present' and rcp_categories | length > 0
 
     - name: Category files
@@ -173,6 +197,7 @@
           {% endfor %}
         dest: "{{ rcp_dir }}/{{ item.file }}"
         mode: "0600"
+      check_mode: false
       loop:
         - {kind: source, collection: sources, type: SOURCE, file: cat-src.csv}
         - {kind: destination, collection: destinations, type: DEST, file: cat-dst.csv}
@@ -182,10 +207,13 @@
 
     - name: "Categories: present"
       ansible.builtin.command:
-        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, import, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off",
-               --cat-src, "{{ rcp_dir }}/cat-src.csv", --cat-dst, "{{ rcp_dir }}/cat-dst.csv", --output, json]
+        argv: >-
+          {{ [rcp_bin, 'consumer', 'cerebrum-nb', 'import', rcp_host, '--port', rcp_nb_port | string, '--log', 'off',
+              '--cat-src', rcp_dir ~ '/cat-src.csv', '--cat-dst', rcp_dir ~ '/cat-dst.csv', '--output', 'json']
+             + (['--check'] if ansible_check_mode else []) }}
       environment: "{{ rcp_env }}"
       register: rcp_cat_import
+      check_mode: false
       changed_when: (rcp_cat_import.stdout | from_json).changed | default(false)
       when: rcp_state == 'present' and rcp_categories | length > 0
 
