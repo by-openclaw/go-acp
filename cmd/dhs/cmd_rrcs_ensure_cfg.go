@@ -199,7 +199,7 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 		}
 		field := pos + ".function"
 		node, port, isInput, ok := rrcsPortOfPath(k.Panel)
-		if !ok || m.find(node, port, isInput) == nil {
+		if !ok || m.Find(node, port, isInput) == nil {
 			bad(field, "no port at %s", k.Panel)
 			continue
 		}

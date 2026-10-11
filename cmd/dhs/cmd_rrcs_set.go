@@ -171,7 +171,7 @@ func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string, values b
 	if err != nil {
 		return nil, err
 	}
-	props, ok := m.lookup(path)
+	props, ok := m.Lookup(path)
 	if !ok {
 		return nil, fmt.Errorf("rrcs set: nothing at %s", path)
 	}

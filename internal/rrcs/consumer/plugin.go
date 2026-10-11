@@ -53,15 +53,6 @@ func (f *Factory) New(deps plugin.Deps) dhsc.Protocol {
 	return p
 }
 
-// Card is one client card as GetAllClientCards lists it.
-type Card struct {
-	Node     int
-	Bay      int
-	Type     string
-	LongName string
-	ObjectID int
-}
-
 // Plugin is one RRCS gateway with its Artist node. The node is slot 0;
 // bay N of the node is slot N.
 type Plugin struct {

@@ -273,7 +273,7 @@ func rrcsList(ctx context.Context, args []string) error {
 		header = []string{"SOURCE", "SRC LABEL", "DESTINATION", "DST LABEL"}
 		out := []rrcsXp{}
 		for _, x := range m.Xps {
-			if (*flt.node == 0 || x.srcNode == *flt.node || x.dstNode == *flt.node) &&
+			if (*flt.node == 0 || x.SrcNode == *flt.node || x.DstNode == *flt.node) &&
 				rrcsHas(x.Source+" "+x.SourceLabel+" "+x.Destination+" "+x.DestinationLabel, *flt.match) {
 				out = append(out, x)
 				cells = append(cells, []string{x.Source, x.SourceLabel, x.Destination, x.DestinationLabel})
@@ -447,7 +447,7 @@ func rrcsTree(ctx context.Context, args []string) error {
 	}
 	fmt.Printf("rrcs %s  %s\n", m.Target, strings.Join(status, "  "))
 	// Director's organisation: node, client card, the ports of the card.
-	cardOf := m.cardOfNode()
+	cardOf := m.CardOfNode()
 	portsOn := map[int]int{}
 	for _, p := range m.Ports {
 		portsOn[p.Node]++
@@ -586,7 +586,7 @@ func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, pro
 		if err != nil {
 			return err
 		}
-		if props, found = m.lookup(path); !found {
+		if props, found = m.Lookup(path); !found {
 			return fmt.Errorf("rrcs get: nothing at %s", path)
 		}
 	}

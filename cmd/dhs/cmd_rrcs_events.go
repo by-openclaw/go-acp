@@ -165,27 +165,6 @@ func rrcsMemberInt(v codec.Value, name string) int {
 	return int(n)
 }
 
-// portRef names a port for a line: path, object ID, label.
-func (m *rrcsModel) portRef(net, node, port int, wantInput bool) (string, int, string) {
-	if m != nil {
-		if p := m.find(node, port, wantInput); p != nil {
-			return p.Path, p.ObjectID, p.Label
-		}
-	}
-	return fmt.Sprintf("net.%d.node.%d.port.%d", net, node, port), 0, ""
-}
-
-// spyRef names the panel of a panel spy message. A real RRCS 9.0 on an
-// Artist-1024 gives the smart panels there with their port number less
-// 1024 (port 1026 comes back as 2), and the beltpacks unchanged; a number
-// that names no port is tried again with 1024 added.
-func (m *rrcsModel) spyRef(node, port int) (string, int, string) {
-	if m != nil && m.find(node, port, false) == nil && m.find(node, port+1024, false) != nil {
-		port += 1024
-	}
-	return m.portRef(1, node, port, false)
-}
-
 // rrcsVolume reads a crosspoint volume (§9.4): -1 unavailable, 0 mute,
 // 1..255 = (x - 230) / 2 dB.
 func rrcsVolume(x int) (value, unit string) {
@@ -215,7 +194,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 
 	switch e.Method {
 	case "PortActive", "PortInactive": // §9.7: Net, Node, Port
-		path, oid, label := m.portRef(rrcsParamInt(p, 0), rrcsParamInt(p, 1), rrcsParamInt(p, 2), false)
+		path, oid, label := m.PortRef(rrcsParamInt(p, 0), rrcsParamInt(p, 1), rrcsParamInt(p, 2), false)
 		l := line(path, "Online", strconv.FormatBool(e.Method == "PortActive"))
 		l.OID, l.Name = oid, label
 		return []rrcsChangeLine{l}
@@ -230,8 +209,8 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 			if xp.Value.Kind != codec.KindArray || len(it) < 7 {
 				continue
 			}
-			src, _, srcLabel := m.portRef(rrcsParamInt(it, 0), rrcsParamInt(it, 1), rrcsParamInt(it, 2), true)
-			dst, oid, dstLabel := m.portRef(rrcsParamInt(it, 3), rrcsParamInt(it, 4), rrcsParamInt(it, 5), false)
+			src, _, srcLabel := m.PortRef(rrcsParamInt(it, 0), rrcsParamInt(it, 1), rrcsParamInt(it, 2), true)
+			dst, oid, dstLabel := m.PortRef(rrcsParamInt(it, 3), rrcsParamInt(it, 4), rrcsParamInt(it, 5), false)
 			l := line("xp."+src+">"+dst, "State", rrcsOnOff(it[6]))
 			l.OID, l.Name = oid, srcLabel+" > "+dstLabel
 			out = append(out, l)
@@ -248,8 +227,8 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 		for _, ch := range p[0].Items {
 			s, _ := ch.Field("Source")
 			d, _ := ch.Field("Destination")
-			src, _, srcLabel := m.portRef(rrcsMemberInt(s, "Net"), rrcsMemberInt(s, "Node"), rrcsMemberInt(s, "Port"), true)
-			dst, oid, dstLabel := m.portRef(rrcsMemberInt(d, "Net"), rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false)
+			src, _, srcLabel := m.PortRef(rrcsMemberInt(s, "Net"), rrcsMemberInt(s, "Node"), rrcsMemberInt(s, "Port"), true)
+			dst, oid, dstLabel := m.PortRef(rrcsMemberInt(d, "Net"), rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false)
 			for _, member := range []string{"SingleVolume", "ConferenceVolume"} {
 				v, ok := ch.Field(member)
 				if !ok {
@@ -289,7 +268,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 
 	case "GpInputChange", "GpOutputChange": // §9.2: Net, Node, Port, Slot, GPIO no., state
 		kind := map[string]string{"GpInputChange": "gpi", "GpOutputChange": "gpo"}[e.Method]
-		path, oid, label := m.portRef(rrcsParamInt(p, 0), rrcsParamInt(p, 1), rrcsParamInt(p, 2), false)
+		path, oid, label := m.PortRef(rrcsParamInt(p, 0), rrcsParamInt(p, 1), rrcsParamInt(p, 2), false)
 		l := line(fmt.Sprintf("%s.%s.%d", path, kind, rrcsParamInt(p, 4)), "State", "off")
 		if len(p) > 5 {
 			l.Value = rrcsOnOff(p[5])
@@ -346,7 +325,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 			break
 		}
 		d := p[0]
-		path, oid, label := m.spyRef(rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"))
+		path, oid, label := m.SpyRef(rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"))
 		action := map[int]string{0: "pressed", 1: "released", 2: "double-click", 3: "long-press"}[rrcsMemberInt(d, "KeyAction")]
 		if action == "" {
 			action = "action " + strconv.Itoa(rrcsMemberInt(d, "KeyAction"))
@@ -357,7 +336,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 		// What the first page holds on that key, for a reader. The event
 		// does not say which page was shown.
 		if m != nil {
-			if port := m.find(rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false); port != nil {
+			if port := m.Find(rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false); port != nil {
 				for _, k := range port.Keys {
 					if k.Position == "key" && k.Expansion == rrcsMemberInt(d, "SubPanel") && k.Key == rrcsMemberInt(d, "Key") && k.Page == 1 {
 						l.Detail += "; page 1: " + k.CommandType + " " + rrcsTarget(k)
@@ -372,7 +351,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 			break
 		}
 		d := p[0]
-		path, oid, label := m.portRef(1, rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false)
+		path, oid, label := m.PortRef(1, rrcsMemberInt(d, "Node"), rrcsMemberInt(d, "Port"), false)
 		var out []rrcsChangeLine
 		for _, member := range d.Members {
 			if member.Name == "Node" || member.Name == "Port" || member.Value.Kind == codec.KindStruct {
@@ -393,7 +372,7 @@ func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine {
 		states := map[int]string{0: "unregistered", 1: "busy", 2: "active", 3: "error"}
 		var out []rrcsChangeLine
 		for _, panel := range p[0].Items {
-			path, oid, label := m.spyRef(rrcsMemberInt(panel, "Node"), rrcsMemberInt(panel, "Port"))
+			path, oid, label := m.SpyRef(rrcsMemberInt(panel, "Node"), rrcsMemberInt(panel, "Port"))
 			for _, kind := range []string{"Key", "FuncKey", "NumKey", "Rotate"} {
 				st, ok := panel.Field(kind)
 				if !ok {

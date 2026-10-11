@@ -539,7 +539,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 	plans := map[string]*plan{}
 	var order []*plan
 	current := func(m *rrcsModel, object, block, field string) (string, bool) {
-		props, ok := m.lookup(object)
+		props, ok := m.Lookup(object)
 		if !ok {
 			return "", false
 		}
@@ -586,7 +586,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			continue
 		}
 		var value codec.Value
-		switch v := live.mustRaw(object, block, field).(type) {
+		switch v := live.MustRaw(object, block, field).(type) {
 		case bool:
 			b, err := strconv.ParseBool(strings.ToLower(wanted))
 			if err != nil {
@@ -627,7 +627,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 
 	// An edit that would stop RRCS is refused in the dry run as well.
 	for _, p := range order {
-		props, _ := live.lookup(p.object)
+		props, _ := live.Lookup(p.object)
 		if block := p.change.nmosStream(props); block != "" {
 			p.refused = block + ": " + rrcsNMOSRefusal
 			for _, it := range p.items {
@@ -790,13 +790,3 @@ skipped and listed.
 	}
 	return nil
 }
-
-// mustRaw returns the value RRCS reports for a property, nil if none.
-func (m *rrcsModel) mustRaw(object, block, field string) any {
-	props, _ := m.lookup(object)
-	if block != "" {
-		return jMap(props[block])[field]
-	}
-	return props[field]
-}
-

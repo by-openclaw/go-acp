@@ -1,4 +1,4 @@
-package main
+package consumer
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 //	<port>.vfunc.TYPE.K               a virtual function
 //	conference.ID  group.ID  ifb.ID  logic.ID
 
-type rrcsNode struct {
+type Node struct {
 	Path     string         `json:"path"`
 	Net      int            `json:"net"`
 	Node     int            `json:"node"`
@@ -33,7 +33,7 @@ type rrcsNode struct {
 	Raw      map[string]any `json:"-"`
 }
 
-type rrcsCard struct {
+type Card struct {
 	Path     string         `json:"path"`
 	Node     int            `json:"node"`
 	Bay      int            `json:"bay"`
@@ -43,32 +43,32 @@ type rrcsCard struct {
 	Raw      map[string]any `json:"-"`
 }
 
-type rrcsPort struct {
-	Path     string         `json:"path"`
-	Net      int            `json:"net"`
-	Node     int            `json:"node"`
-	Port     int            `json:"port"`
-	Input    bool           `json:"input"`
-	Output   bool           `json:"output"`
-	Type     string         `json:"type"`
-	Label    string         `json:"label"`
-	LongName string         `json:"long_name"`
-	ObjectID int            `json:"object_id"`
-	KeyCount int            `json:"key_count"`
-	Pages    int            `json:"page_count"`
+type Port struct {
+	Path     string `json:"path"`
+	Net      int    `json:"net"`
+	Node     int    `json:"node"`
+	Port     int    `json:"port"`
+	Input    bool   `json:"input"`
+	Output   bool   `json:"output"`
+	Type     string `json:"type"`
+	Label    string `json:"label"`
+	LongName string `json:"long_name"`
+	ObjectID int    `json:"object_id"`
+	KeyCount int    `json:"key_count"`
+	Pages    int    `json:"page_count"`
 	// Read per port by walk; empty when the snapshot has no port values
 	// or the port was not online.
-	Alias      string     `json:"alias,omitempty"`
-	InputGain  string     `json:"input_gain_db,omitempty"`
-	OutputGain string     `json:"output_gain_db,omitempty"`
-	Keys       []*rrcsKey `json:"-"`
+	Alias      string `json:"alias,omitempty"`
+	InputGain  string `json:"input_gain_db,omitempty"`
+	OutputGain string `json:"output_gain_db,omitempty"`
+	Keys       []*Key `json:"-"`
 	// KeyConfigs is every key position of the panel, assigned or not,
 	// with its own object ID and properties (GetAllKeyConfiguration).
-	KeyConfigs []rrcsKeyConfig `json:"-"`
-	Raw      map[string]any `json:"-"`
+	KeyConfigs []KeyConfig    `json:"-"`
+	Raw        map[string]any `json:"-"`
 }
 
-type rrcsKey struct {
+type Key struct {
 	Path        string         `json:"path"`
 	Port        string         `json:"port"`
 	PortLabel   string         `json:"port_label"`
@@ -84,52 +84,53 @@ type rrcsKey struct {
 	Raw         map[string]any `json:"-"`
 }
 
-// rrcsKeyConfig is one key position of a panel and how the key behaves.
-type rrcsKeyConfig struct {
+// KeyConfig is one key position of a panel and how the key behaves.
+type KeyConfig struct {
 	Path     string
 	ObjectID int
 	Props    map[string]any
 }
 
-type rrcsMemberRef struct {
+type MemberRef struct {
 	Port  string `json:"port"`
 	Label string `json:"label,omitempty"`
 	Flags string `json:"flags,omitempty"`
 }
 
-// rrcsObject is a conference, a group, an IFB or a logic source.
-type rrcsObject struct {
-	Path     string          `json:"path"`
-	Kind     string          `json:"kind"`
-	ObjectID int             `json:"object_id"`
-	Label    string          `json:"label,omitempty"`
-	LongName string          `json:"long_name"`
-	Members  []rrcsMemberRef `json:"members,omitempty"`
-	State    string          `json:"state,omitempty"`
-	Raw      map[string]any  `json:"-"`
+// Object is a conference, a group, an IFB or a logic source.
+type Object struct {
+	Path     string         `json:"path"`
+	Kind     string         `json:"kind"`
+	ObjectID int            `json:"object_id"`
+	Label    string         `json:"label,omitempty"`
+	LongName string         `json:"long_name"`
+	Members  []MemberRef    `json:"members,omitempty"`
+	State    string         `json:"state,omitempty"`
+	Raw      map[string]any `json:"-"`
 }
 
-// rrcsXp is one active crosspoint: a source heard at a destination.
-type rrcsXp struct {
+// Xp is one active crosspoint: a source heard at a destination.
+type Xp struct {
 	Source           string `json:"source"`
 	SourceLabel      string `json:"source_label,omitempty"`
 	Destination      string `json:"destination"`
 	DestinationLabel string `json:"destination_label,omitempty"`
 
-	srcNode, dstNode int
+	SrcNode int `json:"-"`
+	DstNode int `json:"-"`
 }
 
-type rrcsModel struct {
+type Model struct {
 	Target  string
 	Status  map[string]string
-	Nodes   []*rrcsNode
-	Cards   []*rrcsCard
-	Ports   []*rrcsPort
-	Keys    []*rrcsKey
-	Objects map[string][]*rrcsObject // conference, group, ifb, logic
-	Xps     []rrcsXp
+	Nodes   []*Node
+	Cards   []*Card
+	Ports   []*Port
+	Keys    []*Key
+	Objects map[string][]*Object // conference, group, ifb, logic
+	Xps     []Xp
 
-	byAddr map[[2]int][]*rrcsPort
+	byAddr map[[2]int][]*Port
 }
 
 func jMap(v any) map[string]any {
@@ -166,7 +167,7 @@ func jWrapped(payload any) []any {
 	return nil
 }
 
-func rrcsPortPath(net, node, port int, in, out bool) string {
+func PortPath(net, node, port int, in, out bool) string {
 	p := fmt.Sprintf("net.%d.node.%d.port.%d", net, node, port)
 	switch {
 	case in && !out:
@@ -177,9 +178,9 @@ func rrcsPortPath(net, node, port int, in, out bool) string {
 	return p
 }
 
-// find returns the port at an address. Where an input and an output share
+// Find returns the port at an address. Where an input and an output share
 // the number, wantInput picks one.
-func (m *rrcsModel) find(node, port int, wantInput bool) *rrcsPort {
+func (m *Model) Find(node, port int, wantInput bool) *Port {
 	c := m.byAddr[[2]int{node, port}]
 	if len(c) == 1 {
 		return c[0]
@@ -196,20 +197,20 @@ func (m *rrcsModel) find(node, port int, wantInput bool) *rrcsPort {
 }
 
 // ref names the port at an address, known or not.
-func (m *rrcsModel) ref(net, node, port int, wantInput bool) (path, label string) {
-	if p := m.find(node, port, wantInput); p != nil {
+func (m *Model) ref(net, node, port int, wantInput bool) (path, label string) {
+	if p := m.Find(node, port, wantInput); p != nil {
 		return p.Path, p.Label
 	}
-	return rrcsPortPath(net, node, port, wantInput, !wantInput), ""
+	return PortPath(net, node, port, wantInput, !wantInput), ""
 }
 
-// rrcsBuildModel reads a snapshot that went through encoding/json.
-func rrcsBuildModel(snap map[string]any) *rrcsModel {
-	m := &rrcsModel{
+// BuildModel reads a snapshot that went through encoding/json.
+func BuildModel(snap map[string]any) *Model {
+	m := &Model{
 		Target:  jStr(snap, "target"),
 		Status:  map[string]string{},
-		Objects: map[string][]*rrcsObject{},
-		byAddr:  map[[2]int][]*rrcsPort{},
+		Objects: map[string][]*Object{},
+		byAddr:  map[[2]int][]*Port{},
 	}
 	for _, c := range jList(snap["status"]) {
 		call := jMap(c)
@@ -233,14 +234,14 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 	net := 1
 	for _, it := range jWrapped(lists["GetAllPorts"]) {
 		raw := jMap(it)
-		p := &rrcsPort{
+		p := &Port{
 			Net: jInt(raw, "Net"), Node: jInt(raw, "Node"), Port: jInt(raw, "Port"),
 			Input: jBool(raw, "Input"), Output: jBool(raw, "Output"),
 			Type: jStr(raw, "PortType"), Label: jStr(raw, "Label"), LongName: jStr(raw, "LongName"),
 			ObjectID: jInt(raw, "ObjectID"), KeyCount: jInt(raw, "KeyCount"), Pages: jInt(raw, "PageCount"),
 			Raw: raw,
 		}
-		p.Path = rrcsPortPath(p.Net, p.Node, p.Port, p.Input, p.Output)
+		p.Path = PortPath(p.Net, p.Node, p.Port, p.Input, p.Output)
 		net = p.Net
 		m.Ports = append(m.Ports, p)
 		m.byAddr[[2]int{p.Node, p.Port}] = append(m.byAddr[[2]int{p.Node, p.Port}], p)
@@ -259,16 +260,16 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 	// Nodes: those RRCS lists, and those the ports name. On an
 	// Artist-1024 the ports carry node numbers the node list does not
 	// hold (seen on 9.0: one node 60, ports on 61 to 66).
-	nodes := map[int]*rrcsNode{}
+	nodes := map[int]*Node{}
 	for _, it := range jWrapped(lists["GetAllNodes"]) {
 		raw := jMap(it)
 		n := jInt(raw, "NodeAddress")
-		nodes[n] = &rrcsNode{Net: net, Node: n, LongName: jStr(raw, "LongName"),
+		nodes[n] = &Node{Net: net, Node: n, LongName: jStr(raw, "LongName"),
 			Type: jStr(raw, "NodeTypeString"), ObjectID: jInt(raw, "ObjectID"), Raw: raw}
 	}
 	for _, p := range m.Ports {
 		if nodes[p.Node] == nil {
-			nodes[p.Node] = &rrcsNode{Net: p.Net, Node: p.Node}
+			nodes[p.Node] = &Node{Net: p.Net, Node: p.Node}
 		}
 		nodes[p.Node].Ports++
 	}
@@ -280,7 +281,7 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 
 	for _, it := range jWrapped(lists["GetAllClientCards"]) {
 		raw := jMap(it)
-		c := &rrcsCard{Node: jInt(raw, "Node"), Bay: jInt(raw, "Bay"), Type: jStr(raw, "ClientCardTypeString"),
+		c := &Card{Node: jInt(raw, "Node"), Bay: jInt(raw, "Bay"), Type: jStr(raw, "ClientCardTypeString"),
 			LongName: jStr(raw, "LongName"), ObjectID: jInt(raw, "ObjectID"), Raw: raw}
 		c.Path = fmt.Sprintf("net.%d.node.%d.card.%d", net, c.Node, c.Bay)
 		m.Cards = append(m.Cards, c)
@@ -300,7 +301,7 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 			continue
 		}
 		n := func(i int) int { f, _ := row[i].(float64); return int(f) }
-		x := rrcsXp{srcNode: n(1), dstNode: n(4)}
+		x := Xp{SrcNode: n(1), DstNode: n(4)}
 		x.Source, x.SourceLabel = m.ref(n(0), n(1), n(2), true)
 		x.Destination, x.DestinationLabel = m.ref(n(3), n(4), n(5), false)
 		m.Xps = append(m.Xps, x)
@@ -327,7 +328,7 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 			}
 			id := jInt(raw, "object_id")
 			props["ObjectID"], props["LongName"] = float64(id), jStr(raw, "long_name")
-			m.Objects[kind] = append(m.Objects[kind], &rrcsObject{Path: kind + "." + strconv.Itoa(id), Kind: kind,
+			m.Objects[kind] = append(m.Objects[kind], &Object{Path: kind + "." + strconv.Itoa(id), Kind: kind,
 				ObjectID: id, LongName: jStr(raw, "long_name"), Label: jStr(props, "Label"), Raw: props})
 		}
 		objs := m.Objects[kind]
@@ -336,9 +337,9 @@ func rrcsBuildModel(snap map[string]any) *rrcsModel {
 	return m
 }
 
-func (m *rrcsModel) buildObjects(lists map[string]any, net int) {
-	add := func(kind string, raw map[string]any) *rrcsObject {
-		o := &rrcsObject{Kind: kind, ObjectID: jInt(raw, "ObjectID"), Label: jStr(raw, "Label"),
+func (m *Model) buildObjects(lists map[string]any, net int) {
+	add := func(kind string, raw map[string]any) *Object {
+		o := &Object{Kind: kind, ObjectID: jInt(raw, "ObjectID"), Label: jStr(raw, "Label"),
 			LongName: jStr(raw, "LongName"), Raw: raw}
 		o.Path = kind + "." + strconv.Itoa(o.ObjectID)
 		m.Objects[kind] = append(m.Objects[kind], o)
@@ -357,7 +358,7 @@ func (m *rrcsModel) buildObjects(lists map[string]any, net int) {
 				flags = append(flags, "listen")
 			}
 			path, label := m.ref(net, jInt(mm, "Node"), jInt(mm, "Port"), false)
-			o.Members = append(o.Members, rrcsMemberRef{Port: path, Label: label, Flags: strings.Join(flags, "+")})
+			o.Members = append(o.Members, MemberRef{Port: path, Label: label, Flags: strings.Join(flags, "+")})
 		}
 	}
 	for _, it := range jWrapped(lists["GetAllGroups"]) {
@@ -366,7 +367,7 @@ func (m *rrcsModel) buildObjects(lists map[string]any, net int) {
 		for _, mem := range jList(raw["MemberList"]) {
 			mm := jMap(mem)
 			path, label := m.ref(net, jInt(mm, "Node"), jInt(mm, "Port"), false)
-			o.Members = append(o.Members, rrcsMemberRef{Port: path, Label: label})
+			o.Members = append(o.Members, MemberRef{Port: path, Label: label})
 		}
 	}
 	for _, it := range jWrapped(lists["GetAllIFBs"]) {
@@ -379,7 +380,7 @@ func (m *rrcsModel) buildObjects(lists map[string]any, net int) {
 				continue
 			}
 			path, label := m.ref(jInt(a, "Net"), jInt(a, "Node"), jInt(a, "Port"), jBool(a, "IsInput"))
-			o.Members = append(o.Members, rrcsMemberRef{Port: path, Label: label, Flags: strings.ToLower(role)})
+			o.Members = append(o.Members, MemberRef{Port: path, Label: label, Flags: strings.ToLower(role)})
 		}
 	}
 	// §8.7: "LogicSource#N": [long name, 8 char. label, object ID, state].
@@ -389,7 +390,7 @@ func (m *rrcsModel) buildObjects(lists map[string]any, net int) {
 			continue
 		}
 		id, _ := row[2].(float64)
-		o := &rrcsObject{Kind: "logic", ObjectID: int(id), Path: "logic." + strconv.Itoa(int(id)),
+		o := &Object{Kind: "logic", ObjectID: int(id), Path: "logic." + strconv.Itoa(int(id)),
 			LongName: fmt.Sprint(row[0]), Label: fmt.Sprint(row[1]), State: "off",
 			Raw: map[string]any{"LongName": row[0], "Label": row[1], "ObjectID": row[2], "State": row[3]}}
 		if on, _ := row[3].(bool); on {
@@ -407,18 +408,18 @@ func (m *rrcsModel) buildObjects(lists map[string]any, net int) {
 	}
 }
 
-func (m *rrcsModel) buildKeys(commands []any) {
+func (m *Model) buildKeys(commands []any) {
 	seen := map[string]bool{}
 	for _, c := range commands {
 		call := jMap(c)
 		for _, e := range jList(jMap(call["payload"])["CommandLists"]) {
 			entry := jMap(e)
 			pos := jMap(entry["CommandPosition"])
-			port := m.find(jInt(pos, "Node"), jInt(pos, "Port"), jBool(pos, "IsInput"))
+			port := m.Find(jInt(pos, "Node"), jInt(pos, "Port"), jBool(pos, "IsInput"))
 			if port == nil {
 				continue
 			}
-			base := rrcsKey{Port: port.Path, PortLabel: port.Label, Position: jStr(pos, "PositionType"),
+			base := Key{Port: port.Path, PortLabel: port.Label, Position: jStr(pos, "PositionType"),
 				Expansion: jInt(pos, "ExpansionPanel"), Page: jInt(pos, "Page"), Key: jInt(pos, "KeyNumber")}
 			if base.Position == "key" {
 				base.Path = fmt.Sprintf("%s.key.%d.%d.%d", port.Path, base.Expansion, base.Page, base.Key)
@@ -455,7 +456,7 @@ func (m *rrcsModel) buildKeys(commands []any) {
 			}
 		}
 	}
-	less := func(a, b *rrcsKey) bool {
+	less := func(a, b *Key) bool {
 		if a.Port != b.Port {
 			return a.Port < b.Port
 		}
@@ -481,9 +482,9 @@ func (m *rrcsModel) buildKeys(commands []any) {
 	}
 }
 
-// lookup finds what a path names and returns its properties as RRCS gave
+// Lookup finds what a path names and returns its properties as RRCS gave
 // them.
-func (m *rrcsModel) lookup(path string) (map[string]any, bool) {
+func (m *Model) Lookup(path string) (map[string]any, bool) {
 	for _, n := range m.Nodes {
 		if n.Path == path {
 			if n.Raw == nil {
@@ -520,7 +521,7 @@ func (m *rrcsModel) lookup(path string) (map[string]any, bool) {
 // buildPortValues reads the per-port answers of walk into the ports. The
 // values are also put into the properties of the port, so get, export
 // and import see them under Alias, InputGain and OutputGain.
-func (m *rrcsModel) buildPortValues(calls []any) {
+func (m *Model) buildPortValues(calls []any) {
 	for _, c := range calls {
 		call := jMap(c)
 		args := jList(call["args"])
@@ -536,18 +537,18 @@ func (m *rrcsModel) buildPortValues(calls []any) {
 			return 0
 		}
 		method := jStr(call, "method")
-		var port *rrcsPort
+		var port *Port
 		switch method {
 		case "GetPortLabel": // node, port, input
 			in, _ := args[2].(bool)
-			port = m.find(num(0), num(1), in)
+			port = m.Find(num(0), num(1), in)
 		case "GetPortAlias": // net, node, port, input
 			in, _ := args[3].(bool)
-			port = m.find(num(1), num(2), in)
+			port = m.Find(num(1), num(2), in)
 		case "GetInputGain":
-			port = m.find(num(1), num(2), true)
+			port = m.Find(num(1), num(2), true)
 		case "GetOutputGain":
-			port = m.find(num(1), num(2), false)
+			port = m.Find(num(1), num(2), false)
 		}
 		if port == nil {
 			continue
@@ -577,7 +578,7 @@ func (m *rrcsModel) buildPortValues(calls []any) {
 // buildKeyConfigs reads GetAllKeyConfiguration of each panel: args are
 // node, port, input, pool port; the answer holds KeyList, each entry a
 // KeyPosition and its KeyProperties.
-func (m *rrcsModel) buildKeyConfigs(calls []any) {
+func (m *Model) buildKeyConfigs(calls []any) {
 	for _, c := range calls {
 		call := jMap(c)
 		args := jList(call["args"])
@@ -587,7 +588,7 @@ func (m *rrcsModel) buildKeyConfigs(calls []any) {
 		node, _ := args[0].(float64)
 		number, _ := args[1].(float64)
 		in, _ := args[2].(bool)
-		port := m.find(int(node), int(number), in)
+		port := m.Find(int(node), int(number), in)
 		if port == nil {
 			continue
 		}
@@ -601,21 +602,21 @@ func (m *rrcsModel) buildKeyConfigs(calls []any) {
 			if typ := jStr(pos, "PositionType"); typ != "" && typ != "key" {
 				path = fmt.Sprintf("%s.%s.%d", port.Path, typ, jInt(pos, "KeyNumber"))
 			}
-			port.KeyConfigs = append(port.KeyConfigs, rrcsKeyConfig{Path: path, ObjectID: jInt(props, "ObjectID"), Props: props})
+			port.KeyConfigs = append(port.KeyConfigs, KeyConfig{Path: path, ObjectID: jInt(props, "ObjectID"), Props: props})
 		}
 		keys := port.KeyConfigs
 		sort.SliceStable(keys, func(i, j int) bool { return keys[i].Path < keys[j].Path })
 	}
 }
 
-// cardOfNode links the node numbers that carry ports and are not in the
+// CardOfNode links the node numbers that carry ports and are not in the
 // node list to the client cards, the way Director shows them: on an
 // Artist-1024 the ports of the first card are addressed as node 61, of
 // the second as 62, and so on (a real RRCS 9.0: node 60, cards in bay 1,
 // 2, 4, 5, 6, 7, ports on nodes 61 to 66). RRCS gives no field for the
 // link, so it is made by position, and only when the counts agree;
 // otherwise the map is empty and nothing is regrouped.
-func (m *rrcsModel) cardOfNode() map[int]*rrcsCard {
+func (m *Model) CardOfNode() map[int]*Card {
 	var orphans []int
 	for _, n := range m.Nodes {
 		if n.Type == "" && n.ObjectID == 0 {
@@ -626,16 +627,46 @@ func (m *rrcsModel) cardOfNode() map[int]*rrcsCard {
 		return nil
 	}
 	sort.Ints(orphans)
-	cards := append([]*rrcsCard(nil), m.Cards...)
+	cards := append([]*Card(nil), m.Cards...)
 	sort.SliceStable(cards, func(i, j int) bool {
 		if cards[i].Node != cards[j].Node {
 			return cards[i].Node < cards[j].Node
 		}
 		return cards[i].Bay < cards[j].Bay
 	})
-	out := map[int]*rrcsCard{}
+	out := map[int]*Card{}
 	for i, at := range orphans {
 		out[at] = cards[i]
 	}
 	return out
+}
+
+// MustRaw returns the value RRCS reports for a property, nil if none.
+func (m *Model) MustRaw(object, block, field string) any {
+	props, _ := m.Lookup(object)
+	if block != "" {
+		return jMap(props[block])[field]
+	}
+	return props[field]
+}
+
+// PortRef names a port for a line: path, object ID, label.
+func (m *Model) PortRef(net, node, port int, wantInput bool) (string, int, string) {
+	if m != nil {
+		if p := m.Find(node, port, wantInput); p != nil {
+			return p.Path, p.ObjectID, p.Label
+		}
+	}
+	return fmt.Sprintf("net.%d.node.%d.port.%d", net, node, port), 0, ""
+}
+
+// SpyRef names the panel of a panel spy message. A real RRCS 9.0 on an
+// Artist-1024 gives the smart panels there with their port number less
+// 1024 (port 1026 comes back as 2), and the beltpacks unchanged; a number
+// that names no port is tried again with 1024 added.
+func (m *Model) SpyRef(node, port int) (string, int, string) {
+	if m != nil && m.Find(node, port, false) == nil && m.Find(node, port+1024, false) != nil {
+		port += 1024
+	}
+	return m.PortRef(1, node, port, false)
 }
