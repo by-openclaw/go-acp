@@ -92,10 +92,10 @@ remain valid.
 
 | Function | For RRCS | Requests |
 |---|---|---|
-| Connect | open the connection, read version and state | 4 |
+| Connect | open the connection, read the version | 1 |
 | Disconnect | remove the registrations, close | 0 to 2 |
-| GetDeviceInfo | node, version, state, number of bays | 1 |
-| GetSlotInfo | one bay: its card or none | 1 |
+| GetDeviceInfo | version, number of slots (the client cards, read once per session) | 1, then 0 |
+| GetSlotInfo | one bay: its card or none, from the same list | 0 |
 | Walk (slot) | the objects of one card; slot 0: the objects of the node | 1, plus 1 per panel of the card |
 | GetValue | one property of one object (`GetPort`, `GetClientCard`, or the list of its kind) | 1 |
 | SetValue | one property, read before and after | 3 |
