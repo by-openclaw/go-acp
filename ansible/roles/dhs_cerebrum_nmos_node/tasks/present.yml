@@ -1,5 +1,7 @@
 ---
 # present: NMOS on (device) -> registered -> SubID -> moved to slot N.
+# Cerebrum is read and written over RCP, its main protocol; every wait is
+# ONE `rcp objects` call, one login, however many objects it reads.
 
 - name: "{{ cerebrum_nmos_node_label }} — its SubID is in the inventory"
   ansible.builtin.assert:
@@ -35,94 +37,85 @@
   vars:
     cnn_registered_now: "{{ (cnn_sw_set is defined and cnn_sw_set is changed) or (cnn_view_put is defined and cnn_view_put is changed) }}"
 
+# What Cerebrum must show when the move is finished, as `rcp objects`
+# prints it: the entry of the node on slot 00 lists no device, slot N
+# lists every device, and every device its senders and receivers.
+- name: "{{ cerebrum_nmos_node_label }} — what a finished move reads like"
+  ansible.builtin.set_fact:
+    cnn_row: "Nodes.[{{ cnn_id }}]"
+    cnn_senders: "{{ cnn_reg_devs.json | map(attribute='senders') | map('length') | sum }}"
+    cnn_receivers: "{{ cnn_reg_devs.json | map(attribute='receivers') | map('length') | sum }}"
+    cnn_want_reads: >-
+      {%- set out = [['0', 'Nodes.[' ~ cnn_id ~ '].Devices', 0], [cnn_slot, 'Devices', cnn_reg_devs.json | length]] -%}
+      {%- for d in cnn_reg_devs.json -%}
+      {%- set _ = out.append([cnn_slot, 'Devices.[' ~ d.label ~ '].Senders', d.senders | length]) -%}
+      {%- set _ = out.append([cnn_slot, 'Devices.[' ~ d.label ~ '].Receivers', d.receivers | length]) -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: "{{ cerebrum_nmos_node_label }} — the one read that tells it"
+  ansible.builtin.set_fact:
+    cnn_gate_argv: >-
+      {%- set out = cnn_objects | list -%}
+      {%- for r in cnn_want_reads -%}{%- set _ = out.extend(['--read', r[0] ~ ' ' ~ r[1]]) -%}{%- endfor -%}
+      {{ out }}
+    cnn_gate_want: >-
+      {%- set out = [] -%}
+      {%- for r in cnn_want_reads -%}{%- set _ = out.append([r[0] | string, r[1], 'table', r[2] | string] | join(cnn_tab)) -%}{%- endfor -%}
+      {{ out }}
+
 - name: "{{ cerebrum_nmos_node_label }} — SubID, move, confirm"
   environment:
     DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
     DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
-  vars:
-    cnn_devs: "{{ cnn_reg_devs.json }}"
-    cnn_row: "Nodes.[{{ cnn_id }}]"
-    cnn_senders: "{{ cnn_reg_devs.json | map(attribute='senders') | map('length') | sum }}"
-    cnn_receivers: "{{ cnn_reg_devs.json | map(attribute='receivers') | map('length') | sum }}"
   block:
     - name: "{{ cerebrum_nmos_node_label }} — its line in Cerebrum, and the SubID it holds"
       ansible.builtin.command:
-        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.SubID'] }}"
+        argv: "{{ cnn_objects + ['--read', '0 ' ~ cnn_row ~ '.SubID'] }}"
       register: cnn_now
-      until: cnn_now.rc == 0 and cnn_now.stdout is search('value="')
+      until: cnn_now.rc == 0 and (cnn_now.stdout.split(cnn_tab)[2] | default('')) == 'value'
       retries: "{{ cerebrum.nmos_wait_retries }}"
       delay: "{{ cerebrum.nmos_wait_delay }}"
       changed_when: false
 
     - name: "{{ cerebrum_nmos_node_label }} — set the SubID, once"
       ansible.builtin.command:
-        argv: "{{ cnn_write + [cnn_row ~ '.SubID', '--value', cnn_slot] }}"
-      when: (cnn_now.stdout | regex_search(cnn_value, '\\1') | first) != cnn_slot
+        argv: "{{ cnn_set_object + [cnn_row ~ '.SubID', '--value', cnn_slot] }}"
+      when: cnn_now.stdout.split(cnn_tab)[3] != cnn_slot
       register: cnn_set
 
-    # From here on: reads only. A read that fails is read again; it
-    # never counts as "empty".
-    - name: "{{ cerebrum_nmos_node_label }} — its entry on slot 00 is empty"
+    # From here on: reads only. A read that fails, or a slot that does
+    # not exist yet, is an "error" line: it never matches, it is read again.
+    - name: "{{ cerebrum_nmos_node_label }} — moved: slot 00 entry empty, slot {{ cnn_slot }} complete"
       ansible.builtin.command:
-        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.Devices'] }}"
-      register: cnn_entry
-      until: cnn_entry.rc == 0 and cnn_entry.stdout_lines | select('search', (cnn_row ~ '.Devices.[') | regex_escape) | list | length == 0
+        argv: "{{ cnn_gate_argv }}"
+      register: cnn_gate
+      until: cnn_gate.rc == 0 and (cnn_gate.stdout_lines | map('split', cnn_tab) | map('batch', 4) | map('first') | map('join', cnn_tab) | list) == cnn_gate_want
       retries: "{{ cerebrum.nmos_wait_retries }}"
       delay: "{{ cerebrum.nmos_wait_delay }}"
       changed_when: false
-
-    - name: "{{ cerebrum_nmos_node_label }} — slot {{ cnn_slot }} holds every device"
-      ansible.builtin.command:
-        argv: "{{ cnn_read + [cnn_slot, '--object', 'Devices'] }}"
-      register: cnn_slot_devs
-      until: cnn_slot_devs.rc == 0 and cnn_slot_devs.stdout_lines | select('search', 'Devices.[' | regex_escape) | list | length == cnn_devs | length
-      retries: "{{ cerebrum.nmos_wait_retries }}"
-      delay: "{{ cerebrum.nmos_wait_delay }}"
-      changed_when: false
-
-    - name: "{{ cerebrum_nmos_node_label }} — slot {{ cnn_slot }} holds every sender and receiver"
-      ansible.builtin.command:
-        argv: "{{ cnn_read + [cnn_slot, '--object', 'Devices.[' ~ item.0.label ~ '].' ~ item.1] }}"
-      register: cnn_res
-      until: cnn_res.rc == 0 and cnn_res.stdout_lines | select('search', ('Devices.[' ~ item.0.label ~ '].' ~ item.1 ~ '.[') | regex_escape) | list | length == item.0[item.1 | lower] | length
-      retries: "{{ cerebrum.nmos_wait_retries }}"
-      delay: "{{ cerebrum.nmos_wait_delay }}"
-      changed_when: false
-      loop: "{{ cnn_devs | product(['Senders', 'Receivers']) | list }}"
-      loop_control:
-        label: "{{ item.0.label }} {{ item.1 }}: {{ item.0[item.1 | lower] | length }}"
 
     - name: "{{ cerebrum_nmos_node_label }} — leave Cerebrum alone before the second read"
       ansible.builtin.pause:
         seconds: "{{ cerebrum.nmos_settle }}"
       when: cnn_set is changed
 
-    - name: "{{ cerebrum_nmos_node_label }} — second read: SubID"
+    - name: "{{ cerebrum_nmos_node_label }} — second read"
       ansible.builtin.command:
-        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.SubID'] }}"
-      register: cnn_after
-      changed_when: false
-      when: cnn_set is changed
-
-    - name: "{{ cerebrum_nmos_node_label }} — second read: senders and receivers of slot {{ cnn_slot }}"
-      ansible.builtin.command:
-        argv: "{{ cnn_read + [cnn_slot, '--object', 'Devices.[' ~ item.0.label ~ '].' ~ item.1] }}"
+        argv: "{{ cnn_gate_argv + ['--read', '0 ' ~ cnn_row ~ '.SubID'] }}"
       register: cnn_again
       changed_when: false
-      loop: "{{ cnn_devs | product(['Senders', 'Receivers']) | list }}"
-      loop_control:
-        label: "{{ item.0.label }} {{ item.1 }}"
       when: cnn_set is changed
 
     - name: "{{ cerebrum_nmos_node_label }} — the move held"
       ansible.builtin.assert:
         that:
-          - (cnn_after.stdout | regex_search(cnn_value, '\\1') | first) == cnn_slot
-          - (cnn_again.results | map(attribute='stdout_lines') | map('select', 'search', '\]\.(Senders|Receivers)\.\[') | map('list') | map('length') | sum) == (cnn_senders | int) + (cnn_receivers | int)
+          - (cnn_again.stdout_lines[:-1] | map('split', cnn_tab) | map('batch', 4) | map('first') | map('join', cnn_tab) | list) == cnn_gate_want
+          - cnn_again.stdout_lines[-1].split(cnn_tab)[3] == cnn_slot
         fail_msg: "{{ cerebrum_nmos_node_label }}: after {{ cerebrum.nmos_settle }} s the SubID or the content of slot {{ cnn_slot }} is not what it was — stopped"
         quiet: true
       when: cnn_set is changed
 
     - name: "{{ cerebrum_nmos_node_label }}"
       ansible.builtin.debug:
-        msg: "present — SubID {{ cnn_slot }}{{ ' set' if cnn_set is changed else ' already held' }}: {{ cnn_devs | length }} device(s), {{ cnn_senders }} sender(s), {{ cnn_receivers }} receiver(s) on slot {{ cnn_slot }}"
+        msg: "present — SubID {{ cnn_slot }}{{ ' set' if cnn_set is changed else ' already held' }}: {{ cnn_reg_devs.json | length }} device(s), {{ cnn_senders }} sender(s), {{ cnn_receivers }} receiver(s) on slot {{ cnn_slot }}"
