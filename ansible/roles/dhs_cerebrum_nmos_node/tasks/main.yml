@@ -2,7 +2,7 @@
 # dhs_cerebrum_nmos_node — one NMOS node, `cerebrum_nmos_node_state`
 # present or absent. Every change is ONE write, then reads until Cerebrum
 # shows it done (never a guessed delay); a wait that runs out stops the
-# run. Over northbound. EVS support: keep the registry page of the Network
+# run. Over RCP, the main protocol of Cerebrum. EVS support: keep the registry page of the Network
 # Media Server closed in the Cerebrum UI meanwhile.
 #
 #   present   NMOS on (device) -> registered -> SubID -> moved to slot N
@@ -14,7 +14,7 @@
     that:
       - cerebrum_nmos_node_state in ['present', 'absent']
       - cerebrum_nmos_node_label | length > 0
-      - cerebrum.host is defined and cerebrum.nb_port is defined and cerebrum.nmos_device is defined
+      - cerebrum.host is defined and cerebrum.rcp_port is defined and cerebrum.nmos_device is defined
       - cerebrum.nmos_settle is defined and cerebrum.nmos_page_limit is defined and cerebrum.nmos_read_timeout is defined
       - cerebrum.nmos_wait_retries is defined and cerebrum.nmos_wait_delay is defined
       - lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | length > 0 and lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') | length > 0
@@ -37,11 +37,11 @@
     cnn_site: "{{ cnn_csv.results[0].dict }}"
     cnn_device: "{{ cnn_csv.results[1].list | selectattr('nmos_label', 'equalto', cerebrum_nmos_node_label) | list | first | default({}) }}"
     cnn_registry: "http://{{ cnn_csv.results[0].dict.registry_host.value }}:{{ cnn_csv.results[0].dict.registry_port.value }}/x-nmos/query/v1.2"
-    cnn_read: "{{ [cerebrum_nmos_node_bin, 'consumer', 'cerebrum-nb', 'device-value', cerebrum.host, '--port', cerebrum.nb_port | string,
-                   '--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device, '--by-name', '--sub-device'] }}"
-    cnn_write: "{{ [cerebrum_nmos_node_bin, 'consumer', 'cerebrum-nb', 'set-value', cerebrum.host, '--port', cerebrum.nb_port | string,
-                    '--device', cerebrum.nmos_device, '--sub-device', '0', '--object'] }}"
-    cnn_value: 'value="([^"]*)"'
+    cnn_objects: "{{ [cerebrum_nmos_node_bin, 'consumer', 'rcp', 'objects', cerebrum.host, '--port', cerebrum.rcp_port | string,
+                      '--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device] }}"
+    cnn_set_object: "{{ [cerebrum_nmos_node_bin, 'consumer', 'rcp', 'set-object', cerebrum.host, '--port', cerebrum.rcp_port | string,
+                         '--device', cerebrum.nmos_device, '--index', '0', '--path'] }}"
+    cnn_tab: "	"
 
 - name: "{{ cerebrum_nmos_node_label }} — its device is known, with the protocol it is configured with"
   ansible.builtin.assert:
