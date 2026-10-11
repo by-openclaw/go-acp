@@ -24,6 +24,7 @@
 
 - name: "{{ cerebrum_nmos_node_label }} — the node and its slot"
   ansible.builtin.set_fact:
+    cnn_tries: 1
     cnn_id: "{{ cnn_reg_nodes.json | selectattr('label', 'equalto', cerebrum_nmos_node_label) | map(attribute='id') | first }}"
     cnn_slot: "{{ (cerebrum_nmos_subids | selectattr('label', 'equalto', cerebrum_nmos_node_label) | first).subid | string }}"
 

@@ -5,7 +5,7 @@
 # reference. Two reads `cerebrum.nmos_settle` seconds apart must be equal;
 # otherwise read again, `cerebrum.nmos_wait_retries` times at most.
 
-- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry (read {{ cnn_try | default(1) }})"
+- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry (read {{ cnn_tries | default(1) }})"
   ansible.builtin.uri:
     url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
     return_content: true
@@ -30,14 +30,18 @@
 
 - name: "{{ cerebrum_nmos_node_label }} — the registry is still filling"
   ansible.builtin.assert:
-    that: (cnn_try | default(1) | int) < (cerebrum.nmos_wait_retries | int)
+    that: (cnn_tries | default(1) | int) < (cerebrum.nmos_wait_retries | int)
     fail_msg: "{{ cerebrum_nmos_node_label }}: its devices in the registry kept changing — nothing written to Cerebrum"
     quiet: true
+  when: cnn_reg_a.json != cnn_reg_devs.json or cnn_reg_devs.json | length == 0
+
+- name: "{{ cerebrum_nmos_node_label }} — one more read"
+  ansible.builtin.set_fact:
+    cnn_tries: "{{ (cnn_tries | default(1) | int) + 1 }}"
   when: cnn_reg_a.json != cnn_reg_devs.json or cnn_reg_devs.json | length == 0
 
 - name: "{{ cerebrum_nmos_node_label }} — read again"
   ansible.builtin.include_tasks: registry_stable.yml
   vars:
-    cnn_try: "{{ (cnn_try | default(1) | int) + 1 }}"
     cnn_registered_now: true
   when: cnn_reg_a.json != cnn_reg_devs.json or cnn_reg_devs.json | length == 0
