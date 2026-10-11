@@ -29,7 +29,7 @@ func rrcsTestModel(t *testing.T) *rrcsModel {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snap, _, err := rrcsCollect(context.Background(), client, rrcsCollectOpts{commands: true})
+	snap, _, err := rrcsCollect(context.Background(), client, rrcsCollectOpts{Commands: true})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -341,7 +341,7 @@ func rrcsExport(ctx context.Context, args []string) error {
 	// The keys of the panels and their objects are part of an export:
 	// from a gateway that takes the key assignments and the key
 	// configurations, a request or two per port.
-	m, err := src.modelWith(ctx, "export", fs.Args(), rrcsCollectOpts{commands: true, values: true})
+	m, err := src.modelWith(ctx, "export", fs.Args(), rrcsCollectOpts{Commands: true, Values: true})
 	if err != nil {
 		return err
 	}

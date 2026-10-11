@@ -452,8 +452,8 @@ func rrcsReadForConfig(ctx context.Context, client *rrcs.Client, want *rrcsDesir
 		only = append(only, "GetAllIFBs")
 	}
 	snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{
-		only: only, commands: len(panels) > 0, values: labels, keyConfigOnly: true,
-		onlyPort: func(n, p int, _ bool) bool { return panels[[2]int{n, p}] },
+		Only: only, Commands: len(panels) > 0, Values: labels, KeyConfigOnly: true,
+		OnlyPort: func(n, p int, _ bool) bool { return panels[[2]int{n, p}] },
 	})
 	if err != nil {
 		return nil, err

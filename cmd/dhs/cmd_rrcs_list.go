@@ -207,12 +207,12 @@ func rrcsList(ctx context.Context, args []string) error {
 	// A table is asked from RRCS with the list it is made of, and nothing
 	// else: one request for the conferences, not the sixteen of the
 	// whole system.
-	opts := rrcsCollectOpts{only: rrcsListsFor[kind]}
+	opts := rrcsCollectOpts{Only: rrcsListsFor[kind]}
 	if kind == "keys" {
-		opts.commands, opts.panelCommands = true, *keys == "panels"
+		opts.Commands, opts.PanelCommands = true, *keys == "panels"
 		if *flt.node != 0 {
 			node := *flt.node
-			opts.onlyPort = func(n, _ int, _ bool) bool { return n == node }
+			opts.OnlyPort = func(n, _ int, _ bool) bool { return n == node }
 		}
 	}
 	m, err := src.modelWith(ctx, "list", fs.Args(), opts)
@@ -394,7 +394,7 @@ func rrcsTree(ctx context.Context, args []string) error {
 	if *keys != "panels" && *keys != "all" && *keys != "no" {
 		return rrcsValErr("tree", "--keys must be panels, all or no")
 	}
-	m, err := src.modelWith(ctx, "tree", fs.Args(), rrcsCollectOpts{commands: *keys != "no", panelCommands: *keys == "panels"})
+	m, err := src.modelWith(ctx, "tree", fs.Args(), rrcsCollectOpts{Commands: *keys != "no", PanelCommands: *keys == "panels"})
 	if err != nil {
 		return err
 	}
@@ -569,18 +569,18 @@ func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, pro
 		closeFn()
 	}
 	if !found {
-		opts := rrcsCollectOpts{commands: onKey, onlyPort: only}
+		opts := rrcsCollectOpts{Commands: onKey, OnlyPort: only}
 		switch {
 		case onKey:
-			opts.only = []string{"GetAllPorts"}
+			opts.Only = []string{"GetAllPorts"}
 		case strings.HasPrefix(path, "conference."):
-			opts.only = []string{"GetAllConferences"}
+			opts.Only = []string{"GetAllConferences"}
 		case strings.HasPrefix(path, "group."):
-			opts.only = []string{"GetAllGroups"}
+			opts.Only = []string{"GetAllGroups"}
 		case strings.HasPrefix(path, "ifb."):
-			opts.only = []string{"GetAllIFBs"}
+			opts.Only = []string{"GetAllIFBs"}
 		case strings.HasPrefix(path, "logic."):
-			opts.only = []string{"GetAllLogicSources_v2"}
+			opts.Only = []string{"GetAllLogicSources_v2"}
 		}
 		m, err := src.modelWith(ctx, "get", hosts, opts)
 		if err != nil {

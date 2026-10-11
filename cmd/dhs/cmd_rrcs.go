@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -30,19 +29,6 @@ import (
 )
 
 const rrcsProto = "rrcs"
-
-// rrcsInfoMethods are the status requests of `info` (spec 9.0.1 §8.8).
-var rrcsInfoMethods = []string{
-	"GetVersion", "GetState", "IsConnectedToArtist", "GetConfigurationID",
-}
-
-// rrcsDiscoverMethods are the read-only list requests of `discover`
-// (§8.1, §8.6, §8.7, §8.8). Each takes the transaction key alone.
-var rrcsDiscoverMethods = []string{
-	"GetAllNodes", "GetAllClientCards", "GetAllDevices", "GetAllPorts",
-	"GetAllConferences", "GetAllGroups", "GetAllIFBs", "GetAllLogicSources_v2",
-	"GetAllGpIns", "GetAllGpOuts", "GetAllActiveXps",
-}
 
 func rrcsValErr(verb, reason string) error {
 	return &consumer.ValidationError{Field: "rrcs " + verb, Reason: reason}
@@ -330,33 +316,6 @@ func rrcsMethodOf(doc []byte) string {
 	return string(rest[:j])
 }
 
-// rrcsJSON turns an XML-RPC value into what encoding/json prints.
-func rrcsJSON(v codec.Value) any {
-	switch v.Kind {
-	case codec.KindInt:
-		return v.Int
-	case codec.KindBool:
-		return v.Bool
-	case codec.KindDouble:
-		return v.Double
-	case codec.KindBase64:
-		return base64.StdEncoding.EncodeToString(v.Bytes)
-	case codec.KindStruct:
-		m := make(map[string]any, len(v.Members))
-		for _, mem := range v.Members {
-			m[mem.Name] = rrcsJSON(mem.Value)
-		}
-		return m
-	case codec.KindArray:
-		a := make([]any, len(v.Items))
-		for i, it := range v.Items {
-			a[i] = rrcsJSON(it)
-		}
-		return a
-	}
-	return v.Str
-}
-
 // rrcsCompact is the one-line rendering of a value.
 func rrcsCompact(v codec.Value) string {
 	b, err := json.Marshal(rrcsJSON(v))
@@ -546,7 +505,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	var model *rrcsModel
 	readModel := func() (*rrcsModel, error) {
 		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{
-			commands: spyAll || len(spyPanels) > 0 || *changes == "yes", panelCommands: true})
+			Commands: spyAll || len(spyPanels) > 0 || *changes == "yes", PanelCommands: true})
 		if err != nil {
 			return nil, err
 		}
@@ -953,19 +912,4 @@ func rrcsParseSpy(v string) (all bool, panels [][2]int, err error) {
 		panels = append(panels, [2]int{n, p})
 	}
 	return false, panels, nil
-}
-
-// rrcsLocalIP is the address RRCS has to send to: the one given with
-// --listen, or the local end of the route towards the gateway.
-func rrcsLocalIP(listen, peer string) string {
-	if host, _, err := net.SplitHostPort(listen); err == nil && host != "" && host != "0.0.0.0" && host != "::" {
-		return host
-	}
-	conn, err := net.Dial("udp", peer) // no packet is sent: UDP only picks the route
-	if err != nil {
-		return ""
-	}
-	defer func() { _ = conn.Close() }()
-	host, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	return host
 }

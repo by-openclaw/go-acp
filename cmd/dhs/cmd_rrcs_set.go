@@ -160,8 +160,8 @@ func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string, values b
 	}
 	opts := rrcsCollectOpts{}
 	if node, port, _, isPort := rrcsPortOfPath(path); isPort && values {
-		opts.values = true
-		opts.onlyPort = func(n, p int, _ bool) bool { return n == node && p == port }
+		opts.Values = true
+		opts.OnlyPort = func(n, p int, _ bool) bool { return n == node && p == port }
 	}
 	snap, _, err := rrcsCollect(ctx, client, opts)
 	if err != nil {
