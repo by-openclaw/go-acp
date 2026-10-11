@@ -24,7 +24,7 @@ cerebrum:
   nmos_page_limit: 100
 
 # SubID of each NMOS node on the Network Media Server, by IS-04 node label
-# (playbooks/cerebrum-nmos-subid.yml). Plant data: NetBox will own these.
+# (playbooks/cerebrum-nmos-node.yml). Plant data: NetBox will own these.
 cerebrum_nmos_subids:
   # The order of the signal chain (operator, 2026-10-10); the RouteMaster
   # links follow the same order.
@@ -54,8 +54,6 @@ cerebrum_routemaster:
 neuronview:
   api: https://10.6.255.104/api/v1
   validate_certs: false
-  # NMOS on: the node registers with the site registry (playbooks/neuronview-nmos.yml).
-  nmos_enabled: true
   groups: 36
   group_name: "IP GROUP %d"
   audio_stream_name: "AUDIO STREAM %d"

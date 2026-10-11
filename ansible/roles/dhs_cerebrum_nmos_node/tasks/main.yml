@@ -1,0 +1,55 @@
+---
+# dhs_cerebrum_nmos_node — one NMOS node, `cerebrum_nmos_node_state`
+# present or absent. Every change is ONE write, then reads until Cerebrum
+# shows it done (never a guessed delay); a wait that runs out stops the
+# run. Over northbound. EVS support: keep the registry page of the Network
+# Media Server closed in the Cerebrum UI meanwhile.
+#
+#   present   NMOS on (device) -> registered -> SubID -> moved to slot N
+#   absent    SubID 0 -> back on slot 00 -> NMOS off (device)
+#             -> line without address -> Forget -> line gone
+
+- name: "{{ cerebrum_nmos_node_label }} — what the role needs is given"
+  ansible.builtin.assert:
+    that:
+      - cerebrum_nmos_node_state in ['present', 'absent']
+      - cerebrum_nmos_node_label | length > 0
+      - cerebrum.host is defined and cerebrum.nb_port is defined and cerebrum.nmos_device is defined
+      - cerebrum.nmos_settle is defined and cerebrum.nmos_page_limit is defined and cerebrum.nmos_read_timeout is defined
+      - cerebrum.nmos_wait_retries is defined and cerebrum.nmos_wait_delay is defined
+      - lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | length > 0 and lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') | length > 0
+    fail_msg: "set cerebrum_nmos_node_label / _state, `cerebrum` in the inventory, DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment"
+    quiet: true
+
+- name: "{{ cerebrum_nmos_node_label }} — the site and its devices"
+  ansible.builtin.read_csv:
+    path: "{{ playbook_dir }}/../sites/{{ cerebrum_nmos_node_site }}/provisioning/{{ item.file }}"
+    key: "{{ item.key | default(omit) }}"
+  loop:
+    - {file: site.csv, key: key}
+    - {file: devices.csv}
+  loop_control:
+    label: "{{ item.file }}"
+  register: cnn_csv
+
+- name: "{{ cerebrum_nmos_node_label }} — the device behind the node"
+  ansible.builtin.set_fact:
+    cnn_site: "{{ cnn_csv.results[0].dict }}"
+    cnn_device: "{{ cnn_csv.results[1].list | selectattr('nmos_label', 'equalto', cerebrum_nmos_node_label) | list | first | default({}) }}"
+    cnn_registry: "http://{{ cnn_csv.results[0].dict.registry_host.value }}:{{ cnn_csv.results[0].dict.registry_port.value }}/x-nmos/query/v1.2"
+    cnn_read: "{{ [cerebrum_nmos_node_bin, 'consumer', 'cerebrum-nb', 'device-value', cerebrum.host, '--port', cerebrum.nb_port | string,
+                   '--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device, '--by-name', '--sub-device'] }}"
+    cnn_write: "{{ [cerebrum_nmos_node_bin, 'consumer', 'cerebrum-nb', 'set-value', cerebrum.host, '--port', cerebrum.nb_port | string,
+                    '--device', cerebrum.nmos_device, '--sub-device', '0', '--object'] }}"
+    cnn_value: 'value="([^"]*)"'
+
+- name: "{{ cerebrum_nmos_node_label }} — its device type has an NMOS switch"
+  ansible.builtin.assert:
+    that:
+      - cnn_device | length > 0
+      - cnn_device.type in cerebrum_nmos_node_switch
+    fail_msg: "{{ cerebrum_nmos_node_label }}: no row of devices.csv has this nmos_label, or its type has no entry in cerebrum_nmos_node_switch"
+    quiet: true
+
+- name: "{{ cerebrum_nmos_node_label }} — {{ cerebrum_nmos_node_state }}"
+  ansible.builtin.include_tasks: "{{ cerebrum_nmos_node_state }}.yml"

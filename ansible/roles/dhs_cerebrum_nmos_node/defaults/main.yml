@@ -1,0 +1,32 @@
+---
+# One NMOS node on Cerebrum's Network Media Server, present or absent.
+# The node is named by its IS-04 label; its device, type and management
+# address come from the site's devices.csv, its SubID from the inventory
+# (cerebrum_nmos_subids), the registry from the site's site.csv, and the
+# Cerebrum settings from the inventory (`cerebrum`, see group_vars).
+
+cerebrum_nmos_node_state: present        # present | absent
+cerebrum_nmos_node_label: ""             # IS-04 node label (devices.csv nmos_label)
+cerebrum_nmos_node_site: lab
+cerebrum_nmos_node_bin: /usr/local/bin/dhs
+
+# How NMOS is switched on and off, per device type. `set` rows are device
+# parameters written with `dhs consumer <proto> set --path`; {name} is a
+# key of site.csv. `rest` is the Neuron VIEW's own API (neuronview.api).
+cerebrum_nmos_node_switch:
+  fusion6:
+    proto: mnset
+    set:
+      - {path: self.diag.nmos.registry_address, "on": "{registry_host}:{registry_port}", "off": "0.0.0.0:0"}
+      - {path: self.diag.nmos.registry_address_2, "on": "{registry_backup}", "off": "0.0.0.0:0"}
+  neuron-convert-hybrid:
+    proto: ccm
+    set:
+      - {path: misc.nmos.mode, "on": "true", "off": "false"}
+  neuron-shuffle:
+    proto: ccm
+    set:
+      - {path: network.services.nmos.enable, "on": "true", "off": "false"}
+  neuron-view:
+    proto: rest
+    set: []

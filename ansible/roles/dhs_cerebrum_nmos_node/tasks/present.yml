@@ -1,0 +1,134 @@
+---
+# present: NMOS on (device) -> registered -> SubID -> moved to slot N.
+
+- name: "{{ cerebrum_nmos_node_label }} — its SubID is in the inventory"
+  ansible.builtin.assert:
+    that: cerebrum_nmos_subids | selectattr('label', 'equalto', cerebrum_nmos_node_label) | list | length == 1
+    fail_msg: "{{ cerebrum_nmos_node_label }}: cerebrum_nmos_subids must name this node once"
+    quiet: true
+
+- name: "{{ cerebrum_nmos_node_label }} — NMOS on"
+  ansible.builtin.include_tasks: nmos_switch.yml
+  vars:
+    cnn_on: true
+    cnn_sw: "{{ cerebrum_nmos_node_switch[cnn_device.type] }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — registered"
+  ansible.builtin.uri:
+    url: "{{ cnn_registry }}/nodes?paging.limit={{ cerebrum.nmos_page_limit }}"
+    return_content: true
+  register: cnn_reg_nodes
+  until: cnn_reg_nodes.status == 200 and cnn_reg_nodes.json | selectattr('label', 'equalto', cerebrum_nmos_node_label) | list | length == 1
+  retries: "{{ cerebrum.nmos_wait_retries }}"
+  delay: "{{ cerebrum.nmos_wait_delay }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — let a node that just registered list its devices"
+  ansible.builtin.pause:
+    seconds: "{{ cerebrum.nmos_settle }}"
+  when: (cnn_sw_set is defined and cnn_sw_set is changed) or (cnn_view_put is defined and cnn_view_put is changed)
+
+- name: "{{ cerebrum_nmos_node_label }} — the node and its slot"
+  ansible.builtin.set_fact:
+    cnn_id: "{{ cnn_reg_nodes.json | selectattr('label', 'equalto', cerebrum_nmos_node_label) | map(attribute='id') | first }}"
+    cnn_slot: "{{ (cerebrum_nmos_subids | selectattr('label', 'equalto', cerebrum_nmos_node_label) | first).subid | string }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry"
+  ansible.builtin.uri:
+    url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+    return_content: true
+  register: cnn_reg_devs
+  until: cnn_reg_devs.status == 200 and cnn_reg_devs.json | length > 0
+  retries: "{{ cerebrum.nmos_wait_retries }}"
+  delay: "{{ cerebrum.nmos_wait_delay }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — SubID, move, confirm"
+  environment:
+    DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+    DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  vars:
+    cnn_devs: "{{ cnn_reg_devs.json }}"
+    cnn_row: "Nodes.[{{ cnn_id }}]"
+    cnn_senders: "{{ cnn_reg_devs.json | map(attribute='senders') | map('length') | sum }}"
+    cnn_receivers: "{{ cnn_reg_devs.json | map(attribute='receivers') | map('length') | sum }}"
+  block:
+    - name: "{{ cerebrum_nmos_node_label }} — its line in Cerebrum, and the SubID it holds"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.SubID'] }}"
+      register: cnn_now
+      until: cnn_now.rc == 0 and cnn_now.stdout is search('value="')
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+
+    - name: "{{ cerebrum_nmos_node_label }} — set the SubID, once"
+      ansible.builtin.command:
+        argv: "{{ cnn_write + [cnn_row ~ '.SubID', '--value', cnn_slot] }}"
+      when: (cnn_now.stdout | regex_search(cnn_value, '\\1') | first) != cnn_slot
+      register: cnn_set
+
+    # From here on: reads only. A read that fails is read again; it
+    # never counts as "empty".
+    - name: "{{ cerebrum_nmos_node_label }} — its entry on slot 00 is empty"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.Devices'] }}"
+      register: cnn_entry
+      until: cnn_entry.rc == 0 and cnn_entry.stdout_lines | select('search', (cnn_row ~ '.Devices.[') | regex_escape) | list | length == 0
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+
+    - name: "{{ cerebrum_nmos_node_label }} — slot {{ cnn_slot }} holds every device"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + [cnn_slot, '--object', 'Devices'] }}"
+      register: cnn_slot_devs
+      until: cnn_slot_devs.rc == 0 and cnn_slot_devs.stdout_lines | select('search', 'Devices.[' | regex_escape) | list | length == cnn_devs | length
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+
+    - name: "{{ cerebrum_nmos_node_label }} — slot {{ cnn_slot }} holds every sender and receiver"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + [cnn_slot, '--object', 'Devices.[' ~ item.0.label ~ '].' ~ item.1] }}"
+      register: cnn_res
+      until: cnn_res.rc == 0 and cnn_res.stdout_lines | select('search', ('Devices.[' ~ item.0.label ~ '].' ~ item.1 ~ '.[') | regex_escape) | list | length == item.0[item.1 | lower] | length
+      retries: "{{ cerebrum.nmos_wait_retries }}"
+      delay: "{{ cerebrum.nmos_wait_delay }}"
+      changed_when: false
+      loop: "{{ cnn_devs | product(['Senders', 'Receivers']) | list }}"
+      loop_control:
+        label: "{{ item.0.label }} {{ item.1 }}: {{ item.0[item.1 | lower] | length }}"
+
+    - name: "{{ cerebrum_nmos_node_label }} — leave Cerebrum alone before the second read"
+      ansible.builtin.pause:
+        seconds: "{{ cerebrum.nmos_settle }}"
+      when: cnn_set is changed
+
+    - name: "{{ cerebrum_nmos_node_label }} — second read: SubID"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + ['0', '--object', cnn_row ~ '.SubID'] }}"
+      register: cnn_after
+      changed_when: false
+      when: cnn_set is changed
+
+    - name: "{{ cerebrum_nmos_node_label }} — second read: senders and receivers of slot {{ cnn_slot }}"
+      ansible.builtin.command:
+        argv: "{{ cnn_read + [cnn_slot, '--object', 'Devices.[' ~ item.0.label ~ '].' ~ item.1] }}"
+      register: cnn_again
+      changed_when: false
+      loop: "{{ cnn_devs | product(['Senders', 'Receivers']) | list }}"
+      loop_control:
+        label: "{{ item.0.label }} {{ item.1 }}"
+      when: cnn_set is changed
+
+    - name: "{{ cerebrum_nmos_node_label }} — the move held"
+      ansible.builtin.assert:
+        that:
+          - (cnn_after.stdout | regex_search(cnn_value, '\\1') | first) == cnn_slot
+          - (cnn_again.results | map(attribute='stdout_lines') | map('select', 'search', '\]\.(Senders|Receivers)\.\[') | map('list') | map('length') | sum) == (cnn_senders | int) + (cnn_receivers | int)
+        fail_msg: "{{ cerebrum_nmos_node_label }}: after {{ cerebrum.nmos_settle }} s the SubID or the content of slot {{ cnn_slot }} is not what it was — stopped"
+        quiet: true
+      when: cnn_set is changed
+
+    - name: "{{ cerebrum_nmos_node_label }}"
+      ansible.builtin.debug:
+        msg: "present — SubID {{ cnn_slot }}{{ ' set' if cnn_set is changed else ' already held' }}: {{ cnn_devs | length }} device(s), {{ cnn_senders }} sender(s), {{ cnn_receivers }} receiver(s) on slot {{ cnn_slot }}"

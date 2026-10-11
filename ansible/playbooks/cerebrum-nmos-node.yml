@@ -1,0 +1,45 @@
+---
+# One NMOS node on the Network Media Server of Cerebrum, present or
+# absent — role dhs_cerebrum_nmos_node. One device per job: nodes are
+# handled one after the other, in the order of the inventory
+# (cerebrum_nmos_subids), and the next one is not touched until the
+# previous one is finished.
+#
+#   present   NMOS on (device) -> registered -> SubID -> moved to its slot
+#   absent    SubID 0 -> back on slot 00 -> NMOS off (device) -> Forget
+#
+# Data: inventory `cerebrum`, `cerebrum_nmos_subids`, `neuronview`; site
+# devices.csv (nmos_label, type, mgmt_ip) and site.csv (registry).
+# Account: DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment.
+# EVS support: keep the registry page closed in the Cerebrum UI meanwhile.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/cerebrum-nmos-node.yml
+#   ... -e only="lab-convert-01"                       one node present
+#   ... -e only="lab-convert-01" -e state=absent       one node absent
+#
+# absent needs `only`: a whole plant is not removed by leaving a flag out.
+
+- name: cerebrum — NMOS nodes, one at a time
+  hosts: plant
+  gather_facts: false
+  vars:
+    cnn_state: "{{ state | default('present') }}"
+    cnn_labels: "{{ [only] if only is defined else cerebrum_nmos_subids | map(attribute='label') | list }}"
+  tasks:
+    - name: absent names its node
+      ansible.builtin.assert:
+        that: cnn_state == 'present' or only is defined
+        fail_msg: "state=absent needs -e only=<IS-04 node label>"
+        quiet: true
+
+    - name: One node at a time
+      ansible.builtin.include_role:
+        name: dhs_cerebrum_nmos_node
+      vars:
+        cerebrum_nmos_node_label: "{{ cnn_label }}"
+        cerebrum_nmos_node_state: "{{ cnn_state }}"
+        cerebrum_nmos_node_site: "{{ site | default('lab') }}"
+        cerebrum_nmos_node_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+      loop: "{{ cnn_labels }}"
+      loop_control:
+        loop_var: cnn_label
