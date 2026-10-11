@@ -51,6 +51,8 @@ const rcpUsage = `usage: dhs consumer rcp <verb> <host> [flags]
                           [--prune]  the plan is the whole RouteMaster: what it does not
                                      name is removed (IOs are matched by mnemonic)
                           [--federation-optional]   last line: changed=N pending=N
+                          a local IO of the plan may state "federation": "<mnemonic>"
+                          (linked) or "" (local): one update, no delete and create
 
   devices                 the devices registered in Cerebrum, with their slots
   object                  read one device object    --device D --index N --path A.B.C

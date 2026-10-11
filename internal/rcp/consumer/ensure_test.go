@@ -25,13 +25,19 @@ import (
 //     does the same to a destination;
 //   - a single IO answers under the collection's plural name;
 //   - writes answer 202 (routes: 200) with nothing but the reqid;
-//   - a federation create is accepted and creates nothing;
+//   - a federation create is accepted and creates nothing, and a
+//     federation link is accepted and not applied (a standalone server);
+//     with federation set, the server behaves as the API document says:
+//     federation IOs are created, and a linked local IO takes the
+//     mnemonic of its federation IO;
 //   - a mnemonic row is written under its table key.
 type routeMaster struct {
 	mu     sync.Mutex
 	ios    map[codec.Collection][]*codec.IO
 	routes map[string]map[int]string // destination mnemonic → level → source mnemonic
 	writes []string
+	// federation: this server has a federation.
+	federation bool
 }
 
 func newRouteMaster() *routeMaster {
@@ -113,7 +119,7 @@ func (rm *routeMaster) serveIO(method string, parts []string, body []byte, answe
 				fail(400, "Unknown field in the create request body")
 				return
 			}
-			if !col.IsFederation() {
+			if !col.IsFederation() || rm.federation {
 				name := ""
 				if u.Mnemonic != nil {
 					name = *u.Mnemonic
@@ -164,6 +170,19 @@ func (rm *routeMaster) serveIO(method string, parts []string, body []byte, answe
 		}
 		if u.TieLineInhibit != nil {
 			cur.TieLineInhibit = *u.TieLineInhibit
+		}
+		if u.FederationUID != nil && rm.federation && !col.IsFederation() {
+			fed := codec.FederationSources
+			if col == codec.Destinations {
+				fed = codec.FederationDestinations
+			}
+			switch uid := *u.FederationUID; {
+			case uid == 0:
+				cur.FederationUID = 0
+			case int(uid) <= len(rm.ios[fed]):
+				cur.FederationUID = uid
+				cur.Mnemonic.Original = rm.ios[fed][uid-1].Mnemonic.Original
+			}
 		}
 		// "virtual" on an update is accepted and ignored, as measured.
 		for name, l := range u.Levels {
@@ -717,5 +736,134 @@ func TestPlanOfRoundTrips(t *testing.T) {
 	}
 	if _, _, err := c.PlanOf(ctx, Router{Device: "Nowhere"}); err == nil {
 		t.Error("a plan was read from a router that does not exist")
+	}
+}
+
+// Federation, as the API document describes it — the lab server has none,
+// so these run against the simulated one with a federation.
+
+func str(s string) *string { return &s }
+
+func TestEnsureLinksALocalResourceToFederationAndBackWithoutRecreatingIt(t *testing.T) {
+	rm := newRouteMaster()
+	rm.federation = true
+	c := session(t, rm)
+	ctx := context.Background()
+
+	local := Plan{Sources: []PlanIO{{Mnemonic: "CAM-01"}}, FederationSources: []PlanIO{{Mnemonic: "REMOTE-07"}}}
+	if _, err := c.Ensure(ctx, local, fast); err != nil {
+		t.Fatal(err)
+	}
+	before := rm.ios[codec.Sources][0]
+
+	// local -> federated: one update, the same resource.
+	linked := Plan{Sources: []PlanIO{{Mnemonic: "CAM-01", Federation: str("REMOTE-07")}}, FederationSources: local.FederationSources}
+	first, err := c.Ensure(ctx, linked, fast)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := actions(first); got != "link sources CAM-01; " {
+		t.Errorf("link run = %q, want the one link", got)
+	}
+	if len(rm.ios[codec.Sources]) != 1 || rm.ios[codec.Sources][0] != before || before.FederationUID != 1 {
+		t.Fatalf("after the link: %d source(s), federation %d — want the same source, linked to 1", len(rm.ios[codec.Sources]), before.FederationUID)
+	}
+	// The server gave it the mnemonic of the federation source: the plan
+	// still names it CAM-01 and must find it by its link.
+	if before.Mnemonic.Original != "REMOTE-07" {
+		t.Fatalf("the simulated server did not rename the linked source: %q", before.Mnemonic.Original)
+	}
+	again, err := c.Ensure(ctx, linked, fast)
+	if err != nil || len(again.Changes) != 0 {
+		t.Errorf("second run = %q, %v — want no change and no second source", actions(again), err)
+	}
+	if len(rm.ios[codec.Sources]) != 1 {
+		t.Errorf("the linked source was created again: %d sources", len(rm.ios[codec.Sources]))
+	}
+
+	// federated -> local: one update back.
+	back := Plan{Sources: []PlanIO{{Mnemonic: "REMOTE-07", Federation: str("")}}, FederationSources: local.FederationSources}
+	third, err := c.Ensure(ctx, back, fast)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := actions(third); got != "unlink sources REMOTE-07; " || before.FederationUID != 0 || len(rm.ios[codec.Sources]) != 1 {
+		t.Errorf("unlink run = %q, federation %d, %d source(s)", got, before.FederationUID, len(rm.ios[codec.Sources]))
+	}
+}
+
+func TestEnsureCheckListsTheLinksAndWritesNothing(t *testing.T) {
+	rm := newRouteMaster()
+	rm.federation = true
+	rm.add(codec.Sources, "CAM-01", false)
+	rm.add(codec.FederationSources, "REMOTE-07", false)
+	c := session(t, rm)
+	writes := len(rm.writes)
+	r, err := c.Ensure(context.Background(), Plan{Sources: []PlanIO{{Mnemonic: "CAM-01", Federation: str("REMOTE-07")}}}, EnsureOptions{Check: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := actions(r); got != "link sources CAM-01; " {
+		t.Errorf("check = %q, want the link listed", got)
+	}
+	if len(rm.writes) != writes || rm.ios[codec.Sources][0].FederationUID != 0 {
+		t.Errorf("a check wrote: %v", rm.writes[writes:])
+	}
+}
+
+func TestEnsureReportsALinkTheServerAcceptedAndDidNotApply(t *testing.T) {
+	// The lab server, 2026-10-12: no federation — the link is accepted
+	// and the source still reads federationUid 0.
+	rm := newRouteMaster()
+	rm.add(codec.Sources, "CAM-01", false)
+	rm.add(codec.FederationSources, "REMOTE-07", false)
+	c := session(t, rm)
+	_, err := c.Ensure(context.Background(), Plan{Sources: []PlanIO{{Mnemonic: "CAM-01", Federation: str("REMOTE-07")}}}, fast)
+	if err == nil || !strings.Contains(err.Error(), "still reads 0") {
+		t.Errorf("err = %v, want the link reported as not applied", err)
+	}
+}
+
+func TestEnsureALinkToAFederationThatDoesNotExist(t *testing.T) {
+	rm := newRouteMaster()
+	rm.add(codec.Sources, "CAM-01", false)
+	c := session(t, rm)
+	plan := Plan{Sources: []PlanIO{{Mnemonic: "CAM-01", Federation: str("REMOTE-07")}}}
+	if _, err := c.Ensure(context.Background(), plan, EnsureOptions{Settle: fast.Settle}); err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Errorf("err = %v, want the missing federation source named", err)
+	}
+	r, err := c.Ensure(context.Background(), plan, fast) // FederationOptional
+	if err != nil || len(r.Pending) != 1 || r.Pending[0] != "sources CAM-01 link" {
+		t.Errorf("optional: pending = %v, %v — want the link pending", r.Pending, err)
+	}
+}
+
+func TestAPlanCannotStateALinkWhereThereIsNone(t *testing.T) {
+	c := session(t, newRouteMaster())
+	ctx := context.Background()
+	for name, plan := range map[string]Plan{
+		"on a virtual":           {Virtuals: []PlanIO{{Mnemonic: "V1", Federation: str("F1")}}},
+		"on a federation source": {FederationSources: []PlanIO{{Mnemonic: "F1", Federation: str("F2")}}},
+		"with levels of its own": {Sources: []PlanIO{{Mnemonic: "S1", Federation: str("F1"), Levels: map[string]codec.LevelUpdate{"level_1": {}}}}},
+	} {
+		if _, err := c.Ensure(ctx, plan, fast); err == nil {
+			t.Errorf("%s: the plan was accepted", name)
+		}
+	}
+}
+
+func TestPlanOfStatesALinkedResourceByItsLink(t *testing.T) {
+	rm := newRouteMaster()
+	rm.federation = true
+	rm.add(codec.FederationSources, "REMOTE-07", false)
+	s := rm.add(codec.Sources, "REMOTE-07", false)
+	s.FederationUID = 1
+	c := session(t, rm)
+	plan, _, err := c.PlanOf(context.Background(), RouteMaster)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Sources) != 1 || plan.Sources[0].Federation == nil || *plan.Sources[0].Federation != "REMOTE-07" || len(plan.Sources[0].Levels) != 0 {
+		t.Errorf("exported source = %+v, want it stated by its link", plan.Sources)
 	}
 }
