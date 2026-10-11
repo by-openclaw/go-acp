@@ -112,6 +112,7 @@
       environment: "{{ rcp_env }}"
       register: rcp_levels_now
       changed_when: false
+      check_mode: false
       when: rcp_state == 'present' and rcp_levels | length > 0
 
     - name: "Levels: present"
