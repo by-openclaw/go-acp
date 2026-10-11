@@ -56,17 +56,17 @@ numbered positions is not.
 
 | Rule | Why |
 |---|---|
-| The connector gives no numeric OID. The `OID` field of the contract stays empty; the contract allows it for a protocol that is already addressed by identifiers | a number per position cannot follow objects that come and go |
-| A fixed object is identified by the address RRCS uses: net, node, port, direction; key position | it does not change while the configuration stands |
-| A dynamic object is identified by its name. The `ObjectID` RRCS gives at creation is reported as a property and used inside one request, never kept as a key | delete a conference and create it again: same name, other metadata, and the `ObjectID` is whatever RRCS gives then |
+| The `oid` of an object is the `ObjectID` RRCS gives it, as the export and the tree show today (`oid` column: card 621747382, port 1064 in 86064587, port 1064 out 477631554). One number, given by RRCS; the connector invents none and builds no dotted path of positions | a number per position cannot follow objects that come and go |
+| The path is the address RRCS uses: net, node, card or port, direction; key position. Path and `oid` are both exported for every object | the path is what a write needs; the `oid` is what RRCS itself calls the object |
+| A dynamic object (conference, group, IFB) has an `oid` too, given by RRCS when it is created. A wanted state names it by its name, or by its `oid` when that is known, as `ensure` does today | the object does not exist before it is created, so its `oid` cannot be written in advance. Whether RRCS gives the same `oid` again after delete and create is not tested |
 | A dynamic object that appears or disappears is an event of its own (`created`, `deleted`), not a change of value | a client must not have to compare two walks to learn it |
 
 A gateway from RRCS to Ember+, if one is built, owns the numbering: it
 keeps the table from name to Ember+ number, keeps a number reserved when
 the object goes, and gives the same number back when the name returns.
 That table is the gateway's, not the connector's. Nothing here must make
-it harder: no number invented by the connector may leak into a path, an
-export or an event.
+it harder: the only number the connector gives for an object is the
+`ObjectID` of RRCS.
 
 A property that has a value which stays and can be read back is a
 Parameter, even when RRCS sets it with a method of its own: key label, key
@@ -84,7 +84,7 @@ remain valid.
 | Port | `net.N.node.N.port.P`, with `.in` / `.out` where an input and an output share the number |
 | Key | `<port>.key.E.G.K` (expansion, page, key) |
 | Virtual function | `<port>.vfunc.TYPE.K` |
-| Conference, group, IFB | by name: `conference.<name>`, `group.<name>`, `ifb.<name>`. The form with the `ObjectID` used today is still read, for the files that exist |
+| Conference, group, IFB | `conference.ID`, `group.ID`, `ifb.ID` as today, the ID being the `ObjectID`; in a wanted state also by name |
 | Logic source | `logic.ID` |
 | The matrix | `xp`; a connection is `xp.<source port>><target port>` |
 
@@ -149,9 +149,9 @@ and `tree`), `coverage` (a table in the documentation), and the present
 | # | Point | State |
 |---|---|---|
 | 1 | The name of the raw-access verb | decided 2026-10-11: `raw` |
-| 2 | The matrix and the dynamic objects | decided 2026-10-11: n:n matrix; no Ember+ tree, no numeric OID, identity as in §3.1 |
+| 2 | The matrix and the dynamic objects | decided 2026-10-11: n:n matrix; no Ember+ tree; the `oid` is the `ObjectID` of RRCS, identity as in §3.1 |
 | 3 | The write guard once `set` goes through the shared contract | to test on a real RRCS: the same writes as proven today, the request compared field by field with the one sent now. Until that passes, the present `set` stays |
-| 4 | Two ways to ask for a wanted state. One object per command (the shared `ensure`; the playbook loops over objects, one connection each). Or one file for a whole panel (the rrcs `ensure --file` of today; one connection, the lists read once). Proposed: keep both, the file for anything above a few objects because it sends fewer requests | open |
+| 4 | Two ways to ask for a wanted state. One object per command (the shared `ensure`; the playbook loops over objects, one connection each). Or one file for a whole panel (the rrcs `ensure --file` of today; one connection, the lists read once). The file sends fewer requests for anything above a few objects | decided 2026-10-11: both |
 | 5 | The matrix on slot 0 | closed by point 2: the matrix is addressed by ports, not by a place in a tree |
 | 6 | A plant with several Artist nodes behind one RRCS. Today: one node (60). The paths already carry the node (`net.N.node.N`), so nothing breaks; what is not defined is how bays of different nodes are numbered as slots. Proposed: decide when such a plant is to be connected, not before | parked |
 | 7 | How `matrix` and `invoke` share a verb name with Ember+ (§6) | open, needs a go before the common part is touched |
