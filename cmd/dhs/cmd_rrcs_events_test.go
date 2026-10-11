@@ -120,7 +120,7 @@ func TestRRCSDecode(t *testing.T) {
 			lines := rrcsDecode(m, tc.event)
 			got := make([]string, 0, len(lines))
 			for _, l := range lines {
-				got = append(got, l.text())
+				got = append(got, l.Text())
 			}
 			if strings.Join(got, "\n") != strings.Join(tc.want, "\n") {
 				t.Errorf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(tc.want, "\n"))
@@ -128,8 +128,8 @@ func TestRRCSDecode(t *testing.T) {
 		})
 	}
 	// Without a model the numbers are still printed.
-	if l := rrcsDecode(nil, rrcsEvent("PortActive", i(1), i(61), i(1026))); l[0].text() != "15:37:28.836  net.1.node.61.port.1026 Online = true" {
-		t.Errorf("no model: %s", l[0].text())
+	if l := rrcsDecode(nil, rrcsEvent("PortActive", i(1), i(61), i(1026))); l[0].Text() != "15:37:28.836  net.1.node.61.port.1026 Online = true" {
+		t.Errorf("no model: %s", l[0].Text())
 	}
 }
 
@@ -512,7 +512,7 @@ func TestRRCSWatchCSV(t *testing.T) {
 		return ""
 	}
 	level := rrcsChangeLine{Time: "t", Event: "XpVolumeChange", OID: 7, Path: "xp.a>b", Label: "SingleVolume", Value: "-14.5",
-		Unit: "dB", Min: "-114.5", Max: "12.5", Enum: "mute|unavailable", Name: "A > B"}.record("h")
+		Unit: "dB", Min: "-114.5", Max: "12.5", Enum: "mute|unavailable", Name: "A > B"}.Record("h")
 	if len(level) != len(h) {
 		t.Fatalf("record has %d fields, header %d", len(level), len(h))
 	}
@@ -522,11 +522,11 @@ func TestRRCSWatchCSV(t *testing.T) {
 			t.Errorf("%s = %q, want %q", name, got, want)
 		}
 	}
-	state := rrcsChangeLine{Path: "xp.a>b", Label: "State", Value: "on"}.record("h")
+	state := rrcsChangeLine{Path: "xp.a>b", Label: "State", Value: "on"}.Record("h")
 	if col(state, "kind") != "enum" || col(state, "enum_items") != "off|on" {
 		t.Errorf("state: %v", state)
 	}
-	if online := (rrcsChangeLine{Path: "p", Label: "Online", Value: "true"}).record("h"); col(online, "kind") != "bool" {
+	if online := (rrcsChangeLine{Path: "p", Label: "Online", Value: "true"}).Record("h"); col(online, "kind") != "bool" {
 		t.Errorf("online: %v", online)
 	}
 }

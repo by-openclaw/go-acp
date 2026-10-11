@@ -136,3 +136,31 @@ func rrcsKeyOfPath(path string) (node, port int, isInput bool, expansion, page, 
 func rrcsNetOfPath(path string) int32 { return rrcs.NetOfPath(path) }
 
 func rrcsValueOfJSON(text string) (codec.Value, error) { return rrcs.ValueOfJSON(text) }
+
+type rrcsChangeLine = rrcs.ChangeLine
+
+const rrcsListenerWait = rrcs.ListenerWait
+
+func rrcsDecode(m *rrcsModel, e rrcs.Event) []rrcsChangeLine { return rrcs.Decode(m, e) }
+
+func rrcsWatchCSVHeader() []string { return rrcs.WatchCSVHeader() }
+
+func rrcsParamInt(p []codec.Value, i int) int { return rrcs.ParamInt(p, i) }
+
+func rrcsMemberInt(v codec.Value, name string) int { return rrcs.MemberInt(v, name) }
+
+func rrcsVolume(x int) (value, unit string) { return rrcs.VolumeText(x) }
+
+func rrcsCompact(v codec.Value) string { return rrcs.Compact(v) }
+
+func rrcsTarget(k *rrcsKey) string { return rrcs.Target(k) }
+
+func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string, values bool) (map[string]any, error) {
+	return rrcs.Current(ctx, client, path, values)
+}
+
+func rrcsCurrentOne(ctx context.Context, client *rrcs.Client, path string) (map[string]any, bool) {
+	return rrcs.CurrentOne(ctx, client, path)
+}
+
+func rrcsSplitPath(path string) (object, block, field string, ok bool) { return rrcs.SplitPath(path) }

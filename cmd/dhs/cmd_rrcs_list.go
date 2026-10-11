@@ -151,17 +151,6 @@ func rrcsDir(p *rrcsPort) string {
 	}
 	return "-"
 }
-
-func rrcsTarget(k *rrcsKey) string {
-	if k.Target == "" {
-		return ""
-	}
-	if k.TargetName == "" {
-		return k.Target
-	}
-	return k.Target + " (" + k.TargetName + ")"
-}
-
 func rrcsMembers(o *rrcsObject) string {
 	parts := make([]string, 0, len(o.Members))
 	for _, m := range o.Members {

@@ -68,6 +68,9 @@ type Plugin struct {
 	// cards is read once per session, by the first call that needs it.
 	cards    []Card
 	cardsSet bool
+
+	// events holds the subscriptions and the listener they feed from.
+	events subscriptions
 }
 
 // Connect opens the session and asks the gateway its version: one
@@ -151,26 +154,6 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (dhsc.SlotInfo, erro
 		}
 	}
 	return dhsc.SlotInfo{Slot: slot, Status: dhsc.SlotNoCard, State: dhsc.SlotStateNoCard}, nil
-}
-
-// GetValue is not moved into the library yet.
-func (p *Plugin) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Value, error) {
-	return dhsc.Value{}, dhsc.ErrNotImplemented
-}
-
-// SetValue is not moved into the library yet.
-func (p *Plugin) SetValue(ctx context.Context, req dhsc.ValueRequest, val dhsc.Value) (dhsc.Value, error) {
-	return dhsc.Value{}, dhsc.ErrNotImplemented
-}
-
-// Subscribe is not moved into the library yet.
-func (p *Plugin) Subscribe(req dhsc.ValueRequest, fn dhsc.EventFunc) error {
-	return dhsc.ErrNotImplemented
-}
-
-// Unsubscribe is not moved into the library yet.
-func (p *Plugin) Unsubscribe(req dhsc.ValueRequest) error {
-	return dhsc.ErrNotImplemented
 }
 
 // Cards returns the client cards of the gateway: one request the first

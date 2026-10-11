@@ -316,15 +316,6 @@ func rrcsMethodOf(doc []byte) string {
 	return string(rest[:j])
 }
 
-// rrcsCompact is the one-line rendering of a value.
-func rrcsCompact(v codec.Value) string {
-	b, err := json.Marshal(rrcsJSON(v))
-	if err != nil {
-		return err.Error()
-	}
-	return string(b)
-}
-
 // rrcsSize says how much an answer holds: the entries of the list it
 // wraps, or its own elements.
 func rrcsSize(payload codec.Value) string {
@@ -627,7 +618,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 				}
 				if csvOut != nil {
 					l.Time = stamp
-					_ = csvOut.Write(l.record(fs.Arg(0)))
+					_ = csvOut.Write(l.Record(fs.Arg(0)))
 					csvOut.Flush()
 					continue
 				}
@@ -637,7 +628,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 					fmt.Println(string(b))
 					continue
 				}
-				fmt.Println(l.text())
+				fmt.Println(l.Text())
 			}
 		},
 	}
@@ -675,14 +666,14 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		switch {
 		case csvOut != nil:
 			l.Time = now.Format("2006-01-02T15:04:05.000Z")
-			_ = csvOut.Write(l.record(fs.Arg(0)))
+			_ = csvOut.Write(l.Record(fs.Arg(0)))
 			csvOut.Flush()
 		case jsonOut:
 			l.Time = now.Format("2006-01-02T15:04:05.000Z")
 			b, _ := json.Marshal(l)
 			fmt.Println(string(b))
 		case *events == "values":
-			fmt.Println(l.text())
+			fmt.Println(l.Text())
 		}
 	}
 	own := func(label, value, detail string) {

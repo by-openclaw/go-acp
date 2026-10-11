@@ -178,25 +178,6 @@ func rrcsReadRows(file string) ([]rrcsRow, error) {
 	}
 }
 
-// rrcsSplitPath cuts a row path into the object and the property: the
-// property starts at the first element that begins with a capital.
-func rrcsSplitPath(path string) (object, block, field string, ok bool) {
-	parts := strings.Split(path, ".")
-	for i, p := range parts {
-		if p != "" && p[0] >= 'A' && p[0] <= 'Z' {
-			object = strings.Join(parts[:i], ".")
-			switch len(parts) - i {
-			case 1:
-				return object, "", parts[i], object != ""
-			case 2:
-				return object, parts[i], parts[i+1], object != ""
-			}
-			return "", "", "", false
-		}
-	}
-	return "", "", "", false
-}
-
 // rrcsSkip is one row import did not attempt.
 type rrcsSkip struct {
 	Reason string `json:"reason"`

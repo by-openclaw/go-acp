@@ -125,8 +125,8 @@ func TestPluginNotConnected(t *testing.T) {
 	if _, err := p.GetDeviceInfo(context.Background()); !errors.Is(err, dhsc.ErrNotConnected) {
 		t.Errorf("GetDeviceInfo before Connect: %v, want ErrNotConnected", err)
 	}
-	if _, err := p.GetValue(context.Background(), dhsc.ValueRequest{}); !errors.Is(err, dhsc.ErrNotImplemented) {
-		t.Errorf("GetValue: %v, want ErrNotImplemented", err)
+	if _, err := p.GetValue(context.Background(), dhsc.ValueRequest{}); !errors.Is(err, dhsc.ErrNotConnected) {
+		t.Errorf("GetValue: %v, want ErrNotConnected", err)
 	}
 }
 
@@ -413,5 +413,107 @@ func TestDoByName(t *testing.T) {
 		if _, err := op.Values(args, []string{"net.1.node.61.port.1024>net.1.node.62.port.1024"}); err != nil {
 			t.Errorf("%s: %v", op.Method, err)
 		}
+	}
+}
+
+// GetValue and SetValue: one property through the plugin — a port read
+// in one request, a direct write of §8.3 to §8.5 read back through its
+// own request, and a configuration-change property refused towards the
+// guarded verbs.
+func TestPluginValues(t *testing.T) {
+	gain := int32(-128)
+	f := newFakeRRCS(t, func(call codec.Call) (codec.Value, *codec.Fault) {
+		key := call.Params[0]
+		switch call.Method {
+		case "GetVersion":
+			return codec.Array(key, codec.String("9.0.1")), nil
+		case "GetPort":
+			return codec.Array(key, codec.Struct(
+				codec.Member{Name: "Label", Value: codec.String("NOC1")},
+				codec.Member{Name: "PortAes67Input", Value: codec.Struct(
+					codec.Member{Name: "Protocol", Value: codec.Int(5)},
+				)},
+			)), nil
+		case "SetInputGain":
+			gain = call.Params[4].Int
+			return codec.Array(key, codec.Int(0)), nil
+		case "GetInputGain":
+			return codec.Array(key, codec.Int(0), codec.Int(gain)), nil
+		}
+		return codec.Value{}, &codec.Fault{Code: 1, String: "unexpected " + call.Method}
+	})
+	p := pluginConnect(t, f)
+	ctx := context.Background()
+
+	v, err := p.GetValue(ctx, dhsc.ValueRequest{Path: "net.1.node.61.port.1024.Label"})
+	if err != nil || v.Str != "NOC1" {
+		t.Fatalf("GetValue label = %+v, %v", v, err)
+	}
+	v, err = p.GetValue(ctx, dhsc.ValueRequest{Path: "net.1.node.61.port.1024.PortAes67Input.Protocol"})
+	if err != nil || v.Int != 5 {
+		t.Fatalf("GetValue protocol = %+v, %v", v, err)
+	}
+
+	v, err = p.SetValue(ctx, dhsc.ValueRequest{Path: "net.1.node.61.port.1024.InputGain"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: -12})
+	if err != nil || v.Int != -12 || gain != -12 {
+		t.Fatalf("SetValue gain = %+v, %v (sent %d)", v, err, gain)
+	}
+
+	if _, err := p.SetValue(ctx, dhsc.ValueRequest{Path: "net.1.node.61.port.1024.PortAes67Input.Protocol"},
+		dhsc.Value{Kind: dhsc.KindInt, Int: 2}); err == nil || !strings.Contains(err.Error(), "ADR-0035") {
+		t.Fatalf("a stream property went through the plugin: %v", err)
+	}
+}
+
+// Subscribe registers once, events reach the callback decoded, and the
+// last Unsubscribe removes the registration.
+func TestPluginSubscribe(t *testing.T) {
+	registered := 0
+	f := newFakeRRCS(t, func(call codec.Call) (codec.Value, *codec.Fault) {
+		key := call.Params[0]
+		switch call.Method {
+		case "GetVersion":
+			return codec.Array(key, codec.String("9.0.1")), nil
+		case "RegisterForAllEvents":
+			registered++
+			return codec.Array(key, codec.Int(0)), nil
+		case "UnregisterForAllEvents":
+			registered--
+			return codec.Array(key, codec.Int(0)), nil
+		}
+		return codec.Value{}, &codec.Fault{Code: 1, String: "unexpected " + call.Method}
+	})
+	p := pluginConnect(t, f)
+
+	got := make(chan dhsc.Event, 4)
+	if err := p.Subscribe(dhsc.ValueRequest{}, func(e dhsc.Event) { got <- e }); !errors.Is(err, dhsc.ErrNotImplemented) {
+		t.Fatalf("Subscribe without a callback: %v", err)
+	}
+	p.SetCallback(8195, "")
+	if err := p.Subscribe(dhsc.ValueRequest{}, func(e dhsc.Event) { got <- e }); err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	if err := p.Subscribe(dhsc.ValueRequest{Path: "logic"}, func(dhsc.Event) {}); err != nil {
+		t.Fatalf("second Subscribe: %v", err)
+	}
+	if registered != 1 {
+		t.Fatalf("RegisterForAllEvents sent %d times, want 1", registered)
+	}
+
+	// A PortInactive notification, as RRCS posts it to the listener.
+	p.EventHandler().OnEvent(Event{Method: "PortInactive", Params: []codec.Value{
+		codec.Int(1), codec.Int(61), codec.Int(1024),
+	}})
+	e := <-got
+	if e.Path != "net.1.node.61.port.1024.Online" || e.Value.Bool || e.Value.Kind != dhsc.KindBool {
+		t.Errorf("event = %+v, want Online false", e)
+	}
+
+	if err := p.Unsubscribe(dhsc.ValueRequest{Path: "logic"}); err != nil || registered != 1 {
+		t.Fatalf("Unsubscribe of one path: %v, registered %d", err, registered)
+	}
+	if err := p.Unsubscribe(dhsc.ValueRequest{}); err != nil || registered != 0 {
+		t.Fatalf("last Unsubscribe: %v, registered %d", err, registered)
 	}
 }

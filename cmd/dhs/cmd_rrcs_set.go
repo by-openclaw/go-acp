@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"sort"
@@ -10,7 +9,6 @@ import (
 	"strings"
 
 	"dhs/internal/rrcs/codec"
-	rrcs "dhs/internal/rrcs/consumer"
 )
 
 // rrcsProps collects repeated --prop NAME=VALUE flags.
@@ -140,42 +138,6 @@ func rrcsChangeFor(path string) (*rrcsChange, error) {
 	c.objectType = "portex"
 	c.address = []codec.Member{{Name: "PortAddress", Value: codec.Struct(addr...)}}
 	return c, nil
-}
-
-// rrcsCurrent reads what the gateway holds now for the object of a path.
-func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string, values bool) (map[string]any, error) {
-	// The label, alias and gains of a port come from requests of their
-	// own. They are asked only when one of them is what is being set: on
-	// a port that is off line RRCS answers the gain with a warning in its
-	// log, four lines per set on a real RRCS 9.0.
-	//
-	// Without them, one request reads the object: GetPort or
-	// GetClientCard give what the lists give for it (527 of 527 ports
-	// identical on a real RRCS 9.0), where the lists cost sixteen requests
-	// before a set and sixteen after. The lists stay the fallback.
-	if !values {
-		if props, ok := rrcsCurrentOne(ctx, client, path); ok {
-			return props, nil
-		}
-	}
-	opts := rrcsCollectOpts{}
-	if node, port, _, isPort := rrcsPortOfPath(path); isPort && values {
-		opts.Values = true
-		opts.OnlyPort = func(n, p int, _ bool) bool { return n == node && p == port }
-	}
-	snap, _, err := rrcsCollect(ctx, client, opts)
-	if err != nil {
-		return nil, err
-	}
-	m, err := rrcsModelOf(snap)
-	if err != nil {
-		return nil, err
-	}
-	props, ok := m.Lookup(path)
-	if !ok {
-		return nil, fmt.Errorf("rrcs set: nothing at %s", path)
-	}
-	return props, nil
 }
 
 // rrcsShow prints the wanted fields with the value the object holds.
@@ -384,45 +346,4 @@ func rrcsWriteGuard(verb, host, writeTo string) error {
 		return rrcsValErr(verb, "--write-to "+writeTo+" does not match the host "+host)
 	}
 	return nil
-}
-
-// rrcsCurrentOne reads one port or one client card with a single request
-// (§8.9 GetPort, §8.10.4.34 GetClientCard). ok is false when the path is
-// neither, or when RRCS does not answer it as expected.
-func rrcsCurrentOne(ctx context.Context, client *rrcs.Client, path string) (map[string]any, bool) {
-	parts := strings.Split(path, ".")
-	var reply rrcs.Reply
-	var err error
-	switch {
-	case len(parts) == 6 && parts[4] == "card":
-		node, err1 := strconv.Atoi(parts[3])
-		bay, err2 := strconv.Atoi(parts[5])
-		if err1 != nil || err2 != nil {
-			return nil, false
-		}
-		reply, err = client.Call(ctx, "GetClientCard", codec.Int(int32(node)), codec.Int(int32(bay)))
-	case len(parts) == 6 || len(parts) == 7:
-		node, port, isInput, ok := rrcsPortOfPath(path)
-		if !ok {
-			return nil, false
-		}
-		reply, err = client.Call(ctx, "GetPort", codec.Int(rrcsNetOfPath(path)), codec.Int(int32(node)), codec.Int(int32(port)),
-			codec.Bool(isInput), codec.Int(-1))
-	default:
-		return nil, false
-	}
-	if err != nil || len(reply.Payload().Items) == 0 {
-		return nil, false
-	}
-	// Through JSON, so the values have the types the rest of the code
-	// reads from a snapshot.
-	raw, err := json.Marshal(rrcsJSON(reply.Payload().Items[0]))
-	if err != nil {
-		return nil, false
-	}
-	var props map[string]any
-	if json.Unmarshal(raw, &props) != nil || len(props) == 0 {
-		return nil, false
-	}
-	return props, true
 }
