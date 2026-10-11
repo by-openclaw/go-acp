@@ -284,10 +284,13 @@ func RowsOf(target, object, path string, id int, props map[string]any) []Row {
 	return rows
 }
 
-// Rows flattens the ports and the client cards of a model.
+// Rows flattens a model: the nodes, the client cards, the ports with
+// their keys, then the objects that belong to no card — conferences,
+// groups, IFBs, logic sources, users, audio patches, logic destinations.
+// The crosspoints are not rows; they are the matrix.
 func Rows(m *Model) []Row {
 	target := hostOnly(m.Target)
-	var rows []Row
+	rows := nodeRows(target, m)
 	for _, c := range m.Cards {
 		rows = append(rows, RowsOf(target, "client-card", c.Path, c.ObjectID, c.Raw)...)
 	}
@@ -315,6 +318,39 @@ func Rows(m *Model) []Row {
 				cmd["TargetName"] = k.TargetName
 			}
 			rows = append(rows, RowsOf(target, k.CommandType, k.Path+".cmd", k.ObjectID, cmd)...)
+		}
+	}
+	return append(rows, objectRows(target, m)...)
+}
+
+// nodeRows flattens the nodes.
+func nodeRows(target string, m *Model) []Row {
+	var rows []Row
+	for _, n := range m.Nodes {
+		rows = append(rows, RowsOf(target, "node", n.Path, n.ObjectID, n.Raw)...)
+	}
+	return rows
+}
+
+// objectRows flattens what belongs to no card: conferences, groups,
+// IFBs, logic sources, users, audio patches, logic destinations.
+func objectRows(target string, m *Model) []Row {
+	var rows []Row
+	for _, kind := range []string{"conference", "group", "ifb", "logic", "user", "patch", "logicdest"} {
+		for _, o := range m.Objects[kind] {
+			rows = append(rows, RowsOf(target, kind, o.Path, o.ObjectID, o.Raw)...)
+			// The members, one row each: the path of the member port and
+			// its talk/listen flags, which is what a CRUD of the object
+			// changes.
+			for i, mem := range o.Members {
+				v := mem.Port
+				if mem.Flags != "" {
+					v += " " + mem.Flags
+				}
+				rows = append(rows, Row{IP: target, Protocol: Name,
+					Path: o.Path + ".member." + strconv.Itoa(i+1), ID: strconv.Itoa(o.ObjectID),
+					Label: mem.Label, Kind: "string", Access: "R--", Value: v})
+			}
 		}
 	}
 	return rows

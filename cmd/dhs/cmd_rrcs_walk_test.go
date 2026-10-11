@@ -90,7 +90,7 @@ func TestRRCSWalk(t *testing.T) {
 		t.Fatalf("snapshot: %v", err)
 	}
 	if !snap.Complete || snap.Proto != "rrcs" || len(snap.Status) != len(rrcsInfoMethods) ||
-		len(snap.Lists) != len(rrcsDiscoverMethods)+len(rrcsWalkLists)-2 || len(snap.ObjectLists) != len(rrcsObjectTypes) {
+		len(snap.Lists) != len(rrcsDiscoverMethods)+len(rrcsWalkLists) || len(snap.ObjectLists) != len(rrcsObjectTypes) {
 		t.Errorf("snapshot shape: %+v", snap)
 	}
 	if len(snap.Licenses) != 1 || snap.Licenses[0].Args[0] != float64(60) {
@@ -238,7 +238,8 @@ func TestRRCSWalkPortValues(t *testing.T) {
 			}
 			return codec.Array(k, codec.Array()), true
 		case "GetTrunklineSetup", "GetTrunklineActivities":
-			t.Errorf("%s asked on a system without trunk ports", call.Method)
+			// Asked even without trunk ports; a real RRCS answers 99,
+			// which the walk records as expected, not as a failure.
 			return codec.Array(k, codec.Int(99)), true
 		}
 		return rrcsTreeAnswer(call)
@@ -264,6 +265,20 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	}
 	if snap.NotOnline != 2 {
 		t.Errorf("not online: %d", snap.NotOnline)
+	}
+	// §8.16: the trunk line requests are sent even without trunk ports,
+	// recorded with the answer 99 of a real RRCS, and not counted failed.
+	trunk := 0
+	for _, c := range snap.Lists {
+		if c.Method == "GetTrunklineSetup" || c.Method == "GetTrunklineActivities" {
+			trunk++
+			if !strings.Contains(c.Error, "(code 99)") {
+				t.Errorf("%s: error %q, want the recorded 99", c.Method, c.Error)
+			}
+		}
+	}
+	if trunk != 2 {
+		t.Errorf("trunk line requests: %d, want 2", trunk)
 	}
 	if len(snap.KeyConfigs) != 1 || snap.KeyConfigs[0].Error != "" {
 		t.Errorf("key configurations: %+v", snap.KeyConfigs)

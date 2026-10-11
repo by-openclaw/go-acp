@@ -237,13 +237,15 @@ func Collect(ctx context.Context, client *Client, opts CollectOpts) (*Snapshot, 
 	}
 	trunked := false
 	for _, m := range listMethods {
-		// A real RRCS 9.0 without trunk ports answers the two trunk line
-		// requests with a generic error (99): they are asked only where
-		// GetTrunkPorts listed something.
-		if (m == "GetTrunklineSetup" || m == "GetTrunklineActivities") && !trunked {
-			continue
-		}
 		rec, reply, ok := w.call(m)
+		// A real RRCS 9.0 without trunk ports answers the two trunk line
+		// requests with a generic error (99). They are asked anyway, so
+		// the answer is on record for every plant; without trunk ports
+		// that one refusal is expected and not a failure.
+		if !ok && !trunked && (m == "GetTrunklineSetup" || m == "GetTrunklineActivities") &&
+			strings.Contains(rec.Error, "(code 99)") {
+			snap.Failed--
+		}
 		snap.Lists = append(snap.Lists, rec)
 		if !ok {
 			continue

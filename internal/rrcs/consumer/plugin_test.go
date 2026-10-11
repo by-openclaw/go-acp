@@ -167,6 +167,22 @@ func walkFake(t *testing.T) *fakeRRCS {
 			return codec.Array(key, codec.Array(
 				port(61, 1024, 7001, "NOC1"), port(61, 1026, 7002, "NOC2"), port(62, 1024, 7003, "MCR"),
 			)), nil
+		case "GetAllConferences":
+			return codec.Array(key, codec.Array(codec.Struct(
+				codec.Member{Name: "Label", Value: codec.String("CONF1")},
+				codec.Member{Name: "LongName", Value: codec.String("Conf 1")},
+				codec.Member{Name: "ObjectID", Value: codec.Int(555)},
+				codec.Member{Name: "MemberList", Value: codec.Array(codec.Struct(
+					codec.Member{Name: "Node", Value: codec.Int(61)},
+					codec.Member{Name: "Port", Value: codec.Int(1024)},
+					codec.Member{Name: "Talk", Value: codec.Bool(true)},
+					codec.Member{Name: "Listen", Value: codec.Bool(true)},
+				))},
+			))), nil
+		case "GetAllGroups", "GetAllIFBs":
+			return codec.Array(key, codec.Array()), nil
+		case "GetAllLogicSources_v2":
+			return codec.Array(key, codec.Struct()), nil
 		}
 		return codec.Value{}, &codec.Fault{Code: 1, String: "unexpected " + call.Method}
 	})
@@ -218,19 +234,41 @@ func TestPluginWalkSlot(t *testing.T) {
 	}
 }
 
-// An empty bay and the node itself give no objects and send nothing
-// that is not needed.
-func TestPluginWalkEmpty(t *testing.T) {
+// Slot 0 is the node and what belongs to no card: six requests, the
+// node's properties and the conference with its member. An empty bay
+// gives no objects.
+func TestPluginWalkSlotZero(t *testing.T) {
 	f := walkFake(t)
 	p := pluginConnect(t, f)
 	ctx := context.Background()
 
-	if objs, err := p.Walk(ctx, 0); err != nil || len(objs) != 0 {
-		t.Errorf("Walk(0) = %d objects, %v", len(objs), err)
+	objs, err := p.Walk(ctx, 0)
+	if err != nil {
+		t.Fatalf("Walk(0): %v", err)
 	}
-	if got := f.methods(); got != "GetVersion" {
-		t.Errorf("Walk(0) sent %q, want nothing", got)
+	if got := f.methods(); got != "GetVersion,"+strings.Join(slotZeroLists, ",") {
+		t.Errorf("Walk(0) sent %q, want the six lists", got)
 	}
+	byPath := map[string]dhsc.Object{}
+	for _, o := range objs {
+		if o.Slot != 0 {
+			t.Errorf("%s: slot %d, want 0", strings.Join(o.Path, "."), o.Slot)
+		}
+		byPath[strings.Join(o.Path, ".")] = o
+	}
+	nodeType, ok := byPath["net.1.node.60.NodeTypeString"]
+	if !ok || nodeType.Value.Str != "ARTIST_1024" || nodeType.OID != "221474832" {
+		t.Errorf("node type = %+v (found %v), want ARTIST_1024 with the node's oid", nodeType, ok)
+	}
+	label, ok := byPath["conference.555.Label"]
+	if !ok || label.Value.Str != "CONF1" || label.OID != "555" {
+		t.Errorf("conference label = %+v (found %v)", label, ok)
+	}
+	member, ok := byPath["conference.555.member.1"]
+	if !ok || !strings.Contains(member.Value.Str, "net.1.node.61.port.1024") {
+		t.Errorf("conference member = %+v (found %v), want the port path", member, ok)
+	}
+
 	if objs, err := p.Walk(ctx, 5); err != nil || len(objs) != 0 {
 		t.Errorf("Walk(5) = %d objects, %v", len(objs), err)
 	}

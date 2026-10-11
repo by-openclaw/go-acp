@@ -21,14 +21,22 @@ const (
 // carry, and the ports.
 var slotLists = []string{"GetAllNodes", "GetAllClientCards", "GetAllPorts"}
 
-// Walk reads one bay: its client card and the ports of that card, each
-// property as one object. Three requests, whatever the size of the
-// system.
+// slotZeroLists are the requests a walk of slot 0 is made of: the node
+// and everything that belongs to no card. The ports are read too, so a
+// member of a conference, group or IFB is named by the path and label
+// of its port.
+var slotZeroLists = []string{
+	"GetAllNodes", "GetAllPorts", "GetAllConferences", "GetAllGroups",
+	"GetAllIFBs", "GetAllLogicSources_v2",
+}
+
+// Walk reads one slot, each property as one object.
 //
-// The keys of the panels are not read here: they cost one request per
-// panel and are asked for on their own. Slot 0, the node, has no
-// objects yet: the conferences, groups and IFBs come with their part of
-// the move.
+// Slot 0 is the node and what belongs to no card: conferences, groups,
+// IFBs, logic sources (six requests). A bay gives its client card and
+// the ports of that card (three requests), whatever the size of the
+// system. The keys of the panels are not read here: they cost one
+// request per panel and are asked for on their own.
 func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 	p.mu.Lock()
 	client := p.client
@@ -37,7 +45,21 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		return nil, dhsc.ErrNotConnected
 	}
 	if slot == 0 {
-		return nil, nil
+		snap, _, err := Collect(ctx, client, CollectOpts{Only: slotZeroLists})
+		if err != nil {
+			return nil, err
+		}
+		m, err := modelOf(snap)
+		if err != nil {
+			return nil, err
+		}
+		target := hostOnly(m.Target)
+		rows := append(nodeRows(target, m), objectRows(target, m)...)
+		out := make([]dhsc.Object, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, objectOf(0, r))
+		}
+		return out, nil
 	}
 
 	snap, _, err := Collect(ctx, client, CollectOpts{Only: slotLists})
