@@ -530,21 +530,6 @@ func rrcsTree(ctx context.Context, args []string) error {
 	return nil
 }
 
-// rrcsPortOfPath reads the node, the port number and the direction out of
-// a port path or of a path below a port.
-func rrcsPortOfPath(path string) (node, port int, isInput, ok bool) {
-	parts := strings.Split(path, ".")
-	if len(parts) < 6 || parts[0] != "net" || parts[2] != "node" || parts[4] != "port" {
-		return 0, 0, false, false
-	}
-	node, err1 := strconv.Atoi(parts[3])
-	port, err2 := strconv.Atoi(parts[5])
-	if err1 != nil || err2 != nil {
-		return 0, 0, false, false
-	}
-	return node, port, len(parts) > 6 && parts[6] == "in", true
-}
-
 // rrcsGetPath prints the properties of what a path names.
 func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, prop string) error {
 	node, port, _, isPort := rrcsPortOfPath(path)

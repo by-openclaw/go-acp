@@ -27,10 +27,14 @@ func PortOfPath(path string) (net, node, port int, isInput, ok bool) {
 	if len(parts) < 6 || parts[0] != "net" || parts[2] != "node" || parts[4] != "port" {
 		return 0, 0, 0, false, false
 	}
+	// A net that is not a number reads as net 1, as the verbs always did.
 	net, err0 := strconv.Atoi(parts[1])
+	if err0 != nil {
+		net = 1
+	}
 	node, err1 := strconv.Atoi(parts[3])
 	port, err2 := strconv.Atoi(parts[5])
-	if err0 != nil || err1 != nil || err2 != nil {
+	if err1 != nil || err2 != nil {
 		return 0, 0, 0, false, false
 	}
 	return net, node, port, len(parts) > 6 && parts[6] == "in", true

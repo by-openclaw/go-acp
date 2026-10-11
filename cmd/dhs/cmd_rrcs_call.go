@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -24,81 +21,6 @@ import (
 func rrcsReadOnlyMethod(method string) bool {
 	// LineStatus (§8.17) reads without saying so in its name.
 	return strings.HasPrefix(method, "Get") || strings.HasPrefix(method, "Is") || method == "LineStatus"
-}
-
-// rrcsValueOfJSON reads one JSON document into an XML-RPC value, keeping
-// the order of the members of an object: whole numbers are integers,
-// other numbers doubles, objects structs, arrays arrays.
-func rrcsValueOfJSON(text string) (codec.Value, error) {
-	dec := json.NewDecoder(bytes.NewReader([]byte(text)))
-	dec.UseNumber()
-	v, err := rrcsDecodeJSON(dec)
-	if err != nil {
-		return codec.Value{}, err
-	}
-	if dec.More() {
-		return codec.Value{}, fmt.Errorf("more than one JSON value in %q", text)
-	}
-	return v, nil
-}
-
-func rrcsDecodeJSON(dec *json.Decoder) (codec.Value, error) {
-	tok, err := dec.Token()
-	if err != nil {
-		return codec.Value{}, err
-	}
-	switch t := tok.(type) {
-	case json.Delim:
-		switch t {
-		case '{':
-			var members []codec.Member
-			for dec.More() {
-				key, err := dec.Token()
-				if err != nil {
-					return codec.Value{}, err
-				}
-				name, _ := key.(string)
-				v, err := rrcsDecodeJSON(dec)
-				if err != nil {
-					return codec.Value{}, err
-				}
-				members = append(members, codec.Member{Name: name, Value: v})
-			}
-			_, err := dec.Token()
-			return codec.Struct(members...), err
-		case '[':
-			items := []codec.Value{}
-			for dec.More() {
-				v, err := rrcsDecodeJSON(dec)
-				if err != nil {
-					return codec.Value{}, err
-				}
-				items = append(items, v)
-			}
-			_, err := dec.Token()
-			return codec.Array(items...), err
-		}
-		return codec.Value{}, fmt.Errorf("unexpected %v", t)
-	case json.Number:
-		if n, err := t.Int64(); err == nil {
-			if n < math.MinInt32 || n > math.MaxInt32 {
-				return codec.Value{}, fmt.Errorf("%s does not fit a 32-bit integer", t)
-			}
-			return codec.Int(int32(n)), nil
-		}
-		f, err := t.Float64()
-		if err != nil {
-			return codec.Value{}, err
-		}
-		return codec.Double(f), nil
-	case bool:
-		return codec.Bool(t), nil
-	case string:
-		return codec.String(t), nil
-	case nil:
-		return codec.Value{}, fmt.Errorf("null has no XML-RPC form")
-	}
-	return codec.Value{}, fmt.Errorf("unexpected %v", tok)
 }
 
 // rrcsCall sends any method of the specification with the parameters

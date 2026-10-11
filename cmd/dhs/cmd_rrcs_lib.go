@@ -119,3 +119,20 @@ func rrcsRowsOf(target, object, path string, id int, props map[string]any) []rrc
 func rrcsScalar(field string, v any) (value, kind, name, items string, ok bool) {
 	return rrcs.Scalar(field, v)
 }
+
+type rrcsOp = rrcs.Op
+
+var rrcsOps = rrcs.Ops
+
+func rrcsPortOfPath(path string) (node, port int, isInput, ok bool) {
+	_, node, port, isInput, ok = rrcs.PortOfPath(path)
+	return node, port, isInput, ok
+}
+
+func rrcsKeyOfPath(path string) (node, port int, isInput bool, expansion, page, key int, ok bool) {
+	return rrcs.KeyOfPath(path)
+}
+
+func rrcsNetOfPath(path string) int32 { return rrcs.NetOfPath(path) }
+
+func rrcsValueOfJSON(text string) (codec.Value, error) { return rrcs.ValueOfJSON(text) }

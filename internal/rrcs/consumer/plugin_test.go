@@ -325,3 +325,55 @@ func TestCrosspoints(t *testing.T) {
 		t.Errorf("crosspoint = %+v, want NOC1 > MCR by path", xps[0])
 	}
 }
+
+// Any method of the table is sent by name with named arguments, its
+// parameters in the order of the specification.
+func TestDoByName(t *testing.T) {
+	var last codec.Call
+	f := newFakeRRCS(t, func(call codec.Call) (codec.Value, *codec.Fault) {
+		last = call
+		return codec.Array(call.Params[0], codec.Int(0)), nil
+	})
+	c := f.client(t, Config{})
+	ctx := context.Background()
+
+	if _, err := c.Do(ctx, "SetInputGain", map[string]string{"port-path": "net.1.node.63.port.1064.in", "gain": "-12"}, nil); err != nil {
+		t.Fatalf("SetInputGain: %v", err)
+	}
+	got := []int32{last.Params[1].Int, last.Params[2].Int, last.Params[3].Int, last.Params[4].Int}
+	if want := []int32{1, 63, 1064, -12}; got[0] != want[0] || got[1] != want[1] || got[2] != want[2] || got[3] != want[3] {
+		t.Errorf("SetInputGain sent %v, want %v", got, want)
+	}
+
+	if _, err := c.Do(ctx, "SetInputGain", map[string]string{"port-path": "net.1.node.63.port.1064.in"}, nil); err == nil {
+		t.Error("SetInputGain without a gain was sent")
+	}
+	if _, err := c.Do(ctx, "NoSuchMethod", nil, nil); err == nil {
+		t.Error("a method that is not in the table was sent")
+	}
+
+	// Every entry builds its parameters from arguments of the right kind.
+	for i := range Ops {
+		op := &Ops[i]
+		args := map[string]string{"src": "net.1.node.61.port.1024", "dst": "net.1.node.62.port.1024"}
+		for _, p := range op.Params {
+			switch p.Kind {
+			case "int":
+				args[p.Flag] = "1"
+			case "bool":
+				args[p.Flag] = "yes"
+			case "text":
+				args[p.Flag] = "x"
+			case "netnodeport", "nodeport", "portaddr":
+				args[p.Flag] = "net.1.node.61.port.1024"
+			case "key", "cmdpos":
+				args[p.Flag] = "net.1.node.61.port.1024.key.0.1.2"
+			case "changes":
+				args[p.Flag] = "[]"
+			}
+		}
+		if _, err := op.Values(args, []string{"net.1.node.61.port.1024>net.1.node.62.port.1024"}); err != nil {
+			t.Errorf("%s: %v", op.Method, err)
+		}
+	}
+}
