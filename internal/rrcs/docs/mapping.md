@@ -123,7 +123,7 @@ remain valid.
 | Disconnect | remove the registrations, close | 0 to 2 |
 | GetDeviceInfo | version, number of slots (the client cards, read once per session) | 1, then 0 |
 | GetSlotInfo | one bay: its card or none, from the same list | 0 |
-| Walk (slot) | the objects of one card; slot 0: the objects of the node | 1, plus 1 per panel of the card |
+| Walk (slot) | the card of one bay and the ports of that card, every property an object. The keys of the panels are not in it (one request per panel, asked on their own). Slot 0 gives nothing yet | 3 |
 | GetValue | one property of one object (`GetPort`, `GetClientCard`, or the list of its kind) | 1 |
 | SetValue | one property, read before and after | 3 |
 | Subscribe | every event (`RegisterForAllEvents`) and the levels (`RegisterForEventsEx`) | 1 to 3, once |

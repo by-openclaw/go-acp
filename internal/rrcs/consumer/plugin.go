@@ -19,7 +19,7 @@ import (
 // device here. The mapping is docs/mapping.md of this connector.
 //
 // What is here is the first part: the session, the device and its slots.
-// Walk, GetValue, SetValue and Subscribe answer ErrNotImplemented until
+// GetValue, SetValue and Subscribe answer ErrNotImplemented until
 // their logic has moved out of cmd/dhs; the rrcs verbs of the command
 // line do not go through this file yet.
 
@@ -151,11 +151,6 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (dhsc.SlotInfo, erro
 		}
 	}
 	return dhsc.SlotInfo{Slot: slot, Status: dhsc.SlotNoCard, State: dhsc.SlotStateNoCard}, nil
-}
-
-// Walk is not moved into the library yet.
-func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
-	return nil, dhsc.ErrNotImplemented
 }
 
 // GetValue is not moved into the library yet.
