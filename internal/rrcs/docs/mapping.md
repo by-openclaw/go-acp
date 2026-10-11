@@ -37,16 +37,36 @@ agree (`cardOfNode`).
 
 ## 3. Elements
 
-The element types are those of `docs/protocols/elements/`.
+**RRCS is not modelled as an Ember+ tree.** Rule of the codeowner,
+2026-10-11. The element types of `docs/protocols/elements/` are used as
+words for what a thing is (a value, a matrix, a function); the tree with
+numbered positions is not.
 
-| RRCS | Element | Notes |
+| RRCS | What it is | Notes |
 |---|---|---|
-| Node, client card, port, panel, expansion panel, key | Node | the tree Director shows |
+| Node, client card, port, panel, expansion panel, key | a fixed object | exists as long as the configuration has it; addressed by what RRCS addresses it with |
+| Conference, group, IFB | a dynamic object | created, changed and deleted at run time, by us or by anyone else |
+| Logic source | a fixed object with a state | |
 | A property of any of them | Parameter | kind, unit, minimum, maximum, default, named values and access come from the property tables of the specification (`rrcsSpecMeta`) |
-| The crosspoints | one Matrix: `nToN`, `nonLinear`, dynamic | sources are the ports with an input, targets the ports with an output; on slot 0 |
-| Level of a crosspoint | the gain of a connection (`connectionParams`) | single and conference level; read by registration, set with `SetXpVolume` |
-| Conference, group, IFB, logic source | Node with Parameters; members as a Parameter | no dedicated element exists |
+| The crosspoints | one matrix, n:n | any input port to any output port, several at once; addressed by the two ports, not by row and column numbers |
+| Level of a crosspoint | the gain of a connection | single and conference level; read by registration, set with `SetXpVolume` |
 | Dial, hang up, line status, press a key, send a string, port cloning | Function | arguments in, an answer out, no value left behind |
+
+### 3.1 Identity
+
+| Rule | Why |
+|---|---|
+| The connector gives no numeric OID. The `OID` field of the contract stays empty; the contract allows it for a protocol that is already addressed by identifiers | a number per position cannot follow objects that come and go |
+| A fixed object is identified by the address RRCS uses: net, node, port, direction; key position | it does not change while the configuration stands |
+| A dynamic object is identified by its name. The `ObjectID` RRCS gives at creation is reported as a property and used inside one request, never kept as a key | delete a conference and create it again: same name, other metadata, and the `ObjectID` is whatever RRCS gives then |
+| A dynamic object that appears or disappears is an event of its own (`created`, `deleted`), not a change of value | a client must not have to compare two walks to learn it |
+
+A gateway from RRCS to Ember+, if one is built, owns the numbering: it
+keeps the table from name to Ember+ number, keeps a number reserved when
+the object goes, and gives the same number back when the name returns.
+That table is the gateway's, not the connector's. Nothing here must make
+it harder: no number invented by the connector may leak into a path, an
+export or an event.
 
 A property that has a value which stays and can be read back is a
 Parameter, even when RRCS sets it with a method of its own: key label, key
@@ -64,8 +84,9 @@ remain valid.
 | Port | `net.N.node.N.port.P`, with `.in` / `.out` where an input and an output share the number |
 | Key | `<port>.key.E.G.K` (expansion, page, key) |
 | Virtual function | `<port>.vfunc.TYPE.K` |
-| Conference, group, IFB, logic source | `conference.ID`, `group.ID`, `ifb.ID`, `logic.ID` |
-| The matrix | `xp` on slot 0; a connection is `xp.<source>><target>` |
+| Conference, group, IFB | by name: `conference.<name>`, `group.<name>`, `ifb.<name>`. The form with the `ObjectID` used today is still read, for the files that exist |
+| Logic source | `logic.ID` |
+| The matrix | `xp`; a connection is `xp.<source port>><target port>` |
 
 ## 5. The nine functions of the contract
 
@@ -96,9 +117,15 @@ and must keep passing.
 | `watch` | standard | every event; a card inserted or pulled is a slot change |
 | `export`, `import`, `extract`, `diff`, `convert`, `validate` | standard | the system as CSV, JSON, YAML; offline tools |
 | `alarm` | standard | the alarm template |
-| `matrix` | extension, as Ember+ | make, remove, read a crosspoint; its level |
-| `invoke` | extension, as Ember+ | the Functions of §3 only |
-| raw access | standard, by rule of 2026-10-11 | one RRCS method, raw answer; every connector is to have it |
+| `matrix` | extension | make, remove, read a crosspoint; its level. Same verb name as Ember+, rrcs code of its own |
+| `invoke` | extension | the Functions of §3 only. Same verb name as Ember+, rrcs code of its own |
+| `raw` | standard, by rule of 2026-10-11 | one RRCS method, raw answer; every connector is to have it |
+
+The shared `matrix` and `invoke` commands are written for the Ember+
+plugin alone (`cmd_matrix.go` and `cmd_invoke.go` take the plugin as
+`*emberplus.Plugin` and work on tree paths). rrcs does not go through that
+code. How the two share one verb name without rrcs depending on the Ember+
+tree is a change in the common part and needs a decision of its own.
 
 What goes: the private copies of the standard verbs, the 52 one-method
 verbs, `xp` and `set-xp-volume` (into `matrix`), `list` (filters on `walk`
@@ -119,14 +146,15 @@ and `tree`), `coverage` (a table in the documentation), and the present
 
 ## 8. What is not decided
 
-| # | Point | Who |
+| # | Point | State |
 |---|---|---|
-| 1 | The name of the raw-access verb (`call` today; `raw` proposed) | codeowner |
-| 2 | Whether the shared `matrix` and `invoke`, marked Ember+ only today, are opened to rrcs as they are or need work in the common part | to check, then codeowner |
-| 3 | Where the write guard lives in the shared `set`, which has no such flag | codeowner |
-| 4 | `ensure` brings one object to one value in the shared form; the desired-state file with sections (keys, conferences, groups, IFBs, levels, ports, streams) is an rrcs invention. Keep it as an rrcs addition, or loop over objects in the playbook | codeowner |
-| 5 | A matrix above the slots (slot 0) has no precedent: Ember+ has no slots | to confirm |
-| 6 | Several Artist nodes behind one RRCS: one device per node, or slots numbered across nodes. Needed before the second site | codeowner |
+| 1 | The name of the raw-access verb | decided 2026-10-11: `raw` |
+| 2 | The matrix and the dynamic objects | decided 2026-10-11: n:n matrix; no Ember+ tree, no numeric OID, identity as in §3.1 |
+| 3 | The write guard once `set` goes through the shared contract | to test on a real RRCS: the same writes as proven today, the request compared field by field with the one sent now. Until that passes, the present `set` stays |
+| 4 | Two ways to ask for a wanted state. One object per command (the shared `ensure`; the playbook loops over objects, one connection each). Or one file for a whole panel (the rrcs `ensure --file` of today; one connection, the lists read once). Proposed: keep both, the file for anything above a few objects because it sends fewer requests | open |
+| 5 | The matrix on slot 0 | closed by point 2: the matrix is addressed by ports, not by a place in a tree |
+| 6 | A plant with several Artist nodes behind one RRCS. Today: one node (60). The paths already carry the node (`net.N.node.N`), so nothing breaks; what is not defined is how bays of different nodes are numbered as slots. Proposed: decide when such a plant is to be connected, not before | parked |
+| 7 | How `matrix` and `invoke` share a verb name with Ember+ (§6) | open, needs a go before the common part is touched |
 
 ## 9. Order of the move
 
