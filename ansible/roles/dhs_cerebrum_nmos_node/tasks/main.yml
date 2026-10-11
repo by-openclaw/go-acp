@@ -43,13 +43,18 @@
                     '--device', cerebrum.nmos_device, '--sub-device', '0', '--object'] }}"
     cnn_value: 'value="([^"]*)"'
 
-- name: "{{ cerebrum_nmos_node_label }} — its device type has an NMOS switch"
+- name: "{{ cerebrum_nmos_node_label }} — its device is known, with the protocol it is configured with"
   ansible.builtin.assert:
     that:
       - cnn_device | length > 0
-      - cnn_device.type in cerebrum_nmos_node_switch
-    fail_msg: "{{ cerebrum_nmos_node_label }}: no row of devices.csv has this nmos_label, or its type has no entry in cerebrum_nmos_node_switch"
+      - cnn_device.type in cerebrum_nmos_node_access
+    fail_msg: "{{ cerebrum_nmos_node_label }}: no row of devices.csv has this nmos_label, or its type has no entry in cerebrum_nmos_node_access"
     quiet: true
+
+- name: "{{ cerebrum_nmos_node_label }} — protocol, version, driver"
+  ansible.builtin.include_tasks: identify.yml
+  vars:
+    cnn_proto: "{{ cerebrum_nmos_node_access[cnn_device.type] }}"
 
 - name: "{{ cerebrum_nmos_node_label }} — {{ cerebrum_nmos_node_state }}"
   ansible.builtin.include_tasks: "{{ cerebrum_nmos_node_state }}.yml"

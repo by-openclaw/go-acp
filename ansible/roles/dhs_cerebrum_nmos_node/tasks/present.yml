@@ -11,7 +11,7 @@
   ansible.builtin.include_tasks: nmos_switch.yml
   vars:
     cnn_on: true
-    cnn_sw: "{{ cerebrum_nmos_node_switch[cnn_device.type] }}"
+    cnn_sw: "{{ cnn_driver }}"
 
 - name: "{{ cerebrum_nmos_node_label }} — registered"
   ansible.builtin.uri:
