@@ -30,10 +30,37 @@ As acp1, acp2 and RollCall: a device is a frame, a card position is a slot.
 | Slot 0 | the node itself and what belongs to no card: conferences, groups, IFBs, logic sources, the crosspoint matrix |
 | Objects of a slot | the ports of the card, with their properties and keys |
 
-A port is addressed by RRCS with a node number of its own (61 to 66 for the
-six cards of node 60 on an Artist-1024). RRCS gives no field that links a
-port to its card; the link is by position and is made only when the counts
-agree (`cardOfNode`).
+### 2.1 What a walk of the production RRCS gives
+
+Read from the walk of 2026-10-06 and the export of 2026-10-07, not
+deduced.
+
+| Request | Answer |
+|---|---|
+| `GetAllNodes` | one node: address 60, "MDSQ M60 TV", `ARTIST_1024` |
+| `GetAllClientCards` | six cards, all with `Node` 60, bays 1, 2, 4, 5, 6, 7, named "AES67 M60 C1 ID61" to "AES67 M60 C7 ID66" |
+| `GetAllPorts` | 527 ports, all with `Net` 1, and `Node` 61 to 66 (83, 86, 201, 19, 33 and 105 ports) |
+
+So the ports never carry node 60: they carry 61 to 66. No field of a card
+says which of these numbers is its own; only its name does ("ID61"), and
+a name is not a contract. The link is made by position and only when the
+counts agree (`cardOfNode`).
+
+### 2.2 Trunking
+
+The other Artist systems of the plant are not nodes of this RRCS and do
+not appear in a walk. They appear as addresses, net and port:
+
+| Where | What the export holds | Count |
+|---|---|---|
+| A port | `IsTrunkEnabled` true | 45 of 527 |
+| A port | its trunk address, `TrunkingNetAddr` 91 with `TrunkingPortAddr` (NOC1 is net 91 port 1) | 60 |
+| A port | `IsTrunkLineEnabled` true: the trunk lines, on nodes 65 and 66 ("BM Trunk 01 MDSQ TV-> MDSQ Radio") | 15 |
+| A key | a call to another net: `TrunkingNetAddr` 2 with `TrunkingPortAddr` 27, 109, 113 | 3 |
+
+A destination in another system is therefore a value (net, port) of a key
+or a port here, never an object of this device. It has no path and no
+`oid` on this RRCS.
 
 ## 3. Elements
 
@@ -153,7 +180,7 @@ and `tree`), `coverage` (a table in the documentation), and the present
 | 3 | The write guard once `set` goes through the shared contract | to test on a real RRCS: the same writes as proven today, the request compared field by field with the one sent now. Until that passes, the present `set` stays |
 | 4 | Two ways to ask for a wanted state. One object per command (the shared `ensure`; the playbook loops over objects, one connection each). Or one file for a whole panel (the rrcs `ensure --file` of today; one connection, the lists read once). The file sends fewer requests for anything above a few objects | decided 2026-10-11: both |
 | 5 | The matrix on slot 0 | closed by point 2: the matrix is addressed by ports, not by a place in a tree |
-| 6 | A plant with several Artist nodes behind one RRCS. Today: one node (60). The paths already carry the node (`net.N.node.N`), so nothing breaks; what is not defined is how bays of different nodes are numbered as slots. Proposed: decide when such a plant is to be connected, not before | parked |
+| 6 | Several Artist systems. What is seen (§2.1, §2.2): one RRCS lists one node; the other systems are reached by trunking and are addresses, not objects. Each system is a device of its own, through its own RRCS. One RRCS listing two nodes has not been seen; the plugin then answers slot 0 only and guesses nothing | closed for what is seen |
 | 7 | How `matrix` and `invoke` share a verb name with Ember+ (§6) | open, needs a go before the common part is touched |
 
 ## 9. Order of the move
