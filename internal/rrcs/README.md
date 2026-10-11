@@ -151,9 +151,14 @@ are not asked either. `--online no` asks every port.
 .\dhs.exe consumer rrcs export --from walk.json --out rrcs.csv
 ```
 
-One row per value of every port and client card, in the CSV layout of the
-other dhs connectors: `path`, `oid` (object ID), `label`, `kind`, `access`,
+One row per value of the whole system — the node, every client card,
+every port with its keys, and the conferences, groups, IFBs and logic
+sources with one row per member — in the CSV layout of the other dhs
+connectors: `path`, `oid` (object ID), `label`, `kind`, `access`,
 `value`, `value_name`, `unit`, `min`, `max`, `default`, `enum_items`.
+The path is the reference, as Director shows it; the `oid` is the
+ObjectID RRCS itself gives the object. The crosspoints are not rows:
+`list xp` and `xp` carry them.
 `access` is `RW-` for the values `import` can write, `R--` for the rest.
 `--format json` or a `.json` name gives the same rows as JSON.
 
@@ -190,6 +195,10 @@ RRCS sends the events to this machine on port 8195 (`--listen`). Stop with
 | Key pressed or released (`--spy`) | `…port.1026.keyevent.0.5 KeyAction = pressed` |
 | Function key, rotary, numeric key (`--spy`) | One line per member |
 | Anything not known yet | `event <Method> = <parameters>` |
+
+`--spy` (Panel Spy, §8.12 and §9.9) needs the Panel Spy licence on the
+RRCS. Without it RRCS answers "No client card acknowledge received" and
+the rest of the watch runs as usual.
 
 When RRCS says the configuration changed, it does not say what. `watch`
 then reads the system again and prints what differs — a key, a conference,
