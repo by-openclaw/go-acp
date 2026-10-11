@@ -18,7 +18,7 @@
     url: "{{ cnn_registry }}/nodes?paging.limit={{ cerebrum.nmos_page_limit }}"
     return_content: true
   register: cnn_reg_nodes
-  until: cnn_reg_nodes.status == 200 and cnn_reg_nodes.json | selectattr('label', 'equalto', cerebrum_nmos_node_label) | list | length == 1
+  until: cnn_reg_nodes.status == 200 and cnn_reg_nodes.json is defined and cnn_reg_nodes.json | selectattr('label', 'equalto', cerebrum_nmos_node_label) | list | length == 1
   retries: "{{ cerebrum.nmos_wait_retries }}"
   delay: "{{ cerebrum.nmos_wait_delay }}"
 

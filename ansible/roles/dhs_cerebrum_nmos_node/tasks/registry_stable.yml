@@ -10,6 +10,9 @@
     url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
     return_content: true
   register: cnn_reg_a
+  until: cnn_reg_a.status == 200 and cnn_reg_a.json is defined
+  retries: "{{ cerebrum.nmos_wait_retries }}"
+  delay: "{{ cerebrum.nmos_wait_delay }}"
 
 - name: "{{ cerebrum_nmos_node_label }} — leave the registry {{ cerebrum.nmos_settle }} s"
   ansible.builtin.pause:
@@ -21,6 +24,9 @@
     url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
     return_content: true
   register: cnn_reg_devs
+  until: cnn_reg_devs.status == 200 and cnn_reg_devs.json is defined
+  retries: "{{ cerebrum.nmos_wait_retries }}"
+  delay: "{{ cerebrum.nmos_wait_delay }}"
 
 - name: "{{ cerebrum_nmos_node_label }} — the registry is still filling"
   ansible.builtin.assert:
