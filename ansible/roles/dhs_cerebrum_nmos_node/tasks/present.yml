@@ -22,24 +22,17 @@
   retries: "{{ cerebrum.nmos_wait_retries }}"
   delay: "{{ cerebrum.nmos_wait_delay }}"
 
-- name: "{{ cerebrum_nmos_node_label }} — let a node that just registered list its devices"
-  ansible.builtin.pause:
-    seconds: "{{ cerebrum.nmos_settle }}"
-  when: (cnn_sw_set is defined and cnn_sw_set is changed) or (cnn_view_put is defined and cnn_view_put is changed)
-
 - name: "{{ cerebrum_nmos_node_label }} — the node and its slot"
   ansible.builtin.set_fact:
     cnn_id: "{{ cnn_reg_nodes.json | selectattr('label', 'equalto', cerebrum_nmos_node_label) | map(attribute='id') | first }}"
     cnn_slot: "{{ (cerebrum_nmos_subids | selectattr('label', 'equalto', cerebrum_nmos_node_label) | first).subid | string }}"
 
-- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry"
-  ansible.builtin.uri:
-    url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
-    return_content: true
-  register: cnn_reg_devs
-  until: cnn_reg_devs.status == 200 and cnn_reg_devs.json | length > 0
-  retries: "{{ cerebrum.nmos_wait_retries }}"
-  delay: "{{ cerebrum.nmos_wait_delay }}"
+# A node already registered and untouched is read twice with no pause; a
+# node switched on by this run is given the time to list everything.
+- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry, once stable"
+  ansible.builtin.include_tasks: registry_stable.yml
+  vars:
+    cnn_registered_now: "{{ (cnn_sw_set is defined and cnn_sw_set is changed) or (cnn_view_put is defined and cnn_view_put is changed) }}"
 
 - name: "{{ cerebrum_nmos_node_label }} — SubID, move, confirm"
   environment:
