@@ -55,6 +55,9 @@ const rcpUsage = `usage: dhs consumer rcp <verb> <host> [flags]
   devices                 the devices registered in Cerebrum, with their slots
   object                  read one device object    --device D --index N --path A.B.C
   set-object              write one device object   --device D --index N --path A.B.C --value V
+  objects                 read several device objects in one session
+                          --device D --read "INDEX PATH" ...   one line per read:
+                          index, path, value|table|none|error, value or row count
 
   --device D   device for routes/take/mnemonics/object (default Cerebrum: the RouteMaster)
   --index N    its sub-device (slot) index (default 0)
@@ -163,6 +166,8 @@ func runRCP(ctx context.Context, args []string) error {
 		return runRCPDevices(ctx, rest)
 	case "object", "set-object":
 		return runRCPObject(ctx, verb, rest)
+	case "objects":
+		return runRCPObjects(ctx, rest)
 	}
 	return fmt.Errorf("consumer rcp: unknown verb %q\n%s", verb, rcpUsage)
 }
