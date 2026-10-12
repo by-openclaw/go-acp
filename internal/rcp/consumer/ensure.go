@@ -19,6 +19,12 @@ type PlanIO struct {
 	Alternates     map[string]string            `json:"alternateMnemonics,omitempty"`
 	TieLineInhibit *bool                        `json:"tieLineInhibit,omitempty"`
 	Levels         map[string]codec.LevelUpdate `json:"levels,omitempty"`
+	// Federation links a local source or destination to the federation
+	// one of that mnemonic. Absent: the link is left as it is. Empty: the
+	// resource is local (unlinked). A linked resource takes its levels,
+	// tags and tie line settings from the federation one, so it states
+	// none of its own.
+	Federation *string `json:"federation,omitempty"`
 }
 
 // PlanRoute is one crosspoint the plan wants, by mnemonic. Level 0 is
@@ -99,6 +105,14 @@ func (p Plan) Validate() error {
 			if virtual && (len(io.Levels) > 0 || io.TieLineInhibit != nil) {
 				return fmt.Errorf("rcp plan: virtual %q carries levels or tie line settings; a virtual has neither", io.Mnemonic)
 			}
+			if stated, linked := wantsLink(io); stated {
+				if virtual || c.IsFederation() {
+					return fmt.Errorf("rcp plan: %s %q states a federation link; only a local source or destination has one", col, io.Mnemonic)
+				}
+				if linked && (len(io.Levels) > 0 || io.TieLineInhibit != nil || len(io.Alternates) > 0) {
+					return fmt.Errorf("rcp plan: %s %q is linked to federation %q and states levels, alternates or tie line settings; a linked resource takes them from the federation one", col, io.Mnemonic, *io.Federation)
+				}
+			}
 			u := codec.Update{Alternates: io.Alternates, TieLineInhibit: io.TieLineInhibit, Levels: io.Levels, Mnemonic: &io.Mnemonic}
 			if err := u.Validate(c, false); err != nil {
 				return fmt.Errorf("rcp plan: %s %q: %w", col, io.Mnemonic, err)
@@ -164,11 +178,23 @@ func (c *Client) Ensure(ctx context.Context, plan Plan, opts EnsureOptions) (Rep
 		{"federation-sources", codec.FederationSources, plan.FederationSources, false},
 		{"federation-destinations", codec.FederationDestinations, plan.FederationDestinations, false},
 	}
+	// A resource the plan states as local is unlinked first, so that its
+	// local settings can be applied; see federation.go.
+	if !opts.Absent {
+		if err := e.links(ctx, plan, false); err != nil {
+			return e.report, err
+		}
+	}
 	for _, s := range steps {
 		if len(s.ios) == 0 {
 			continue
 		}
 		if err := e.collection(ctx, s.name, s.col, s.ios, s.virtual); err != nil {
+			return e.report, err
+		}
+	}
+	if !opts.Absent {
+		if err := e.links(ctx, plan, true); err != nil {
 			return e.report, err
 		}
 	}
@@ -230,9 +256,31 @@ func (e *ensurer) collection(ctx context.Context, name string, col codec.Collect
 	if err != nil {
 		return err
 	}
+	// A linked resource may carry the mnemonic of its federation one: it
+	// is then found by its link.
+	var feds []codec.IO
+	for _, w := range want {
+		if _, linked := wantsLink(w); linked && !col.IsFederation() && !virtual {
+			fed := codec.FederationSources
+			if col == codec.Destinations {
+				fed = codec.FederationDestinations
+			}
+			if feds, err = e.load(ctx, fed); err != nil {
+				return err
+			}
+			break
+		}
+	}
 	for _, w := range want {
 		target := name + " " + w.Mnemonic
 		cur, found := find(have, w.Mnemonic, virtual)
+		if _, linked := wantsLink(w); !found && linked {
+			if f, ok := find(feds, *w.Federation, false); ok {
+				if cur, found = linkedTo(have, f.ID); found && !e.opts.Absent {
+					continue // already linked: nothing of its own to converge
+				}
+			}
+		}
 
 		if e.opts.Absent {
 			if !found {

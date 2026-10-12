@@ -79,6 +79,17 @@ linked). An IO is configured per level (`levels` → `level_<id>`): tags or
 `tagsInherit`, a device binding (`name` + `typeId` + `deviceLevel` + `io`,
 or an IP `senderReceiver` — never both), or `clear`.
 
+In a plan, a local source or destination states its link with
+`"federation": "<mnemonic of the federation IO>"`; `""` states "local"
+(unlink); the field absent leaves the link as it is. `ensure` moves a
+resource between local and federated with ONE update, never a delete and
+a create: it unlinks before it converges the collections and links after,
+reads every link back, and finds a linked IO by its link when the server
+has given it the mnemonic of its federation IO. A linked IO states no
+levels, alternates or tie line settings of its own. Proven against the
+simulated server only: the lab Cerebrum has no federation (a link is
+accepted and not applied, which `ensure` reports as a failure).
+
 ## What Cerebrum 2.5.3 does that the document does not say
 
 Measured on `10.6.250.5`, 2026-10-09.

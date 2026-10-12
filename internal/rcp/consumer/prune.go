@@ -182,7 +182,22 @@ func (c *Client) PlanOf(ctx context.Context, r Router) (plan Plan, unnamed []str
 			case io.Virtual:
 				// the other half of a virtual: named once, by its source
 			default:
-				*into = append(*into, toPlan(col, io))
+				p := toPlan(col, io)
+				// A linked resource is stated by its link alone: its
+				// levels and settings are those of the federation one.
+				if io.FederationUID != 0 && !col.IsFederation() {
+					feds := fsrcs
+					if col == codec.Destinations {
+						feds = fdsts
+					}
+					for _, f := range feds {
+						if f.ID == io.FederationUID && f.Mnemonic.Original != "" {
+							name := f.Mnemonic.Original
+							p = PlanIO{Mnemonic: io.Mnemonic.Original, Federation: &name}
+						}
+					}
+				}
+				*into = append(*into, p)
 			}
 		}
 	}
