@@ -7,6 +7,24 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.45.0](https://github.com/by-openclaw/go-acp/compare/v0.44.0...v0.45.0) (2026-10-12)
+
+
+### Features
+
+* **ansible:** the four RouteMaster levels, and a real dry run for the RouteMaster play ([3c598bb](https://github.com/by-openclaw/go-acp/commit/3c598bb5a66c4dd17c29cab5a16774047f7af940))
+* **ansible:** the NMOS node role reads and writes Cerebrum over RCP ([ff07240](https://github.com/by-openclaw/go-acp/commit/ff072406ed0bc5ebcac1e98d3a335e7cbb34e621))
+* **ansible:** the NMOS node role reads and writes Cerebrum over RCP ([804a174](https://github.com/by-openclaw/go-acp/commit/804a17476d873e9f5a8aaed14bff1c8d11ea5a8c))
+* **rcp:** a plan moves a resource between local and federated with one update ([1e47950](https://github.com/by-openclaw/go-acp/commit/1e47950ac643819424562099b3372258f602395b))
+* **rcp:** a plan moves a resource between local and federated with one update ([284f3a7](https://github.com/by-openclaw/go-acp/commit/284f3a79fbba6ef1c4e8216aa38591239206be8f))
+
+
+### Bug Fixes
+
+* **ansible:** a dry run that would change nothing reports no change ([86ef374](https://github.com/by-openclaw/go-acp/commit/86ef374e903fabffa87dca1fb629b2ca79fe96c1))
+* **ansible:** the levels of the RouteMaster play are read in check mode too ([674a7a6](https://github.com/by-openclaw/go-acp/commit/674a7a69d72989cbc2480b470e8890e7887f5571))
+* **ansible:** the RouteMaster play has a real dry run ([4b531a7](https://github.com/by-openclaw/go-acp/commit/4b531a78f28895a1d17d98e6ec1399b5a6efd985))
+
 ## [0.44.0](https://github.com/by-openclaw/go-acp/compare/v0.43.0...v0.44.0) (2026-10-11)
 
 
