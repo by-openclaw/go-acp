@@ -494,6 +494,7 @@ func TestRRCSEnsureStreams(t *testing.T) {
 		"linked no main": "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1073,linked,2,1072\n",
 		"channel gap":    "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1072,main,1,\n1,1073,linked,3,1072\n",
 		"unknown bay":    "card,rrcs_port,role,channel,linked_to_rrcs_port\n9,1072,main,1,\n9,1073,linked,2,1072\n",
+		"not split":      "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1041,main,1,\n1,1042,linked,2,1041\n",
 	} {
 		_ = os.WriteFile(csvFile, []byte(bad), 0o600)
 		if out, err := rrcsStdout(t, func() error {

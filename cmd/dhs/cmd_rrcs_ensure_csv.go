@@ -150,6 +150,30 @@ func rrcsStreamsOfCSV(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, r
 		if !ok {
 			return "", fmt.Errorf("the gateway lists no client card in bay %d", card)
 		}
+		// A stream block needs a split pair, and the port list carries
+		// it: a 4-Wire Split port lists as two one-direction AES67
+		// entries (or says Split in its type). Checked here, before
+		// anything is sent; a port the gateway does not list is left to
+		// the writes to answer.
+		in, out := m.Find(node, port, true), m.Find(node, port, false)
+		if in != nil || out != nil {
+			split := in != nil && out != nil && in != out &&
+				strings.Contains(in.Type, "AES67") && strings.Contains(out.Type, "AES67")
+			for _, p := range []*rrcsPort{in, out} {
+				if p != nil && strings.Contains(p.Type, "Split") {
+					split = true
+				}
+			}
+			if !split {
+				typ := ""
+				if in != nil {
+					typ = in.Type
+				} else if out != nil {
+					typ = out.Type
+				}
+				return "", fmt.Errorf("card %d port %d is %q, not a 4-Wire Split pair", card, port, typ)
+			}
+		}
 		net := netOfNode[node]
 		if net == 0 {
 			net = 1
