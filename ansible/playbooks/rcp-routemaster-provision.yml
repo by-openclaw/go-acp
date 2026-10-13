@@ -193,10 +193,10 @@
           {% set ios = (rcp_export.stdout | from_json)[item.collection] %}
           {% set types = {'text': 'TEXT', 'category': 'CATEGORY', 'blank': 'BLANK'} %}
           {% for cat in rcp_categories if cat.kind == item.kind %}
-          {% for it in cat['items'] | default([]) %}
+          {% for it in cat.get('items', []) %}
           {{ cat.name }},{{ types[it.type] }},{{ it.value | default('') }}
           {% endfor %}
-          {% for m in cat.members | default([]) %}
+          {% for m in cat.get('members', []) %}
           {{ cat.name }},{{ item.type }},{{ (ios | selectattr('mnemonic.originalMnemonic', 'equalto', m) | map(attribute='id') | list | first) }}
           {% endfor %}
           {% endfor %}
