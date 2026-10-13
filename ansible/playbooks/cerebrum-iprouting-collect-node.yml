@@ -38,7 +38,7 @@
       slot,device,kind,name
       {% for line in cic_res.stdout_lines %}
       {% set f = line.split(cic_tab) %}
-      {% set device = f[1] | regex_replace('^Devices\.\[(.*)\]\.(Senders|Receivers)$', '\1') %}
+      {% set device = f[1].split('.[', 1)[1].rsplit('].', 1)[0] %}
       {% set kind = 'sender' if f[1].endswith('.Senders') else 'receiver' %}
       {% for name in (f[4] | default('')).split(',') if name %}
       {{ f[0] }},{{ device }},{{ kind }},{{ name }}
