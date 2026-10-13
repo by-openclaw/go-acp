@@ -105,7 +105,8 @@
       ansible.builtin.command:
         argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, category, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --op, delete, --category, "{{ item.name }}"]
       environment: "{{ rcp_env }}"
-      loop: "{{ rcp_categories }}"
+      # parents are listed after their sub-categories: removed first.
+      loop: "{{ rcp_categories | reverse | list }}"
       loop_control:
         label: "{{ item.name }}"
       when: rcp_state == 'absent' and item.name in (rcp_cats.stdout_lines | default([]))
@@ -190,8 +191,12 @@
         content: |
           category,type,value
           {% set ios = (rcp_export.stdout | from_json)[item.collection] %}
+          {% set types = {'text': 'TEXT', 'category': 'CATEGORY', 'blank': 'BLANK'} %}
           {% for cat in rcp_categories if cat.kind == item.kind %}
-          {% for m in cat.members %}
+          {% for it in cat['items'] | default([]) %}
+          {{ cat.name }},{{ types[it.type] }},{{ it.value | default('') }}
+          {% endfor %}
+          {% for m in cat.members | default([]) %}
           {{ cat.name }},{{ item.type }},{{ (ios | selectattr('mnemonic.originalMnemonic', 'equalto', m) | map(attribute='id') | list | first) }}
           {% endfor %}
           {% endfor %}

@@ -90,7 +90,23 @@ cerebrum_routemaster:
       - {mnemonic: "FUSION CH4", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 300"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 310"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 320"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 350"}}}}
       - {mnemonic: "FUSION CH6", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 500"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 510"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 520"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 550"}}}}
       - {mnemonic: "FUSION CH8", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 700"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 710"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 720"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 750"}}}}
-  categories: []
+  # Categories (operator, 2026-10-14), written over northbound. `kind` is
+  # source or destination; `members` are resources by mnemonic; `items`
+  # are the other slot kinds northbound knows: text, category (a
+  # sub-category, listed before its parent), blank. Slot order = list order.
+  categories:
+    - {name: CONVERT, kind: source, members: ["CONVERT 1", "CONVERT 2"]}
+    - {name: SHUFFLER, kind: source, members: ["SHUFFLER 1", "SHUFFLER 2"]}
+    - {name: "VIEW OUT", kind: source, members: ["VIEW OUT 1", "VIEW OUT 2", "VIEW OUT 3", "VIEW OUT 4", "VIEW OUT 5", "VIEW OUT 6", "VIEW OUT 7", "VIEW OUT 8"]}
+    - {name: FUSION, kind: destination, members: ["FUSION CH2", "FUSION CH4", "FUSION CH6", "FUSION CH8"]}
+    - {name: "SHUFFLER IN", kind: destination, members: ["SHUFFLER 1", "SHUFFLER 2"]}
+    - {name: "VIEW Video", kind: destination, members: ["VIEW 1", "VIEW 2", "VIEW 3", "VIEW 4"]}
+    - name: VIEW
+      kind: destination
+      items:
+        - {type: text, value: "Neuron VIEW"}
+        - {type: category, value: "VIEW Video"}
+        - {type: blank}
 
 # EVS Neuron VIEW (lab-view-01) — REST on the management address.
 neuronview:
