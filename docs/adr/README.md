@@ -64,7 +64,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0032](0032-transport-hardening.md) | Transport hardening — fuzzed decoders, gateway as protective proxy | proposed |
 | [0033](0033-alarm-template.md) | Alarm template — thresholds as per-model data, severity ladder, hysteresis, evaluated at the edge | proposed |
 | [0034](0034-oracle-testing.md) | Oracles — an independent implementation, run as a process, in both roles | proposed |
-| [0035](0035-rrcs-stream-ownership.md) | RRCS — a stream in NMOS mode is not edited through RRCS | proposed |
+| [0035](0035-rrcs-stream-ownership.md) | RRCS — how a stream block is edited safely | accepted |
 | [0036](0036-site-limits-narrow-factory-limits.md) | Site limits may narrow factory limits, never widen them | proposed |
 
 ## ADR-0017 parking note

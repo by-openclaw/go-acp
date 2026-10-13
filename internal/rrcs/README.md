@@ -248,9 +248,11 @@ What has passed on a real RRCS 9.0 with an Artist-1024 (2026-10-08):
 | Key: function, label, mode; emptied | applied, seen on the panel |
 | Conference: created, deleted | applied |
 | Stream put in manual mode with its address | applied |
-| Channel of a port (`Selection`) | applied |
-| Stream that is, or becomes, NMOS | **stops RRCS**; the verbs refuse it (ADR-0035) |
-| Port linked to the stream of another (`Mode`) | accepted, not applied (ADR-0035) |
+| Stream back to NMOS, the mode alone | applied (the one NMOS edit that is safe, ADR-0035) |
+| Address fields given to a stream in NMOS mode | **stops RRCS**; the verbs refuse it (ADR-0035) |
+| Main port's channel count (manual with the count, then NMOS) | applied, 19 mains of card 4 |
+| Port linked to the stream of another (`Mode` + `Selection`) | applied, 77 ports of card 4, both directions |
+| Port created as 4-Wire Split, named, deleted | applied |
 
 Groups, IFBs, port labels, aliases, gains and client card settings have
 not met a real RRCS yet.
@@ -282,18 +284,41 @@ wanted ones, and the request. Add `--apply yes --write-to HOST` to send.
 The names are those `get --path` prints. A set costs three requests: the
 object is read, changed, read again.
 
-An edit that gives stream fields to a stream in NMOS mode is refused before
-anything is sent. A link names the main port and the channel, nothing else:
+An edit that gives address fields to a stream in NMOS mode is refused before
+anything is sent; the mode alone passes (ADR-0035). A link names the main
+port and the channel, nothing else — an input takes them in two sets, an
+output in one:
 
 ```
-.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.in --prop PortAes67Input.Mode=1072 --prop PortAes67Input.Selection=2
+.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.in  --prop PortAes67Input.Mode=1072
+.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.in  --prop PortAes67Input.Selection=2
+.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.out --prop PortAes67Output.Mode=1072 --prop PortAes67Output.Selection=2
 ```
+
+For more than a port or two, `import` does all of it from one file.
 
 ### import — a whole file
 
 ```
 .\dhs.exe consumer rrcs import HOST --file rrcs.csv --dry-run
 .\dhs.exe consumer rrcs import TESTHOST --file rrcs.csv --write-to TESTHOST --capture auto
+```
+
+The stream rows of a port go through it too, with the hardware's own
+rules applied (ADR-0035): a `…Channels` row on an NMOS main is done by the
+round trip through manual; `…Mode` (the main port — never reported by
+RRCS, so you add the row) and `…Selection` link a port, an input in two
+requests, an output in one; a `…PortType` row on a port that does not
+exist creates it (3 = 4-Wire Split) and names both directions the way
+Director does. Every value is typed and bounded by the specification's
+tables before anything is sent. A whole card in one file:
+
+```csv
+path,value
+net.1.node.63.port.1080.in.PortAes67Input.Channels,8
+net.1.node.63.port.1081.in.PortAes67Input.Mode,1080
+net.1.node.63.port.1081.in.PortAes67Input.Selection,2
+net.1.node.63.port.1056.PortType,3
 ```
 
 `--dry-run` compares the file with the live system and sends nothing: safe
@@ -366,13 +391,11 @@ The streams of an AES67 card are a section too:
 
 `"block": 8` links the seven ports after the main one to it, channel 2 to
 8, inputs and outputs (`"linked"` names the ports instead, `"directions":
-["in"]` keeps one side). The request of a link holds the main port (`Mode`)
-and the channel (`Selection`), nothing else. Two limits, both in ADR-0035:
-RRCS does not report a link, so a port counts as done when it uses the
-wanted channel; and the channel count of the main output is not set by the
-tool — it is an edit of a stream in NMOS mode — but reported as missing.
-
-Not covered yet: creating ports.
+["in"]` keeps one side, `"channels"` forces the main's count). The proven
+order is used (ADR-0035): the main's channel count by the round trip
+through manual, inputs linked in two requests, outputs in one. RRCS does
+not report a link, so a port counts as done when it uses the wanted
+channel. Creating the ports first is `import`'s `PortType` row.
 
 ### call — any method of the specification
 

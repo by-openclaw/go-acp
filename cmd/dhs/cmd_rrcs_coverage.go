@@ -97,8 +97,8 @@ var rrcsCatalog = []rrcsMethod{
 	{"GetCommandList", "8.9.2", "read", "walk", "yes"},
 	{"GetPortsCommandLists", "8.9.3", "read", "walk, list keys", "yes"},
 	// §8.10 Configuration changes
-	{"ConfigurationChange", "8.10.1", "write", "configuration-change", "yes: keys, conferences, port edits; an NMOS stream edit stops RRCS"},
-	{"ConfigurationChangeEx", "8.10.1", "write", "configuration-change-ex", "stopped RRCS on an AES67 stream edit; no longer used by set, import, ensure"},
+	{"ConfigurationChange", "8.10.1", "write", "configuration-change", "yes: keys, conferences, port create/edit/delete, links, channel counts; address fields on an NMOS stream stop RRCS (ADR-0035)"},
+	{"ConfigurationChangeEx", "8.10.1", "write", "configuration-change-ex", "stopped RRCS on an AES67 stream edit with address fields; no longer used by set, import, ensure"},
 	{"BufferConfigurationChange", "8.10.2", "write", "buffer-configuration-change", "no"},
 	{"BufferConfigurationChangeEx", "8.10.2", "write", "buffer-configuration-change-ex", "no"},
 	{"ApplyConfigurationChange", "8.10.3", "write", "apply-configuration-change", "no"},

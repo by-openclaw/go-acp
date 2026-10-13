@@ -468,42 +468,6 @@ func TestRRCSEnsureStreams(t *testing.T) {
 		t.Errorf("channels plan missing: %v\n%s", err, out)
 	}
 
-	// The provisioning CSV: same plan as the JSON, the card resolved to
-	// its node by reading the gateway.
-	csvFile := filepath.Join(t.TempDir(), "streams.csv")
-	_ = os.WriteFile(csvFile, []byte(
-		"card,port,rrcs_port,directions,role,protocol,channels,linked_to,linked_to_rrcs_port,channel\n"+
-			"1,-7.49,1072,in+out,main,NMOS,,,,1\n"+
-			"1,-7.50,1073,in+out,linked,NMOS,,-7.49,1072,2\n"+
-			"1,-7.51,1074,in+out,linked,NMOS,,-7.49,1072,3\n"), 0o600)
-	reset()
-	out, err = rrcsStdout(t, func() error {
-		return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", csvFile, "--check"})
-	})
-	if err != nil {
-		t.Fatalf("csv check: %v\n%s", err, out)
-	}
-	rrcsWant(t, out,
-		"net.1.node.61.port.1072.in.PortAes67Input.Channels",
-		"net.1.node.61.port.1073.in.PortAes67Input.Selection", "would change 5, failed 0")
-
-	for name, bad := range map[string]string{
-		"no header":      "x\n",
-		"role":           "card,rrcs_port,role,channel\n1,1072,chief,1\n",
-		"main channel":   "card,rrcs_port,role,channel\n1,1072,main,2\n",
-		"linked no main": "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1073,linked,2,1072\n",
-		"channel gap":    "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1072,main,1,\n1,1073,linked,3,1072\n",
-		"unknown bay":    "card,rrcs_port,role,channel,linked_to_rrcs_port\n9,1072,main,1,\n9,1073,linked,2,1072\n",
-		"not split":      "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1041,main,1,\n1,1042,linked,2,1041\n",
-	} {
-		_ = os.WriteFile(csvFile, []byte(bad), 0o600)
-		if out, err := rrcsStdout(t, func() error {
-			return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", csvFile, "--check"})
-		}); err == nil {
-			t.Errorf("csv %s: accepted\n%s", name, out)
-		}
-	}
-
 	for name, bad := range map[string]string{
 		"direction in main": `{"streams": [{"main": "net.1.node.63.port.1072.in", "block": 8}]}`,
 		"both":              `{"streams": [{"main": "net.1.node.63.port.1072", "block": 8, "linked": ["net.1.node.63.port.1073"]}]}`,

@@ -100,7 +100,7 @@ func rrcsEnsure(ctx context.Context, args []string) error {
 	}
 	fs := flag.NewFlagSet("rrcs ensure", flag.ContinueOnError)
 	fs.Usage = func() {
-		_, _ = fmt.Fprint(fs.Output(), `Usage: dhs consumer rrcs ensure <host>[:port] --file DESIRED.json|STREAMS.csv [--check] [flags]
+		_, _ = fmt.Fprint(fs.Output(), `Usage: dhs consumer rrcs ensure <host>[:port] --file DESIRED.json [--check] [flags]
 
 Brings the gateway to the state a file describes and reports what changed,
 in the contract of every dhs ensure (ADR-0007): run it twice and the second
@@ -133,12 +133,8 @@ channel 2 to 8, inputs and outputs ("linked" names them instead,
 The proven order is used: the main's count by one edit towards manual with
 the count and one back to NMOS with the mode alone, inputs linked in two
 requests, outputs in one. RRCS does not report a link: a port counts as
-done when it uses the wanted channel.
-
-A --file ending in .csv is the stream provisioning table instead, one line
-per port (header: card,rrcs_port,role,channel, optional directions,
-channels,linked_to_rrcs_port): role main or linked, the card resolved to
-its node by reading the gateway once.
+done when it uses the wanted channel. The same links, and the creation of
+a port, also go through export, edit, import: see import.
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
 call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
 momentary or latching. A conference or a group is named by "id" or, to
@@ -151,7 +147,7 @@ Only what the file names is touched. Without --check this WRITES and needs
 		fs.PrintDefaults()
 	}
 	cf := newRRCSFlags(fs)
-	file := fs.String("file", "", "desired-state file: JSON, or the stream provisioning CSV (required)")
+	file := fs.String("file", "", "desired-state file, JSON (required)")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	listen := fs.String("listen", ":8196", "for the levels of crosspoints: local [ip]:port RRCS sends them to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so a file with levels ends the level events of a watch on the same machine until it is started again")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
@@ -161,26 +157,17 @@ Only what the file names is touched. Without --check this WRITES and needs
 		return rrcsValErr("ensure", "want exactly one host[:port] argument")
 	}
 	if *file == "" {
-		return rrcsValErr("ensure", "want --file DESIRED.json or STREAMS.csv")
+		return rrcsValErr("ensure", "want --file DESIRED.json")
 	}
 	raw, err := os.ReadFile(*file)
 	if err != nil {
 		return fmt.Errorf("rrcs ensure: %w", err)
 	}
 	var want rrcsDesired
-	var streamCSV []rrcsStreamCSVRow
-	if strings.HasSuffix(strings.ToLower(*file), ".csv") {
-		// The provisioning CSV of the stream blocks, resolved against
-		// the gateway once it is open.
-		if streamCSV, err = rrcsStreamRowsCSV(raw); err != nil {
-			return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
-		}
-	} else {
-		dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&want); err != nil {
-			return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
-		}
+	dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&want); err != nil {
+		return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
 	}
 
 	// The values, as the rows import takes.
@@ -238,13 +225,6 @@ Only what the file names is touched. Without --check this WRITES and needs
 		return err
 	}
 	defer closeFn()
-	if len(streamCSV) > 0 {
-		streams, err := rrcsStreamsOfCSV(ctx, cf, client, streamCSV)
-		if err != nil {
-			return fmt.Errorf("rrcs ensure: %w", err)
-		}
-		want.Streams = append(want.Streams, streams...)
-	}
 
 	diff := []rrcsDiffEntry{}
 	before, after := map[string]any{}, map[string]any{}
