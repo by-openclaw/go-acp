@@ -308,30 +308,50 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			unchanged++
 			continue
 		}
-		var value codec.Value
-		raw := live.MustRaw(object, block, field)
-		if raw == nil && field == "Mode" && strings.HasPrefix(block, "PortAes67") {
-			// The link: RRCS hides it, so there is no reported value to
-			// take the type from. It is the main port's number.
-			raw = float64(0)
+		// The type comes from the specification's property table first
+		// (it also types what RRCS never reports, like the link), the
+		// reported value's wire type as the fallback.
+		specObject := "portex"
+		if strings.Contains(object, ".card.") {
+			specObject = "client-card"
 		}
-		switch v := raw.(type) {
-		case bool:
+		spec := rrcsSpecFor(specObject, block, field)
+		kind := spec.Type
+		if kind == "" {
+			switch live.MustRaw(object, block, field).(type) {
+			case bool:
+				kind = "bool"
+			case float64:
+				kind = "int"
+			default:
+				kind = "string"
+			}
+		}
+		var value codec.Value
+		switch kind {
+		case "bool":
 			b, err := strconv.ParseBool(strings.ToLower(wanted))
 			if err != nil {
 				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not true or false"})
 				continue
 			}
 			value = codec.Bool(b)
-		case float64:
+		case "int":
 			n, err := strconv.ParseInt(wanted, 10, 32)
 			if err != nil {
 				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not a whole number"})
 				continue
 			}
+			if lo, errLo := strconv.ParseInt(spec.Min, 10, 32); errLo == nil && n < lo {
+				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%d is below the specification's minimum %s", n, spec.Min)})
+				continue
+			}
+			if hi, errHi := strconv.ParseInt(spec.Max, 10, 32); errHi == nil && n > hi {
+				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%d is above the specification's maximum %s", n, spec.Max)})
+				continue
+			}
 			value = codec.Int(int32(n))
-		default:
-			_ = v
+		default: // string, ip
 			value = codec.String(wanted)
 		}
 		p := plans[object]
