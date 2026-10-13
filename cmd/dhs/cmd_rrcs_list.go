@@ -270,7 +270,7 @@ func rrcsList(ctx context.Context, args []string) error {
 		}
 		rows = out
 	case "streams":
-		header = []string{"PATH", "DIR", "NUMBER", "OID", "ROLE", "LABEL", "LONG NAME", "MODE", "CH", "SEL", "MULTICAST", "MULTICAST 2", "SOURCE", "BITS", "PTIME", "PT"}
+		header = []string{"PATH", "DIR", "NUMBER", "OID", "ROLE", "LABEL", "LONG NAME", "PROTOCOL", "CH", "SEL", "MULTICAST", "MULTICAST 2", "SOURCE", "BITS", "PTIME", "PT"}
 		var out []*rrcsStream
 		for _, p := range m.Ports {
 			if !flt.port(p) {
@@ -278,7 +278,7 @@ func rrcsList(ctx context.Context, args []string) error {
 			}
 			for _, st := range rrcsStreams(p) {
 				out = append(out, st)
-				cells = append(cells, []string{st.Port, st.Direction, st.Number, strconv.Itoa(st.ObjectID), st.Role, st.Label, st.LongName, st.Mode,
+				cells = append(cells, []string{st.Port, st.Direction, st.Number, strconv.Itoa(st.ObjectID), st.Role, st.Label, st.LongName, st.Protocol,
 					strconv.Itoa(st.Channels), strconv.Itoa(st.Selection), st.Multicast, st.Multicast2, st.Source,
 					strconv.Itoa(st.BitDepth), strconv.Itoa(st.PacketTime), strconv.Itoa(st.PayloadType)})
 			}
@@ -604,7 +604,7 @@ type rrcsStream struct {
 	Role     string `json:"role"` // receiver | sender
 	Label    string `json:"label"`
 	LongName string `json:"long_name"`
-	Mode     string `json:"mode"`
+	Protocol string `json:"protocol"`
 	// Selection is the channel of the stream this port uses (§8.10.4.6).
 	// Above 1 it is a channel of the stream of another port: RRCS does
 	// not report which one (Mode, the port it is linked to, is write-only).
@@ -627,9 +627,9 @@ func rrcsStreams(p *rrcsPort) []*rrcsStream {
 		if a == nil {
 			continue
 		}
-		mode := map[int]string{2: "Manual", 3: "RTSP", 5: "NMOS"}[jInt(a, "Protocol")]
-		if mode == "" {
-			mode = strconv.Itoa(jInt(a, "Protocol"))
+		protocol := map[int]string{2: "Manual", 3: "RTSP", 5: "NMOS"}[jInt(a, "Protocol")]
+		if protocol == "" {
+			protocol = strconv.Itoa(jInt(a, "Protocol"))
 		}
 		direction := map[string]string{"receiver": "in", "sender": "out"}[side.role]
 		number := ""
@@ -637,7 +637,7 @@ func rrcsStreams(p *rrcsPort) []*rrcsStream {
 			number = "-7." + strconv.Itoa(p.Port-1023)
 		}
 		st := &rrcsStream{Port: p.Path, Direction: direction, Number: number, ObjectID: p.ObjectID, LongName: p.LongName,
-			Selection: jInt(a, "Selection"), Role: side.role, Label: p.Label, Mode: mode,
+			Selection: jInt(a, "Selection"), Role: side.role, Label: p.Label, Protocol: protocol,
 			Multicast:  jStr(a, "Multicast") + ":" + strconv.Itoa(jInt(a, "MulticastPort")),
 			Multicast2: jStr(a, "Multicast2") + ":" + strconv.Itoa(jInt(a, "MulticastPort2")),
 			Channels:   jInt(a, "Channels"), BitDepth: jInt(a, "BitDepth"),

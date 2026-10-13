@@ -7,7 +7,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"dhs/internal/consumer"
@@ -364,5 +366,136 @@ func TestRRCSSpecMeta(t *testing.T) {
 	cmd := rrcsRowsOf("h", "call-to-port-cmd", "x.cmd", 2, map[string]any{"Monitoring": float64(2)})[0]
 	if cmd.Kind != "enum" || cmd.ValueName != "Always Off" {
 		t.Errorf("Monitoring row: %+v", cmd)
+	}
+}
+
+// Stream rows through import follow the proven order of 2026-10-13: an
+// input links in two requests, an output in one, a channel count on an
+// NMOS stream by the manual round trip; Mode is accepted although RRCS
+// never reports it, and a Mode row whose Selection is already right
+// sends nothing.
+func TestRRCSImportStreams(t *testing.T) {
+	type state struct{ proto, ch, sel int32 }
+	var mu sync.Mutex
+	ports := map[string]*state{}
+	var sent []codec.Value
+	at := func(port int32, in bool) *state {
+		k := strconv.Itoa(int(port)) + "/out"
+		if in {
+			k = strconv.Itoa(int(port)) + "/in"
+		}
+		if ports[k] == nil {
+			ports[k] = &state{proto: 5, ch: 1, sel: 1}
+		}
+		return ports[k]
+	}
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		k := call.Params[0]
+		switch call.Method {
+		case "GetPort":
+			s := at(call.Params[3].Int, call.Params[4].Bool)
+			block := "PortAes67Output"
+			if call.Params[4].Bool {
+				block = "PortAes67Input"
+			}
+			return codec.Array(k, codec.Int(0), codec.Struct(rrcsMember("LongName", codec.String("P")),
+				rrcsMember(block, codec.Struct(rrcsMember("Protocol", codec.Int(s.proto)),
+					rrcsMember("Channels", codec.Int(s.ch)), rrcsMember("Selection", codec.Int(s.sel)))))), true
+		case "ConfigurationChange":
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			sent = append(sent, sp)
+			addr, _ := sp.Field("PortAddress")
+			in := rrcsFieldBool(addr, "IsInput")
+			block := "PortAes67Output"
+			if in {
+				block = "PortAes67Input"
+			}
+			b, _ := sp.Field(block)
+			s := at(int32(rrcsMemberInt(addr, "Port")), in)
+			if v, ok := b.Field("Protocol"); ok {
+				s.proto = v.Int
+			}
+			if v, ok := b.Field("Channels"); ok {
+				s.ch = v.Int
+			}
+			if v, ok := b.Field("Selection"); ok {
+				s.sel = v.Int
+			}
+			return k, true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "streams.csv")
+	_ = os.WriteFile(file, []byte("path,value\n"+
+		"net.1.node.63.port.1072.in.PortAes67Input.Channels,8\n"+
+		"net.1.node.63.port.1073.in.PortAes67Input.Mode,1072\n"+
+		"net.1.node.63.port.1073.in.PortAes67Input.Selection,2\n"+
+		"net.1.node.63.port.1073.out.PortAes67Output.Mode,1072\n"+
+		"net.1.node.63.port.1073.out.PortAes67Output.Selection,2\n"), 0o600)
+
+	// Dry run: five rows planned, nothing sent.
+	dry := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
+	rrcsWant(t, dry, "would_apply net.1.node.63.port.1072.in.PortAes67Input.Channels",
+		"would_apply net.1.node.63.port.1073.in.PortAes67Input.Mode",
+		"(not reported) -> 1072", "would apply 5,")
+	mu.Lock()
+	if len(sent) != 0 {
+		t.Fatalf("--dry-run sent %d requests", len(sent))
+	}
+	mu.Unlock()
+
+	// The write: round trip on the main, split input, combined output.
+	done := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, done, "applied 5,", "failed 0")
+	mu.Lock()
+	names := func(sp codec.Value) string {
+		addr, _ := sp.Field("PortAddress")
+		block := "PortAes67Output"
+		if rrcsFieldBool(addr, "IsInput") {
+			block = "PortAes67Input"
+		}
+		b, _ := sp.Field(block)
+		var out []string
+		for _, m := range b.Members {
+			out = append(out, m.Name)
+		}
+		return strconv.Itoa(rrcsMemberInt(addr, "Port")) + "/" + strings.Join(out, "+")
+	}
+	want := []string{"1072/Protocol+Channels", "1072/Protocol", "1073/Mode", "1073/Selection", "1073/Mode+Selection"}
+	if len(sent) != len(want) {
+		t.Fatalf("%d requests, want %d", len(sent), len(want))
+	}
+	for i, w := range want {
+		if got := names(sent[i]); got != w {
+			t.Errorf("request %d: %s, want %s", i, got, w)
+		}
+	}
+	if s := at(1072, true); s.proto != 5 || s.ch != 8 {
+		t.Errorf("main after the run: protocol %d channels %d", s.proto, s.ch)
+	}
+	mu.Unlock()
+
+	// A second run: the Selection rows read back right, the Mode rows
+	// alone send nothing.
+	again := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, again, "applied 0,", "failed 0")
+	mu.Lock()
+	if len(sent) != len(want) {
+		t.Errorf("a second import sent %d more request(s)", len(sent)-len(want))
+	}
+	mu.Unlock()
+
+	// A link row beside another stream field on the same port: refused.
+	_ = os.WriteFile(file, []byte("path,value\n"+
+		"net.1.node.63.port.1074.out.PortAes67Output.Mode,1072\n"+
+		"net.1.node.63.port.1074.out.PortAes67Output.Selection,3\n"+
+		"net.1.node.63.port.1074.out.PortAes67Output.Channels,2\n"), 0o600)
+	out, err := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	if err == nil || !strings.Contains(out, "no further property than Selection") {
+		t.Errorf("link beside another field: %v\n%s", err, out)
 	}
 }

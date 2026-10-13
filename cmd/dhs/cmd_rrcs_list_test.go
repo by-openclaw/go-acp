@@ -204,12 +204,12 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap, "--match", "group"), "1 keys")
 	rrcsWant(t, rrcsRun(t, "list", "keys", "--from", snap, "--type", "4-wire"), "1 keys")
 	rrcsWant(t, rrcsRun(t, "list", "streams", "--from", snap), "3 streams",
-		"net.1.node.61.port.7.out  out          101  sender    O.-7   Out seven  Manual  1   0    239.1.2.3:5004",
-		"net.1.node.61.port.1041   in   -7.18   103  receiver  CODEC  Codec IP   NMOS    1   0    0.0.0.0:5004    0.0.0.0:5004  10.0.0.9  24    1000   97",
+		"net.1.node.61.port.7.out  out          101  sender    O.-7   Out seven  Manual    1   0    239.1.2.3:5004",
+		"net.1.node.61.port.1041   in   -7.18   103  receiver  CODEC  Codec IP   NMOS      1   0    0.0.0.0:5004    0.0.0.0:5004  10.0.0.9  24    1000   97",
 		"sender    CODEC  Codec IP   9 ")
 	// The same rows as CSV, with the columns named as in the JSON.
 	rrcsWant(t, rrcsRun(t, "list", "streams", "--from", snap, "--output", "csv"),
-		"path,dir,number,oid,role,label,long_name,mode,ch,sel,multicast,multicast_2,source,bits,ptime,pt",
+		"path,dir,number,oid,role,label,long_name,protocol,ch,sel,multicast,multicast_2,source,bits,ptime,pt",
 		"net.1.node.61.port.1041,in,-7.18,103,receiver,CODEC,Codec IP,NMOS,1,0,0.0.0.0:5004,0.0.0.0:5004,10.0.0.9,24,1000,97")
 	rrcsWant(t, rrcsRun(t, "list", "streams", "--from", snap, "--type", "output"), "1 streams")
 	rrcsWant(t, rrcsRun(t, "list", "sources", "--from", snap), "1  net.1.node.61.port.7.in", "3 sources")

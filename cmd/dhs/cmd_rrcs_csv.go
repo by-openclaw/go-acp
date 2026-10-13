@@ -247,6 +247,9 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		change *rrcsChange
 		items  []*rrcsApplied
 		object string
+		// steps are the requests actually sent, in order: the stream
+		// rules split or join an object's rows (rrcsStreamSteps).
+		steps []*rrcsChange
 		// refused is why the change is not sent at all.
 		refused string
 	}
@@ -279,8 +282,14 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		}
 		now, ok := current(live, object, block, field)
 		if !ok {
-			skips = append(skips, rrcsSkip{"not_on_device", row.Path, "the live system reports no such value"})
-			continue
+			if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+				// The link: RRCS accepts it and never reports it. The
+				// Selection beside it is the read-back.
+				now = "(not reported)"
+			} else {
+				skips = append(skips, rrcsSkip{"not_on_device", row.Path, "the live system reports no such value"})
+				continue
+			}
 		}
 		// An enum row may carry the word alone.
 		wanted := row.Value
@@ -339,11 +348,34 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		applied = append(applied, item)
 	}
 
-	// An edit that would stop RRCS is refused in the dry run as well.
+	// The stream rules shape each object's rows into the requests the
+	// hardware takes (split, joined, or the channel-count round trip);
+	// an edit that would stop RRCS is refused in the dry run as well.
+	kept := order[:0]
 	for _, p := range order {
 		props, _ := live.Lookup(p.object)
-		if block := p.change.nmosStream(props); block != "" {
-			p.refused = block + ": " + rrcsNMOSRefusal
+		steps, drop, refusal := rrcsStreamSteps(p.object, p.change, props)
+		if drop {
+			// A link row whose Selection is already right: the link is
+			// taken as in place (RRCS never reports it); nothing to send.
+			for _, it := range p.items {
+				it.Result = "unchanged"
+			}
+			unchanged += len(p.items)
+			applied = rrcsWithout(applied, p.items)
+			continue
+		}
+		kept = append(kept, p)
+		p.steps = steps
+		if refusal == "" {
+			for _, s := range steps {
+				if block := s.nmosStream(props); block != "" {
+					refusal = block + ": " + rrcsNMOSRefusal
+				}
+			}
+		}
+		if refusal != "" {
+			p.refused = refusal
 			for _, it := range p.items {
 				it.Result, it.Error = "refused", p.refused
 			}
@@ -352,6 +384,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			}
 		}
 	}
+	order = kept
 
 	if !dryRun && len(order) > 0 {
 		for _, p := range order {
@@ -361,8 +394,13 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			result, text := "applied", ""
 			if p.refused != "" {
 				result, text = "refused", p.refused
-			} else if _, err := client.Call(ctx, rrcsChangeMethod, p.change.request()); err != nil {
-				result, text = "failed", err.Error()
+			} else {
+				for _, step := range p.steps {
+					if _, err := client.Call(ctx, rrcsChangeMethod, step.request()); err != nil {
+						result, text = "failed", err.Error()
+						break
+					}
+				}
 			}
 			for _, it := range p.items {
 				it.Result, it.Error = result, text
@@ -379,6 +417,11 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 				continue
 			}
 			object, block, field, _ := rrcsSplitPath(it.Path)
+			if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+				// Accepted and never reported back: the Selection row of
+				// the same port is the read-back of the link.
+				continue
+			}
 			if now, _ := current(after, object, block, field); now != it.Wanted {
 				it.Result, it.Error = "not_taken", "RRCS accepted the request and still reports "+now
 				failed++
@@ -503,4 +546,94 @@ skipped and listed.
 		return fmt.Errorf("rrcs import: %d value(s) failed", failed)
 	}
 	return nil
+}
+
+// rrcsWithout removes the given items from the applied list.
+func rrcsWithout(applied []*rrcsApplied, drop []*rrcsApplied) []*rrcsApplied {
+	skip := map[*rrcsApplied]bool{}
+	for _, it := range drop {
+		skip[it] = true
+	}
+	kept := applied[:0]
+	for _, it := range applied {
+		if !skip[it] {
+			kept = append(kept, it)
+		}
+	}
+	return kept
+}
+
+// rrcsStreamSteps shapes one object's rows into the requests the stream
+// rules demand, proven on production on 2026-10-13:
+//
+//   - a link: Mode alone then Selection alone on an input; Mode and
+//     Selection in ONE request on an output; nothing else beside them;
+//   - a link whose Selection row is absent (already right): nothing is
+//     sent, the link is taken as in place — RRCS never reports it;
+//   - a channel count on a stream in NMOS mode: towards manual with the
+//     count, then back to NMOS with the mode alone;
+//   - anything else: the change as it is, under the NMOS guard.
+func rrcsStreamSteps(object string, c *rrcsChange, props map[string]any) (steps []*rrcsChange, drop bool, refused string) {
+	blk := ""
+	for _, b := range []string{"PortAes67Input", "PortAes67Output"} {
+		if _, ok := c.blocks[b]; ok {
+			blk = b
+		}
+	}
+	if blk == "" {
+		return []*rrcsChange{c}, false, ""
+	}
+	var mode, sel *codec.Member
+	named := map[string]codec.Value{}
+	for i := range c.blocks[blk] {
+		m := &c.blocks[blk][i]
+		named[m.Name] = m.Value
+		switch m.Name {
+		case "Mode":
+			mode = m
+		case "Selection":
+			sel = m
+		}
+	}
+	one := func(members ...codec.Member) *rrcsChange {
+		step, err := rrcsChangeFor(object)
+		if err != nil {
+			return nil
+		}
+		for _, m := range members {
+			if step.add(blk+"."+m.Name, m.Value) != nil {
+				return nil
+			}
+		}
+		return step
+	}
+	if mode != nil {
+		if len(c.order) > 1 || len(c.blocks[blk]) > 2 {
+			return nil, false, "a link write carries Mode and Selection and nothing else (RRCS: when linking, no further property than Selection)"
+		}
+		if sel == nil {
+			return nil, true, ""
+		}
+		if strings.HasSuffix(object, ".in") {
+			return []*rrcsChange{one(*mode), one(*sel)}, false, ""
+		}
+		return []*rrcsChange{one(*mode, *sel)}, false, ""
+	}
+	ch, hasCh := named["Channels"]
+	proto, hasProto := named["Protocol"]
+	if hasCh && len(c.order) == 1 && jInt(jMap(props[blk]), "Protocol") == 5 && (!hasProto || proto.Int == 5) {
+		others := 0
+		for name := range named {
+			if name != "Channels" && name != "Protocol" {
+				others++
+			}
+		}
+		if others == 0 {
+			return []*rrcsChange{
+				one(codec.Member{Name: "Protocol", Value: codec.Int(2)}, codec.Member{Name: "Channels", Value: ch}),
+				one(codec.Member{Name: "Protocol", Value: codec.Int(5)}),
+			}, false, ""
+		}
+	}
+	return []*rrcsChange{c}, false, ""
 }

@@ -84,9 +84,11 @@ var Enums = map[string]map[int]string{
 var Writable = map[string]map[string]bool{
 	"PortAes67Input": {"Protocol": true, "Multicast": true, "MulticastPort": true, "Multicast2": true, "MulticastPort2": true,
 		"SourceIp": true, "SourceIp2": true, "RTSPUri": true, "RTSPUri2": true,
-		"Channels": true, "BitDepth": true, "PacketTime": true, "PayloadType": true},
+		"Channels": true, "BitDepth": true, "PacketTime": true, "PayloadType": true,
+		"Mode": true, "Selection": true},
 	"PortAes67Output": {"Protocol": true, "Multicast": true, "MulticastPort": true, "Multicast2": true, "MulticastPort2": true,
-		"Channels": true, "BitDepth": true, "PacketTime": true, "PayloadType": true},
+		"Channels": true, "BitDepth": true, "PacketTime": true, "PayloadType": true,
+		"Mode": true, "Selection": true},
 	"Ptp":     {"PTP": true, "PtpPriority": true, "PtpPriority2": true, "PtpMode": true, "PtpAnnounceInterval": true},
 	"Nmos":    {"Enable": true, "RegistrationMode": true, "RegistrationIp": true, "RegistrationPort": true},
 	"Media_1": {"IpAddress": true, "DefaultGateway": true},
