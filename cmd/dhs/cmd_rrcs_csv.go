@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -350,8 +351,32 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%d is above the specification's maximum %s", n, spec.Max)})
 				continue
 			}
+			// Where the complete set of values is known, membership is
+			// checked too (Protocol is 2, 3 or 5 — not 4). The curated
+			// enums are complete by definition; a printed list counts
+			// only when its keys form one unbroken run, since the
+			// specification abbreviates longer scales with dots.
+			if words, known := rrcsEnums[field]; known {
+				if _, ok := words[int(n)]; !ok {
+					skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not one of its values"})
+					continue
+				}
+			} else if allowed, complete := rrcsEnumSet(spec.Enum); complete && !allowed[n] {
+				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not one of the specification's values (" + spec.Enum + ")"})
+				continue
+			}
 			value = codec.Int(int32(n))
-		default: // string, ip
+		case "ip":
+			if net.ParseIP(wanted) == nil {
+				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not an IP address"})
+				continue
+			}
+			value = codec.String(wanted)
+		default: // string
+			if max, err := strconv.Atoi(spec.MaxLen); err == nil && len(wanted) > max {
+				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%q is longer than the specification's %s characters", wanted, spec.MaxLen)})
+				continue
+			}
 			value = codec.String(wanted)
 		}
 		p := plans[object]
@@ -662,4 +687,32 @@ func rrcsStreamSteps(object string, c *rrcsChange, props map[string]any) (steps 
 		}
 	}
 	return []*rrcsChange{c}, false, ""
+}
+
+// rrcsEnumSet reads a printed value list ("1=Auto|2=Momentary|3=Latching")
+// into the allowed numbers. complete is false where the specification
+// prints only some values of a wider scale (the dots of its tables),
+// told apart the way export tells an enum from a hinted range: every key
+// numeric and the keys forming one unbroken run.
+func rrcsEnumSet(enum string) (allowed map[int64]bool, complete bool) {
+	if enum == "" {
+		return nil, false
+	}
+	allowed = map[int64]bool{}
+	lo, hi := int64(0), int64(0)
+	for _, item := range strings.Split(enum, "|") {
+		numberText, _, _ := strings.Cut(item, "=")
+		n, err := strconv.ParseInt(numberText, 10, 32)
+		if err != nil {
+			return nil, false
+		}
+		if len(allowed) == 0 || n < lo {
+			lo = n
+		}
+		if len(allowed) == 0 || n > hi {
+			hi = n
+		}
+		allowed[n] = true
+	}
+	return allowed, len(allowed) > 0 && hi-lo+1 == int64(len(allowed))
 }

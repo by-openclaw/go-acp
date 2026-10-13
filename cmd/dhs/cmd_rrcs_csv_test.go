@@ -503,3 +503,22 @@ func TestRRCSImportStreams(t *testing.T) {
 		t.Errorf("link beside another field: %v\n%s", err, out)
 	}
 }
+
+// The dry run catches what the write would otherwise learn from RRCS:
+// out of range, not one of the values, a bad address, a label too long.
+func TestRRCSImportValidation(t *testing.T) {
+	f, changes := rrcsSetFake(t, true)
+	file := filepath.Join(t.TempDir(), "bad.csv")
+	_ = os.WriteFile(file, []byte("path,value\n"+
+		"net.1.node.61.port.7.out.PortAes67Output.Channels,20\n"+ // 1..16
+		"net.1.node.61.port.7.out.PortAes67Output.Protocol,4\n"+ // 2|3|5
+		"net.1.node.61.port.7.out.PortAes67Output.Multicast,not-an-ip\n"), 0o600)
+	out, _ := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	rrcsWant(t, out, "above the specification's maximum 16", "not one of its values",
+		"not an IP address", "would apply 0,")
+	if len(*changes) != 0 {
+		t.Fatalf("validation sent %d changes", len(*changes))
+	}
+}
