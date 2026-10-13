@@ -1,0 +1,57 @@
+---
+# One node of cerebrum-iprouting-collect.yml. `cic_node` is {label, subid}.
+# Two reads: the devices of the slot, then every device's senders and
+# receivers in one call.
+
+- name: "{{ cic_node.label }} — devices of slot {{ cic_node.subid }}"
+  ansible.builtin.command:
+    argv: "{{ cic_objects + ['--read', cic_node.subid ~ ' Devices'] }}"
+  environment:
+    DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+    DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  register: cic_devs
+  changed_when: false
+
+- name: "{{ cic_node.label }} — the slot is there"
+  ansible.builtin.assert:
+    that: cic_devs.stdout.split(cic_tab)[2] == 'table'
+    fail_msg: "{{ cic_node.label }}: slot {{ cic_node.subid }} holds no device table — is the node on its slot? ({{ cic_devs.stdout }})"
+    quiet: true
+
+- name: "{{ cic_node.label }} — senders and receivers of each device"
+  ansible.builtin.command:
+    argv: >-
+      {%- set out = cic_objects | list -%}
+      {%- for d in cic_devs.stdout.split(cic_tab)[4].split(',') if d -%}
+      {%- set _ = out.extend(['--read', cic_node.subid ~ ' Devices.[' ~ d ~ '].Senders', '--read', cic_node.subid ~ ' Devices.[' ~ d ~ '].Receivers']) -%}
+      {%- endfor -%}
+      {{ out }}
+  environment:
+    DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+    DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  register: cic_res
+  changed_when: false
+
+- name: "{{ cic_node.label }} — one CSV: slot, device, kind, name"
+  ansible.builtin.copy:
+    content: |
+      slot,device,kind,name
+      {% for line in cic_res.stdout_lines %}
+      {% set f = line.split(cic_tab) %}
+      {% set device = f[1].split('.[', 1)[1].rsplit('].', 1)[0] %}
+      {% set kind = 'sender' if f[1].endswith('.Senders') else 'receiver' %}
+      {% for name in (f[4] | default('')).split(',') if name %}
+      {{ f[0] }},{{ device }},{{ kind }},{{ name }}
+      {% endfor %}
+      {% endfor %}
+    dest: "{{ cic_dir }}/{{ cic_node.label | regex_replace('[^A-Za-z0-9._-]', '_') }}.csv"
+    mode: "0644"
+  register: cic_file
+
+- name: "{{ cic_node.label }}"
+  ansible.builtin.debug:
+    msg: >-
+      slot {{ cic_node.subid }}: {{ cic_devs.stdout.split(cic_tab)[3] }} device(s),
+      {{ cic_res.stdout_lines | select('search', '\.Senders\t') | map('split', cic_tab) | map(attribute=3) | map('int') | sum }} sender(s),
+      {{ cic_res.stdout_lines | select('search', '\.Receivers\t') | map('split', cic_tab) | map(attribute=3) | map('int') | sum }} receiver(s)
+      -> {{ cic_file.dest }}{{ ' (changed)' if cic_file is changed else ' (unchanged)' }}
