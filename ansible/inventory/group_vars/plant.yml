@@ -90,6 +90,43 @@ cerebrum_routemaster:
       - {mnemonic: "FUSION CH4", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 300"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 310"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 320"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 350"}}}}
       - {mnemonic: "FUSION CH6", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 500"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 510"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 520"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 550"}}}}
       - {mnemonic: "FUSION CH8", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 700"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 710"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 720"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 750"}}}}
+  # Alternate mnemonics, generated 2026-10-14: one line per resource, the
+  # fields of the plant. Applied only for the fields named in
+  # `alternate_fields` (they are created in Cerebrum: Tally and Router Config
+  # View > Alternate Mnemonics; neither API creates them). Ordinary is left
+  # blank: Cerebrum then shows the mnemonic itself.
+  alternate_fields: []
+  alternates:
+    sources:
+      "CONVERT 1": {Eng: "CONVERT OUT 1", Tech: "CONV-SRC-1", Operational: "CNV1", Intercom: "CNV1"}
+      "CONVERT 2": {Eng: "CONVERT OUT 2", Tech: "CONV-SRC-2", Operational: "CNV2", Intercom: "CNV2"}
+      "SHUFFLER 1": {Eng: "Shuffler OUT 1", Tech: "SHUF-SRC-1", Operational: "SHF1", Intercom: "SHF1"}
+      "SHUFFLER 2": {Eng: "Shuffler OUT 2", Tech: "SHUF-SRC-2", Operational: "SHF2", Intercom: "SHF2"}
+      "VIEW OUT 1": {Eng: "Neuron VIEW OUT 1", Tech: "VIEW-SRC-1", Operational: "VWO1", Intercom: "VWO1"}
+      "VIEW OUT 2": {Eng: "Neuron VIEW OUT 2", Tech: "VIEW-SRC-2", Operational: "VWO2", Intercom: "VWO2"}
+      "VIEW OUT 3": {Eng: "Neuron VIEW OUT 3", Tech: "VIEW-SRC-3", Operational: "VWO3", Intercom: "VWO3"}
+      "VIEW OUT 4": {Eng: "Neuron VIEW OUT 4", Tech: "VIEW-SRC-4", Operational: "VWO4", Intercom: "VWO4"}
+      "VIEW OUT 5": {Eng: "Neuron VIEW OUT 5", Tech: "VIEW-SRC-5", Operational: "VWO5", Intercom: "VWO5"}
+      "VIEW OUT 6": {Eng: "Neuron VIEW OUT 6", Tech: "VIEW-SRC-6", Operational: "VWO6", Intercom: "VWO6"}
+      "VIEW OUT 7": {Eng: "Neuron VIEW OUT 7", Tech: "VIEW-SRC-7", Operational: "VWO7", Intercom: "VWO7"}
+      "VIEW OUT 8": {Eng: "Neuron VIEW OUT 8", Tech: "VIEW-SRC-8", Operational: "VWO8", Intercom: "VWO8"}
+    destinations:
+      "CONVERT 1": {Eng: "CONVERT IN 1", Tech: "CONV-DST-1", Operational: "CNV1", Intercom: "CNV1"}
+      "CONVERT 2": {Eng: "CONVERT IN 2", Tech: "CONV-DST-2", Operational: "CNV2", Intercom: "CNV2"}
+      "SHUFFLER 1": {Eng: "Shuffler IN 1", Tech: "SHUF-DST-1", Operational: "SHF1", Intercom: "SHF1"}
+      "SHUFFLER 2": {Eng: "Shuffler IN 2", Tech: "SHUF-DST-2", Operational: "SHF2", Intercom: "SHF2"}
+      "VIEW 1": {Eng: "Neuron VIEW IN 1", Tech: "VIEW-DST-1", Operational: "VIEW1", Intercom: "VIEW1"}
+      "VIEW 2": {Eng: "Neuron VIEW IN 2", Tech: "VIEW-DST-2", Operational: "VIEW2", Intercom: "VIEW2"}
+      "VIEW 3": {Eng: "Neuron VIEW IN 3", Tech: "VIEW-DST-3", Operational: "VIEW3", Intercom: "VIEW3"}
+      "VIEW 4": {Eng: "Neuron VIEW IN 4", Tech: "VIEW-DST-4", Operational: "VIEW4", Intercom: "VIEW4"}
+      "FUSION CH2": {Eng: "FusioN IN CH2", Tech: "FUSI-DST-2", Operational: "FUS2", Intercom: "FUS2"}
+      "FUSION CH4": {Eng: "FusioN IN CH4", Tech: "FUSI-DST-4", Operational: "FUS4", Intercom: "FUS4"}
+      "FUSION CH6": {Eng: "FusioN IN CH6", Tech: "FUSI-DST-6", Operational: "FUS6", Intercom: "FUS6"}
+      "FUSION CH8": {Eng: "FusioN IN CH8", Tech: "FUSI-DST-8", Operational: "FUS8", Intercom: "FUS8"}
+    virtuals:
+      "Proc Video": {Eng: "Proc Video (virtual)", Tech: "VIRT-VIDEO", Operational: "P-Video", Intercom: "PVideo"}
+      "Proc Audio": {Eng: "Proc Audio (virtual)", Tech: "VIRT-AUDIO", Operational: "P-Audio", Intercom: "PAudio"}
+      "Proc ANC": {Eng: "Proc ANC (virtual)", Tech: "VIRT-ANC", Operational: "P-ANC", Intercom: "PANC"}
   # Categories (operator, 2026-10-14), written over northbound. `kind` is
   # source or destination; `members` are resources by mnemonic; `items`
   # are the other slot kinds northbound knows: text, category (a
