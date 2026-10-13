@@ -52,7 +52,30 @@
     rcp_federation_optional: "{{ cerebrum_routemaster.federation_optional | default(true) }}"
     rcp_prune: "{{ cerebrum_routemaster.prune | default(false) }}"
     rcp_levels: "{{ cerebrum_routemaster.levels | default([]) }}"
-    rcp_plan: "{{ cerebrum_routemaster.plan | default({}) }}"
+    # The alternate mnemonics of the inventory join the plan for the fields
+    # Cerebrum has (cerebrum_routemaster.alternate_fields); a field that
+    # does not exist is refused by the server, so none is sent until named.
+    rcp_alt_fields: "{{ cerebrum_routemaster.alternate_fields | default([]) }}"
+    rcp_alternates: "{{ cerebrum_routemaster.alternates | default({}) }}"
+    rcp_plan: >-
+      {%- set plan = cerebrum_routemaster.plan | default({}) -%}
+      {%- set out = {} -%}
+      {%- for key, ios in plan.items() -%}
+      {%- if key in ['sources', 'destinations', 'virtuals'] -%}
+      {%- set merged = [] -%}
+      {%- for io in ios -%}
+      {%- set alts = {} -%}
+      {%- for name, value in (rcp_alternates.get(key, {}).get(io.mnemonic, {})).items() if name in rcp_alt_fields -%}
+      {%- set _ = alts.update({name: value}) -%}
+      {%- endfor -%}
+      {%- set _ = merged.append(io | combine({'alternateMnemonics': alts}) if alts else io) -%}
+      {%- endfor -%}
+      {%- set _ = out.update({key: merged}) -%}
+      {%- else -%}
+      {%- set _ = out.update({key: ios}) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ out }}
     rcp_categories: "{{ cerebrum_routemaster.categories | default([]) }}"
     rcp_dir: /root/rcp-provision
     rcp_env:
