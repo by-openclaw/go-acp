@@ -379,3 +379,15 @@ func TestRRCSAtomicReads(t *testing.T) {
 		t.Errorf("get of a port sent %s", got)
 	}
 }
+
+// The CSV table also comes from a live gateway, not only from a file.
+func TestRRCSListCSVLive(t *testing.T) {
+	f := newRRCSFake(t, rrcsTreeAnswer)
+	out := rrcsRun(t, "list", "streams", f.addr(), "--output", "csv")
+	rrcsWant(t, out, "path,dir,number,oid,role,label,long_name,protocol,ch,sel", ",receiver,CODEC,Codec IP,NMOS,")
+	if _, err := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"info", f.addr(), "--output", "csv"})
+	}); err == nil {
+		t.Error("info accepted --output csv")
+	}
+}

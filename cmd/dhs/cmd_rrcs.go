@@ -221,8 +221,12 @@ func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
 
 // open builds the client and, with --capture, the recorder behind its tap.
 func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), error) {
-	if c.output != "text" && c.output != "json" {
-		return nil, nil, nil, rrcsValErr(verb, "--output must be text or json")
+	switch {
+	case c.output == "text" || c.output == "json":
+	case c.output == "csv" && (verb == "list" || verb == "watch"):
+		// The two verbs whose tables exist as CSV, live as from a file.
+	default:
+		return nil, nil, nil, rrcsValErr(verb, "--output must be text or json (list and watch also take csv)")
 	}
 	// --verbose is the shortcut every dhs connector has for debug.
 	if c.verbose && c.logLevel == "info" {
