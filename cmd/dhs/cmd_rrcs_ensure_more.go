@@ -276,10 +276,17 @@ func (c *rrcsFlags) logChanges(ctx context.Context, verb, target string, dryRun 
 // and so on. Both directions of each port are done unless "directions"
 // says ["in"] or ["out"].
 //
-// What the tool does is the link: Mode (the main port) and Selection (the
-// channel), nothing else in the request (§8.10.4.6). What it does not do
-// is give the main output its channel count: that is an edit of a stream
-// in NMOS mode, which stops RRCS (ADR-0035); it is reported as not done.
+// The procedure is the one proven on a production RRCS 9.0 on 2026-10-13
+// (block 2 of card 4), in this order per direction:
+//
+//  0. the main port carries the channels: where its count is short, one
+//     edit towards manual WITH the count, then back to NMOS with the
+//     mode alone — the one NMOS edit that is proven safe;
+//  1. an INPUT links in two requests: Mode alone, then Selection alone;
+//  2. an OUTPUT links in ONE request, Mode and Selection together — a
+//     split request is refused both ways (the old Selection collides
+//     with channel 1 of the main; a Selection without the link exceeds
+//     the stream size).
 //
 // RRCS never reports Mode. A linked port is taken as done when its
 // Selection is the wanted channel: the tool cannot see more.
@@ -288,12 +295,52 @@ type rrcsDesiredStream struct {
 	Block      int      `json:"block,omitempty"`
 	Linked     []string `json:"linked,omitempty"`
 	Directions []string `json:"directions,omitempty"`
+	// Channels is the channel count the main port must carry. Given (the
+	// CSV gives it), it is the exact target; absent, the linked ports
+	// plus one is the minimum and a larger main is left alone.
+	Channels int `json:"channels,omitempty"`
 }
 
-// rrcsEnsureStreams links the ports of each stream to its main port.
+// rrcsEnsureStreams brings each stream block to its wanted shape: the
+// main port's channel count, then the links.
 func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, streams []rrcsDesiredStream, check bool) (diff []rrcsDiffEntry, failures []rrcsEnsureFailure) {
 	fail := func(field, reason string) {
 		failures = append(failures, rrcsEnsureFailure{Field: field, Reason: reason})
+	}
+	// send delivers one ConfigurationChange and says whether the run may
+	// go on: a refusal is an answer, a connection that drops is not one
+	// to repeat on the next port.
+	stopped := false
+	send := func(field, what string, change *rrcsChange) bool {
+		if stopped {
+			return false
+		}
+		cf.say("rrcs ensure: %s edit portex %s", rrcsChangeMethod, what)
+		if _, err := client.Call(ctx, rrcsChangeMethod, change.request()); err != nil {
+			fail(field, err.Error())
+			var coded *codec.CodeError
+			var fault *codec.Fault
+			if !errors.As(err, &coded) && !errors.As(err, &fault) {
+				stopped = true
+				fail(field, "stopped: RRCS did not answer; the remaining ports were not sent")
+			}
+			return false
+		}
+		return true
+	}
+	// edit builds one change of the named members.
+	edit := func(field, path string, members []codec.Member) (*rrcsChange, bool) {
+		change, err := rrcsChangeFor(path)
+		for _, m := range members {
+			if err == nil {
+				err = change.add(m.Name, m.Value)
+			}
+		}
+		if err != nil {
+			fail(field, err.Error())
+			return nil, false
+		}
+		return change, true
 	}
 	for _, st := range streams {
 		node, mainPort, _, ok := rrcsPortOfPath(st.Main)
@@ -319,6 +366,16 @@ func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, 
 			fail(st.Main, "give block or linked")
 			continue
 		}
+		// The channel count the main must carry: exact when the file
+		// names it, otherwise the linked ports plus one as a minimum.
+		want, exact := st.Channels, st.Channels != 0
+		if !exact {
+			want = len(linked) + 1
+		}
+		if want < len(linked)+1 || want > 16 {
+			fail(st.Main, fmt.Sprintf("channels %d does not fit %d linked port(s); a stream carries up to 16", st.Channels, len(linked)))
+			continue
+		}
 		directions := st.Directions
 		if len(directions) == 0 {
 			directions = []string{"in", "out"}
@@ -329,17 +386,50 @@ func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, 
 				fail(st.Main, "directions are in and out")
 				continue
 			}
-			// The main port: its stream must have room for the channels.
-			mainProps, ok := rrcsCurrentOne(ctx, client, st.Main+"."+dir)
+			if stopped {
+				return diff, failures
+			}
+			mainFull := st.Main + "." + dir
+			mainProps, ok := rrcsCurrentOne(ctx, client, mainFull)
 			if !ok {
-				fail(st.Main+"."+dir, "RRCS does not report this port")
+				fail(mainFull, "RRCS does not report this port")
 				continue
 			}
-			if have := jInt(jMap(mainProps[block]), "Channels"); dir == "out" && have < len(linked)+1 {
-				fail(st.Main+".out."+block+".Channels", fmt.Sprintf("the main output has %d channel(s), %d wanted: an edit of a stream in NMOS mode, which the tool does not send (ADR-0035) — set it in Director", have, len(linked)+1))
+			// Step 0 — the channel count, by the proven round trip:
+			// towards manual with the count, back to NMOS mode alone.
+			haveCh := jInt(jMap(mainProps[block]), "Channels")
+			chField := mainFull + "." + block + ".Channels"
+			switch {
+			case haveCh == want || (!exact && haveCh > want):
+				// Carries what is needed.
+			case check:
+				cf.say("rrcs ensure: would send %s %s to manual with %d channels, then back to NMOS with the mode alone", rrcsChangeMethod, mainFull, want)
+				diff = append(diff, rrcsDiffEntry{Field: chField, From: strconv.Itoa(haveCh), To: strconv.Itoa(want)})
+			default:
+				toManual, ok := edit(chField, mainFull, []codec.Member{
+					{Name: block + ".Protocol", Value: codec.Int(2)},
+					{Name: block + ".Channels", Value: codec.Int(int32(want))},
+				})
+				if !ok || !send(chField, mainFull+" to manual with "+strconv.Itoa(want)+" channels", toManual) {
+					continue
+				}
+				toNMOS, ok := edit(chField, mainFull, []codec.Member{{Name: block + ".Protocol", Value: codec.Int(5)}})
+				if !ok || !send(chField, mainFull+" back to NMOS, mode alone", toNMOS) {
+					continue
+				}
+				after, ok := rrcsCurrentOne(ctx, client, mainFull)
+				got := jMap(after[block])
+				if !ok || jInt(got, "Channels") != want || jInt(got, "Protocol") != 5 {
+					fail(chField, "not_taken: RRCS accepted the requests and the port does not read NMOS with the count")
+					continue
+				}
+				diff = append(diff, rrcsDiffEntry{Field: chField, From: strconv.Itoa(haveCh), To: strconv.Itoa(want)})
 			}
 			for i, path := range linked {
-				n, p, _, ok := rrcsPortOfPath(path)
+				if stopped {
+					return diff, failures
+				}
+				n, _, _, ok := rrcsPortOfPath(path)
 				if !ok || n != node || len(strings.Split(path, ".")) != 6 {
 					fail(path, "a linked port is a port path of the same card as the main port, without direction")
 					continue
@@ -357,35 +447,31 @@ func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, 
 					continue
 				}
 				from, to := "channel "+strconv.Itoa(have), fmt.Sprintf("linked to port %d, channel %d", mainPort, channel)
-				change, err := rrcsChangeFor(full)
-				if err == nil {
-					err = change.add(block+".Mode", codec.Int(int32(mainPort)))
-				}
-				if err == nil {
-					err = change.add(block+".Selection", codec.Int(int32(channel)))
-				}
-				if err != nil {
-					fail(field, err.Error())
-					continue
-				}
-				_ = p
 				if check {
-					cf.say("rrcs ensure: would send %s %s", rrcsChangeMethod, rrcsCompact(change.request()))
+					cf.say("rrcs ensure: would send %s %s: %s", rrcsChangeMethod, full, to)
 					diff = append(diff, rrcsDiffEntry{Field: field, From: from, To: to})
 					continue
 				}
-				cf.say("rrcs ensure: %s edit portex %s: %s", rrcsChangeMethod, full, to)
-				if _, err := client.Call(ctx, rrcsChangeMethod, change.request()); err != nil {
-					fail(field, err.Error())
-					// A refusal is an answer; a connection that drops is
-					// not one to repeat on the next port.
-					var coded *codec.CodeError
-					var fault *codec.Fault
-					if !errors.As(err, &coded) && !errors.As(err, &fault) {
-						fail(st.Main, "stopped: RRCS did not answer; the remaining ports were not sent")
-						return diff, failures
+				if dir == "in" {
+					// An input links in two requests: Mode, then Selection.
+					link, ok := edit(field, full, []codec.Member{{Name: block + ".Mode", Value: codec.Int(int32(mainPort))}})
+					if !ok || !send(field, full+" link to port "+strconv.Itoa(mainPort), link) {
+						continue
 					}
-					continue
+					sel, ok := edit(field, full, []codec.Member{{Name: block + ".Selection", Value: codec.Int(int32(channel))}})
+					if !ok || !send(field, full+" channel "+strconv.Itoa(channel), sel) {
+						continue
+					}
+				} else {
+					// An output links in one request, Mode and Selection
+					// together: a split request is refused both ways.
+					both, ok := edit(field, full, []codec.Member{
+						{Name: block + ".Mode", Value: codec.Int(int32(mainPort))},
+						{Name: block + ".Selection", Value: codec.Int(int32(channel))},
+					})
+					if !ok || !send(field, full+" "+to, both) {
+						continue
+					}
 				}
 				after, ok := rrcsCurrentOne(ctx, client, full)
 				if !ok || jInt(jMap(after[block]), "Selection") != channel {

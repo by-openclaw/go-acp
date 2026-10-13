@@ -188,6 +188,13 @@ func (c *rrcsChange) nmosStream(current map[string]any) string {
 		if link {
 			continue
 		}
+		// The mode alone, no other field, is proven safe on a production
+		// RRCS 9.0 (2026-10-13, In. and Out. -7.49, answers C1919807344
+		// and C1919859330): what stopped RRCS was address fields beside
+		// the mode, never the mode itself.
+		if len(fields) == 1 && fields[0].Name == "Protocol" {
+			continue
+		}
 		protocol := jInt(jMap(current[block]), "Protocol")
 		for _, f := range fields {
 			if f.Name == "Protocol" && f.Value.Kind == codec.KindInt {

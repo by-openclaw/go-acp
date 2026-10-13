@@ -329,36 +329,43 @@ func TestRRCSEnsureLogsChanges(t *testing.T) {
 // A stream: the ports after the main one are linked to it, channel 2 and
 // up, inputs and outputs, with Mode and Selection alone in the request.
 func TestRRCSEnsureStreams(t *testing.T) {
+	type state struct{ proto, ch, sel int32 }
 	var mu sync.Mutex
-	selection := map[string]int32{} // "port/in" → channel; 1 when absent
+	ports := map[string]*state{} // "port/in" or "port/out"
 	var sent []codec.Value
+	key := func(port int32, in bool) string {
+		if in {
+			return strconv.Itoa(int(port)) + "/in"
+		}
+		return strconv.Itoa(int(port)) + "/out"
+	}
+	at := func(port int32, in bool) *state {
+		k := key(port, in)
+		if ports[k] == nil {
+			ports[k] = &state{proto: 5, ch: 1, sel: 1}
+		}
+		return ports[k]
+	}
+	reset := func() {
+		mu.Lock()
+		ports = map[string]*state{}
+		at(1072, false).ch = 4 // the main output carries 4 channels already
+		sent = nil
+		mu.Unlock()
+	}
 	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
 		mu.Lock()
 		defer mu.Unlock()
 		k := call.Params[0]
-		key := func(port int32, in bool) string {
-			if in {
-				return strconv.Itoa(int(port)) + "/in"
-			}
-			return strconv.Itoa(int(port)) + "/out"
-		}
 		switch call.Method {
 		case "GetPort": // net, node, port, is input, pool port
-			port, in := call.Params[3].Int, call.Params[4].Bool
-			sel, set := selection[key(port, in)]
-			if !set {
-				sel = 1
-			}
-			channels := int32(1)
-			if port == 1072 && !in {
-				channels = 4
-			}
+			s := at(call.Params[3].Int, call.Params[4].Bool)
 			block := "PortAes67Output"
-			if in {
+			if call.Params[4].Bool {
 				block = "PortAes67Input"
 			}
 			return codec.Array(k, codec.Int(0), codec.Struct(rrcsMember(block, codec.Struct(
-				rrcsMember("Protocol", codec.Int(5)), rrcsMember("Channels", codec.Int(channels)), rrcsMember("Selection", codec.Int(sel)))))), true
+				rrcsMember("Protocol", codec.Int(s.proto)), rrcsMember("Channels", codec.Int(s.ch)), rrcsMember("Selection", codec.Int(s.sel)))))), true
 		case "ConfigurationChange":
 			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
 			sent = append(sent, sp)
@@ -369,55 +376,139 @@ func TestRRCSEnsureStreams(t *testing.T) {
 				block = "PortAes67Input"
 			}
 			b, _ := sp.Field(block)
-			selection[key(int32(rrcsMemberInt(addr, "Port")), in)] = int32(rrcsMemberInt(b, "Selection"))
+			s := at(int32(rrcsMemberInt(addr, "Port")), in)
+			if v, ok := b.Field("Protocol"); ok {
+				s.proto = v.Int
+			}
+			if v, ok := b.Field("Channels"); ok {
+				s.ch = v.Int
+			}
+			if v, ok := b.Field("Selection"); ok {
+				s.sel = v.Int
+			}
 			return k, true
 		}
 		return rrcsTreeAnswer(call)
 	})
+	// members names the stream-block fields of one sent request.
+	members := func(sp codec.Value) (port int32, in bool, names []string) {
+		addr, _ := sp.Field("PortAddress")
+		in = rrcsFieldBool(addr, "IsInput")
+		block := "PortAes67Output"
+		if in {
+			block = "PortAes67Input"
+		}
+		b, _ := sp.Field(block)
+		for _, m := range b.Members {
+			names = append(names, m.Name)
+		}
+		return int32(rrcsMemberInt(addr, "Port")), in, names
+	}
 	file := filepath.Join(t.TempDir(), "s.json")
 	_ = os.WriteFile(file, []byte(`{"streams": [{"main": "net.1.node.63.port.1072", "block": 3}]}`), 0o600)
 
-	// Dry run: four links planned (two ports, two directions), nothing sent.
+	// Dry run: the main input needs its channels, four links follow;
+	// nothing is sent.
+	reset()
 	out, _ := rrcsStdout(t, func() error {
 		return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", file, "--check"})
 	})
-	rrcsWant(t, out, "net.1.node.63.port.1073.in.PortAes67Input.Selection", "channel 1 -> linked to port 1072, channel 2",
-		"net.1.node.63.port.1074.out.PortAes67Output.Selection", "linked to port 1072, channel 3", "would change 4, failed 0")
+	rrcsWant(t, out, "net.1.node.63.port.1072.in.PortAes67Input.Channels",
+		"net.1.node.63.port.1073.in.PortAes67Input.Selection", "channel 1 -> linked to port 1072, channel 2",
+		"net.1.node.63.port.1074.out.PortAes67Output.Selection", "linked to port 1072, channel 3", "would change 5, failed 0")
 	mu.Lock()
 	if len(sent) != 0 {
 		t.Fatalf("--check sent %d requests", len(sent))
 	}
 	mu.Unlock()
 
-	rrcsWant(t, rrcsRun(t, "ensure", f.addr(), "--file", file, "--write-to", f.addr()), "changed 4, failed 0")
+	// The write follows the proven order: the main's round trip (manual
+	// with the count, NMOS mode alone), inputs in two requests each,
+	// outputs in one.
+	rrcsWant(t, rrcsRun(t, "ensure", f.addr(), "--file", file, "--write-to", f.addr()), "changed 5, failed 0")
 	mu.Lock()
-	if len(sent) != 4 {
-		t.Fatalf("%d requests sent, want 4", len(sent))
+	want := []struct {
+		port  int32
+		in    bool
+		names string
+	}{
+		{1072, true, "Protocol+Channels"},
+		{1072, true, "Protocol"},
+		{1073, true, "Mode"},
+		{1073, true, "Selection"},
+		{1074, true, "Mode"},
+		{1074, true, "Selection"},
+		{1073, false, "Mode+Selection"},
+		{1074, false, "Mode+Selection"},
 	}
-	first := sent[0]
-	addr, _ := first.Field("PortAddress")
-	in, _ := first.Field("PortAes67Input")
-	if rrcsMemberInt(addr, "Node") != 63 || rrcsMemberInt(addr, "Port") != 1073 || !rrcsFieldBool(addr, "IsInput") ||
-		len(in.Members) != 2 || rrcsMemberInt(in, "Mode") != 1072 || rrcsMemberInt(in, "Selection") != 2 {
-		t.Errorf("first link: %s", rrcsCompact(first))
+	if len(sent) != len(want) {
+		t.Fatalf("%d requests sent, want %d", len(sent), len(want))
+	}
+	for i, w := range want {
+		port, in, names := members(sent[i])
+		if port != w.port || in != w.in || strings.Join(names, "+") != w.names {
+			t.Errorf("request %d: port %d in=%v %s, want port %d in=%v %s", i, port, in, strings.Join(names, "+"), w.port, w.in, w.names)
+		}
+	}
+	if s := at(1072, true); s.proto != 5 || s.ch != 3 {
+		t.Errorf("main input after the run: protocol %d channels %d", s.proto, s.ch)
 	}
 	mu.Unlock()
-	// A second run finds every port on its channel.
+	// A second run finds everything in place.
 	rrcsWant(t, rrcsRun(t, "ensure", f.addr(), "--file", file, "--write-to", f.addr()), "changed 0, failed 0")
 
-	// A main output without room for the channels is said, not edited.
+	// A derived channel count only raises a short main; here out carries
+	// 4 and a block of 8 wants at least 8: the round trip is planned.
 	_ = os.WriteFile(file, []byte(`{"streams": [{"main": "net.1.node.63.port.1072", "block": 8, "directions": ["out"]}]}`), 0o600)
+	reset()
 	out, err := rrcsStdout(t, func() error {
 		return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", file, "--check"})
 	})
-	if err == nil || !strings.Contains(out, "the main output has 4 channel(s), 8 wanted") {
-		t.Errorf("%v\n%s", err, out)
+	if err != nil || !strings.Contains(out, "net.1.node.63.port.1072.out.PortAes67Output.Channels") || !strings.Contains(out, "4 -> 8") {
+		t.Errorf("channels plan missing: %v\n%s", err, out)
 	}
+
+	// The provisioning CSV: same plan as the JSON, the card resolved to
+	// its node by reading the gateway.
+	csvFile := filepath.Join(t.TempDir(), "streams.csv")
+	_ = os.WriteFile(csvFile, []byte(
+		"card,port,rrcs_port,directions,role,protocol,channels,linked_to,linked_to_rrcs_port,channel\n"+
+			"1,-7.49,1072,in+out,main,NMOS,,,,1\n"+
+			"1,-7.50,1073,in+out,linked,NMOS,,-7.49,1072,2\n"+
+			"1,-7.51,1074,in+out,linked,NMOS,,-7.49,1072,3\n"), 0o600)
+	reset()
+	out, err = rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", csvFile, "--check"})
+	})
+	if err != nil {
+		t.Fatalf("csv check: %v\n%s", err, out)
+	}
+	rrcsWant(t, out,
+		"net.1.node.61.port.1072.in.PortAes67Input.Channels",
+		"net.1.node.61.port.1073.in.PortAes67Input.Selection", "would change 5, failed 0")
+
+	for name, bad := range map[string]string{
+		"no header":      "x\n",
+		"role":           "card,rrcs_port,role,channel\n1,1072,chief,1\n",
+		"main channel":   "card,rrcs_port,role,channel\n1,1072,main,2\n",
+		"linked no main": "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1073,linked,2,1072\n",
+		"channel gap":    "card,rrcs_port,role,channel,linked_to_rrcs_port\n1,1072,main,1,\n1,1073,linked,3,1072\n",
+		"unknown bay":    "card,rrcs_port,role,channel,linked_to_rrcs_port\n9,1072,main,1,\n9,1073,linked,2,1072\n",
+	} {
+		_ = os.WriteFile(csvFile, []byte(bad), 0o600)
+		if out, err := rrcsStdout(t, func() error {
+			return runRRCS(context.Background(), []string{"ensure", f.addr(), "--file", csvFile, "--check"})
+		}); err == nil {
+			t.Errorf("csv %s: accepted\n%s", name, out)
+		}
+	}
+
 	for name, bad := range map[string]string{
 		"direction in main": `{"streams": [{"main": "net.1.node.63.port.1072.in", "block": 8}]}`,
 		"both":              `{"streams": [{"main": "net.1.node.63.port.1072", "block": 8, "linked": ["net.1.node.63.port.1073"]}]}`,
 		"neither":           `{"streams": [{"main": "net.1.node.63.port.1072"}]}`,
 		"other card":        `{"streams": [{"main": "net.1.node.63.port.1072", "linked": ["net.1.node.61.port.1073"]}]}`,
+		"channels short":    `{"streams": [{"main": "net.1.node.63.port.1072", "block": 8, "channels": 4}]}`,
 	} {
 		_ = os.WriteFile(file, []byte(bad), 0o600)
 		if out, err := rrcsStdout(t, func() error {

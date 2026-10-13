@@ -414,35 +414,44 @@ func TestRRCSCurrentOne(t *testing.T) {
 // --nmos-test lets the mode alone through, and nothing with an address.
 func TestRRCSSetNMOSTest(t *testing.T) {
 	var sent []codec.Value
+	proto := int32(2)
 	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
 		k := call.Params[0]
 		switch call.Method {
 		case "GetPort":
 			return codec.Array(k, codec.Int(0), codec.Struct(rrcsMember("LongName", codec.String("Out. -7.41")),
-				rrcsMember("PortAes67Output", codec.Struct(rrcsMember("Protocol", codec.Int(2)), rrcsMember("Multicast", codec.String("239.1.1.64")))))), true
+				rrcsMember("PortAes67Output", codec.Struct(rrcsMember("Protocol", codec.Int(proto)), rrcsMember("Multicast", codec.String("239.1.1.64")))))), true
 		case "ConfigurationChange":
 			sent = append(sent, call.Params[1])
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			if b, ok := sp.Field("PortAes67Output"); ok {
+				if v, ok := b.Field("Protocol"); ok {
+					proto = v.Int
+				}
+			}
 			return k, true
 		}
 		return rrcsTreeAnswer(call)
 	})
 	path := "net.1.node.63.port.1064.out"
 	var val *consumer.ValidationError
-	// Without the flag: refused.
-	if err := runRRCS(context.Background(), []string{"set", f.addr(), "--path", path, "--prop", "PortAes67Output.Protocol=5", "--apply", "yes", "--write-to", f.addr()}); !errors.As(err, &val) {
-		t.Errorf("without --nmos-test: %v", err)
+	// An address beside the mode: refused, flag or no flag — the form
+	// that stopped a production RRCS twice.
+	if err := runRRCS(context.Background(), []string{"set", f.addr(), "--path", path, "--prop", "PortAes67Output.Protocol=5",
+		"--prop", "PortAes67Output.Multicast=0.0.0.0", "--apply", "yes", "--write-to", f.addr()}); !errors.As(err, &val) {
+		t.Errorf("address without the flag: %v", err)
 	}
-	// With the flag and an address: refused.
 	if err := runRRCS(context.Background(), []string{"set", f.addr(), "--path", path, "--prop", "PortAes67Output.Protocol=5",
 		"--prop", "PortAes67Output.Multicast=0.0.0.0", "--nmos-test", "yes", "--apply", "yes", "--write-to", f.addr()}); !errors.As(err, &val) {
-		t.Errorf("with an address: %v", err)
+		t.Errorf("address with the flag: %v", err)
 	}
 	if len(sent) != 0 {
 		t.Fatalf("%d requests sent by refused edits", len(sent))
 	}
-	// With the flag and the mode alone: sent, with one field in the block.
+	// The mode alone needs no flag since it proved safe on a production
+	// RRCS (2026-10-13): sent, with one field in the block.
 	_, _ = rrcsStdout(t, func() error {
-		return runRRCS(context.Background(), []string{"set", f.addr(), "--path", path, "--prop", "PortAes67Output.Protocol=5", "--nmos-test", "yes", "--apply", "yes", "--write-to", f.addr()})
+		return runRRCS(context.Background(), []string{"set", f.addr(), "--path", path, "--prop", "PortAes67Output.Protocol=5", "--apply", "yes", "--write-to", f.addr()})
 	})
 	if len(sent) != 1 {
 		t.Fatalf("%d requests sent, want 1", len(sent))
@@ -451,5 +460,13 @@ func TestRRCSSetNMOSTest(t *testing.T) {
 	out, _ := sp.Field("PortAes67Output")
 	if len(out.Members) != 1 || out.Members[0].Name != "Protocol" || out.Members[0].Value.Int != 5 {
 		t.Errorf("request: %s", rrcsCompact(sp))
+	}
+	// The flag stays accepted and changes nothing.
+	proto = 2
+	_, _ = rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"set", f.addr(), "--path", path, "--prop", "PortAes67Output.Protocol=5", "--nmos-test", "yes", "--apply", "yes", "--write-to", f.addr()})
+	})
+	if len(sent) != 2 {
+		t.Fatalf("%d requests sent, want 2", len(sent))
 	}
 }
