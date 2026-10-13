@@ -71,6 +71,12 @@ cerebrum_routemaster:
       - {mnemonic: "VIEW OUT 6", levels: {level_1: {device: {senderReceiver: "IP Output 6"}}}}
       - {mnemonic: "VIEW OUT 7", levels: {level_1: {device: {senderReceiver: "IP Output 7"}}}}
       - {mnemonic: "VIEW OUT 8", levels: {level_1: {device: {senderReceiver: "IP Output 8"}}}}
+    # Virtuals (operator, 2026-10-14): a source and a destination of the same
+    # name, made together by Cerebrum, with no device of their own.
+    virtuals:
+      - {mnemonic: "Proc Video"}
+      - {mnemonic: "Proc Audio"}
+      - {mnemonic: "Proc ANC"}
     destinations:
       - {mnemonic: "CONVERT 1", levels: {level_1: {device: {senderReceiver: "VRX-01"}}, level_2: {device: {senderReceiver: "ARX-01"}}, level_3: {device: {senderReceiver: "ARX-02"}}, level_4: {device: {senderReceiver: "DRX-01"}}}}
       - {mnemonic: "CONVERT 2", levels: {level_1: {device: {senderReceiver: "VRX-02"}}, level_2: {device: {senderReceiver: "ARX-03"}}, level_3: {device: {senderReceiver: "ARX-04"}}, level_4: {device: {senderReceiver: "DRX-02"}}}}
