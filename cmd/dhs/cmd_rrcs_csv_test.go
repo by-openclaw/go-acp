@@ -413,6 +413,10 @@ func TestRRCSImportStreams(t *testing.T) {
 				block = "PortAes67Input"
 			}
 			b, _ := sp.Field(block)
+			if v, ok := b.Field("Mode"); ok && v.Kind != codec.KindInt {
+				// The real RRCS 9.0 of 2026-10-13: fault 99.
+				return codec.Value{}, false
+			}
 			s := at(int32(rrcsMemberInt(addr, "Port")), in)
 			if v, ok := b.Field("Protocol"); ok {
 				s.proto = v.Int

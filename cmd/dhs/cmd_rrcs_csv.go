@@ -309,7 +309,13 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			continue
 		}
 		var value codec.Value
-		switch v := live.MustRaw(object, block, field).(type) {
+		raw := live.MustRaw(object, block, field)
+		if raw == nil && field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+			// The link: RRCS hides it, so there is no reported value to
+			// take the type from. It is the main port's number.
+			raw = float64(0)
+		}
+		switch v := raw.(type) {
 		case bool:
 			b, err := strconv.ParseBool(strings.ToLower(wanted))
 			if err != nil {
