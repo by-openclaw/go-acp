@@ -82,6 +82,9 @@ var Enums = map[string]map[int]string{
 // list is what the codeowner asked to provision; it grows as edits are
 // verified against a real RRCS.
 var Writable = map[string]map[string]bool{
+	// The top level of a portex: PortType creates a port that does not
+	// exist (ChangeType create, proven 2026-10-14 on -7.33).
+	"": {"PortType": true},
 	"PortAes67Input": {"Protocol": true, "Multicast": true, "MulticastPort": true, "Multicast2": true, "MulticastPort2": true,
 		"SourceIp": true, "SourceIp2": true, "RTSPUri": true, "RTSPUri2": true,
 		"Channels": true, "BitDepth": true, "PacketTime": true, "PayloadType": true,

@@ -522,3 +522,98 @@ func TestRRCSImportValidation(t *testing.T) {
 		t.Fatalf("validation sent %d changes", len(*changes))
 	}
 }
+
+// A PortType row on an absent port creates it (proven 2026-10-14 on
+// -7.33) and names it by the Director pattern; on an existing port the
+// row changes nothing, and a bad type never leaves the dry run.
+func TestRRCSImportCreatesPort(t *testing.T) {
+	var mu sync.Mutex
+	created := false
+	var sent []codec.Value
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		k := call.Params[0]
+		switch call.Method {
+		case "GetAllPorts":
+			v, ok := rrcsTreeAnswer(call)
+			if created {
+				st := codec.Struct
+				mem := rrcsMember
+				extra := st(mem("Net", codec.Int(1)), mem("Node", codec.Int(61)), mem("Port", codec.Int(1056)),
+					mem("Input", codec.Bool(true)), mem("Output", codec.Bool(true)),
+					mem("PortType", codec.String("4-Wire Split")), mem("Label", codec.String("I.-7.33")),
+					mem("LongName", codec.String("In. -7.33")), mem("ObjectID", codec.Int(777)))
+				v.Items[1].Items = append(v.Items[1].Items, extra)
+			}
+			return v, ok
+		case "ConfigurationChange":
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			change, _ := call.Params[1].Items[0].Field("ChangeType")
+			sent = append(sent, call.Params[1].Items[0])
+			if change.Str == "create" {
+				if _, hasType := sp.Field("PortType"); hasType {
+					created = true
+				}
+			}
+			return k, true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "new-port.csv")
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.1056.PortType,3\n"), 0o600)
+
+	// Dry run: the create is planned, nothing sent.
+	dry := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
+	rrcsWant(t, dry, "would_apply net.1.node.61.port.1056.PortType", "(absent) -> 3", "would apply 1,")
+	mu.Lock()
+	if len(sent) != 0 {
+		t.Fatalf("--dry-run sent %d requests", len(sent))
+	}
+	mu.Unlock()
+
+	// The write: the create, then the two name edits.
+	done := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, done, "applied 1,", "failed 0")
+	mu.Lock()
+	if len(sent) != 3 {
+		t.Fatalf("%d requests, want create + two name edits", len(sent))
+	}
+	kind := func(i int) string {
+		c, _ := sent[i].Field("ChangeType")
+		return c.Str
+	}
+	sp0, _ := sent[0].Field("SpecificParams")
+	portType, _ := sp0.Field("PortType")
+	if kind(0) != "create" || portType.Int != 3 {
+		t.Errorf("first request: %s", rrcsCompact(sent[0]))
+	}
+	for i, wantLong := range map[int]string{1: "In. -7.33 - Bay 1 - FRAME A", 2: "Out. -7.33 - Bay 1 - FRAME A"} {
+		sp, _ := sent[i].Field("SpecificParams")
+		long, _ := sp.Field("LongName")
+		if kind(i) != "edit" || long.Str != wantLong {
+			t.Errorf("name edit %d: %s", i, rrcsCompact(sent[i]))
+		}
+	}
+	mu.Unlock()
+
+	// A second run: the port exists, nothing to do.
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr()), "applied 0,", "unchanged 1")
+
+	// A type outside the specification's values never leaves the dry run.
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.1057.PortType,99\n"), 0o600)
+	out, _ := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	if !strings.Contains(out, "bad_value") {
+		t.Errorf("PortType 99 accepted:\n%s", out)
+	}
+	// A PortType row with a direction is refused.
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.1057.in.PortType,3\n"), 0o600)
+	out, _ = rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	if !strings.Contains(out, "bad_path") {
+		t.Errorf("directed PortType row accepted:\n%s", out)
+	}
+}

@@ -281,15 +281,35 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			skips = append(skips, rrcsSkip{"read_only", row.Path, ""})
 			continue
 		}
-		now, ok := current(live, object, block, field)
-		if !ok {
-			if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
-				// The link: RRCS accepts it and never reports it. The
-				// Selection beside it is the read-back.
-				now = "(not reported)"
-			} else {
-				skips = append(skips, rrcsSkip{"not_on_device", row.Path, "the live system reports no such value"})
+		// A PortType row is the one row that may name an absent object:
+		// the port is then CREATED with that type (proven 2026-10-14 on
+		// -7.33) and named by the Director pattern. On a port that
+		// exists the row changes nothing: a type is not edited.
+		creating := false
+		if field == "PortType" && block == "" {
+			if !strings.Contains(object, ".port.") || strings.HasSuffix(object, ".in") || strings.HasSuffix(object, ".out") {
+				skips = append(skips, rrcsSkip{"bad_path", row.Path, "a PortType row names the port without direction: net.N.node.N.port.P.PortType"})
 				continue
+			}
+			if _, exists := live.Lookup(object); exists {
+				unchanged++
+				continue
+			}
+			creating = true
+		}
+		now := "(absent)"
+		if !creating {
+			var ok bool
+			now, ok = current(live, object, block, field)
+			if !ok {
+				if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+					// The link: RRCS accepts it and never reports it. The
+					// Selection beside it is the read-back.
+					now = "(not reported)"
+				} else {
+					skips = append(skips, rrcsSkip{"not_on_device", row.Path, "the live system reports no such value"})
+					continue
+				}
 			}
 		}
 		// An enum row may carry the word alone.
@@ -394,6 +414,9 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			skips = append(skips, rrcsSkip{"duplicate", row.Path, "the file gives this value twice"})
 			continue
 		}
+		if creating {
+			p.change.changeType = "create"
+		}
 		item := &rrcsApplied{Path: row.Path, Live: now, Wanted: wanted, Result: "would_apply"}
 		p.items = append(p.items, item)
 		applied = append(applied, item)
@@ -405,7 +428,17 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 	kept := order[:0]
 	for _, p := range order {
 		props, _ := live.Lookup(p.object)
-		steps, drop, refusal := rrcsStreamSteps(p.object, p.change, props)
+		var steps []*rrcsChange
+		var drop bool
+		var refusal string
+		if p.change.changeType == "create" {
+			// The create, then the two name edits by the Director
+			// pattern — RRCS auto-names nothing. A name the file also
+			// carries applies on the next run, once the port exists.
+			steps = append([]*rrcsChange{p.change}, rrcsPortNameEdits(live, p.object)...)
+		} else {
+			steps, drop, refusal = rrcsStreamSteps(p.object, p.change, props)
+		}
 		if drop {
 			// A link row whose Selection is already right: the link is
 			// taken as in place (RRCS never reports it); nothing to send.
@@ -471,6 +504,14 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
 				// Accepted and never reported back: the Selection row of
 				// the same port is the read-back of the link.
+				continue
+			}
+			if field == "PortType" && block == "" {
+				// A create reads back as the port existing.
+				if _, ok := after.Lookup(object); !ok {
+					it.Result, it.Error = "not_taken", "RRCS accepted the create and the port is not listed"
+					failed++
+				}
 				continue
 			}
 			if now, _ := current(after, object, block, field); now != it.Wanted {
@@ -715,4 +756,48 @@ func rrcsEnumSet(enum string) (allowed map[int64]bool, complete bool) {
 		allowed[n] = true
 	}
 	return allowed, len(allowed) > 0 && hi-lo+1 == int64(len(allowed))
+}
+
+// rrcsPortNameEdits builds the two per-direction name edits of a port
+// just created, by the pattern Director's own client uses:
+// "In. -7.N - Bay B - <node long name>". Where the model cannot say the
+// bay or the node's name, the shorter form is used; a 2022-7 port
+// (1024 to 1151) is numbered -7.N, any other by its plain number.
+func rrcsPortNameEdits(m *rrcsModel, object string) []*rrcsChange {
+	_, node, port, _, ok := rrcs.PortOfPath(object)
+	if !ok {
+		return nil
+	}
+	number := strconv.Itoa(port)
+	if port >= 1024 && port <= 1151 {
+		number = "-7." + strconv.Itoa(port-1023)
+	}
+	suffix := ""
+	if card := m.CardOfNode()[node]; card != nil {
+		suffix = " - Bay " + strconv.Itoa(card.Bay)
+		for _, n := range m.Nodes {
+			if n.Node == card.Node && n.LongName != "" {
+				suffix += " - " + n.LongName
+			}
+		}
+	}
+	clip := func(s string, max int) string {
+		if len(s) > max {
+			return s[:max]
+		}
+		return s
+	}
+	var edits []*rrcsChange
+	for _, side := range []struct {
+		dir, labelPrefix, longPrefix string
+	}{{".in", "I.", "In. "}, {".out", "O.", "Out. "}} {
+		change, err := rrcsChangeFor(object + side.dir)
+		if err != nil {
+			continue
+		}
+		_ = change.add("Label", codec.String(clip(side.labelPrefix+number, 8)))
+		_ = change.add("LongName", codec.String(clip(side.longPrefix+number+suffix, 32)))
+		edits = append(edits, change)
+	}
+	return edits
 }

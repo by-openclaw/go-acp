@@ -44,6 +44,10 @@ func rrcsPropValue(v string) codec.Value {
 // rrcsChange is one edit, ready to send.
 type rrcsChange struct {
 	objectType string
+	// changeType is "edit" when empty; "create" makes the object
+	// (proven on a production RRCS 9.0 on 2026-10-14: an unused port
+	// becomes a typed port by one create with PortType).
+	changeType string
 	// address identifies the object inside SpecificParams.
 	address []codec.Member
 	// blocks holds the wanted members, by block ("" = top level).
@@ -96,8 +100,12 @@ func (c *rrcsChange) params() codec.Value {
 // request is the parameter of ConfigurationChangeEx (§8.10.1): an array
 // of changes, here one.
 func (c *rrcsChange) request() codec.Value {
+	changeType := c.changeType
+	if changeType == "" {
+		changeType = "edit"
+	}
 	return codec.Array(codec.Struct(
-		codec.Member{Name: "ChangeType", Value: codec.String("edit")},
+		codec.Member{Name: "ChangeType", Value: codec.String(changeType)},
 		codec.Member{Name: "ObjectType", Value: codec.String(c.objectType)},
 		codec.Member{Name: "SpecificParams", Value: c.params()},
 	))
