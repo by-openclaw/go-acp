@@ -226,9 +226,25 @@ is a sensible model. Two details would be worth a line in the document:
 
 A `PATCH` carrying an alternate mnemonic name that is not configured in
 Cerebrum is refused (`400` `Unknown alternate mnemonic name`), and the
-whole update with it. That is a good safeguard. We found no endpoint that
-lists, creates or removes the alternate mnemonic *names*. *Question:* is
-there one, or should they be created in the Cerebrum UI first?
+whole update with it. That is a good safeguard.
+
+What we could not do, on either interface, is create the alternate
+mnemonic *fields* themselves (the columns of the Alternate Mnemonics tab
+of the Tally and Router Config View). Measured on 2026-10-14, on a
+Cerebrum with no field defined:
+
+| # | Attempt | Answer |
+|---|---|---|
+| 1 | RCP: `PATCH /routemaster/sources/{id}` with `alternateMnemonics: {"Eng": …}` | `400` `Unknown alternate mnemonic name` |
+| 2 | Northbound: `SRCE_MNE` with `ALT_MNE=1` | acknowledged; the source then reads `ALT_MNE_1 AVAILABLE="0"` — not applied |
+| 3 | Northbound: `SRCE_MNE` with `ALT_MNE=2` | refused, `NACK 8 ONE_OR_MORE_ACTIONS_INVALID` |
+| 4 | Northbound: a datastore or a device object holding the field list | none found |
+
+So a plant that is provisioned from code still needs one manual step in
+the user interface before any alternate mnemonic can be written.
+*Request:* an operation that creates, lists and removes the alternate
+mnemonic fields — on RCP preferably, since the values are written there
+by name.
 
 ### 6.6 The WebSocket back-channel
 
@@ -388,6 +404,7 @@ port was set to static and back to DHCP.
 | 12 | Confirmation of the "Forget" procedure (6.13) | devices removed as cleanly as they are added |
 | 13 | `query.downgrade`, or a chosen version with discovery, in Network Media (6.14) | every node visible behind an external registry |
 | 14 | The way a Neuron node chooses the addresses it announces (6.15) | every node reachable from Cerebrum |
+| 15 | Create, list and remove the alternate mnemonic fields (6.5) | alternate mnemonics provisioned without the UI; today a one-time manual step |
 
 Thank you for RCP, and for your time on this. We can share the exact
 requests and answers behind every line of this note, and we are glad to
