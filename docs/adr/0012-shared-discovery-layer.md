@@ -1,6 +1,7 @@
 # ADR-0012 — Shared discovery layer (mDNS / unicast / peer-list)
 
 Status: accepted
+Date: 2026-10-18
 
 ## Context
 
@@ -32,7 +33,7 @@ Per-protocol code provides only the **service name**.
 | Ember+ | `_dhs-emberplus._tcp` |
 | Probel SW-P-08 | `_dhs-probel-sw08p._tcp` |
 | Probel SW-P-02 | `_dhs-probel-sw02p._tcp` |
-| OSC | `_osc._udp` (or `_dhs-osc._udp`) |
+| OSC | `_dhs-osc._udp` |
 | TSL UMD | `_dhs-tsl._udp` |
 | HyperDeck | `_dhs-hyperdeck._tcp` |
 | AMWA NMOS | `_nmos-register._tcp`, `_nmos-query._tcp`, `_nmos-node._tcp` (per spec) |

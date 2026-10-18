@@ -1,6 +1,7 @@
 # ADR-0019 — documentation structure (split-aware)
 
 Status: accepted
+Date: 2026-10-18
 
 ## Context
 
@@ -65,13 +66,20 @@ docs/
 ├── CONNECTOR.md               connector contract (collated from ADRs per ADR-0015)
 ├── ARCHITECTURE.md            cross-cutting architecture overview
 ├── VISION.md                  long-term Fabric vision (reference, not commitment)
+├── cli.md                     CLI surface reference
+├── glossary.md                cross-protocol vocabulary
+├── go-style.md                Go style rules
+├── logging.md                 structured logging contract
+├── user.md                    operator + agent roles, host preference
+├── testbed.md                 test fleet inventory + SSH access
 ├── wireshark.md               Wireshark dissector install + filter guide
 ├── protocols/
 │   ├── schema.md              canonical-tree contract (every connector emits this shape)
-│   ├── use-cases.md
-│   └── elements/*.md          per-element-type schema docs (parameter, matrix, node, ...)
-├── deployment/                docker-compose + Grafana / Prometheus / Loki stack
-└── examples/                  reserved (today empty after refactor)
+│   ├── verbs.md · verb-tests.md · error-codes.md · use-cases.md · router-pack.md · contract-roadmap.md
+│   ├── elements/*.md          per-element-type schema docs (parameter, matrix, node, ...)
+│   └── audits/                dated repo and ADR coherence reviews
+├── deployment/                dev-test flow, docker-compose + Grafana / Prometheus / Loki stack
+└── postman/                   Postman collection + environment for the HTTP connectors
 ```
 
 Tomorrow (per-connector repo split per ADR-0001):

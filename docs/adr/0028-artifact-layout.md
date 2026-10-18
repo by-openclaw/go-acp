@@ -1,6 +1,7 @@
 # ADR-0028 — Artifact layout: one deterministic home per artifact, keyed by IP
 
 - **Status**: proposed (owner-agreed design, 2026-08-17 session)
+- **Date**: 2026-10-18
 - **Extends**: ADR-0020 (capture + fixture layout), ADR-0022 (card data model)
 - **Issue**: #703
 
@@ -68,7 +69,7 @@ internal/<proto>/testdata/integration-test/   COMMITTED — curated copies servi
 | emberplus matrix | matrix | xpoint, matrix-properties, labels — **no lock (glow has none)** |
 | acp1 / acp2 / emberplus params / osc | Tree/DM | params |
 | tsl | push | event log (no snapshot) |
-| amwa (parked) | bridge | registry views |
+| amwa | bridge | registry views |
 
 Lock/protect on cerebrum is Route-Master business (owner rule: the RM
 IS the control plane); the wire tolerating DEST_LOCK reads on routers

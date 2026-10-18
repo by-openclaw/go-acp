@@ -1,6 +1,7 @@
 # ADR-0016 — Multi-OS support per connector
 
 Status: accepted
+Date: 2026-10-18
 
 ## Context
 
@@ -116,7 +117,7 @@ connector.
 
 ### `info` verb reports current backend
 
-`dhs-<proto> info --json` includes:
+`dhs-<proto> info --output json` includes:
 
 ```json
 {
