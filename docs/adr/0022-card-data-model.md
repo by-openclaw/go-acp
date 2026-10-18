@@ -1,10 +1,7 @@
 # ADR-0022 — Card data model (Device / Frame / Slot / Card / DM)
 
 Status: accepted
-
-This ADR is a **living document**. Add new facts in the Revisions
-trailer at the end. Do not spawn a new ADR number unless the whole
-record is being superseded.
+Date: 2026-10-18
 
 ## Context
 
@@ -50,7 +47,7 @@ Matrix is a separate entity — see ADR-0023.
 
 ```
 .cache/dm/<proto>/<Model@SwRev>.json     per-card schema, versioned
-.cache/manifest/<device-name>.yaml       per-device wiring
+.cache/manifest/<device>.json            per-device wiring
 ```
 
 DM versioning rules:
@@ -61,7 +58,8 @@ DM versioning rules:
 
 ### Manifest shape
 
-The manifest answers **where**; the DM answers **what**.
+The manifest answers **where**; the DM answers **what**. The file is
+JSON on disk; the shape is shown as YAML for readability.
 
 ```yaml
 device:
@@ -193,8 +191,3 @@ protocol) feeding the federation layer.
   shape, or Frame entity → block until this ADR is updated".
 - CI check: DM JSON files MUST NOT contain top-level `device`,
   `slots`, `created_at`, `generator`, `host`, `ip`, or `port`.
-
-## Revisions
-
-- 2026-05-14 — initial — yboujraf
-- 2026-05-14 — every connector boots from manifest+DM; legacy `--tree singlefile.json` is retired parity debt. Default value resolves per-instance override → per-DM override → vendor DM default — yboujraf

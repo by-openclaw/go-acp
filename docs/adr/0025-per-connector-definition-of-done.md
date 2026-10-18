@@ -1,10 +1,7 @@
 # ADR-0025 — Per-connector definition of done
 
 Status: accepted
-
-This ADR is a **living document**. Add new facts in the Revisions
-trailer at the end. Do not spawn a new ADR number unless the whole
-record is being superseded.
+Date: 2026-10-18
 
 ## Context
 
@@ -117,9 +114,8 @@ truth):
 | TSL UMD | v3.1 + v4 + v5 with per-vendor positional tally mapping (internal/tsl/CLAUDE.md). |
 | Cerebrum NB | XML-over-WS uppercase wire form; consumer 12 verbs; provider deferred. |
 | MN SET (mnset) | **Consumer only — deliverable 2 is N/A: this connector has no producer at all.** The module is a REST endpoint we drive; there is nothing for us to serve, and serving an emSFP-shaped API back would emulate a Riedel module nobody asks us to be. It is not parked, deferred or pending — a deliverable that does not apply is not an open one (codeowner, 2026-10-06; it was worded "parked" from 2026-09-24). Scope recorded in `internal/MNSet/docs/scope.md`. The other five deliverables apply in full. |
-| SNMP | Manager AND agent (deliverable 2 is a real agent, `internal/snmp/provider`). v1 + v2c polled; v3 notifications both ways; v3 POLLING and InformRequest are open units per `internal/snmp/CLAUDE.md`. |
 | AMWA NMOS | Every published minor version in scope — no deferrals per root CLAUDE.md "AMWA NMOS strict". **Deliverable 4's form is the Node bundle** (one JSON resource graph), not a DM + manifest: an NMOS Node is not a frame of cards. `internal/amwa/testdata/integration-test/README.md` points at it; the Controller's fixture is `testdata/exports/`. |
-| SNMP | v1, v2c and v3 in both roles — polling, notifications and InformRequest, all three security levels. **v3 is the agent's default** (`serve` answers it with no flags; v1/v2c stay on beside it) and a manager with a credential configured prefers it. MIB source is compiled offline into committed tables (`internal/snmp/mib/tables.tsv.gz`), never parsed at runtime, per `internal/snmp/CLAUDE.md`. |
+| SNMP | Manager AND agent (deliverable 2 is a real agent, `internal/snmp/provider`): v1, v2c and v3 in both roles — polling, notifications and InformRequest, all three security levels. **v3 is the agent's default** (`serve` answers it with no flags; v1/v2c stay on beside it) and a manager with a credential configured prefers it. MIB source is compiled offline into committed tables (`internal/snmp/mib/tables.tsv.gz`), never parsed at runtime, per `internal/snmp/CLAUDE.md`. |
 
 ## What this ADR does NOT change
 
@@ -131,40 +127,3 @@ truth):
 - ADR-0015 — every architectural rule has one ADR. ADR-0025 is the
   single source for "connector definition of done" and is referenced
   from `README.md`, `CLAUDE.md`, and per-protocol `CLAUDE.md`.
-
-## Revisions
-
-- 2026-05-16 — initial proposal (issue #447).
-- 2026-05-17 — added deliverable #6 (replay fixture set under
-  `internal/<proto>/testdata/`). Every connector must commit a replay
-  surface (raw `.pcapng` + canonical `.tree` + per-type `.md`) so CI and
-  any developer can re-decode the wire at any time without needing the
-  device. Reference shape: `internal/acp1/testdata/`. Promotion rules
-  from `captures/` to `testdata/` already documented in
-  `captures/README.md`.
-- 2026-06-07 — errata: corrected two stale "five-deliverable" mentions to
-  "six" (Context + How-to-apply lagged the 2026-05-17 #6 addition). Added
-  the three-tier **Test taxonomy** (→ `docs/protocols/verb-tests.md`)
-  expanding deliverable 3, and the cross-cutting **Connector compliance
-  principles** (DI, OOP/SoC, idempotency, structured logs, discovery, error
-  contract). Living-document additions per ADR-0015 Amendment policy. — by-rune
-- 2026-06-14 — deliverable 4 reconciled: a **committed** fixture under
-  `internal/<proto>/testdata/integration-test/{manifest,dm}/` (the emberplus
-  pattern) now explicitly satisfies #4 as the preferred form, with a Go
-  generator as an accepted alternative. Both meet the original intent (producer
-  builds its frame from the repo alone; tests never `t.Skip` for a missing
-  fixture). Reflects the committed-fixture decision already shipped for
-  acp1/acp2/emberplus (#553/#556). — by-rune
-- 2026-09-24 — per-protocol scope: mnset is consumer only (deliverable 2
-  parked by the codeowner, recorded so a reader does not read it as an
-  unfinished connector), and SNMP's two roles are named with its open
-  units. A parked deliverable is a decision with a date and a reason; a
-  missing one is work. — by-rune
-- 2026-10-05 — AMWA NMOS, deliverable 4: the committed fixture of a Node is its
-  bundle (the resource graph `dhs producer nmos serve --config` takes), since a
-  Node has no DM + manifest; the Controller's is the committed catalogue exports.
-  The bar is unchanged — built from the repo alone, tests never `t.Skip` for it
-  (#1356). — by-rune
-- 2026-10-06 — mnset: deliverable 2 is N/A, not parked. The connector has no
-  producer at all; "parked" read as work that is waiting, and an audit listed it
-  so. N/A is not partial and not open (codeowner). — by-rune
