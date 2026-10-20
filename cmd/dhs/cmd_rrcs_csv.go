@@ -62,11 +62,16 @@ func rrcsExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("rrcs export", flag.ContinueOnError)
 	src := newRRCSSource(fs)
 	format := fs.String("format", "", "json | csv (default: from the --out extension, else json). One row per value: path, label, kind, access, value, value_name")
-	out := fs.String("out", "", "output file (default: stdout)")
+	out := fs.String("out", "", "output file (default: snapshots/rrcs/<host>/params.<format>, ADR-0028; \"-\" = stdout)")
+	slot := fs.Int("slot", -1, "export only this slot: 0 = the node and what belongs to no card, N = bay N (-1 = every slot)")
 	var paths rrcsProps
 	fs.Var(&paths, "path", "keep the rows whose path contains this text; comma-separated or repeated (e.g. PortAes67Output, card, Ptp, node.63.port.1045)")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
+	}
+	stdout := *out == "-"
+	if stdout {
+		*out = ""
 	}
 	fmtName, err := rrcsFormat(*format, *out)
 	if err != nil {
@@ -79,9 +84,16 @@ func rrcsExport(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	if !stdout && *out == "" {
+		*out = filepath.Join(snapshotDir(rrcsProto, hostOnly(m.Target)), "params."+fmtName)
+		fmt.Fprintf(os.Stderr, "rrcs export: default snapshot file %s (ADR-0028)\n", *out)
+	}
 	keep := rrcsPathFilter(paths)
 	rows := []rrcsRow{}
 	for _, r := range rrcsRows(m) {
+		if *slot >= 0 && r.Slot != strconv.Itoa(*slot) {
+			continue
+		}
 		if keep(r.Path) {
 			rows = append(rows, r)
 		}
@@ -89,6 +101,9 @@ func rrcsExport(ctx context.Context, args []string) error {
 
 	w := io.Writer(os.Stdout)
 	if *out != "" {
+		if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
+			return fmt.Errorf("rrcs export: %w", err)
+		}
 		f, err := os.Create(*out)
 		if err != nil {
 			return fmt.Errorf("rrcs export: %w", err)

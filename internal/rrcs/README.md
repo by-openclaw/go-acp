@@ -40,7 +40,9 @@ A verb sends the requests its answer is made of, and no other:
 | `ensure`, keys of one panel | about 4 to read, 1 per change, 4 to read back |
 | `ensure`, a conference, group or IFB | 1 to read, 1 per change, 1 to read back |
 | `watch`, at start | 16, plus 1 per panel, then 1 every 30 s to check its registration |
-| `walk`, `export` from a live gateway | thousands: the full copy, for once in a while |
+| `extract` | 9 (version and the eight lists), plus the keys and the commands of one port per type |
+| `export`, one slot or all | 4 lists, plus 1 per panel for its keys (`--slot N`: the same reads, the rows of that slot) |
+| `walk` from a live gateway | thousands: the full copy, for once in a while |
 
 ## 1. Look
 
@@ -166,6 +168,41 @@ ObjectID RRCS itself gives the object. The crosspoints are not rows:
 |---|---|
 | The CSV | To check that every value is what Director shows; later, to edit and import on a test system |
 | The line `exported N values (M writable)` | A quick size check |
+
+### extract — the device models and the inventory
+
+```
+dhs consumer rrcs extract 10.12.0.12
+dhs consumer rrcs extract --from rrcs-walk-20261013.json
+```
+
+The models of the system (ADR-0022), one file for the node type and one
+per client card type, under `.cache/dm/rrcs/<Type@version>.json`:
+`ARTIST_1024@9.0.RR1-11.json` holds the node's own properties and, as
+templates, the conference, group, IFB, logic source, key and the 26
+command types of the specification; `AES67@9.0.RR1-11.json` holds the
+card's own properties and one template per port type met (FOUR_WIRE_SPLIT
+with its `in` and `out` halves, FOUR_WIRE, RSP_1232HL with its keys,
+BOLERO_BP, ARTIST_64 — the names RRCS gives in `GetPortExTypeList`, 49
+on a 9.0 where the 9.0.1 tables print 30). A template is the shape of a
+type: every property with its kind, bounds, named values and default as
+the specification prints them — never a value of the plant. The
+specification gives the shape in advance; the walk says which types this
+version has, which blocks each carries, what it exposes beyond the
+printed tables (`observed`) and what it does not expose of them
+(`not-exposed`), both counted in the account.
+
+The inventory goes to `.cache/manifest/rrcs/<host>.json` (ADR-0028): one
+entry for the node, one per card, one per port with its address, its
+object IDs (one per half of a split port), its type, its template and
+its role — `stream-block` with its channel count, `stream-linked` with
+its channel, `panel` with its key and page counts, `port`. The main port
+of a linked one is never reported by RRCS and is not guessed.
+
+Nine requests (the version and eight lists), plus the keys and the
+commands of one port per type. A model that exists is kept (`--refresh`
+rewrites it); the inventory is rewritten each time. `--output json`
+prints the account as data.
 
 ## 3. Listen
 

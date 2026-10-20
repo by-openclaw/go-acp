@@ -95,16 +95,26 @@ func TestRRCSExport(t *testing.T) {
 			t.Errorf("row outside --path: %s", r.Path)
 		}
 	}
-	if out := rrcsRun(t, "export", f.addr(), "--format", "csv", "--path", "nothing-matches"); strings.Count(out, "\n") != 1 {
+	if out := rrcsRun(t, "export", f.addr(), "--out", "-", "--format", "csv", "--path", "nothing-matches"); strings.Count(out, "\n") != 1 {
 		t.Errorf("empty csv export:\n%s", out)
 	}
-	if out := rrcsRun(t, "export", f.addr(), "--path", "nothing-matches"); strings.TrimSpace(out) != "[]" {
+	if out := rrcsRun(t, "export", f.addr(), "--out", "-", "--path", "nothing-matches"); strings.TrimSpace(out) != "[]" {
 		t.Errorf("empty json export: %s", out)
+	}
+	// The slot column: 0 for the node and the system objects, the bay for
+	// a card and its ports (the ports' node 61 is the first card's); --slot
+	// keeps one.
+	if mc[2] != "1" || rows["net.1.node.60.card.1.LongName"][2] != "1" || rows["net.1.node.60.LongName"][2] != "0" || rows["conference.300.Label"][2] != "0" {
+		t.Errorf("slot column: port %q card %q node %q conference %q", mc[2], rows["net.1.node.60.card.1.LongName"][2], rows["net.1.node.60.LongName"][2], rows["conference.300.Label"][2])
+	}
+	zero := rrcsRun(t, "export", f.addr(), "--out", "-", "--format", "csv", "--slot", "0")
+	if strings.Contains(zero, "port.7.out.PortAes67Output") || !strings.Contains(zero, "conference.300.Label") || !strings.Contains(zero, "net.1.node.60.LongName") {
+		t.Errorf("--slot 0:\n%s", zero)
 	}
 	// From a snapshot too.
 	snap := filepath.Join(dir, "walk.json")
 	rrcsRun(t, "walk", f.addr(), "--out", snap, "--skip", "both")
-	if out := rrcsRun(t, "export", "--from", snap, "--format", "csv", "--path", "port.7.out.PortAes67Output.Multicast,"); !strings.Contains(out, "239.1.2.3") {
+	if out := rrcsRun(t, "export", "--from", snap, "--out", "-", "--format", "csv", "--path", "port.7.out.PortAes67Output.Multicast,"); !strings.Contains(out, "239.1.2.3") {
 		t.Errorf("export from a snapshot:\n%s", out)
 	}
 }
@@ -239,7 +249,7 @@ func TestRRCSImportSkipsAndRefusals(t *testing.T) {
 		"empty file":   {"import", f.addr(), "--file", empty},
 		"bad json":     {"import", f.addr(), "--file", badJSON},
 		"dead gateway": {"import", "127.0.0.1:1", "--file", file, "--timeout", "300ms"},
-		"bad out":      {"export", f.addr(), "--out", filepath.Join(dir, "no", "such", "dir", "x.csv")},
+		"bad out":      {"export", f.addr(), "--out", filepath.Join(dir, "hand.csv", "x.csv")}, // a file where a directory must be made
 	} {
 		if args[0] == "import" {
 			args = append(args, "--dry-run")

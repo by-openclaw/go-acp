@@ -3624,8 +3624,18 @@ VERBS
             (ConfigurationChange): --path, --prop NAME=VALUE (repeat).
             Shows the change and sends nothing unless --apply yes
 
-  export    the values of the ports and client cards to one file, one row
-            per value: --format json|csv, --out FILE, --path TEXT
+  export    every value of the system to one file, one row per value, the
+            slot column filled (0 = the node and what belongs to no card,
+            N = bay N): --format json|csv, --out FILE (default: snapshots/
+            rrcs/<host>/params.<ext>, "-" = stdout), --slot N, --path TEXT
+  extract   the device models and the inventory (ADR-0022): one model for
+            the node type and one per client card type, every type of the
+            system as a template — port types, keys, commands, conferences
+            — into .cache/dm/rrcs/<Type@version>.json, and the manifest
+            of node, cards and ports with their type and role into
+            .cache/manifest/rrcs/<host>.json. Eight list requests plus the
+            keys and commands of one port per type; --refresh rewrites a
+            model that exists
   import    WRITES: every writable value of an export file that differs
             from the live system (ConfigurationChange): --file, --path,
             --dry-run to compare and send nothing
@@ -3930,11 +3940,39 @@ Usage of rrcs export:
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
   -out string
-    	output file (default: stdout)
+    	output file (default: snapshots/rrcs/<host>/params.<format>, ADR-0028; "-" = stdout)
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path value
     	keep the rows whose path contains this text; comma-separated or repeated (e.g. PortAes67Output, card, Ptp, node.63.port.1045)
+  -slot int
+    	export only this slot: 0 = the node and what belongs to no card, N = bay N (-1 = every slot) (default -1)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/extract ==========
+$ dhs consumer rrcs extract --help
+Usage of rrcs extract:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -refresh
+    	rewrite a device model that exists (default: a model that exists is kept, the inventory is rewritten)
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration

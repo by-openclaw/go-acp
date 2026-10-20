@@ -294,7 +294,7 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	ports := rrcsRun(t, "list", "ports", "--from", snapFile)
 	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "PANEL-02   PNL TWO")
 	rrcsWant(t, rrcsRun(t, "get", "--from", snapFile, "--path", "net.1.node.61.port.7.in", "--prop", "InputGain"), "InputGain                    -12")
-	out := rrcsRun(t, "export", "--from", snapFile, "--format", "csv", "--path", "port.7.in.InputGain,port.1026.Alias")
+	out := rrcsRun(t, "export", "--from", snapFile, "--out", "-", "--format", "csv", "--path", "port.7.in.InputGain,port.1026.Alias")
 	rrcsWant(t, out, "net.1.node.61.port.1026.Alias,100,Alias,string,R--,PNL TWO", "InputGain,int,R--,-12,,0.5 dB,-128,36")
 
 	// --skip values leaves them out; an unknown part is refused.

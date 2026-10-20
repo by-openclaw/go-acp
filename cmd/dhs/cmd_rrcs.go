@@ -57,6 +57,8 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsSet(ctx, args[1:])
 	case "export":
 		return rrcsExport(ctx, args[1:])
+	case "extract":
+		return rrcsExtract(ctx, args[1:])
 	case "call":
 		return rrcsCall(ctx, args[1:])
 	case "ensure":
@@ -109,8 +111,18 @@ VERBS
             (ConfigurationChange): --path, --prop NAME=VALUE (repeat).
             Shows the change and sends nothing unless --apply yes
 
-  export    the values of the ports and client cards to one file, one row
-            per value: --format json|csv, --out FILE, --path TEXT
+  export    every value of the system to one file, one row per value, the
+            slot column filled (0 = the node and what belongs to no card,
+            N = bay N): --format json|csv, --out FILE (default: snapshots/
+            rrcs/<host>/params.<ext>, "-" = stdout), --slot N, --path TEXT
+  extract   the device models and the inventory (ADR-0022): one model for
+            the node type and one per client card type, every type of the
+            system as a template — port types, keys, commands, conferences
+            — into .cache/dm/rrcs/<Type@version>.json, and the manifest
+            of node, cards and ports with their type and role into
+            .cache/manifest/rrcs/<host>.json. Eight list requests plus the
+            keys and commands of one port per type; --refresh rewrites a
+            model that exists
   import    WRITES: every writable value of an export file that differs
             from the live system (ConfigurationChange): --file, --path,
             --dry-run to compare and send nothing

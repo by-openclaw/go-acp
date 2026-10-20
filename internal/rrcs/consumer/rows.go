@@ -100,8 +100,11 @@ var Writable = map[string]map[string]bool{
 
 // Row is one value of the system.
 type Row struct {
-	IP        string `json:"ip"`
-	Protocol  string `json:"protocol"`
+	IP       string `json:"ip"`
+	Protocol string `json:"protocol"`
+	// Slot is where the value sits, as the acp connectors count: 0 the
+	// node and what belongs to no card, N the bay of the card.
+	Slot      string `json:"slot,omitempty"`
 	Path      string `json:"path"`
 	ID        string `json:"id,omitempty"`
 	Label     string `json:"label"`
@@ -125,6 +128,8 @@ func (r Row) Record() []string {
 			rec[i] = r.IP
 		case "protocol":
 			rec[i] = r.Protocol
+		case "slot":
+			rec[i] = r.Slot
 		case "path":
 			rec[i] = r.Path
 		case "id", "oid":
@@ -295,11 +300,13 @@ func RowsOf(target, object, path string, id int, props map[string]any) []Row {
 // The crosspoints are not rows; they are the matrix.
 func Rows(m *Model) []Row {
 	target := hostOnly(m.Target)
-	rows := nodeRows(target, m)
+	rows := withSlot(nodeRows(target, m), "0")
+	bays := m.BayOfNode()
 	for _, c := range m.Cards {
-		rows = append(rows, RowsOf(target, "client-card", c.Path, c.ObjectID, c.Raw)...)
+		rows = append(rows, withSlot(RowsOf(target, "client-card", c.Path, c.ObjectID, c.Raw), strconv.Itoa(c.Bay))...)
 	}
 	for _, p := range m.Ports {
+		start := len(rows)
 		rows = append(rows, RowsOf(target, "portex", p.Path, p.ObjectID, p.Raw)...)
 		// Each key position of a panel is an object of its own, and so
 		// is the command on it: both go out under the key, with their
@@ -324,8 +331,29 @@ func Rows(m *Model) []Row {
 			}
 			rows = append(rows, RowsOf(target, k.CommandType, k.Path+".cmd", k.ObjectID, cmd)...)
 		}
+		// The port, its keys and their commands sit in the bay of the
+		// port's card.
+		withSlot(rows[start:], strconv.Itoa(bays[p.Node]))
 	}
-	return append(rows, objectRows(target, m)...)
+	return append(rows, withSlot(objectRows(target, m), "0")...)
+}
+
+// withSlot marks rows with the slot they belong to.
+func withSlot(rows []Row, slot string) []Row {
+	for i := range rows {
+		rows[i].Slot = slot
+	}
+	return rows
+}
+
+// BayOfNode says which bay the ports of a node belong to: the bay of
+// the card that holds them (CardOfNode), 0 where no card is known.
+func (m *Model) BayOfNode() map[int]int {
+	bays := map[int]int{}
+	for node, c := range m.CardOfNode() {
+		bays[node] = c.Bay
+	}
+	return bays
 }
 
 // nodeRows flattens the nodes.

@@ -198,3 +198,4 @@ protocol) feeding the federation layer.
 
 - 2026-05-14 — initial — yboujraf
 - 2026-05-14 — every connector boots from manifest+DM; legacy `--tree singlefile.json` is retired parity debt. Default value resolves per-instance override → per-DM override → vendor DM default — yboujraf
+- 2026-10-20 — rrcs: the DM of a card type holds one template per port type (canonical `templates[]`, the shape from the specification confirmed by one walk), the node type's DM the templates of the system objects, keys and commands; every port is its own manifest entry (`addr`: bay, node, port, oid per half, type, template, role) — the shared `Slot` shape unchanged. `extract` writes both; the inventory is rewritten on each run, a model only with `--refresh` — by-rune
