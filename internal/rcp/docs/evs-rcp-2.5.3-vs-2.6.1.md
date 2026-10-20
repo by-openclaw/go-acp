@@ -2,8 +2,8 @@
 
 **From:** BY-SYSTEMS SRL — integration team
 **To:** EVS Cerebrum support
-**Date:** 2026-10-09, updated 2026-10-10
-**Server tested:** Cerebrum 2.9.2 build 15432 (staging), RCP enabled, `GET /v2/api` → `2.5.3`
+**Date:** 2026-10-09, updated 2026-10-10 and 2026-10-21
+**Server tested:** Cerebrum 2.9.2 build 15432 (staging), RCP enabled, `GET /v2/api` → `2.5.3`; re-tested on 2.9.3 build 15692, same answer (§6.16)
 **Document used:** *EVS Cerebrum RCP*, OpenAPI 3.0.3, version **2.6.1** ("Cerebrum RCP API-2_6_1.json")
 
 ## 1. Why we are writing
@@ -386,11 +386,42 @@ On the same unit, after a reboot, the second media port took no DHCP
 lease although the switch showed the link up; it recovered after the
 port was set to static and back to DHCP.
 
+### 6.16 Re-test on Cerebrum 2.9.3 build 15692 (2026-10-21)
+
+We installed 2.9.3 (software build 15692, web client build 2222) on the
+same staging server and re-ran the read-only coverage of §3 with an
+automated probe: one login, the 147 `GET` operations of the 2.6.1
+document with the same parameters, one logout.
+
+| Item | 2.9.2 b15432 | 2.9.3 b15692 |
+|---|---:|---:|
+| `GET /v2/api` | 2.5.3 | 2.5.3 |
+| Answered 2xx | 134 | 134 |
+| 404 "not available yet" / "object was not found" | 7 | 7 |
+| 404 "RouteMaster IO not found" (federation IOs, none on this system) | 2 | 2 |
+| 404 "Unknown RouteMaster collection" (`/routemaster/levels`, `/routemaster/levels/{levelId}`) | 2 | 2 |
+| `/views/signal-paths/…/{uuid}` 404 | 2 | 2 (the body now carries only the `reqid`) |
+
+The served API is unchanged, endpoint by endpoint: 2.9.3 does not bring
+the 2.6.1 document into service. The licence of this server has Route
+Master, TieLines, IP-Shuffle (128), Salvos, Tally Manager and Federation
+Systems enabled, so the refusals of §4.1 and §4.2 are not licence
+matters.
+
+Northbound answers as before on everything we use: levels, sources,
+destinations, categories, the device list, the IP routing of our four
+nodes, and our RouteMaster plan converges with no change. We have not
+received a Northbound document newer than 0v16; the login reply still
+reports `api_ver 0.1`.
+
+The write paths of §4.2, §4.3, §4.4 and §6.5 are not re-measured yet on
+this build; we will run them and send the result.
+
 ## 7. Summary of what we ask
 
 | # | Request | Why |
 |---|---|---|
-| 1 | Access to a server build that implements 2.6.1, or the date it is planned | to validate against the document we were given |
+| 1 | Access to a server build that implements 2.6.1, or the date it is planned — 2.9.3 build 15692 does not (§6.16) | to validate against the document we were given |
 | 2 | `GET /routemaster/levels` (4.1), and level create / update / delete if possible | complete provisioning scope |
 | 3 | `tieLineGroup` writable (4.2) | complete destination configuration |
 | 4 | Stable IO identifiers, and created ids returned by `POST` (6.1, 6.2) | safe automation with several clients |

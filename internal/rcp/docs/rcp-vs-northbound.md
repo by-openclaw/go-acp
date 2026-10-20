@@ -20,7 +20,7 @@ nothing is taken from a document alone unless the table says so.
 
 | # | Item | Value |
 |---|---|---|
-| 1 | Cerebrum under test | 2.9.2 build 15432, standalone (no federation, no redundancy) |
+| 1 | Cerebrum under test | 2.9.2 build 15432, standalone (no federation, no redundancy); re-tested on 2.9.3 build 15692 on 2026-10-21 with the same RCP answers |
 | 2 | RCP served by that Cerebrum | **2.5.3** (`GET /v2/api`) |
 | 3 | RCP document we received | **2.6.1**, OpenAPI 3.0.3 — 172 paths, 268 operations |
 | 4 | RCP back-channel document (live events) | "RCP Backchannel API" **1.0.0** |
