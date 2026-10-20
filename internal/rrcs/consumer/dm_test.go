@@ -14,22 +14,22 @@ import (
 // a Bolero beltpack whose block carries a property the tables do not
 // print, one conference.
 const dmSnapshot = `{
- "proto": "rrcs", "target": "10.12.0.12:8193",
+ "proto": "rrcs", "target": "192.0.2.10:8193",
  "lists": [
-  {"method": "GetAllNodes", "payload": [[{"NodeAddress": 60, "LongName": "MDSQ M60 TV", "NodeTypeString": "ARTIST_1024", "ObjectID": 221474832, "PrimaryNicAvailable": true}]]},
+  {"method": "GetAllNodes", "payload": [[{"NodeAddress": 60, "LongName": "FRAME A", "NodeTypeString": "ARTIST_1024", "ObjectID": 901, "PrimaryNicAvailable": true}]]},
   {"method": "GetAllClientCards", "payload": [[
-   {"Node": 60, "Bay": 1, "ClientCardTypeString": "AES67", "LongName": "AES67 M60 C1 ID61", "ObjectID": 11, "Ptp": {"PTP": 100, "PtpMode": 0}},
-   {"Node": 60, "Bay": 4, "ClientCardTypeString": "AES67", "LongName": "AES67 M60 C4 ID63", "ObjectID": 44, "Ptp": {"PTP": 100, "PtpMode": 0}}]]},
+   {"Node": 60, "Bay": 1, "ClientCardTypeString": "AES67", "LongName": "AES67 C1", "ObjectID": 11, "Ptp": {"PTP": 100, "PtpMode": 0}},
+   {"Node": 60, "Bay": 4, "ClientCardTypeString": "AES67", "LongName": "AES67 C4", "ObjectID": 44, "Ptp": {"PTP": 100, "PtpMode": 0}}]]},
   {"method": "GetAllPorts", "payload": [[
-   {"Net": 1, "Node": 63, "Port": 1064, "Input": true, "Output": false, "PortType": "Input (AES67)", "PortExType": 3, "Label": "I.-7.41", "LongName": "In. -7.41", "ObjectID": 86064587, "KeyCount": 0, "PageCount": 0,
+   {"Net": 1, "Node": 63, "Port": 1064, "Input": true, "Output": false, "PortType": "Input (AES67)", "PortExType": 3, "Label": "I.-7.41", "LongName": "In. -7.41", "ObjectID": 101064, "KeyCount": 0, "PageCount": 0,
     "PortAes67Input": {"Protocol": 5, "Channels": 8, "Selection": 1, "Multicast": "0.0.0.0", "MulticastPort": 5004, "PayloadType": 96, "BitDepth": 24, "PacketTime": 1000}},
-   {"Net": 1, "Node": 63, "Port": 1064, "Input": false, "Output": true, "PortType": "Output (AES67)", "PortExType": 3, "Label": "O.-7.41", "LongName": "Out. -7.41", "ObjectID": 477631554, "KeyCount": 0, "PageCount": 0,
+   {"Net": 1, "Node": 63, "Port": 1064, "Input": false, "Output": true, "PortType": "Output (AES67)", "PortExType": 3, "Label": "O.-7.41", "LongName": "Out. -7.41", "ObjectID": 201064, "KeyCount": 0, "PageCount": 0,
     "PortAes67Output": {"Protocol": 5, "Channels": 8, "Selection": 1, "Multicast": "0.0.0.0", "MulticastPort": 5004, "PayloadType": 97, "BitDepth": 24, "PacketTime": 1000}},
    {"Net": 1, "Node": 63, "Port": 1065, "Input": true, "Output": false, "PortType": "Input (AES67)", "PortExType": 3, "Label": "I.-7.42", "LongName": "In. -7.42", "ObjectID": 1, "KeyCount": 0, "PageCount": 0,
     "PortAes67Input": {"Protocol": 5, "Channels": 1, "Selection": 2, "Multicast": "0.0.0.0", "MulticastPort": 5004, "PayloadType": 96, "BitDepth": 24, "PacketTime": 1000}},
    {"Net": 1, "Node": 63, "Port": 1065, "Input": false, "Output": true, "PortType": "Output (AES67)", "PortExType": 3, "Label": "O.-7.42", "LongName": "Out. -7.42", "ObjectID": 2, "KeyCount": 0, "PageCount": 0,
     "PortAes67Output": {"Protocol": 5, "Channels": 1, "Selection": 2, "Multicast": "0.0.0.0", "MulticastPort": 5004, "PayloadType": 96, "BitDepth": 24, "PacketTime": 1000}},
-   {"Net": 1, "Node": 61, "Port": 1024, "Input": true, "Output": true, "PortType": "RSP-1232HL", "PortExType": 11, "Label": "NOC1", "LongName": "BM NOC 1", "ObjectID": 1069624374, "KeyCount": 32, "PageCount": 2,
+   {"Net": 1, "Node": 61, "Port": 1024, "Input": true, "Output": true, "PortType": "RSP-1232HL", "PortExType": 11, "Label": "NOC1", "LongName": "BM NOC 1", "ObjectID": 101024, "KeyCount": 32, "PageCount": 2,
     "ConnectedExpansions": [1, 2], "PortAes67": {"IpAddress": "10.5.62.66", "ListenPort": 6060}},
    {"Net": 1, "Node": 61, "Port": 2000, "Input": true, "Output": true, "PortType": "Bolero Wireless Beltpack", "PortExType": 33, "Label": "BP1", "LongName": "Beltpack 1", "ObjectID": 777, "KeyCount": 0, "PageCount": 0,
     "PortBolero": {"BoleroUserId": 5, "Foo": 1}}]]},
@@ -37,7 +37,7 @@ const dmSnapshot = `{
   {"method": "GetAllGroups", "payload": [[]]},
   {"method": "GetAllIFBs", "payload": [[]]},
   {"method": "GetAllLogicSources_v2", "payload": {"LogicSource#1": ["Studio On-Air", "On-Air", 500, true]}},
-  {"method": "GetPortExTypeList", "payload": [[{"PortExType": 3, "PortExTypeString": "FOUR_WIRE_SPLIT"}, {"PortExType": 11, "PortExTypeString": "RSP_1232HL"}]]}
+  {"method": "GetPortExTypeList", "payload": [[{"PortExType": 3, "PortExTypeString": "FOUR_WIRE_SPLIT"}, {"PortExType": 11, "PortExTypeString": "RSP_1232HL"}, {"PortExType": 33, "PortExTypeString": "BOLERO_BP"}]]}
  ],
  "commands": [
   {"method": "GetPortsCommandLists", "args": [1, 61, 1024, false, -1], "payload": {"CommandLists": [
@@ -96,7 +96,7 @@ func TestVersionAndTypeName(t *testing.T) {
 	}{
 		{3, "Input (AES67)", "FOUR_WIRE_SPLIT"},
 		{11, "RSP-1232HL", "RSP_1232HL"},
-		{33, "Bolero Wireless Beltpack", "BOLERO_WIRELESS_BELTPACK"},
+		{33, "Bolero Wireless Beltpack", "BOLERO_WIRELESS_BELTPACK"}, // not in the list: from the string
 		{48, "4-Wire Unicast (AES67)", "4_WIRE_UNICAST_AES67"},
 	} {
 		if got := TypeName(tc.ex, tc.str, names); got != tc.want {
@@ -121,7 +121,7 @@ func TestBuildDMs(t *testing.T) {
 	for _, e := range card.Templates {
 		names = append(names, e.Identifier)
 	}
-	if len(names) != 3 || names[0] != "BOLERO_WIRELESS_BELTPACK" || names[1] != "FOUR_WIRE_SPLIT" || names[2] != "RSP_1232HL" {
+	if len(names) != 3 || names[0] != "BOLERO_BP" || names[1] != "FOUR_WIRE_SPLIT" || names[2] != "RSP_1232HL" {
 		t.Errorf("card templates %v", names)
 	}
 	// The card's own properties are its root.
@@ -145,7 +145,7 @@ func TestBuildDMs(t *testing.T) {
 	}
 	// A panel carries keys; a Bolero block has a property beyond the tables.
 	childOf(t, templateOf(t, card, "RSP_1232HL").Template, "key")
-	foo := childOf(t, childOf(t, templateOf(t, card, "BOLERO_WIRELESS_BELTPACK").Template, "PortBolero"), "Foo").(*canonical.Parameter)
+	foo := childOf(t, childOf(t, templateOf(t, card, "BOLERO_BP").Template, "PortBolero"), "Foo").(*canonical.Parameter)
 	if foo.Description == nil || *foo.Description != "observed: not in the specification's tables" {
 		t.Errorf("Foo %+v", foo)
 	}
@@ -153,7 +153,7 @@ func TestBuildDMs(t *testing.T) {
 	for _, st := range set.Types {
 		stats[st.Name] = st
 	}
-	if st := stats["BOLERO_WIRELESS_BELTPACK"]; st.ExType != 33 || st.Count != 1 || len(st.Observed) != 1 || st.Observed[0] != "PortBolero.Foo" || len(st.Hidden) == 0 {
+	if st := stats["BOLERO_BP"]; st.ExType != 33 || st.Count != 1 || len(st.Observed) != 1 || st.Observed[0] != "PortBolero.Foo" || len(st.Hidden) == 0 {
 		t.Errorf("Bolero stat %+v", st)
 	}
 	if st := stats["FOUR_WIRE_SPLIT"]; st.Count != 2 || st.Roles["stream-block"] != 2 || st.Roles["stream-linked"] != 2 || len(st.Strings) != 2 {
@@ -226,8 +226,8 @@ func TestManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mf := Manifest(m, "10.12.0.12", 8193, set)
-	if mf.Device.Name != "MDSQ M60 TV" || mf.Device.IP != "10.12.0.12" || mf.Device.Endpoints[0].Port != 8193 {
+	mf := Manifest(m, "192.0.2.10", 8193, set)
+	if mf.Device.Name != "FRAME A" || mf.Device.IP != "192.0.2.10" || mf.Device.Endpoints[0].Port != 8193 {
 		t.Errorf("device %+v", mf.Device)
 	}
 	if len(mf.Frames) != 1 || len(mf.Frames[0].Slots) != 1+2+4 {
@@ -245,7 +245,7 @@ func TestManifest(t *testing.T) {
 	}
 	oids, _ := main.Addr["oid"].(map[string]any)
 	roles, _ := main.Addr["role"].(map[string]any)
-	if oids["in"] != 86064587 || oids["out"] != 477631554 || roles["in"].(map[string]any)["kind"] != "stream-block" || roles["out"].(map[string]any)["channels"] != 8 {
+	if oids["in"] != 101064 || oids["out"] != 201064 || roles["in"].(map[string]any)["kind"] != "stream-block" || roles["out"].(map[string]any)["channels"] != 8 {
 		t.Errorf("1064 oid %v role %v", oids, roles)
 	}
 	linked, _ := byPort[1065].Addr["role"].(map[string]any)
@@ -254,13 +254,13 @@ func TestManifest(t *testing.T) {
 	}
 	panel := byPort[1024]
 	if panel.Addr["template"] != "RSP_1232HL" || panel.Addr["keys"] != 32 || panel.Addr["pages"] != 2 || panel.Addr["expansions"] != 2 || panel.Addr["bay"] != 1 ||
-		panel.Addr["role"].(map[string]any)["kind"] != "panel" || panel.Addr["oid"] != 1069624374 {
+		panel.Addr["role"].(map[string]any)["kind"] != "panel" || panel.Addr["oid"] != 101024 {
 		t.Errorf("1024 %+v", panel.Addr)
 	}
-	if bp := byPort[2000]; bp.Addr["template"] != "BOLERO_WIRELESS_BELTPACK" || bp.Addr["role"].(map[string]any)["kind"] != "port" {
+	if bp := byPort[2000]; bp.Addr["template"] != "BOLERO_BP" || bp.Addr["role"].(map[string]any)["kind"] != "port" {
 		t.Errorf("2000 %+v", bp.Addr)
 	}
-	if s := mf.Frames[0].Slots[0]; s.DM != "ARTIST_1024@9.0.RR1-11" || s.Addr["bay"] != 0 || s.Addr["oid"] != 221474832 {
+	if s := mf.Frames[0].Slots[0]; s.DM != "ARTIST_1024@9.0.RR1-11" || s.Addr["bay"] != 0 || s.Addr["oid"] != 901 {
 		t.Errorf("node entry %+v", s)
 	}
 	if s := mf.Frames[0].Slots[2]; s.Addr["bay"] != 4 || s.Addr["node"] != 63 || s.Addr["card_node"] != 60 {
@@ -272,7 +272,7 @@ func TestManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filepath.Base(path) != "10.12.0.12.json" {
+	if filepath.Base(path) != "192.0.2.10.json" {
 		t.Errorf("manifest file %s", path)
 	}
 	back, err := manifest.Load(path)

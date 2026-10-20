@@ -1,0 +1,131 @@
+{
+  "device": {
+    "name": "FRAME A",
+    "protocol": "rrcs",
+    "ip": "192.0.2.10",
+    "endpoints": [
+      {
+        "ip": "192.0.2.10",
+        "port": 8193,
+        "transport": "tcp"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "name": "net.1.node.60",
+      "slots": [
+        {
+          "addr": {
+            "bay": 0,
+            "node": 60,
+            "oid": 901,
+            "type_name": "ARTIST_1024"
+          },
+          "dm": "ARTIST_1024@9.0.RR1-11"
+        },
+        {
+          "addr": {
+            "bay": 1,
+            "card_node": 60,
+            "long_name": "AES67 C1",
+            "node": 61,
+            "oid": 11,
+            "type_name": "AES67"
+          },
+          "dm": "AES67@9.0.RR1-11"
+        },
+        {
+          "addr": {
+            "bay": 4,
+            "card_node": 60,
+            "long_name": "AES67 C4",
+            "node": 63,
+            "oid": 44,
+            "type_name": "AES67"
+          },
+          "dm": "AES67@9.0.RR1-11"
+        },
+        {
+          "addr": {
+            "bay": 1,
+            "expansions": 2,
+            "keys": 32,
+            "node": 61,
+            "oid": 101024,
+            "pages": 2,
+            "port": 1024,
+            "role": {
+              "kind": "panel"
+            },
+            "template": "RSP_1232HL",
+            "type": 11
+          },
+          "dm": "AES67@9.0.RR1-11"
+        },
+        {
+          "addr": {
+            "bay": 1,
+            "node": 61,
+            "oid": 777,
+            "port": 2000,
+            "role": {
+              "kind": "port"
+            },
+            "template": "BOLERO_BP",
+            "type": 33
+          },
+          "dm": "AES67@9.0.RR1-11"
+        },
+        {
+          "addr": {
+            "bay": 4,
+            "node": 63,
+            "oid": {
+              "in": 101064,
+              "out": 201064
+            },
+            "port": 1064,
+            "role": {
+              "in": {
+                "channels": 8,
+                "kind": "stream-block"
+              },
+              "out": {
+                "channels": 8,
+                "kind": "stream-block"
+              }
+            },
+            "template": "FOUR_WIRE_SPLIT",
+            "type": 3
+          },
+          "dm": "AES67@9.0.RR1-11"
+        },
+        {
+          "addr": {
+            "bay": 4,
+            "node": 63,
+            "oid": {
+              "in": 1,
+              "out": 2
+            },
+            "port": 1065,
+            "role": {
+              "in": {
+                "channel": 2,
+                "kind": "stream-linked"
+              },
+              "out": {
+                "channel": 2,
+                "kind": "stream-linked"
+              }
+            },
+            "template": "FOUR_WIRE_SPLIT",
+            "type": 3
+          },
+          "dm": "AES67@9.0.RR1-11"
+        }
+      ]
+    }
+  ]
+}

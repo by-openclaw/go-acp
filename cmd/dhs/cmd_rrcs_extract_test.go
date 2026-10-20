@@ -34,16 +34,16 @@ func rrcsExtractAnswer(t *testing.T) func(codec.Call) (codec.Value, bool) {
 		case "GetVersion":
 			return codec.Array(k, codec.Int(0), codec.String("9.0.RR1-11.f33d55f")), true
 		case "GetAllNodes":
-			return list(k, `[{"NodeAddress": 60, "LongName": "MDSQ M60 TV", "NodeTypeString": "ARTIST_1024", "ObjectID": 221474832}]`)
+			return list(k, `[{"NodeAddress": 60, "LongName": "FRAME A", "NodeTypeString": "ARTIST_1024", "ObjectID": 901}]`)
 		case "GetAllClientCards":
-			return list(k, `[{"Node": 60, "Bay": 4, "ClientCardTypeString": "AES67", "LongName": "AES67 M60 C4 ID63", "ObjectID": 44, "Ptp": {"PTP": 100}}]`)
+			return list(k, `[{"Node": 60, "Bay": 4, "ClientCardTypeString": "AES67", "LongName": "AES67 C4", "ObjectID": 44, "Ptp": {"PTP": 100}}]`)
 		case "GetAllPorts":
 			return list(k, `[
-			 {"Net": 1, "Node": 63, "Port": 1064, "Input": true, "Output": false, "PortType": "Input (AES67)", "PortExType": 3, "Label": "I.-7.41", "LongName": "In. -7.41", "ObjectID": 86064587, "KeyCount": 0, "PageCount": 0,
+			 {"Net": 1, "Node": 63, "Port": 1064, "Input": true, "Output": false, "PortType": "Input (AES67)", "PortExType": 3, "Label": "I.-7.41", "LongName": "In. -7.41", "ObjectID": 101064, "KeyCount": 0, "PageCount": 0,
 			  "PortAes67Input": {"Protocol": 5, "Channels": 8, "Selection": 1, "Multicast": "0.0.0.0", "MulticastPort": 5004, "PayloadType": 96, "BitDepth": 24, "PacketTime": 1000}},
-			 {"Net": 1, "Node": 63, "Port": 1064, "Input": false, "Output": true, "PortType": "Output (AES67)", "PortExType": 3, "Label": "O.-7.41", "LongName": "Out. -7.41", "ObjectID": 477631554, "KeyCount": 0, "PageCount": 0,
+			 {"Net": 1, "Node": 63, "Port": 1064, "Input": false, "Output": true, "PortType": "Output (AES67)", "PortExType": 3, "Label": "O.-7.41", "LongName": "Out. -7.41", "ObjectID": 201064, "KeyCount": 0, "PageCount": 0,
 			  "PortAes67Output": {"Protocol": 5, "Channels": 8, "Selection": 1, "Multicast": "0.0.0.0", "MulticastPort": 5004, "PayloadType": 97, "BitDepth": 24, "PacketTime": 1000}},
-			 {"Net": 1, "Node": 63, "Port": 1024, "Input": true, "Output": true, "PortType": "RSP-1232HL", "PortExType": 11, "Label": "NOC1", "LongName": "BM NOC 1", "ObjectID": 1069624374, "KeyCount": 32, "PageCount": 2,
+			 {"Net": 1, "Node": 63, "Port": 1024, "Input": true, "Output": true, "PortType": "RSP-1232HL", "PortExType": 11, "Label": "NOC1", "LongName": "BM NOC 1", "ObjectID": 101024, "KeyCount": 32, "PageCount": 2,
 			  "ConnectedExpansions": [1], "PortAes67": {"IpAddress": "10.5.62.66", "ListenPort": 6060}}]`)
 		case "GetAllConferences":
 			return list(k, `[{"ObjectID": 300, "Label": "CONF", "LongName": "Conference", "MemberList": [{"Node": 63, "Port": 1024, "Talk": true, "Listen": true}]}]`)
@@ -74,7 +74,7 @@ func TestRRCSExtract(t *testing.T) {
 	f := newRRCSFake(t, rrcsExtractAnswer(t))
 
 	out := rrcsRun(t, "extract", f.addr())
-	for _, want := range []string{"version:  9.0.RR1-11 (MDSQ M60 TV)", "requests: 12", "model written:", "manifest:", "(4 entries)", "FOUR_WIRE_SPLIT", "RSP_1232HL", "call-to-port-cmd"} {
+	for _, want := range []string{"version:  9.0.RR1-11 (FRAME A)", "requests: 12", "model written:", "manifest:", "(4 entries)", "FOUR_WIRE_SPLIT", "RSP_1232HL", "call-to-port-cmd"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
@@ -125,7 +125,7 @@ func TestRRCSExtract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if mf.Device.Name != "MDSQ M60 TV" || mf.Device.Protocol != "rrcs" || len(mf.Frames) != 1 || len(mf.Frames[0].Slots) != 4 {
+	if mf.Device.Name != "FRAME A" || mf.Device.Protocol != "rrcs" || len(mf.Frames) != 1 || len(mf.Frames[0].Slots) != 4 {
 		t.Fatalf("manifest %+v", mf)
 	}
 	for _, s := range mf.Frames[0].Slots {
@@ -154,7 +154,7 @@ func TestRRCSExtract(t *testing.T) {
 	snap := filepath.Join(t.TempDir(), "walk.json")
 	rrcsRun(t, "walk", f.addr(), "--out", snap, "--skip", "both")
 	before := len(f.methods())
-	if out := rrcsRun(t, "extract", "--from", snap, "--refresh"); !strings.Contains(out, "version:  9.0.RR1-11 (MDSQ M60 TV)") || !strings.Contains(out, "source:   "+snap) || strings.Count(out, "model written:") != 2 {
+	if out := rrcsRun(t, "extract", "--from", snap, "--refresh"); !strings.Contains(out, "version:  9.0.RR1-11 (FRAME A)") || !strings.Contains(out, "source:   "+snap) || strings.Count(out, "model written:") != 2 {
 		t.Errorf("--from:\n%s", out)
 	}
 	if len(f.methods()) != before {
