@@ -434,6 +434,35 @@ through manual, inputs linked in two requests, outputs in one. RRCS does
 not report a link, so a port counts as done when it uses the wanted
 channel. Creating the ports first is `import`'s `PortType` row.
 
+### ensure --manifest — the inventory as the desired state
+
+```
+dhs consumer rrcs ensure <host> --manifest desired.json --check
+dhs consumer rrcs ensure <host> --manifest desired.json --write-to <host>
+```
+
+The manifest `extract` writes is the actual inventory; a copy of it,
+edited, is the desired one (keep it under `snapshots/rrcs/<host>/`, or in
+the Ansible inventory). `ensure --manifest` reads the system as `extract`
+does (nine requests), compares every port entry — address, `type` or
+`template`, `role` — and sends the difference in the proven order,
+through the same convergence as `import`:
+
+| Entry | What is sent |
+|---|---|
+| a port the system does not have | one `create` with its type, then its two names by the Director pattern; its role rows follow in a second pass, once it exists |
+| `role.in` or `role.out` = `{"kind": "stream-block", "channels": 8}` | the channel count of that half: on an NMOS stream the round trip (manual with the count, then NMOS alone) |
+| `role.in` or `role.out` = `{"kind": "stream-linked", "main": 1064, "channel": 2}` | the link: `Mode` then `Selection` on an input, both in one request on an output |
+| `panel`, `port`, `stream` | nothing: values stay with `import` |
+| a port present with another type | a retype — RRCS has no edit of a type: refused, with what points at the port, unless `--allow-retype`; then the port's rows and those that point at it are saved to `snapshots/rrcs/<host>/retype-<node>-<port>-<time>.csv`, the port is deleted and created, and its role applied |
+| a port the manifest does not name | left alone, counted as "not named" |
+
+The type of a port to create is checked against the gateway's own type
+list (`GetPortExTypeList`, 49 names on a 9.0), as `import` now does too.
+After a write the actual manifest is rewritten; `--check` prints the
+ADR-0007 shape (`would_change`, `diff[]`) and sends nothing. Per block of
+eight both directions: 49 requests.
+
 ### call — any method of the specification
 
 ```

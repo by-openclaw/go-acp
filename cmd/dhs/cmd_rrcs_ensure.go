@@ -147,7 +147,9 @@ Only what the file names is touched. Without --check this WRITES and needs
 		fs.PrintDefaults()
 	}
 	cf := newRRCSFlags(fs)
-	file := fs.String("file", "", "desired-state file, JSON (required)")
+	file := fs.String("file", "", "desired-state file, JSON (required, or --manifest)")
+	manifestFile := fs.String("manifest", "", "the desired inventory (the manifest extract wrote, edited): the type and the role of each port, brought to the system in the proven order — a PortType create for an absent port, the channel count of a main, the links; values stay with import")
+	allowRetype := fs.Bool("allow-retype", false, "with --manifest: a port present with another type is deleted and created (RRCS has no edit of a type); its rows are saved to snapshots/rrcs/<host>/ first. Refused without this flag")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	listen := fs.String("listen", ":8196", "for the levels of crosspoints: local [ip]:port RRCS sends them to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so a file with levels ends the level events of a watch on the same machine until it is started again")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
@@ -156,8 +158,14 @@ Only what the file names is touched. Without --check this WRITES and needs
 	if fs.NArg() != 1 {
 		return rrcsValErr("ensure", "want exactly one host[:port] argument")
 	}
+	if *manifestFile != "" {
+		if *file != "" {
+			return rrcsValErr("ensure", "give --file or --manifest, not both")
+		}
+		return rrcsEnsureManifest(ctx, cf, fs.Arg(0), *manifestFile, *writeTo, check, *allowRetype)
+	}
 	if *file == "" {
-		return rrcsValErr("ensure", "want --file DESIRED.json")
+		return rrcsValErr("ensure", "want --file DESIRED.json or --manifest MANIFEST.json")
 	}
 	raw, err := os.ReadFile(*file)
 	if err != nil {
@@ -298,9 +306,16 @@ Only what the file names is touched. Without --check this WRITES and needs
 	record(rrcsEnsurePorts(ctx, cf, client, want.Ports, check))
 	record(rrcsEnsureStreams(ctx, cf, client, want.Streams, check))
 
-	// The ADR-0007 shapes. The failures ride along; the exit code says
-	// whether the run reached its target.
-	cf.logChanges(ctx, "ensure", fs.Arg(0), check, diff, failures)
+	suffix := fmt.Sprintf("of %d values, %d crosspoints, %d keys, %d conferences, %d groups, %d ifbs, %d levels, %d ports and %d streams",
+		len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.IFBs), len(want.Levels), len(want.Ports), len(want.Streams))
+	return rrcsEnsureReport(ctx, cf, fs.Arg(0), check, diff, failures, before, after, suffix)
+}
+
+// rrcsEnsureReport prints what ensure did in the ADR-0007 shapes. The
+// failures ride along; the exit code says whether the run reached its
+// target.
+func rrcsEnsureReport(ctx context.Context, cf *rrcsFlags, host string, check bool, diff []rrcsDiffEntry, failures []rrcsEnsureFailure, before, after map[string]any, suffix string) error {
+	cf.logChanges(ctx, "ensure", host, check, diff, failures)
 	var doc any
 	if check {
 		doc = struct {
@@ -333,8 +348,7 @@ Only what the file names is touched. Without --check this WRITES and needs
 		for _, f := range failures {
 			fmt.Printf("%-13s %-64s %s\n", "failed", f.Field, f.Reason)
 		}
-		fmt.Printf("%s %d, failed %d, of %d values, %d crosspoints, %d keys, %d conferences, %d groups, %d ifbs, %d levels, %d ports and %d streams\n", verb, len(diff), len(failures),
-			len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.IFBs), len(want.Levels), len(want.Ports), len(want.Streams))
+		fmt.Printf("%s %d, failed %d, %s\n", verb, len(diff), len(failures), suffix)
 	}
 	if len(failures) > 0 {
 		return fmt.Errorf("rrcs ensure: %d field(s) could not be brought to their target", len(failures))

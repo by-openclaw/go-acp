@@ -129,7 +129,13 @@ VERBS
 
   ensure    converge to a desired-state file (values, crosspoints): --file,
             --check to report and send nothing; the contract of every dhs
-            ensure, for Ansible. Without --check it WRITES
+            ensure, for Ansible. Without --check it WRITES.
+            --manifest FILE instead: the desired inventory (the manifest
+            extract wrote, edited) — the type and the role of each port,
+            brought to the system in the proven order: an absent port is
+            created from its type, a main gets its channel count, a linked
+            port its link; a port of another type is a retype (delete and
+            create), refused without --allow-retype
   coverage  every method and notification of the specification: the dhs
             verb that uses it, and whether it has been seen working on a
             real RRCS. Talks to no gateway

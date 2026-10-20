@@ -229,6 +229,17 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			objects = append(objects, object)
 		}
 	}
+	// The gateway's own list of port types, read once when a row creates
+	// a port: a 9.0 names 49 types where the specification prints 30.
+	var typeList map[int]string
+	typeListRead := false
+	liveTypes := func() map[int]string {
+		if !typeListRead {
+			typeListRead = true
+			typeList = rrcsExTypeList(ctx, client)
+		}
+		return typeList
+	}
 	read := func() (*rrcsModel, error) {
 		if len(objects) > 0 && len(objects) < 16 {
 			m := &rrcsModel{Objects: map[string][]*rrcsObject{}}
@@ -306,7 +317,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 				skips = append(skips, rrcsSkip{"bad_path", row.Path, "a PortType row names the port without direction: net.N.node.N.port.P.PortType"})
 				continue
 			}
-			if _, exists := live.Lookup(object); exists {
+			if rrcsPortExists(live, object) {
 				unchanged++
 				continue
 			}
@@ -391,7 +402,14 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			// enums are complete by definition; a printed list counts
 			// only when its keys form one unbroken run, since the
 			// specification abbreviates longer scales with dots.
-			if words, known := rrcsEnums[field]; known {
+			if types := liveTypes(); creating && len(types) > 0 {
+				// The type of a port to create: what this gateway lists,
+				// not the printed table.
+				if _, ok := types[int(n)]; !ok {
+					skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("type %d is not in the gateway's type list (%d names)", n, len(types))})
+					continue
+				}
+			} else if words, known := rrcsEnums[field]; known {
 				if _, ok := words[int(n)]; !ok {
 					skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not one of its values"})
 					continue
@@ -523,7 +541,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			}
 			if field == "PortType" && block == "" {
 				// A create reads back as the port existing.
-				if _, ok := after.Lookup(object); !ok {
+				if !rrcsPortExists(after, object) {
 					it.Result, it.Error = "not_taken", "RRCS accepted the create and the port is not listed"
 					failed++
 				}
@@ -815,4 +833,37 @@ func rrcsPortNameEdits(m *rrcsModel, object string) []*rrcsChange {
 		edits = append(edits, change)
 	}
 	return edits
+}
+
+// rrcsExTypeList reads the port types the gateway names (§8.9
+// GetPortExTypeList): number and name. Empty when the gateway does not
+// answer it.
+func rrcsExTypeList(ctx context.Context, client *rrcs.Client) map[int]string {
+	reply, err := client.Call(ctx, "GetPortExTypeList")
+	if err != nil {
+		return nil
+	}
+	types := map[int]string{}
+	for _, it := range rrcsListOf(reply) {
+		n, ok := rrcsFieldInt(it, "PortExType")
+		if !ok {
+			continue
+		}
+		if name, ok := it.Field("PortExTypeString"); ok && name.Str != "" {
+			types[int(n)] = name.Str
+		}
+	}
+	return types
+}
+
+// rrcsPortExists says whether the system lists a port named without its
+// direction: as one object, or — a 4-Wire Split, read from the lists —
+// as its two halves.
+func rrcsPortExists(m *rrcsModel, object string) bool {
+	if _, ok := m.Lookup(object); ok {
+		return true
+	}
+	_, in := m.Lookup(object + ".in")
+	_, out := m.Lookup(object + ".out")
+	return in || out
 }
