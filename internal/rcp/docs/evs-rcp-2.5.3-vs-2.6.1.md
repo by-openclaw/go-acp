@@ -386,36 +386,11 @@ On the same unit, after a reboot, the second media port took no DHCP
 lease although the switch showed the link up; it recovered after the
 port was set to static and back to DHCP.
 
-### 6.16 Re-test on Cerebrum 2.9.3 build 15692 (2026-10-21)
+### 6.16 Re-test on Cerebrum 2.9.3 build 15692
 
-We installed 2.9.3 (software build 15692, web client build 2222) on the
-same staging server and re-ran the read-only coverage of §3 with an
-automated probe: one login, the 147 `GET` operations of the 2.6.1
-document with the same parameters, one logout.
-
-| Item | 2.9.2 b15432 | 2.9.3 b15692 |
-|---|---:|---:|
-| `GET /v2/api` | 2.5.3 | 2.5.3 |
-| Answered 2xx | 134 | 134 |
-| 404 "not available yet" / "object was not found" | 7 | 7 |
-| 404 "RouteMaster IO not found" (federation IOs, none on this system) | 2 | 2 |
-| 404 "Unknown RouteMaster collection" (`/routemaster/levels`, `/routemaster/levels/{levelId}`) | 2 | 2 |
-| `/views/signal-paths/…/{uuid}` 404 | 2 | 2 (the body now carries only the `reqid`) |
-
-The served API is unchanged, endpoint by endpoint: 2.9.3 does not bring
-the 2.6.1 document into service. The licence of this server has Route
-Master, TieLines, IP-Shuffle (128), Salvos, Tally Manager and Federation
-Systems enabled, so the refusals of §4.1 and §4.2 are not licence
-matters.
-
-Northbound answers as before on everything we use: levels, sources,
-destinations, categories, the device list, the IP routing of our four
-nodes, and our RouteMaster plan converges with no change. We have not
-received a Northbound document newer than 0v16; the login reply still
-reports `api_ver 0.1`.
-
-The write paths of §4.2, §4.3, §4.4 and §6.5 are not re-measured yet on
-this build; we will run them and send the result.
+See the separate note of 2026-10-21,
+[`evs-rcp-2.9.3-retest-2026-10-21.md`](evs-rcp-2.9.3-retest-2026-10-21.md):
+every measurement of this note re-run on 2.9.3, with the same answers.
 
 ## 7. Summary of what we ask
 
