@@ -422,6 +422,7 @@ func TestDoByName(t *testing.T) {
 // guarded verbs.
 func TestPluginValues(t *testing.T) {
 	gain := int32(-128)
+	changed := false
 	f := newFakeRRCS(t, func(call codec.Call) (codec.Value, *codec.Fault) {
 		key := call.Params[0]
 		switch call.Method {
@@ -439,6 +440,9 @@ func TestPluginValues(t *testing.T) {
 			return codec.Array(key, codec.Int(0)), nil
 		case "GetInputGain":
 			return codec.Array(key, codec.Int(0), codec.Int(gain)), nil
+		case "ConfigurationChange":
+			changed = true
+			return codec.Array(key, codec.Int(0)), nil
 		}
 		return codec.Value{}, &codec.Fault{Code: 1, String: "unexpected " + call.Method}
 	})
@@ -460,9 +464,11 @@ func TestPluginValues(t *testing.T) {
 		t.Fatalf("SetValue gain = %+v, %v (sent %d)", v, err, gain)
 	}
 
+	// A property the lists report goes through a configuration change,
+	// here the mode alone towards manual (ADR-0035): sent, then read back.
 	if _, err := p.SetValue(ctx, dhsc.ValueRequest{Path: "net.1.node.61.port.1024.PortAes67Input.Protocol"},
-		dhsc.Value{Kind: dhsc.KindInt, Int: 2}); err == nil || !strings.Contains(err.Error(), "ADR-0035") {
-		t.Fatalf("a stream property went through the plugin: %v", err)
+		dhsc.Value{Kind: dhsc.KindInt, Int: 2}); err != nil || !changed {
+		t.Fatalf("a stream property did not go through the change: %v (sent %v)", err, changed)
 	}
 }
 

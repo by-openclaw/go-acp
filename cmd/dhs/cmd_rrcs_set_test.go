@@ -40,10 +40,10 @@ func TestRRCSChangeRequestPort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = c.add("PortAes67Output.Multicast", codec.String("239.1.2.3"))
-	_ = c.add("PortAes67Output.MulticastPort", codec.Int(5004))
-	_ = c.add("Alias", codec.String("X"))
-	doc, err := codec.EncodeCall("ConfigurationChange", codec.String("C0000000001"), c.request())
+	_ = c.Add("PortAes67Output.Multicast", codec.String("239.1.2.3"))
+	_ = c.Add("PortAes67Output.MulticastPort", codec.Int(5004))
+	_ = c.Add("Alias", codec.String("X"))
+	doc, err := codec.EncodeCall("ConfigurationChange", codec.String("C0000000001"), c.Request())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestRRCSChangeRequestPort(t *testing.T) {
 	}
 	// A port with both directions carries no IsInput.
 	both, _ := rrcsChangeFor("net.1.node.61.port.1026")
-	if addr := both.address[0].Value; len(addr.Members) != 2 || addr.Members[0].Name != "Node" {
+	if addr := both.Address[0].Value; len(addr.Members) != 2 || addr.Members[0].Name != "Node" {
 		t.Errorf("address of a two-way port: %+v", addr)
 	}
 }
@@ -82,16 +82,16 @@ func TestRRCSChangeRequestCard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = c.add("Ptp.PTP", codec.Int(100))
-	_ = c.add("Nmos.RegistrationIp", codec.String("10.44.55.15"))
-	_ = c.add("Media_1.DefaultGateway", codec.String("10.5.10.185"))
-	p := c.params()
+	_ = c.Add("Ptp.PTP", codec.Int(100))
+	_ = c.Add("Nmos.RegistrationIp", codec.String("10.44.55.15"))
+	_ = c.Add("Media_1.DefaultGateway", codec.String("10.5.10.185"))
+	p := c.Params()
 	names := make([]string, 0, len(p.Members))
 	for _, m := range p.Members {
 		names = append(names, m.Name)
 	}
-	if strings.Join(names, ",") != "Node,Slot,Nmos,Aes67" || c.objectType != "client-card" {
-		t.Fatalf("members %v of %s", names, c.objectType)
+	if strings.Join(names, ",") != "Node,Slot,Nmos,Aes67" || c.ObjectType != "client-card" {
+		t.Fatalf("members %v of %s", names, c.ObjectType)
 	}
 	if slot, _ := p.Field("Slot"); slot.Int != 4 {
 		t.Errorf("Slot = %d", slot.Int)
@@ -102,10 +102,10 @@ func TestRRCSChangeRequestCard(t *testing.T) {
 	if dom, _ := ptp.Field("PTP"); !ok1 || !ok2 || dom.Int != 100 {
 		t.Errorf("Aes67 = %+v", aes)
 	}
-	if err := c.add("Ptp.PTP", codec.Int(1)); err == nil {
+	if err := c.Add("Ptp.PTP", codec.Int(1)); err == nil {
 		t.Error("a property given twice was accepted")
 	}
-	if err := c.add("A.B.C", codec.Int(1)); err == nil {
+	if err := c.Add("A.B.C", codec.Int(1)); err == nil {
 		t.Error("a three-level name was accepted")
 	}
 }
@@ -318,7 +318,7 @@ func TestRRCSNMOSStreamGuard(t *testing.T) {
 		}
 		for _, p := range props {
 			name, value, _ := strings.Cut(p, "=")
-			if err := c.add(name, rrcsPropValue(value)); err != nil {
+			if err := c.Add(name, rrcsPropValue(value)); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -337,13 +337,13 @@ func TestRRCSNMOSStreamGuard(t *testing.T) {
 		"address on a manual sender":              {change("PortAes67Output.Multicast=239.1.1.1"), manual, false},
 		"a label on an NMOS sender":               {change("Label=X"), nmos, false},
 	} {
-		if got := tc.c.nmosStream(tc.current) != ""; got != tc.refused {
+		if got := tc.c.NMOSStream(tc.current) != ""; got != tc.refused {
 			t.Errorf("%s: refused %v, want %v", name, got, tc.refused)
 		}
 	}
 	card, _ := rrcsChangeFor("net.1.node.60.card.1")
-	_ = card.add("Ptp.PTP", rrcsPropValue("101"))
-	if card.nmosStream(nmos) != "" {
+	_ = card.Add("Ptp.PTP", rrcsPropValue("101"))
+	if card.NMOSStream(nmos) != "" {
 		t.Error("a client card edit was taken for a stream edit")
 	}
 }
@@ -353,12 +353,12 @@ func TestRRCSNMOSStreamGuard(t *testing.T) {
 func TestRRCSLinkIsNotAStreamEdit(t *testing.T) {
 	nmos := map[string]any{"PortAes67Input": map[string]any{"Protocol": float64(5)}}
 	c, _ := rrcsChangeFor("net.1.node.63.port.1073.in")
-	_ = c.add("PortAes67Input.Mode", rrcsPropValue("1072"))
-	_ = c.add("PortAes67Input.Selection", rrcsPropValue("2"))
-	if c.nmosStream(nmos) != "" {
+	_ = c.Add("PortAes67Input.Mode", rrcsPropValue("1072"))
+	_ = c.Add("PortAes67Input.Selection", rrcsPropValue("2"))
+	if c.NMOSStream(nmos) != "" {
 		t.Error("a link was refused")
 	}
-	doc, err := codec.EncodeCall("ConfigurationChange", codec.String("C0000000001"), c.request())
+	doc, err := codec.EncodeCall("ConfigurationChange", codec.String("C0000000001"), c.Request())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,8 +368,8 @@ func TestRRCSLinkIsNotAStreamEdit(t *testing.T) {
 			t.Errorf("request lacks %s:\n%s", want, doc)
 		}
 	}
-	_ = c.add("PortAes67Input.Multicast", rrcsPropValue("239.1.1.1"))
-	if c.nmosStream(nmos) == "" {
+	_ = c.Add("PortAes67Input.Multicast", rrcsPropValue("239.1.1.1"))
+	if c.NMOSStream(nmos) == "" {
 		t.Error("a link with an address was let through")
 	}
 }

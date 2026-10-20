@@ -201,15 +201,15 @@ func TestRowsSlot(t *testing.T) {
 		slots[r.Path] = r.Slot
 	}
 	for path, want := range map[string]string{
-		"net.1.node.60.LongName":                           "0",
-		"conference.300.Label":                             "0",
-		"net.1.node.60.card.1.LongName":                    "1",
-		"net.1.node.60.card.4.LongName":                    "4",
-		"net.1.node.61.port.1024.Label":                    "1",
-		"net.1.node.61.port.1024.key.0.1.1.LabelValue":     "1",
-		"net.1.node.61.port.1024.key.0.1.1.cmd.CommandType": "1",
-		"net.1.node.61.port.2000.Label":                    "1",
-		"net.1.node.63.port.1064.in.PortAes67Input.Channels": "4",
+		"net.1.node.60.LongName":                                "0",
+		"conference.300.Label":                                  "0",
+		"net.1.node.60.card.1.LongName":                         "1",
+		"net.1.node.60.card.4.LongName":                         "4",
+		"net.1.node.61.port.1024.Label":                         "1",
+		"net.1.node.61.port.1024.key.0.1.1.LabelValue":          "1",
+		"net.1.node.61.port.1024.key.0.1.1.cmd.CommandType":     "1",
+		"net.1.node.61.port.2000.Label":                         "1",
+		"net.1.node.63.port.1064.in.PortAes67Input.Channels":    "4",
 		"net.1.node.63.port.1065.out.PortAes67Output.Selection": "4",
 	} {
 		if got, ok := slots[path]; !ok || got != want {

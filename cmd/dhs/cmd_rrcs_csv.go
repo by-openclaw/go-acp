@@ -8,14 +8,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
-	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
 )
 
@@ -362,75 +360,14 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		if strings.Contains(object, ".card.") {
 			specObject = "client-card"
 		}
-		spec := rrcsSpecFor(specObject, block, field)
-		kind := spec.Type
-		if kind == "" {
-			switch live.MustRaw(object, block, field).(type) {
-			case bool:
-				kind = "bool"
-			case float64:
-				kind = "int"
-			default:
-				kind = "string"
-			}
+		var types map[int]string
+		if creating {
+			types = liveTypes()
 		}
-		var value codec.Value
-		switch kind {
-		case "bool":
-			b, err := strconv.ParseBool(strings.ToLower(wanted))
-			if err != nil {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not true or false"})
-				continue
-			}
-			value = codec.Bool(b)
-		case "int":
-			n, err := strconv.ParseInt(wanted, 10, 32)
-			if err != nil {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not a whole number"})
-				continue
-			}
-			if lo, errLo := strconv.ParseInt(spec.Min, 10, 32); errLo == nil && n < lo {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%d is below the specification's minimum %s", n, spec.Min)})
-				continue
-			}
-			if hi, errHi := strconv.ParseInt(spec.Max, 10, 32); errHi == nil && n > hi {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%d is above the specification's maximum %s", n, spec.Max)})
-				continue
-			}
-			// Where the complete set of values is known, membership is
-			// checked too (Protocol is 2, 3 or 5 — not 4). The curated
-			// enums are complete by definition; a printed list counts
-			// only when its keys form one unbroken run, since the
-			// specification abbreviates longer scales with dots.
-			if types := liveTypes(); creating && len(types) > 0 {
-				// The type of a port to create: what this gateway lists,
-				// not the printed table.
-				if _, ok := types[int(n)]; !ok {
-					skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("type %d is not in the gateway's type list (%d names)", n, len(types))})
-					continue
-				}
-			} else if words, known := rrcsEnums[field]; known {
-				if _, ok := words[int(n)]; !ok {
-					skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not one of its values"})
-					continue
-				}
-			} else if allowed, complete := rrcsEnumSet(spec.Enum); complete && !allowed[n] {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not one of the specification's values (" + spec.Enum + ")"})
-				continue
-			}
-			value = codec.Int(int32(n))
-		case "ip":
-			if net.ParseIP(wanted) == nil {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, wanted + " is not an IP address"})
-				continue
-			}
-			value = codec.String(wanted)
-		default: // string
-			if max, err := strconv.Atoi(spec.MaxLen); err == nil && len(wanted) > max {
-				skips = append(skips, rrcsSkip{"bad_value", row.Path, fmt.Sprintf("%q is longer than the specification's %s characters", wanted, spec.MaxLen)})
-				continue
-			}
-			value = codec.String(wanted)
+		value, reason := rrcs.TypedValue(specObject, block, field, wanted, live.MustRaw(object, block, field), creating, types)
+		if reason != "" {
+			skips = append(skips, rrcsSkip{"bad_value", row.Path, reason})
+			continue
 		}
 		p := plans[object]
 		if p == nil {
@@ -443,12 +380,12 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 			plans[object] = p
 			order = append(order, p)
 		}
-		if err := p.change.add(block+"."+field, value); err != nil {
+		if err := p.change.Add(block+"."+field, value); err != nil {
 			skips = append(skips, rrcsSkip{"duplicate", row.Path, "the file gives this value twice"})
 			continue
 		}
 		if creating {
-			p.change.changeType = "create"
+			p.change.ChangeType = "create"
 		}
 		item := &rrcsApplied{Path: row.Path, Live: now, Wanted: wanted, Result: "would_apply"}
 		p.items = append(p.items, item)
@@ -464,7 +401,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		var steps []*rrcsChange
 		var drop bool
 		var refusal string
-		if p.change.changeType == "create" {
+		if p.change.ChangeType == "create" {
 			// The create, then the two name edits by the Director
 			// pattern — RRCS auto-names nothing. A name the file also
 			// carries applies on the next run, once the port exists.
@@ -486,7 +423,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		p.steps = steps
 		if refusal == "" {
 			for _, s := range steps {
-				if block := s.nmosStream(props); block != "" {
+				if block := s.NMOSStream(props); block != "" {
 					refusal = block + ": " + rrcsNMOSRefusal
 				}
 			}
@@ -513,7 +450,7 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 				result, text = "refused", p.refused
 			} else {
 				for _, step := range p.steps {
-					if _, err := client.Call(ctx, rrcsChangeMethod, step.request()); err != nil {
+					if _, err := client.Call(ctx, rrcsChangeMethod, step.Request()); err != nil {
 						result, text = "failed", err.Error()
 						break
 					}
@@ -697,153 +634,6 @@ func rrcsWithout(applied []*rrcsApplied, drop []*rrcsApplied) []*rrcsApplied {
 		}
 	}
 	return kept
-}
-
-// rrcsStreamSteps shapes one object's rows into the requests the stream
-// rules demand, proven on production on 2026-10-13:
-//
-//   - a link: Mode alone then Selection alone on an input; Mode and
-//     Selection in ONE request on an output; nothing else beside them;
-//   - a link whose Selection row is absent (already right): nothing is
-//     sent, the link is taken as in place — RRCS never reports it;
-//   - a channel count on a stream in NMOS mode: towards manual with the
-//     count, then back to NMOS with the mode alone;
-//   - anything else: the change as it is, under the NMOS guard.
-func rrcsStreamSteps(object string, c *rrcsChange, props map[string]any) (steps []*rrcsChange, drop bool, refused string) {
-	blk := ""
-	for _, b := range []string{"PortAes67Input", "PortAes67Output"} {
-		if _, ok := c.blocks[b]; ok {
-			blk = b
-		}
-	}
-	if blk == "" {
-		return []*rrcsChange{c}, false, ""
-	}
-	var mode, sel *codec.Member
-	named := map[string]codec.Value{}
-	for i := range c.blocks[blk] {
-		m := &c.blocks[blk][i]
-		named[m.Name] = m.Value
-		switch m.Name {
-		case "Mode":
-			mode = m
-		case "Selection":
-			sel = m
-		}
-	}
-	one := func(members ...codec.Member) *rrcsChange {
-		step, err := rrcsChangeFor(object)
-		if err != nil {
-			return nil
-		}
-		for _, m := range members {
-			if step.add(blk+"."+m.Name, m.Value) != nil {
-				return nil
-			}
-		}
-		return step
-	}
-	if mode != nil {
-		if len(c.order) > 1 || len(c.blocks[blk]) > 2 {
-			return nil, false, "a link write carries Mode and Selection and nothing else (RRCS: when linking, no further property than Selection)"
-		}
-		if sel == nil {
-			return nil, true, ""
-		}
-		if strings.HasSuffix(object, ".in") {
-			return []*rrcsChange{one(*mode), one(*sel)}, false, ""
-		}
-		return []*rrcsChange{one(*mode, *sel)}, false, ""
-	}
-	ch, hasCh := named["Channels"]
-	proto, hasProto := named["Protocol"]
-	if hasCh && len(c.order) == 1 && jInt(jMap(props[blk]), "Protocol") == 5 && (!hasProto || proto.Int == 5) {
-		others := 0
-		for name := range named {
-			if name != "Channels" && name != "Protocol" {
-				others++
-			}
-		}
-		if others == 0 {
-			return []*rrcsChange{
-				one(codec.Member{Name: "Protocol", Value: codec.Int(2)}, codec.Member{Name: "Channels", Value: ch}),
-				one(codec.Member{Name: "Protocol", Value: codec.Int(5)}),
-			}, false, ""
-		}
-	}
-	return []*rrcsChange{c}, false, ""
-}
-
-// rrcsEnumSet reads a printed value list ("1=Auto|2=Momentary|3=Latching")
-// into the allowed numbers. complete is false where the specification
-// prints only some values of a wider scale (the dots of its tables),
-// told apart the way export tells an enum from a hinted range: every key
-// numeric and the keys forming one unbroken run.
-func rrcsEnumSet(enum string) (allowed map[int64]bool, complete bool) {
-	if enum == "" {
-		return nil, false
-	}
-	allowed = map[int64]bool{}
-	lo, hi := int64(0), int64(0)
-	for _, item := range strings.Split(enum, "|") {
-		numberText, _, _ := strings.Cut(item, "=")
-		n, err := strconv.ParseInt(numberText, 10, 32)
-		if err != nil {
-			return nil, false
-		}
-		if len(allowed) == 0 || n < lo {
-			lo = n
-		}
-		if len(allowed) == 0 || n > hi {
-			hi = n
-		}
-		allowed[n] = true
-	}
-	return allowed, len(allowed) > 0 && hi-lo+1 == int64(len(allowed))
-}
-
-// rrcsPortNameEdits builds the two per-direction name edits of a port
-// just created, by the pattern Director's own client uses:
-// "In. -7.N - Bay B - <node long name>". Where the model cannot say the
-// bay or the node's name, the shorter form is used; a 2022-7 port
-// (1024 to 1151) is numbered -7.N, any other by its plain number.
-func rrcsPortNameEdits(m *rrcsModel, object string) []*rrcsChange {
-	_, node, port, _, ok := rrcs.PortOfPath(object)
-	if !ok {
-		return nil
-	}
-	number := strconv.Itoa(port)
-	if port >= 1024 && port <= 1151 {
-		number = "-7." + strconv.Itoa(port-1023)
-	}
-	suffix := ""
-	if card := m.CardOfNode()[node]; card != nil {
-		suffix = " - Bay " + strconv.Itoa(card.Bay)
-		for _, n := range m.Nodes {
-			if n.Node == card.Node && n.LongName != "" {
-				suffix += " - " + n.LongName
-			}
-		}
-	}
-	clip := func(s string, max int) string {
-		if len(s) > max {
-			return s[:max]
-		}
-		return s
-	}
-	var edits []*rrcsChange
-	for _, side := range []struct {
-		dir, labelPrefix, longPrefix string
-	}{{".in", "I.", "In. "}, {".out", "O.", "Out. "}} {
-		change, err := rrcsChangeFor(object + side.dir)
-		if err != nil {
-			continue
-		}
-		_ = change.add("Label", codec.String(clip(side.labelPrefix+number, 8)))
-		_ = change.add("LongName", codec.String(clip(side.longPrefix+number+suffix, 32)))
-		edits = append(edits, change)
-	}
-	return edits
 }
 
 // rrcsExTypeList reads the port types the gateway names (§8.9

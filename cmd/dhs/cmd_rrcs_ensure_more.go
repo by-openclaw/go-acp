@@ -316,7 +316,7 @@ func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, 
 			return false
 		}
 		cf.say("rrcs ensure: %s edit portex %s", rrcsChangeMethod, what)
-		if _, err := client.Call(ctx, rrcsChangeMethod, change.request()); err != nil {
+		if _, err := client.Call(ctx, rrcsChangeMethod, change.Request()); err != nil {
 			fail(field, err.Error())
 			var coded *codec.CodeError
 			var fault *codec.Fault
@@ -333,7 +333,7 @@ func rrcsEnsureStreams(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, 
 		change, err := rrcsChangeFor(path)
 		for _, m := range members {
 			if err == nil {
-				err = change.add(m.Name, m.Value)
+				err = change.Add(m.Name, m.Value)
 			}
 		}
 		if err != nil {

@@ -251,7 +251,7 @@ func (p *Plugin) SetValue(ctx context.Context, req dhsc.ValueRequest, val dhsc.V
 		return dhsc.Value{}, fmt.Errorf("rrcs: set %s: %w", req.Path, err)
 	}
 	if !written {
-		return dhsc.Value{}, fmt.Errorf("rrcs: %s is written by a configuration change: the set and ensure verbs carry it, with the guard of ADR-0035, until that write has proven equal through the plugin", req.Path)
+		return p.setChange(ctx, client, req.Path, object, block, field, val)
 	}
 	// Read back through the requests of §8.3 to §8.5 where the property
 	// has one; GetPort does not report the gains, the label or the alias.
@@ -280,4 +280,77 @@ func (p *Plugin) SetValue(ctx context.Context, req dhsc.ValueRequest, val dhsc.V
 		}
 	}
 	return p.GetValue(ctx, req)
+}
+
+// setChange writes a property the lists report through a configuration
+// change (§8.10), in the forms proven on the plant (ADR-0035), and reads
+// it back: typed and bounded by the specification's tables, the mode of
+// an NMOS stream alone, a main's channel count through manual mode, a
+// link's Mode on an input as its first request. An output's link needs
+// Mode and Selection in one request, which one property cannot carry:
+// that stays with set, import and ensure.
+func (p *Plugin) setChange(ctx context.Context, client *Client, path, object, block, field string, val dhsc.Value) (dhsc.Value, error) {
+	if !Writable[block][field] {
+		return dhsc.Value{}, &dhsc.ValidationError{Field: path, Reason: "read only through a configuration change"}
+	}
+	props, err := p.propsOf(ctx, client, object)
+	if err != nil {
+		return dhsc.Value{}, err
+	}
+	specObject := "portex"
+	if strings.Contains(object, ".card.") {
+		specObject = "client-card"
+	}
+	holder := props
+	if block != "" {
+		holder = jMap(props[block])
+	}
+	wanted := val.Str
+	switch val.Kind {
+	case dhsc.KindInt:
+		wanted = strconv.FormatInt(val.Int, 10)
+	case dhsc.KindBool:
+		wanted = strconv.FormatBool(val.Bool)
+	}
+	value, reason := TypedValue(specObject, block, field, wanted, holder[field], false, nil)
+	if reason != "" {
+		return dhsc.Value{}, &dhsc.ValidationError{Field: path, Reason: reason}
+	}
+	change, err := ChangeFor(object)
+	if err != nil {
+		return dhsc.Value{}, &dhsc.ValidationError{Field: path, Reason: err.Error()}
+	}
+	_ = change.Add(strings.TrimPrefix(block+"."+field, "."), value)
+	var steps []*Change
+	switch {
+	case field == "Mode" && strings.HasPrefix(block, "PortAes67") && strings.HasSuffix(object, ".out"):
+		return dhsc.Value{}, &dhsc.ValidationError{Field: path, Reason: "an output's link carries Mode and Selection in one request: set, import or ensure carry it"}
+	case field == "Mode" && strings.HasPrefix(block, "PortAes67"):
+		steps = []*Change{change}
+	default:
+		var drop bool
+		var refused string
+		steps, drop, refused = StreamSteps(object, change, props)
+		if refused != "" {
+			return dhsc.Value{}, &dhsc.ValidationError{Field: path, Reason: refused}
+		}
+		if drop {
+			return val, nil
+		}
+	}
+	for _, s := range steps {
+		if blk := s.NMOSStream(props); blk != "" {
+			return dhsc.Value{}, &dhsc.ValidationError{Field: path, Reason: blk + ": " + NMOSRefusal}
+		}
+	}
+	for _, s := range steps {
+		if _, err := client.Call(ctx, ChangeMethod, s.Request()); err != nil {
+			return dhsc.Value{}, fmt.Errorf("rrcs: set %s: %w", path, err)
+		}
+	}
+	if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+		// Accepted and never reported: the Selection is the read-back.
+		return val, nil
+	}
+	return p.GetValue(ctx, dhsc.ValueRequest{Path: path})
 }

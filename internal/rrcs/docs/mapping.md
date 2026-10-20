@@ -125,7 +125,7 @@ remain valid.
 | GetSlotInfo | one bay: its card or none, from the same list | 0 |
 | Walk (slot) | the card of one bay and the ports of that card, every property an object. The keys of the panels are not in it (one request per panel, asked on their own). Slot 0 is the node and what belongs to no card: conferences, groups, IFBs, logic sources, with their members | 3; slot 0: 6 |
 | GetValue | one property of one object (`GetPort`, `GetClientCard`, or the list of its kind) | 1 |
-| SetValue | a direct write of §8.3 to §8.7 (port label, alias, gains, logic source state), read back through its own request. A property written by a configuration change (§8.10) is refused towards the guarded `set` and `ensure` verbs until that write has proven equal on a real RRCS (point 3 of §8) | 2 |
+| SetValue | a direct write of §8.3 to §8.7 (port label, alias, gains, logic source state), read back through its own request; any other property the lists report goes through a configuration change (§8.10) in the forms proven on the plant (ADR-0035, `change.go`): typed and bounded by the tables, the mode of an NMOS stream alone, a main's channel count through manual mode, an input's `Mode` as the first request of a link, read back after. An output's link needs `Mode` and `Selection` in one request: set, import and ensure carry it | 2 to 4 |
 | Subscribe | every event (`RegisterForAllEvents`) and the levels (`RegisterForEventsEx`) | 1 to 3, once |
 | Unsubscribe | remove them | 1 to 2 |
 

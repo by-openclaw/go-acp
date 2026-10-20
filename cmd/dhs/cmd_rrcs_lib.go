@@ -164,3 +164,17 @@ func rrcsCurrentOne(ctx context.Context, client *rrcs.Client, path string) (map[
 }
 
 func rrcsSplitPath(path string) (object, block, field string, ok bool) { return rrcs.SplitPath(path) }
+
+// The configuration change and its proven forms live in the library;
+// the verbs here keep the names they used.
+type rrcsChange = rrcs.Change
+
+const rrcsNMOSRefusal = rrcs.NMOSRefusal
+
+func rrcsChangeFor(path string) (*rrcsChange, error) { return rrcs.ChangeFor(path) }
+func rrcsStreamSteps(object string, c *rrcsChange, props map[string]any) ([]*rrcsChange, bool, string) {
+	return rrcs.StreamSteps(object, c, props)
+}
+func rrcsPortNameEdits(m *rrcsModel, object string) []*rrcsChange {
+	return rrcs.PortNameEdits(m, object)
+}

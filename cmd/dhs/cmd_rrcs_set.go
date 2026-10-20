@@ -17,11 +17,6 @@ type rrcsProps []string
 func (p *rrcsProps) String() string     { return strings.Join(*p, ",") }
 func (p *rrcsProps) Set(v string) error { *p = append(*p, v); return nil }
 
-// rrcsCardAes67 are the client-card blocks the specification puts inside
-// the Aes67 struct of a change (§8.10.4.34), while the lists print them
-// at the top of the card.
-var rrcsCardAes67 = map[string]bool{"Media_1": true, "Media_2": true, "Ptp": true, "Dns": true}
-
 // rrcsPropValue types a value the way the lists print it: true and false
 // are booleans, whole numbers are integers, the rest is text. A value in
 // double quotes is always text.
@@ -41,118 +36,11 @@ func rrcsPropValue(v string) codec.Value {
 	return codec.String(v)
 }
 
-// rrcsChange is one edit, ready to send.
-type rrcsChange struct {
-	objectType string
-	// changeType is "edit" when empty; "create" makes the object
-	// (proven on a production RRCS 9.0 on 2026-10-14: an unused port
-	// becomes a typed port by one create with PortType).
-	changeType string
-	// address identifies the object inside SpecificParams.
-	address []codec.Member
-	// blocks holds the wanted members, by block ("" = top level).
-	blocks map[string][]codec.Member
-	// order keeps the blocks in the order they were given.
-	order []string
-}
-
-func (c *rrcsChange) add(name string, value codec.Value) error {
-	block, field, nested := strings.Cut(name, ".")
-	if !nested {
-		block, field = "", name
-	}
-	if field == "" || strings.Contains(field, ".") {
-		return fmt.Errorf("--prop %s: want NAME=VALUE or BLOCK.NAME=VALUE", name)
-	}
-	for _, m := range c.blocks[block] {
-		if m.Name == field {
-			return fmt.Errorf("--prop %s given twice", name)
-		}
-	}
-	if _, seen := c.blocks[block]; !seen {
-		c.order = append(c.order, block)
-	}
-	c.blocks[block] = append(c.blocks[block], codec.Member{Name: field, Value: value})
-	return nil
-}
-
-// params builds SpecificParams.
-func (c *rrcsChange) params() codec.Value {
-	members := append([]codec.Member{}, c.address...)
-	var aes67 []codec.Member
-	for _, block := range c.order {
-		fields := c.blocks[block]
-		switch {
-		case block == "":
-			members = append(members, fields...)
-		case c.objectType == "client-card" && rrcsCardAes67[block]:
-			aes67 = append(aes67, codec.Member{Name: block, Value: codec.Struct(fields...)})
-		default:
-			members = append(members, codec.Member{Name: block, Value: codec.Struct(fields...)})
-		}
-	}
-	if len(aes67) > 0 {
-		members = append(members, codec.Member{Name: "Aes67", Value: codec.Struct(aes67...)})
-	}
-	return codec.Struct(members...)
-}
-
-// request is the parameter of ConfigurationChangeEx (§8.10.1): an array
-// of changes, here one.
-func (c *rrcsChange) request() codec.Value {
-	changeType := c.changeType
-	if changeType == "" {
-		changeType = "edit"
-	}
-	return codec.Array(codec.Struct(
-		codec.Member{Name: "ChangeType", Value: codec.String(changeType)},
-		codec.Member{Name: "ObjectType", Value: codec.String(c.objectType)},
-		codec.Member{Name: "SpecificParams", Value: c.params()},
-	))
-}
-
-// rrcsChangeFor reads a path into the object type and the address of a
-// change.
-func rrcsChangeFor(path string) (*rrcsChange, error) {
-	c := &rrcsChange{blocks: map[string][]codec.Member{}}
-	parts := strings.Split(path, ".")
-	if len(parts) == 6 && parts[0] == "net" && parts[2] == "node" && parts[4] == "card" {
-		node, err1 := strconv.Atoi(parts[3])
-		bay, err2 := strconv.Atoi(parts[5])
-		if err1 != nil || err2 != nil {
-			return nil, fmt.Errorf("--path %s: not a client card path", path)
-		}
-		c.objectType = "client-card"
-		c.address = []codec.Member{
-			{Name: "Node", Value: codec.Int(int32(node))},
-			{Name: "Slot", Value: codec.Int(int32(bay))},
-		}
-		return c, nil
-	}
-	node, port, isInput, ok := rrcsPortOfPath(path)
-	if !ok || len(parts) > 7 || (len(parts) == 7 && parts[6] != "in" && parts[6] != "out") {
-		return nil, fmt.Errorf("--path %s: set takes a port path or a client card path", path)
-	}
-	// §8.10.4.6: PortAddress is a TPortAddress; IsInput is given only
-	// where an input and an output share the number.
-	addr := []codec.Member{}
-	if len(parts) == 7 {
-		addr = append(addr, codec.Member{Name: "IsInput", Value: codec.Bool(isInput)})
-	}
-	addr = append(addr,
-		codec.Member{Name: "Node", Value: codec.Int(int32(node))},
-		codec.Member{Name: "Port", Value: codec.Int(int32(port))},
-	)
-	c.objectType = "portex"
-	c.address = []codec.Member{{Name: "PortAddress", Value: codec.Struct(addr...)}}
-	return c, nil
-}
-
 // rrcsShow prints the wanted fields with the value the object holds.
 func rrcsShow(title string, c *rrcsChange, props map[string]any) {
 	fmt.Println(title)
-	for _, block := range c.order {
-		for _, f := range c.blocks[block] {
+	for _, block := range c.Order {
+		for _, f := range c.Blocks[block] {
 			name, holder := f.Name, props
 			if block != "" {
 				name, holder = block+"."+f.Name, jMap(props[block])
@@ -164,56 +52,6 @@ func rrcsShow(title string, c *rrcsChange, props map[string]any) {
 			fmt.Printf("  %-34s %-22s wanted %s\n", name, now, rrcsCompact(f.Value))
 		}
 	}
-}
-
-// rrcsNMOSRefusal is said when an edit would hand stream fields to a
-// stream in NMOS mode.
-const rrcsNMOSRefusal = "refused: this edit gives stream fields to a sender or receiver that is, or becomes, NMOS (Protocol 5). Two such edits stopped a production RRCS 9.0 at 'Applying change: Edit PortEx' (2026-10-06 with ConfigurationChangeEx, 2026-10-08 with ConfigurationChange); the same edit towards manual mode passed. It is not sent"
-
-// nmosStream names the stream block of the change that would be edited
-// while its protocol is, or becomes, NMOS; empty when there is none.
-// current is what the object holds now.
-func (c *rrcsChange) nmosStream(current map[string]any) string {
-	if c.objectType != "portex" {
-		return ""
-	}
-	for _, block := range []string{"PortAes67Output", "PortAes67Input"} {
-		fields, edited := c.blocks[block]
-		if !edited {
-			continue
-		}
-		// A link is not a stream edit: it names the port whose stream
-		// this one takes a channel of (Mode, §8.10.4.6) and the channel
-		// (Selection), and RRCS allows nothing else beside them ("When
-		// linking to a port, no further property than 'Selection' is
-		// allowed to be set").
-		link := true
-		for _, f := range fields {
-			if f.Name != "Mode" && f.Name != "Selection" {
-				link = false
-			}
-		}
-		if link {
-			continue
-		}
-		// The mode alone, no other field, is proven safe on a production
-		// RRCS 9.0 (2026-10-13, In. and Out. -7.49, answers C1919807344
-		// and C1919859330): what stopped RRCS was address fields beside
-		// the mode, never the mode itself.
-		if len(fields) == 1 && fields[0].Name == "Protocol" {
-			continue
-		}
-		protocol := jInt(jMap(current[block]), "Protocol")
-		for _, f := range fields {
-			if f.Name == "Protocol" && f.Value.Kind == codec.KindInt {
-				protocol = int(f.Value.Int)
-			}
-		}
-		if protocol == 5 {
-			return block
-		}
-	}
-	return ""
 }
 
 // rrcsSet edits properties of a port or of a client card.
@@ -252,7 +90,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 		if !ok || name == "" {
 			return rrcsValErr("set", "--prop "+p+": want NAME=VALUE")
 		}
-		if err := change.add(name, rrcsPropValue(value)); err != nil {
+		if err := change.Add(name, rrcsPropValue(value)); err != nil {
 			return rrcsValErr("set", err.Error())
 		}
 	}
@@ -263,26 +101,26 @@ func rrcsSet(ctx context.Context, args []string) error {
 	defer closeFn()
 
 	// Top-level properties are where label, alias and gains live.
-	_, topLevel := change.blocks[""]
+	_, topLevel := change.Blocks[""]
 	before, err := rrcsCurrent(ctx, client, *path, topLevel)
 	if err != nil {
 		return err
 	}
-	request := change.request()
+	request := change.Request()
 	doc, err := codec.EncodeCall(rrcsChangeMethod, codec.String("C0000000000"), request)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s  %s  %s\n", *path, change.objectType, jStr(before, "LongName"))
+	fmt.Printf("%s  %s  %s\n", *path, change.ObjectType, jStr(before, "LongName"))
 	rrcsShow("now:", change, before)
-	if block := change.nmosStream(before); block != "" {
+	if block := change.NMOSStream(before); block != "" {
 		switch {
 		case *nmosTest != "yes":
 			fmt.Println(block + ": " + rrcsNMOSRefusal)
 			if *apply == "yes" {
 				return rrcsValErr("set", block+": "+rrcsNMOSRefusal)
 			}
-		case len(change.blocks[block]) != 1 || change.blocks[block][0].Name != "Protocol":
+		case len(change.Blocks[block]) != 1 || change.Blocks[block][0].Name != "Protocol":
 			// The test is one question: does the mode alone pass. A
 			// request that also carries an address is the one that
 			// stopped RRCS, and stays refused.
@@ -298,7 +136,7 @@ func rrcsSet(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	cf.say("rrcs set: sending %s edit %s %s", rrcsChangeMethod, change.objectType, *path)
+	cf.say("rrcs set: sending %s edit %s %s", rrcsChangeMethod, change.ObjectType, *path)
 	reply, err := client.Call(ctx, rrcsChangeMethod, request)
 	if err != nil {
 		cf.say("rrcs set: refused: %v", err)
@@ -316,8 +154,8 @@ func rrcsSet(ctx context.Context, args []string) error {
 	var logged []rrcsDiffEntry
 	var notTaken []rrcsEnsureFailure
 	defer func() { cf.logChanges(ctx, "set", fs.Arg(0), false, logged, notTaken) }()
-	for _, block := range change.order {
-		for _, f := range change.blocks[block] {
+	for _, block := range change.Order {
+		for _, f := range change.Blocks[block] {
 			holder, name := after, f.Name
 			was := before
 			if block != "" {

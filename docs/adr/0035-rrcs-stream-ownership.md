@@ -105,3 +105,12 @@ evidence, and it is lifted.
   channel count; the input/output forms of a link; the linked-port rule.
 - 2026-10-14 — port create, names and delete; card 4 provisioned by one
   CSV through import. Status set to accepted.
+- 2026-10-21 — the forms of this ADR moved into the library
+  (`internal/rrcs/consumer/change.go`: the change, the NMOS guard, the
+  stream steps, the typed values, the Director-pattern names); set, import
+  and ensure keep them through stand-ins, and the plugin's `SetValue`
+  carries a property the lists report the same way — mode alone, the
+  channel-count round trip, an input's `Mode` as the first request of a
+  link; an output's link needs `Mode` and `Selection` in one request and
+  stays with set, import and ensure. `import` checks the type of a port
+  to create against the gateway's own type list.

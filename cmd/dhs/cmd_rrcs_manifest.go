@@ -112,9 +112,9 @@ func rrcsEnsureManifest(ctx context.Context, cf *rrcsFlags, host, file, writeTo 
 			failures = append(failures, rrcsEnsureFailure{Field: field, Reason: err.Error()})
 			continue
 		}
-		del.changeType = "delete"
+		del.ChangeType = "delete"
 		cf.say("rrcs ensure: delete %s (%s)", r.Path, r.From)
-		if _, err := client.Call(ctx, rrcsChangeMethod, del.request()); err != nil {
+		if _, err := client.Call(ctx, rrcsChangeMethod, del.Request()); err != nil {
 			failures = append(failures, rrcsEnsureFailure{Field: field, Reason: "delete: " + err.Error()})
 			continue
 		}
@@ -312,7 +312,7 @@ func rrcsPlanManifest(actual *rrcsModel, desired *manifest.Manifest, exTypes map
 				r := rrcsRetype{Path: path, From: l.name, To: nameOf(wantType, template), ToNumber: wantType, Inbound: inbound[path], RoleRows: roleRows}
 				for _, row := range allRows {
 					v := row.Value
-					if strings.HasPrefix(row.Path, path+".") || v == path || base(v) == path || strings.HasPrefix(v, path+" ") || strings.HasPrefix(base(strings.Fields(v+" x")[0]), path) {
+					if strings.HasPrefix(row.Path, path+".") || v == path || base(v) == path || strings.HasPrefix(v, path+" ") || strings.HasPrefix(base(strings.Fields(v + " x")[0]), path) {
 						r.Instance = append(r.Instance, row)
 					}
 				}
