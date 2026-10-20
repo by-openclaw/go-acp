@@ -39,7 +39,8 @@ A verb sends the requests its answer is made of, and no other:
 | `ensure`, per value, port or stream link | 1 to 3 |
 | `ensure`, keys of one panel | about 4 to read, 1 per change, 4 to read back |
 | `ensure`, a conference, group or IFB | 1 to read, 1 per change, 1 to read back |
-| `watch`, at start | 16, plus 1 per panel, then 1 every 30 s to check its registration |
+| `watch`, at start | 9 (the version and the eight lists extract reads; `--changes keys` or a panel spy: plus 1 per panel), then 1 every 30 s to check its registration |
+| `watch`, on a configuration change | 8 (`--changes keys`: plus 1 per panel; `--match` naming one port or card: 1) |
 | `extract` | 9 (version and the eight lists), plus the keys and the commands of one port per type |
 | `export`, one slot or all | 4 lists, plus 1 per panel for its keys (`--slot N`: the same reads, the rows of that slot) |
 | `walk` from a live gateway | thousands: the full copy, for once in a while |
@@ -207,6 +208,18 @@ prints the account as data.
 ## 3. Listen
 
 ### watch — what happens, as it happens
+
+Three filters keep the stream to what is being looked at: `--match TEXT`
+(the lines whose path contains it; the full path of one port or client
+card also makes a configuration change re-read that object alone, one
+request), `--oid N` (one object ID, the oid column of export), `--kind`
+(node, card, stream, panel, port, key, conference, group, ifb, logic,
+xp). What the watch says about itself (`gateway …`) always passes. On a
+configuration change — RRCS says that something changed, never what —
+the eight lists are read again and what differs is printed; the keys of
+the panels only with `--changes keys`; the actual inventory manifest
+(`.cache/manifest/rrcs/<host>.json`) is rewritten when something
+differed, so it stays what `extract` would write now.
 
 ```
 .\dhs.exe consumer rrcs watch HOST --capture auto > watch.txt

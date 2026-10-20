@@ -3738,11 +3738,13 @@ Usage of rrcs watch:
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -changes string
-    	what to do when RRCS says the configuration changed (it never says what): yes (default: read the system again and print what differs — a key, a conference, a group, an IFB, a port, a client card; costs one request per panel at start and at each change) | no (print only that it changed) (default "yes")
+    	what to do when RRCS says the configuration changed (it never says what): yes (default: read the lists again — eight requests — and print what differs in the ports, the client cards, the conferences, groups and IFBs; the inventory manifest is rewritten) | keys (also the keys of the panels: one request per panel at start and at each change) | no (print only that it changed) (default "yes")
   -check duration
     	ask RRCS this often whether we are still registered, and register again if not; 0 = never (default 30s)
   -events string
     	values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received (default "values")
+  -kind string
+    	keep the lines of one kind of object: node | card | stream | panel | port | key | conference | group | ifb | logic | xp
   -listen string
     	local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1) (default ":8195")
   -log string
@@ -3753,6 +3755,10 @@ Usage of rrcs watch:
     	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
   -log-retention int
     	days of daily log files to keep; 0 = keep every day
+  -match string
+    	keep the lines whose path contains this text, case ignored; the full path of one port or client card makes a configuration change re-read that object alone (one request)
+  -oid int
+    	keep the lines of this object ID (the oid column of export)
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path string

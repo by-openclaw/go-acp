@@ -22,6 +22,7 @@ import (
 	"dhs/internal/consumer"
 	"dhs/internal/consumer/alarm"
 	"dhs/internal/logging"
+	"dhs/internal/manifest"
 	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
 	"dhs/internal/transport"
@@ -438,9 +439,15 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
 	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
 	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
-	changes := fs.String("changes", "yes", "what to do when RRCS says the configuration changed (it never says what): yes (default: read the system again and print what differs — a key, a conference, a group, an IFB, a port, a client card; costs one request per panel at start and at each change) | no (print only that it changed)")
+	changes := fs.String("changes", "yes", "what to do when RRCS says the configuration changed (it never says what): yes (default: read the lists again — eight requests — and print what differs in the ports, the client cards, the conferences, groups and IFBs; the inventory manifest is rewritten) | keys (also the keys of the panels: one request per panel at start and at each change) | no (print only that it changed)")
+	match := fs.String("match", "", "keep the lines whose path contains this text, case ignored; the full path of one port or client card makes a configuration change re-read that object alone (one request)")
+	oid := fs.Int("oid", 0, "keep the lines of this object ID (the oid column of export)")
+	kind := fs.String("kind", "", "keep the lines of one kind of object: node | card | stream | panel | port | key | conference | group | ifb | logic | xp")
 	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
 		return err
+	}
+	if *kind != "" && !rrcsWatchKinds[*kind] {
+		return rrcsValErr("watch", "--kind takes node, card, stream, panel, port, key, conference, group, ifb, logic or xp")
 	}
 	if fs.NArg() != 1 {
 		return rrcsValErr("watch", "want exactly one host[:port] argument")
@@ -466,8 +473,8 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	if cf.output == "csv" && *events != "values" {
 		return rrcsValErr("watch", "--output csv needs --events values")
 	}
-	if *changes != "yes" && *changes != "no" {
-		return rrcsValErr("watch", "--changes must be yes or no")
+	if *changes != "yes" && *changes != "keys" && *changes != "no" {
+		return rrcsValErr("watch", "--changes must be yes, keys or no")
 	}
 	if *alive != "count" && *alive != "show" {
 		return rrcsValErr("watch", "--alive must be count or show")
@@ -511,23 +518,73 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	}
 
 	// The names behind the numbers of the events: read once, before the
-	// registration, so no event meets a half-built tree.
-	//
-	// With --changes yes the keys of the panels are read too: they are
-	// what the reading after a configuration change is compared with.
+	// registration, so no event meets a half-built tree — the eight lists
+	// extract reads. With --changes keys, or a panel spy, the keys of the
+	// panels are read too: they are what the reading after a
+	// configuration change is compared with.
 	var model *rrcsModel
-	readModel := func() (*rrcsModel, error) {
-		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{
-			Commands: spyAll || len(spyPanels) > 0 || *changes == "yes", PanelCommands: true})
-		if err != nil {
-			return nil, err
+	var exTypes map[int]string
+	readModel := func() (*rrcsModel, map[int]string, error) {
+		opts := rrcsCollectOpts{Only: rrcs.ExtractLists}
+		if spyAll || len(spyPanels) > 0 || *changes == "keys" {
+			opts = rrcsCollectOpts{Commands: true, PanelCommands: true}
 		}
-		return rrcsModelOf(snap)
+		snap, _, err := rrcsCollect(ctx, client, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		m, err := rrcsModelOf(snap)
+		if err != nil {
+			return nil, nil, err
+		}
+		doc, _ := json.Marshal(snap)
+		var raw map[string]any
+		_ = json.Unmarshal(doc, &raw)
+		return m, rrcs.ExTypeNames(raw), nil
 	}
+	version := ""
 	if *events == "values" {
 		var err error
-		if model, err = readModel(); err != nil {
+		if model, exTypes, err = readModel(); err != nil {
 			cf.say("rrcs watch: the system could not be read, events are printed with numbers only: %v", err)
+		}
+		if reply, err := client.Call(ctx, "GetVersion"); err == nil {
+			version = rrcs.Version(rrcsFirstString(reply.Payload()))
+		}
+	}
+	// keep applies --match, --oid and --kind to a line; what the watch
+	// says about itself (gateway) always passes.
+	keep := func(l rrcsChangeLine) bool {
+		if l.Path == "gateway" {
+			return true
+		}
+		if *match != "" && !strings.Contains(strings.ToLower(l.Path+"."+l.Label), strings.ToLower(*match)) {
+			return false
+		}
+		if *oid != 0 && l.OID != *oid {
+			return false
+		}
+		if *kind != "" && rrcsKindOf(model, l.Path) != *kind {
+			return false
+		}
+		return true
+	}
+	// rewriteInventory keeps the actual manifest current after a change
+	// (ADR-0028): what extract would write now.
+	rewriteInventory := func(m *rrcsModel) {
+		if treeStore == nil || version == "" || m == nil {
+			return
+		}
+		set, err := rrcs.BuildDMs(m, version, exTypes)
+		if err != nil {
+			return
+		}
+		port := rrcs.DefaultPort
+		if _, p, err := splitHostPort(client.Peer(), rrcs.DefaultPort); err == nil {
+			port = p
+		}
+		if path, err := manifest.Write(treeStore.BaseDir(), rrcs.Manifest(m, hostOnly(client.Peer()), port, set)); err == nil {
+			cf.say("rrcs watch: inventory rewritten: %s", path)
 		}
 	}
 	// changed says that RRCS announced a configuration change.
@@ -582,7 +639,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 					}
 				}
 			}
-			if e.Method == "ConfigurationChange" && *changes == "yes" {
+			if e.Method == "ConfigurationChange" && *changes != "no" {
 				select {
 				case changed <- struct{}{}:
 				default: // a reading is already due
@@ -608,6 +665,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 				return
 			}
 			for _, l := range rrcsDecode(model, e) {
+				if !keep(l) {
+					continue
+				}
 				cf.logValue(l)
 				if judge != nil {
 					if tr := judge.Eval(client.Peer(), consumer.Event{Path: l.Path + "." + l.Label, Label: l.Label, Unit: l.Unit,
@@ -674,6 +734,9 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	// else on the screen says so.
 	// emit reports one line that does not come from a notification.
 	emit := func(l rrcsChangeLine) {
+		if !keep(l) {
+			return
+		}
 		mu.Lock()
 		defer mu.Unlock()
 		now := time.Now().UTC()
@@ -809,20 +872,43 @@ loop:
 			if old == nil {
 				continue
 			}
-			fresh, err := readModel()
+			// --match naming one port or client card: that object alone
+			// is read again, one request; otherwise the lists.
+			if _, isObject := old.Lookup(*match); isObject && *match != "" {
+				props, ok := rrcsCurrentOne(ctx, client, *match)
+				if !ok {
+					cf.say("rrcs watch: the configuration changed and %s could not be read again", *match)
+					continue
+				}
+				was, _ := old.Lookup(*match)
+				lines := rrcsModelDiff(rrcsOneObject(*match, was), rrcsOneObject(*match, props))
+				mu.Lock()
+				rrcsReplaceRaw(model, *match, props)
+				mu.Unlock()
+				for _, l := range lines {
+					emit(l)
+				}
+				if len(lines) == 0 {
+					cf.say("rrcs watch: the configuration changed; nothing differs on %s", *match)
+				}
+				continue
+			}
+			fresh, types, err := readModel()
 			if err != nil {
 				cf.say("rrcs watch: the configuration changed and could not be read again: %v", err)
 				continue
 			}
 			lines := rrcsModelDiff(old, fresh)
 			mu.Lock()
-			model = fresh
+			model, exTypes = fresh, types
 			mu.Unlock()
 			for _, l := range lines {
 				emit(l)
 			}
 			if len(lines) == 0 {
 				cf.say("rrcs watch: the configuration changed; nothing differs in keys, conferences, groups, IFBs, ports or client cards")
+			} else {
+				rewriteInventory(fresh)
 			}
 		case x := <-follow:
 			// Both directions, one request each so that a refusal of one

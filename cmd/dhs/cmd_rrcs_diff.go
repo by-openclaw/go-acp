@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	rrcs "dhs/internal/rrcs/consumer"
 )
 
 // rrcsModelDiff says what differs between two readings of a system, as
@@ -138,4 +140,69 @@ func rrcsSortedKeys[V any](a, b map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// rrcsWatchKinds are the kinds --kind of watch takes.
+var rrcsWatchKinds = map[string]bool{"node": true, "card": true, "stream": true, "panel": true, "port": true,
+	"key": true, "conference": true, "group": true, "ifb": true, "logic": true, "xp": true}
+
+// rrcsKindOf says which kind of object a path names, for --kind: a port
+// with keys is a panel, one with a stream block a stream.
+func rrcsKindOf(m *rrcsModel, path string) string {
+	switch {
+	case strings.HasPrefix(path, "xp."):
+		return "xp"
+	case strings.HasPrefix(path, "conference."), strings.HasPrefix(path, "group."), strings.HasPrefix(path, "ifb."), strings.HasPrefix(path, "logic."):
+		return path[:strings.Index(path, ".")]
+	case strings.Contains(path, ".key."), strings.Contains(path, ".vfunc."):
+		return "key"
+	case strings.Contains(path, ".card."):
+		return "card"
+	case strings.Contains(path, ".port."):
+		if m != nil {
+			if _, node, port, isInput, ok := rrcs.PortOfPath(path); ok {
+				if p := m.Find(node, port, isInput); p != nil {
+					switch {
+					case p.KeyCount > 0:
+						return "panel"
+					case p.Raw["PortAes67Input"] != nil || p.Raw["PortAes67Output"] != nil:
+						return "stream"
+					}
+				}
+			}
+		}
+		return "port"
+	}
+	return "node"
+}
+
+// rrcsOneObject is a model of one port or client card, for the diff of
+// a targeted re-read.
+func rrcsOneObject(path string, props map[string]any) *rrcsModel {
+	m := &rrcsModel{Objects: map[string][]*rrcsObject{}}
+	if strings.Contains(path, ".card.") {
+		m.Cards = append(m.Cards, &rrcsCard{Path: path, Raw: props, LongName: jStr(props, "LongName"), ObjectID: jInt(props, "ObjectID")})
+	} else {
+		m.Ports = append(m.Ports, &rrcsPort{Path: path, Raw: props, Label: jStr(props, "Label"), ObjectID: jInt(props, "ObjectID")})
+	}
+	return m
+}
+
+// rrcsReplaceRaw puts the fresh properties of one object into the model.
+func rrcsReplaceRaw(m *rrcsModel, path string, props map[string]any) {
+	if m == nil {
+		return
+	}
+	for _, p := range m.Ports {
+		if p.Path == path {
+			p.Raw = props
+			return
+		}
+	}
+	for _, c := range m.Cards {
+		if c.Path == path {
+			c.Raw = props
+			return
+		}
+	}
 }
