@@ -613,10 +613,21 @@ skipped and listed.
 		return err
 	}
 	defer closeFn()
+	// The key rows go through the key path of ensure; the rest through
+	// the convergence of ports and client cards.
+	keys, keySkips, rows := rrcsSplitKeyRows(rows, rrcsPathFilter(paths))
 	applied, skips, unchanged, failed, err := rrcsConverge(ctx, client, rows, rrcsPathFilter(paths), dryRun)
 	if err != nil {
 		return fmt.Errorf("rrcs import: %w", err)
 	}
+	keyApplied, keyUnchanged, keyFailed, err := rrcsImportKeys(ctx, cf, client, keys, dryRun)
+	if err != nil {
+		return fmt.Errorf("rrcs import: %w", err)
+	}
+	applied = append(applied, keyApplied...)
+	skips = append(skips, keySkips...)
+	unchanged += keyUnchanged
+	failed += keyFailed
 	if cf.output == "json" {
 		doc := struct {
 			Target    string         `json:"target"`

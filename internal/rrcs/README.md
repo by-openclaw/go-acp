@@ -375,6 +375,16 @@ net.1.node.63.port.1056.PortType,3
 anywhere. Without it, every writable value that differs is written, then
 everything is read back.
 
+The key rows of a panel go through import too, by the key path ensure
+proved on the plant: `key.E.P.K.cmd.CommandType` (the function as the
+export prints it — `call-to-port-cmd`, `call-to-conference`,
+`call-to-group`, `call-to-ifb`, `reply-cmd`; empty = the key is emptied)
+with `key.E.P.K.cmd.Target` (a port path, `conference.ID`, `group.ID`,
+`ifb.ID`), `key.E.P.K.LabelValue` and `key.E.P.K.KeyMode` (as read: 1
+Auto, 2 Momentary, 3 Latching, or the word). The other key properties
+stay read only. So the rows `ensure --manifest` saves before a retype,
+and a slot's export, bring a panel's keys back with one import.
+
 ### ensure — a desired state, for Ansible
 
 ```
