@@ -1,0 +1,279 @@
+---
+# Cerebrum RCP: the write paths the EVS feedback note could not use, each
+# measured on a temporary IO and undone — re-run on every Cerebrum release.
+#
+#   1  tieLineGroup on create        §4.2   POST destinations with tieLineGroup
+#   2  tieLineGroup on update        §4.2   PATCH a destination with tieLineGroup
+#   3  make an existing IO virtual   §4.3   PATCH {"virtual": true}, read back after a settle
+#   4  federation create             §4.4   POST federation-sources on a system without federation
+#   5  federation link               §4.4   PATCH {"federationUid": 1} on a local source, read back, unlink
+#   6  alternate mnemonic field      §6.5   set-mnemonic --alt Eng=…  (fields are created in the UI only)
+#
+# Every call is a `dhs consumer rcp` verb; the temporary IOs ZZ-PROBE-S and
+# ZZ-PROBE-D are created first and deleted last, and the collection sizes
+# are compared before and after. Levels (§4.1) are NOT touched: a level
+# created over Northbound cannot be deleted by any API and once stopped the
+# server (§6.11) — that test is run by hand, on request.
+#
+# Data: inventory `cerebrum` (host, rcp_port). Account: DHS_CEREBRUM_USER /
+# DHS_CEREBRUM_PASS in the environment. Output: one CSV per served API
+# version under probe_dir.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/rcp-write-probe.yml
+
+- name: rcp — probe the write paths on temporary IOs, then undo
+  hosts: plant
+  gather_facts: false
+  vars:
+    wp_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    wp_dir: "{{ probe_dir | default('/root/rcp-probe') }}"
+    wp_settle: 5
+    wp_rcp: ["{{ wp_bin }}", consumer, rcp]
+    wp_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}", --timeout, "20s"]
+    wp_env:
+      DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+      DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  tasks:
+    - name: The server and the account are given
+      ansible.builtin.assert:
+        that:
+          - cerebrum.host is defined and cerebrum.rcp_port is defined
+          - wp_env.DHS_CEREBRUM_USER | length > 0
+        fail_msg: set `cerebrum` in the inventory and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
+        quiet: true
+
+    - name: Served API version
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['info'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_info
+      changed_when: false
+
+    - name: Output directory
+      ansible.builtin.file:
+        path: "{{ wp_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Collections before
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['list', '--kind', item] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop: [sources, destinations, federation-sources, federation-destinations]
+      register: wp_before
+      changed_when: false
+
+    # ---- temporary IOs -------------------------------------------------
+    - name: Create ZZ-PROBE-S (source) and ZZ-PROBE-D (destination)
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['create', '--kind', item.kind, '--mnemonic', item.mnemonic] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop:
+        - { kind: sources, mnemonic: ZZ-PROBE-S }
+        - { kind: destinations, mnemonic: ZZ-PROBE-D }
+      register: wp_create
+      changed_when: true
+
+    - name: Ids after the creates (an id is a position; the new IO is the last one)
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['list', '--kind', item] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop: [sources, destinations]
+      register: wp_ids
+      changed_when: false
+
+    # `list` prints one IO per line: "  <id>  "<mnemonic>" | L1 ..." under a
+    # header "<kind> (<count>)"; ids are read at the line start, sizes from
+    # the header — labels carry digits of their own.
+    - name: The temporary ids
+      ansible.builtin.set_fact:
+        wp_sid: "{{ (wp_ids.results[0].stdout | regex_findall('^\\s+(\\d+)\\s', multiline=True)) | map('int') | max }}"
+        wp_did: "{{ (wp_ids.results[1].stdout | regex_findall('^\\s+(\\d+)\\s', multiline=True)) | map('int') | max }}"
+
+    - name: The temporary ids carry the probe mnemonics
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['get', '--kind', item.kind, '--id', item.id | string, '--json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop:
+        - { kind: sources, id: "{{ wp_sid }}", want: ZZ-PROBE-S }
+        - { kind: destinations, id: "{{ wp_did }}", want: ZZ-PROBE-D }
+      register: wp_check
+      changed_when: false
+      failed_when: item.want not in wp_check.stdout
+
+    # ---- the cases ------------------------------------------------------
+    - name: "Case 1 · tieLineGroup on create (§4.2)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['create', '--kind', 'destinations', '--mnemonic', 'ZZ-PROBE-TLG', '--tie-line-group', '1'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c1
+      changed_when: wp_c1.rc == 0
+      failed_when: false
+
+    - name: "Case 1 · undo when the create went through"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['list', '--kind', 'destinations'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c1_ids
+      changed_when: false
+      when: wp_c1.rc == 0
+
+    - name: "Case 1 · delete the created destination"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['delete', '--kind', 'destinations', '--id', ((wp_c1_ids.stdout | regex_findall('^\\s+(\\d+)\\s', multiline=True)) | map('int') | max) | string] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      changed_when: true
+      when: wp_c1.rc == 0
+
+    - name: "Case 2 · tieLineGroup on update (§4.2)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set', '--kind', 'destinations', '--id', wp_did | string, '--tie-line-group', '1'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c2
+      changed_when: wp_c2.rc == 0
+      failed_when: false
+
+    - name: "Case 2 · read back"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['get', '--kind', 'destinations', '--id', wp_did | string, '--json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c2_rb
+      changed_when: false
+
+    - name: "Case 3 · the body file (`--body` takes a file)"
+      ansible.builtin.copy:
+        content: '{"virtual": true}'
+        dest: "{{ wp_dir }}/.virtual-body.json"
+        mode: "0600"
+      changed_when: false
+
+    - name: "Case 3 · make the source virtual (§4.3)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set', '--kind', 'sources', '--id', wp_sid | string, '--body', wp_dir ~ '/.virtual-body.json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c3
+      changed_when: wp_c3.rc == 0
+      failed_when: false
+
+    - name: "Case 3 · settle"
+      ansible.builtin.pause:
+        seconds: "{{ wp_settle }}"
+
+    - name: "Case 3 · read back"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['get', '--kind', 'sources', '--id', wp_sid | string, '--json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c3_rb
+      changed_when: false
+
+    - name: "Case 4 · federation create on a standalone server (§4.4)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['create', '--kind', 'federation-sources', '--mnemonic', 'ZZ-PROBE-F'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c4
+      changed_when: wp_c4.rc == 0
+      failed_when: false
+
+    - name: "Case 4 · federation-sources after"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['list', '--kind', 'federation-sources'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c4_after
+      changed_when: false
+
+    - name: "Case 4 · delete the federation IO when one was created"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['delete', '--kind', 'federation-sources', '--id', ((wp_c4_after.stdout | regex_findall('^\\s+(\\d+)\\s', multiline=True)) | map('int') | max) | string] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      changed_when: true
+      failed_when: false
+      when: (wp_c4_after.stdout | regex_findall('^\\s+(\\d+)\\s', multiline=True)) | length > 0
+
+    - name: "Case 5 · federation link on the local source (§4.4)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set', '--kind', 'sources', '--id', wp_sid | string, '--federation-uid', '1'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c5
+      changed_when: wp_c5.rc == 0
+      failed_when: false
+
+    - name: "Case 5 · read back"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['get', '--kind', 'sources', '--id', wp_sid | string, '--json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c5_rb
+      changed_when: false
+
+    - name: "Case 5 · unlink"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set', '--kind', 'sources', '--id', wp_sid | string, '--federation-uid', '0'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      changed_when: true
+      failed_when: false
+
+    - name: "Case 6 · alternate mnemonic field Eng (§6.5)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set-mnemonic', '--kind', 'source', '--id', wp_sid | string, '--alt', 'Eng=ZZ'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c6
+      changed_when: wp_c6.rc == 0
+      failed_when: false
+
+    # ---- undo ---------------------------------------------------------------
+    - name: Delete the temporary IOs
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['delete', '--kind', item.kind, '--id', item.id | string] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop:
+        - { kind: sources, id: "{{ wp_sid }}" }
+        - { kind: destinations, id: "{{ wp_did }}" }
+      changed_when: true
+
+    - name: Collections after
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['list', '--kind', item] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop: [sources, destinations, federation-sources, federation-destinations]
+      register: wp_after
+      changed_when: false
+
+    - name: Every collection is back to its size before the probe
+      ansible.builtin.assert:
+        that: >-
+          (wp_before.results | map(attribute='stdout_lines') | map('first') | list)
+          == (wp_after.results | map(attribute='stdout_lines') | map('first') | list)
+        fail_msg: "a probe IO is left behind: before {{ wp_before.results | map(attribute='stdout_lines') | map('first') | list }} after {{ wp_after.results | map(attribute='stdout_lines') | map('first') | list }}"
+        quiet: true
+
+    # ---- report -----------------------------------------------------------
+    - name: Rows
+      ansible.builtin.set_fact:
+        wp_rows:
+          - { case: "1 tieLineGroup on create", rc: "{{ wp_c1.rc }}", answer: "{{ (wp_c1.stderr_lines + wp_c1.stdout_lines) | last | default('') }}", readback: "" }
+          - { case: "2 tieLineGroup on update", rc: "{{ wp_c2.rc }}", answer: "{{ (wp_c2.stderr_lines + wp_c2.stdout_lines) | last | default('') }}", readback: "tieLineGroup={{ (wp_c2_rb.stdout | from_json).tieLineGroup | default('?') }}" }
+          - { case: "3 virtual on update", rc: "{{ wp_c3.rc }}", answer: "{{ (wp_c3.stderr_lines + wp_c3.stdout_lines) | last | default('') }}", readback: "virtual={{ (wp_c3_rb.stdout | from_json).virtual | default('?') }} after {{ wp_settle }}s" }
+          - { case: "4 federation create", rc: "{{ wp_c4.rc }}", answer: "{{ (wp_c4.stderr_lines + wp_c4.stdout_lines) | last | default('') }}", readback: "federation-sources after: {{ wp_c4_after.stdout_lines | first }}" }
+          - { case: "5 federation link", rc: "{{ wp_c5.rc }}", answer: "{{ (wp_c5.stderr_lines + wp_c5.stdout_lines) | last | default('') }}", readback: "federationUid={{ (wp_c5_rb.stdout | from_json).federationUid | default('?') }}" }
+          - { case: "6 alternate mnemonic Eng", rc: "{{ wp_c6.rc }}", answer: "{{ (wp_c6.stderr_lines + wp_c6.stdout_lines) | last | default('') }}", readback: "" }
+
+    - name: Remove the body file
+      ansible.builtin.file:
+        path: "{{ wp_dir }}/.virtual-body.json"
+        state: absent
+      changed_when: false
+
+    - name: CSV
+      ansible.builtin.copy:
+        content: |
+          case,rc,answer,readback
+          {% for r in wp_rows %}
+          "{{ r.case }}",{{ r.rc }},"{{ r.answer | regex_replace('\"', "'") | regex_replace(',', ';') }}","{{ r.readback }}"
+          {% endfor %}
+        dest: "{{ wp_dir }}/write-ops-{{ (wp_info.stdout | regex_search('api_version\\s+(\\S+)', '\\1') | first) }}.csv"
+        mode: "0644"
+      register: wp_csv
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: "{{ wp_rows | map('combine', {}) | list }}"
