@@ -21,6 +21,7 @@ const (
 	KindContinue           // <CONTINUE/> flow-control after BUSY (§1.4 p5)
 	KindWildcardComplete   // <WILDCARD_COMPLETE MTID/> end-of-snapshot (§1.6 p6)
 	KindDeviceConfigResult // <DEVICE_CONFIGURATION …><RESULT VALUE=…/> (§4.5 p20-23)
+	KindRoutingResult      // <ROUTING TYPE="RM_*" FEDERATION=…><RESULT VALUE=…/> (v0.17 §4.2.5)
 
 	// Async events (§5)
 	KindRoutingChange
@@ -48,6 +49,8 @@ func (k FrameKind) String() string {
 		return "wildcard_complete"
 	case KindDeviceConfigResult:
 		return "device_config_result"
+	case KindRoutingResult:
+		return "routing_result"
 	case KindRoutingChange:
 		return "routing_change"
 	case KindCategoryChange:
@@ -74,6 +77,7 @@ type Frame struct {
 	PollReply    *PollReply
 	Nack         *NackError
 	DeviceConfig *DeviceConfigResult // KindDeviceConfigResult (§4.5)
+	RoutingResult *RoutingResult     // KindRoutingResult (v0.17 §4.2.5)
 
 	Routing   *RoutingChange
 	Category  *CategoryChange
@@ -108,6 +112,18 @@ type DeviceConfigResult struct {
 	Type       string // ADD / MODIFY / REMOVE (echoed)
 	IPAddress  string
 	DeviceType string
+	Value      string // ACCEPTED / FAILED
+	Accepted   bool   // Value == "ACCEPTED"
+}
+
+// RoutingResult is the v0.17 §4.2.5 reply to RM_SRCE_ADD / RM_DEST_ADD /
+// RM_SRCE_DELETE / RM_DEST_DELETE: the server echoes the <ROUTING TYPE
+// FEDERATION> envelope wrapping one <RESULT VALUE="ACCEPTED|FAILED"/>.
+// ACCEPTED means the request passed validation and was queued as a
+// configuration change; it does not confirm that RouteMaster applied it.
+type RoutingResult struct {
+	Type       string // RM_SRCE_ADD / RM_DEST_ADD / RM_SRCE_DELETE / RM_DEST_DELETE (echoed)
+	Federation string // "0" / "1" (echoed)
 	Value      string // ACCEPTED / FAILED
 	Accepted   bool   // Value == "ACCEPTED"
 }
@@ -160,6 +176,9 @@ func Decode(data []byte) (*Frame, error) {
 	case "device_configuration":
 		f.Kind = KindDeviceConfigResult
 		f.DeviceConfig = parseDeviceConfigResult(root)
+	case "routing":
+		f.Kind = KindRoutingResult
+		f.RoutingResult = parseRoutingResult(root)
 	case "routing_change":
 		f.Kind = KindRoutingChange
 		f.Routing = parseRoutingChange(root)
@@ -261,6 +280,20 @@ func parseDeviceConfigResult(e *Element) *DeviceConfigResult {
 		Type:       e.Attr("type"),
 		IPAddress:  firstNonEmpty(e.Attr("ip_address"), e.Attr("ip")),
 		DeviceType: e.Attr("device_type"),
+	}
+	if res := e.Child("result"); res != nil {
+		r.Value = res.Attr("value")
+		r.Accepted = strEqualFold(r.Value, "ACCEPTED")
+	}
+	return r
+}
+
+// parseRoutingResult reads the v0.17 §4.2.5 <ROUTING …><RESULT VALUE/>
+// envelope. A missing <RESULT> leaves Value empty and Accepted false.
+func parseRoutingResult(e *Element) *RoutingResult {
+	r := &RoutingResult{
+		Type:       e.Attr("type"),
+		Federation: e.Attr("federation"),
 	}
 	if res := e.Child("result"); res != nil {
 		r.Value = res.Attr("value")
