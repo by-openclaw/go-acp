@@ -154,6 +154,15 @@ func dedupeCerebrumMnes(rows []cerebrumMneRow) []cerebrumMneRow {
 				g.row.Levels = append(g.row.Levels, lvl)
 			}
 		}
+		// Merge the ASSOCIATION rows (§5.1.5-§5.1.6) across the repeats, one
+		// per level index + device port: the read-back of a binding.
+		for _, a := range r.Assocs {
+			ak := "assoc\x00" + strconv.Itoa(a.Index) + "\x00" + a.SrceID + a.DestID + "\x00" + a.RMDeviceName
+			if !g.seen[ak] {
+				g.seen[ak] = true
+				g.row.Assocs = append(g.row.Assocs, a)
+			}
+		}
 		// Merge alternate mnemonics (first value per slot wins).
 		for slot, v := range r.Alts {
 			if v == "" {

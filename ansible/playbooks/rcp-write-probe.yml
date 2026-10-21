@@ -11,8 +11,8 @@
 #    6  alternate mnemonic field        §6.5   set-mnemonic --alt Eng=…  (fields are created in the UI only)
 #    7  rename                          PATCH {"mnemonic"} on the temporary source
 #    8  tie line inhibit                PATCH {"tieLineInhibit": true} on the temporary destination
-#    9  virtual pair                    POST {"virtual": true}: the source and destination pair; DELETE of the
-#                                       source side removes both
+#    9  virtual pair                    POST {"virtual": true} (bare): the source and destination pair, named by
+#                                       the server; rename of one side; DELETE of the source side
 #   10  bind a level to an IP sender    PATCH levels.level_1.device.senderReceiver on the temporary source
 #   11  tags on a level                 PATCH levels.level_1.tags on the temporary source
 #   12  level names and rename          mnemonics --kind level; set-mnemonic on level `probe_level` and back
@@ -260,13 +260,19 @@
       register: wp_c8_rb
       changed_when: false
 
+    # A virtual IO is created bare (`POST {"virtual": true}`, no other field):
+    # the server names the pair "Virtual N"; the mnemonic is set afterwards.
     - name: "Case 9 · create a virtual source (the pair)"
       ansible.builtin.command:
-        argv: "{{ wp_rcp + ['create', '--kind', 'sources', '--mnemonic', 'ZZ-PROBE-V', '--virtual'] + wp_tail }}"
+        argv: "{{ wp_rcp + ['create', '--kind', 'sources', '--virtual'] + wp_tail }}"
       environment: "{{ wp_env }}"
       register: wp_c9
       changed_when: wp_c9.rc == 0
       failed_when: false
+
+    - name: "Case 9 · settle"
+      ansible.builtin.pause:
+        seconds: 3
 
     - name: "Case 9 · both collections after the create"
       ansible.builtin.command:
@@ -276,8 +282,14 @@
       register: wp_c9_lists
       changed_when: false
 
+    # The pair exists only when both collections grew by one; the ids are
+    # the last of each collection. Nothing below touches the temporary IOs
+    # otherwise (a wrong id here would delete ZZ-PROBE-S).
     - name: "Case 9 · the virtual pair ids (the last of each collection)"
       ansible.builtin.set_fact:
+        wp_pair: "{{ wp_c9.rc == 0
+                     and (wp_c9_lists.results[0].stdout | regex_findall(wp_idre, multiline=True)) | length == (wp_ids.results[0].stdout | regex_findall(wp_idre, multiline=True)) | length + 1
+                     and (wp_c9_lists.results[1].stdout | regex_findall(wp_idre, multiline=True)) | length == (wp_ids.results[1].stdout | regex_findall(wp_idre, multiline=True)) | length + 1 }}"
         wp_vs: "{{ (wp_c9_lists.results[0].stdout | regex_findall(wp_idre, multiline=True)) | map('trim') | map('int') | max }}"
         wp_vd: "{{ (wp_c9_lists.results[1].stdout | regex_findall(wp_idre, multiline=True)) | map('trim') | map('int') | max }}"
 
@@ -291,6 +303,28 @@
       register: wp_c9_rb
       changed_when: false
       failed_when: false
+      when: wp_pair | bool
+
+    - name: "Case 9 · rename the source side of the pair"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set', '--kind', 'sources', '--id', wp_vs | string, '--mnemonic', 'ZZ-PROBE-V'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c9_ren
+      changed_when: wp_c9_ren.rc == 0
+      failed_when: false
+      when: wp_pair | bool
+
+    - name: "Case 9 · read back both sides after the rename"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['get', '--kind', item.kind, '--id', item.id | string, '--json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      loop:
+        - { kind: sources, id: "{{ wp_vs }}" }
+        - { kind: destinations, id: "{{ wp_vd }}" }
+      register: wp_c9_rb2
+      changed_when: false
+      failed_when: false
+      when: wp_pair | bool
 
     - name: "Case 9 · delete the source side of the pair"
       ansible.builtin.command:
@@ -299,6 +333,12 @@
       register: wp_c9_del
       changed_when: wp_c9_del.rc == 0
       failed_when: false
+      when: wp_pair | bool
+
+    - name: "Case 9 · settle after the delete"
+      ansible.builtin.pause:
+        seconds: 3
+      when: wp_pair | bool
 
     - name: "Case 9 · both collections after the delete"
       ansible.builtin.command:
@@ -426,8 +466,9 @@
           - { case: "6 alternate mnemonic Eng", rc: "{{ wp_c6.rc }}", answer: "{{ (wp_c6.stderr_lines + wp_c6.stdout_lines) | last | default('') }}", readback: "" }
           - { case: "7 rename", rc: "{{ wp_c7.rc }}", answer: "{{ (wp_c7.stderr_lines + wp_c7.stdout_lines) | last | default('') }}", readback: "mnemonic={{ (wp_c7_rb.stdout | from_json).mnemonic | default('?') | to_json }}" }
           - { case: "8 tie line inhibit", rc: "{{ wp_c8.rc }}", answer: "{{ (wp_c8.stderr_lines + wp_c8.stdout_lines) | last | default('') }}", readback: "tieLineInhibit={{ (wp_c8_rb.stdout | from_json).tieLineInhibit | default('?') }}" }
-          - { case: "9 virtual create (pair)", rc: "{{ wp_c9.rc }}", answer: "{{ (wp_c9.stderr_lines + wp_c9.stdout_lines) | last | default('') }}", readback: "sources {{ wp_c9_lists.results[0].stdout_lines | first }} / destinations {{ wp_c9_lists.results[1].stdout_lines | first }}; source {{ wp_vs }}: {{ (wp_c9_rb.results[0].stdout | from_json).mnemonic | default('?') | to_json }} virtual={{ (wp_c9_rb.results[0].stdout | from_json).virtual | default('?') }}; destination {{ wp_vd }}: {{ (wp_c9_rb.results[1].stdout | from_json).mnemonic | default('?') | to_json }} virtual={{ (wp_c9_rb.results[1].stdout | from_json).virtual | default('?') }}" }
-          - { case: "9 virtual delete (source side)", rc: "{{ wp_c9_del.rc }}", answer: "{{ (wp_c9_del.stderr_lines + wp_c9_del.stdout_lines) | last | default('') }}", readback: "sources {{ wp_c9_after.results[0].stdout_lines | first }} / destinations {{ wp_c9_after.results[1].stdout_lines | first }}" }
+          - { case: "9 virtual create (pair)", rc: "{{ wp_c9.rc }}", answer: "{{ (wp_c9.stderr_lines + wp_c9.stdout_lines) | last | default('') }}", readback: "pair={{ wp_pair }}; sources {{ wp_c9_lists.results[0].stdout_lines | first }} / destinations {{ wp_c9_lists.results[1].stdout_lines | first }}{% if wp_pair | bool %}; source {{ wp_vs }}: {{ (wp_c9_rb.results[0].stdout | from_json).mnemonic | default('?') | to_json }} virtual={{ (wp_c9_rb.results[0].stdout | from_json).virtual | default('?') }} levels={{ (wp_c9_rb.results[0].stdout | from_json).levels | default('?') | to_json }}; destination {{ wp_vd }}: {{ (wp_c9_rb.results[1].stdout | from_json).mnemonic | default('?') | to_json }} virtual={{ (wp_c9_rb.results[1].stdout | from_json).virtual | default('?') }}{% endif %}" }
+          - { case: "9 virtual rename (source side)", rc: "{{ wp_c9_ren.rc | default('-') }}", answer: "{{ ((wp_c9_ren.stderr_lines | default([])) + (wp_c9_ren.stdout_lines | default([]))) | last | default('') }}", readback: "{% if wp_pair | bool %}source {{ wp_vs }}: {{ (wp_c9_rb2.results[0].stdout | from_json).mnemonic | default('?') | to_json }}; destination {{ wp_vd }}: {{ (wp_c9_rb2.results[1].stdout | from_json).mnemonic | default('?') | to_json }}{% endif %}" }
+          - { case: "9 virtual delete (source side)", rc: "{{ wp_c9_del.rc | default('-') }}", answer: "{{ ((wp_c9_del.stderr_lines | default([])) + (wp_c9_del.stdout_lines | default([]))) | last | default('') }}", readback: "sources {{ wp_c9_after.results[0].stdout_lines | first }} / destinations {{ wp_c9_after.results[1].stdout_lines | first }}" }
           - { case: "10 bind level 1 to IP sender", rc: "{{ wp_c10.rc }}", answer: "{{ (wp_c10.stderr_lines + wp_c10.stdout_lines) | last | default('') }}", readback: "levels={{ (wp_c10_rb.stdout | from_json).levels | default('?') | to_json }}" }
           - { case: "11 tags on level 1", rc: "{{ wp_c11.rc }}", answer: "{{ (wp_c11.stderr_lines + wp_c11.stdout_lines) | last | default('') }}", readback: "levels={{ (wp_c11_rb.stdout | from_json).levels | default('?') | to_json }}" }
           - { case: "12 level names + rename", rc: "{{ wp_c12.rc }}", answer: "{{ (wp_c12.stderr_lines + wp_c12.stdout_lines) | last | default('') }}", readback: "before: {{ wp_c12_names.stdout_lines | select('search', '^' ~ (wp_target.level | string) ~ ' ') | list | join(' ') | trim }}; after: {{ wp_c12_rb.stdout_lines | select('search', '^' ~ (wp_target.level | string) ~ ' ') | list | join(' ') | trim }}; renamed back to {{ wp_c12_old | to_json }}" }

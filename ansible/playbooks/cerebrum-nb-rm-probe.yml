@@ -36,6 +36,9 @@
     np_settle: 5
     np_nb: ["{{ np_bin }}", consumer, cerebrum-nb]
     np_nb_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log, "off"]
+    # read-backs also keep the wire: the redacted RX XML of the OBTAIN reply
+    # (`--log FILE --log-level debug --log-format json`), one file per read-back
+    np_nb_raw: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log-level, debug, --log-format, json, --log]
     np_rcp: ["{{ np_bin }}", consumer, rcp]
     np_rcp_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}", --timeout, "20s"]
     np_target: "{{ nb_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'VTX-01', 'level': '1'}) }}"
@@ -57,6 +60,22 @@
         path: "{{ np_dir }}"
         state: directory
         mode: "0755"
+
+    - name: Raw logs of an earlier run
+      ansible.builtin.find:
+        paths: "{{ np_dir }}"
+        patterns: ".nb-raw-*.log"
+        hidden: true
+      register: np_raw_old
+
+    - name: Raw logs of an earlier run removed
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ np_raw_old.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      changed_when: false
 
     - name: Collections before (RCP)
       ansible.builtin.command:
@@ -103,7 +122,7 @@
     # levels, alternates. Bindings, tags and the virtual flag are not in it.
     - name: "Case 1 · read back (Northbound list-sources)"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['list-sources', '--id', np_s1 | string, '--associations'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['list-sources', '--id', np_s1 | string, '--associations'] + np_nb_raw + [np_dir ~ '/.nb-raw-c1.log'] }}"
       environment: "{{ np_env }}"
       register: np_c1_nb
       changed_when: false
@@ -158,8 +177,8 @@
         argv: "{{ item }}"
       environment: "{{ np_env }}"
       loop:
-        - "{{ np_nb + ['list-sources', '--id', np_s2 | string, '--associations'] + np_nb_tail }}"
-        - "{{ np_nb + ['list-dests', '--id', np_d2 | string, '--associations'] + np_nb_tail }}"
+        - "{{ np_nb + ['list-sources', '--id', np_s2 | string, '--associations'] + np_nb_raw + [np_dir ~ '/.nb-raw-c2-source.log'] }}"
+        - "{{ np_nb + ['list-dests', '--id', np_d2 | string, '--associations'] + np_nb_raw + [np_dir ~ '/.nb-raw-c2-destination.log'] }}"
       register: np_c2_nb
       changed_when: false
       failed_when: false
@@ -198,7 +217,7 @@
 
     - name: "Case 3 · read back (Northbound list-dests)"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['list-dests', '--id', np_d1 | string, '--associations'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['list-dests', '--id', np_d1 | string, '--associations'] + np_nb_raw + [np_dir ~ '/.nb-raw-c3.log'] }}"
       environment: "{{ np_env }}"
       register: np_c3_nb
       changed_when: false
@@ -252,7 +271,7 @@
         argv: "{{ item }}"
       environment: "{{ np_env }}"
       loop:
-        - "{{ np_nb + ['list-sources', '--id', np_s1 | string, '--associations'] + np_nb_tail }}"
+        - "{{ np_nb + ['list-sources', '--id', np_s1 | string, '--associations'] + np_nb_raw + [np_dir ~ '/.nb-raw-c5a-6a.log'] }}"
         - "{{ np_rcp + ['get', '--kind', 'sources', '--id', np_s1 | string, '--json'] + np_rcp_tail }}"
       register: np_c56a_rb
       changed_when: false
@@ -428,6 +447,45 @@
     - name: Summary
       ansible.builtin.debug:
         msg: "{{ np_rows }}"
+
+    # The wire behind the Northbound read-backs: the RX XML of each
+    # SRCE_MNE / DEST_MNE reply as the server sent it (redacted by the
+    # client), one block per read-back, beside the CSV.
+    - name: Raw logs of the read-backs
+      ansible.builtin.find:
+        paths: "{{ np_dir }}"
+        patterns: ".nb-raw-*.log"
+        hidden: true
+      register: np_raw_files
+
+    - name: Raw logs read
+      ansible.builtin.slurp:
+        src: "{{ item.path }}"
+      loop: "{{ np_raw_files.files | sort(attribute='path') }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      register: np_raw
+
+    - name: Raw read-backs beside the CSV
+      ansible.builtin.copy:
+        content: |
+          {% for f in np_raw.results %}
+          == {{ f.source | basename | regex_replace('^\.nb-raw-', '') | regex_replace('\.log$', '') }}
+          {% for l in (f.content | b64decode).splitlines() if l is search('"rx"') and l is search('SRCE_MNE|DEST_MNE') %}
+          {{ (l | from_json).xml }}
+          {% endfor %}
+          {% endfor %}
+        dest: "{{ np_dir }}/nb-rm-raw-{{ lookup('ansible.builtin.pipe', 'date -u +%Y-%m-%d') }}.txt"
+        mode: "0644"
+
+    - name: Raw logs removed
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ np_raw_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      changed_when: false
 
     # Last, after the results are written: a refused Northbound delete must
     # not hide the answers above. A leftover is removed over RCP by hand.
