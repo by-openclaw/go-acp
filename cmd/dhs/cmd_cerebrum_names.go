@@ -43,6 +43,10 @@ type cerebrumMneRow struct {
 	// 2=Ref_Short_Edit, 3=Ref_Long_Edit, 4=Engineer, 5=Ref_Long_Tech); the
 	// wire knows only indexes.
 	Alts map[int]string
+	// Assocs are the <ASSOCIATION_N> rows of the reply (§5.1.5-§5.1.6): the
+	// binding of the resource on each level — device, type, device port id,
+	// IP uid, tags, reversed. Printed by --associations; absent = none sent.
+	Assocs []codec.RoutingAssociation
 }
 
 // parseCerebrumMneCSV decodes a mnemonic CSV whose key column is keyCol

@@ -1314,8 +1314,8 @@ VERBS
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
-  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
-  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
+  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
+  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
   usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N = fan-out | --dest N = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L] [--router IP]
   replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
@@ -1939,6 +1939,8 @@ Usage of cerebrum-nb export:
 ========== consumer/cerebrum-nb/list-sources ==========
 $ dhs consumer cerebrum-nb list-sources --help
 Usage of cerebrum-nb list-srce:
+  -associations
+    	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -1983,6 +1985,8 @@ Usage of cerebrum-nb list-srce:
 ========== consumer/cerebrum-nb/list-dests ==========
 $ dhs consumer cerebrum-nb list-dests --help
 Usage of cerebrum-nb list-dest:
+  -associations
+    	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -2027,6 +2031,8 @@ Usage of cerebrum-nb list-dest:
 ========== consumer/cerebrum-nb/list-levels ==========
 $ dhs consumer cerebrum-nb list-levels --help
 Usage of cerebrum-nb list-level:
+  -associations
+    	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
