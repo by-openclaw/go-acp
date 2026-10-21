@@ -33,12 +33,16 @@ func cerebrumAssoc(_ context.Context, args []string) error {
 	targetIO := fs.String("target-io", "", "input (SRCE_ASSOC) or output (DEST_ASSOC) number on that device")
 	targetName := fs.String("target-name", "", "IP sender (SRCE_ASSOC_IP) or receiver (DEST_ASSOC_IP) name")
 	subDevice := fs.String("sub-device", "", "sub-device of the target (the *_IP kinds)")
+	federation := fs.Bool("federation", false, "bind the federation source/destination instead of the local one (v0.17 FEDERATION=1)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	a, err := assocAction(strings.ToUpper(*kind), *srce, *dest, *level, *targetDevice, *targetType, *targetLevel, *targetIO, *targetName, *subDevice)
 	if err != nil {
 		return err
+	}
+	if *federation {
+		a.Federation = "1"
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "assoc")
 	if err != nil {

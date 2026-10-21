@@ -508,7 +508,7 @@ func (s *Session) dispatch(f *codec.Frame) {
 		switch f.Kind {
 		case codec.KindAck, codec.KindNack, codec.KindBusy,
 			codec.KindLoginReply, codec.KindPollReply,
-			codec.KindDeviceConfigResult:
+			codec.KindDeviceConfigResult, codec.KindRoutingResult:
 			s.mu.Lock()
 			ch, ok := s.pending[f.MTID]
 			s.mu.Unlock()

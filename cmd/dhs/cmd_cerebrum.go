@@ -366,6 +366,10 @@ func runCerebrum(ctx context.Context, args []string) error {
 		return cerebrumSetTags(ctx, rest)
 	case "assoc":
 		return cerebrumAssoc(ctx, rest)
+	case "rm-add":
+		return cerebrumRMAdd(ctx, rest)
+	case "rm-delete":
+		return cerebrumRMDelete(ctx, rest)
 	case "salvo":
 		return cerebrumSalvo(ctx, rest)
 	case "category":
@@ -429,8 +433,10 @@ VERBS
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
   set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
-  set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --level ID --tags a,b,c
-  assoc                    ACTION <ROUTING TYPE='*_ASSOC[_IP]'/> bind a RouteMaster source/destination on one level to a device IO: --kind SRCE_ASSOC|DEST_ASSOC --srce|--dest ID --level ID --target-device NAME [--target-level ID] --target-io N; or an IP sender/receiver: --kind SRCE_ASSOC_IP|DEST_ASSOC_IP … --target-device NAME --target-name SENDER|RECEIVER [--sub-device N]
+  set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --level ID --tags a,b,c [--federation: the federation IO instead of the local one, v0.17]
+  assoc                    ACTION <ROUTING TYPE='*_ASSOC[_IP]'/> bind a RouteMaster source/destination on one level to a device IO: --kind SRCE_ASSOC|DEST_ASSOC --srce|--dest ID --level ID --target-device NAME [--target-level ID] --target-io N; or an IP sender/receiver: --kind SRCE_ASSOC_IP|DEST_ASSOC_IP … --target-device NAME --target-name SENDER|RECEIVER [--sub-device N]; [--federation: the federation IO instead of the local one, v0.17]
+  rm-add                   ACTION <ROUTING TYPE='RM_SRCE_ADD|RM_DEST_ADD'/> (v0.17 §4.2.3) append sources or destinations to the RouteMaster: --kind source|destination [--count N (1-1000)] [--virtual] [--federation] [--output json]. The RESULT reply (ACCEPTED|FAILED) means validated and queued, not applied: read the collection back.
+  rm-delete                ACTION <ROUTING TYPE='RM_SRCE_DELETE|RM_DEST_DELETE'/> (v0.17 §4.2.4) --kind source|destination --id 21,22,23 [--federation] [--output json]
   salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
                            ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
   category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|modify-all|modify-desc|delete|delete-item --category C [--index N] [--item-type T] [--value V] [--name N] [--label L] [--inherits P] [--description D]
@@ -3196,6 +3202,7 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	dest := fs.String("dest", "", "destination ID")
 	level := fs.String("level", "", "RouteMaster level ID the tags are set on (§4.1 RM_*_TAGS carries LEVEL_ID; the server refuses the action without it)")
 	tags := fs.String("tags", "", "comma-separated tag list")
+	federation := fs.Bool("federation", false, "send the change to the federation source/destination instead of the local one (v0.17 FEDERATION=1)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live tags where the server allows, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 	if err := parseVerbFlags(fs, args); err != nil {
@@ -3269,7 +3276,7 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.SetTags(ctx, kindUp, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *tags); err != nil {
+	if err := sess.SetTags(ctx, kindUp, routeTargetFromFlags(*router, *deviceName), *srce, *dest, *level, *tags, *federation); err != nil {
 		return fmt.Errorf("cerebrum-nb set-tags: %w", err)
 	}
 	_, _ = fmt.Fprintf(logw, "[set-tags] OK %s id=%s tags=%q\n", kindUp, id, *tags)
