@@ -99,6 +99,16 @@
       changed_when: false
       failed_when: false
 
+    # Northbound's own read: OBTAIN SRCE_MNE — presence, name, capability
+    # levels, alternates. Bindings, tags and the virtual flag are not in it.
+    - name: "Case 1 · read back (Northbound list-sources)"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['list-sources', '--id', np_s1 | string] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c1_nb
+      changed_when: false
+      failed_when: false
+
     # ---- case 2: one virtual source ----------------------------------------
     - name: "Case 2 · RM_SRCE_ADD VIRTUAL=1"
       ansible.builtin.command:
@@ -143,6 +153,17 @@
       changed_when: false
       failed_when: false
 
+    - name: "Case 2 · read back (Northbound list-sources and list-dests, the pair)"
+      ansible.builtin.command:
+        argv: "{{ item }}"
+      environment: "{{ np_env }}"
+      loop:
+        - "{{ np_nb + ['list-sources', '--id', np_s2 | string] + np_nb_tail }}"
+        - "{{ np_nb + ['list-dests', '--id', np_d2 | string] + np_nb_tail }}"
+      register: np_c2_nb
+      changed_when: false
+      failed_when: false
+
     # ---- case 3: one local destination -------------------------------------
     - name: "Case 3 · RM_DEST_ADD local"
       ansible.builtin.command:
@@ -172,6 +193,14 @@
         argv: "{{ np_rcp + ['get', '--kind', 'destinations', '--id', np_d1 | string, '--json'] + np_rcp_tail }}"
       environment: "{{ np_env }}"
       register: np_c3_rb
+      changed_when: false
+      failed_when: false
+
+    - name: "Case 3 · read back (Northbound list-dests)"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['list-dests', '--id', np_d1 | string] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c3_nb
       changed_when: false
       failed_when: false
 
@@ -271,6 +300,15 @@
       register: np_after
       changed_when: false
 
+    - name: Collections after (Northbound counts)
+      ansible.builtin.command:
+        argv: "{{ np_nb + [item] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      loop: [list-sources, list-dests]
+      register: np_after_nb
+      changed_when: false
+      failed_when: false
+
     # ---- case 8: a level — create, rename, delete attempt (runs last) ------
     - name: "Case 8 · levels before (Northbound)"
       ansible.builtin.command:
@@ -328,14 +366,14 @@
     - name: Rows
       ansible.builtin.set_fact:
         np_rows:
-          - { case: "1 RM_SRCE_ADD local", rc: "{{ np_c1.rc }}", answer: "{{ (np_c1.stdout_lines + np_c1.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "sources {{ np_before.results[0].stdout_lines | first }} -> {{ np_c1_list.stdout_lines | first }}; id {{ np_s1 }}: {{ (np_c1_rb.stdout | from_json).mnemonic | default('?') }} virtual={{ (np_c1_rb.stdout | from_json).virtual | default('?') }}" }
-          - { case: "2 RM_SRCE_ADD virtual", rc: "{{ np_c2.rc }}", answer: "{{ (np_c2.stdout_lines + np_c2.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "sources {{ np_c2_list.stdout_lines | first }}; id {{ np_s2 }}: {{ (np_c2_rb.stdout | from_json).mnemonic | default('?') }} virtual={{ (np_c2_rb.stdout | from_json).virtual | default('?') }}; paired destination: {{ np_c2_dlist.stdout_lines | first }}{{ (', id ' ~ np_d2) if (np_d2_new | bool) else ' (none)' }}" }
-          - { case: "3 RM_DEST_ADD local", rc: "{{ np_c3.rc }}", answer: "{{ (np_c3.stdout_lines + np_c3.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "destinations {{ np_before.results[1].stdout_lines | first }} -> {{ np_c3_list.stdout_lines | first }}; id {{ np_d1 }}: {{ (np_c3_rb.stdout | from_json).mnemonic | default('?') }}" }
+          - { case: "1 RM_SRCE_ADD local", rc: "{{ np_c1.rc }}", nb: "{{ np_c1_nb.stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c1.stdout_lines + np_c1.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "sources {{ np_before.results[0].stdout_lines | first }} -> {{ np_c1_list.stdout_lines | first }}; id {{ np_s1 }}: {{ (np_c1_rb.stdout | from_json).mnemonic | default('?') }} virtual={{ (np_c1_rb.stdout | from_json).virtual | default('?') }}" }
+          - { case: "2 RM_SRCE_ADD virtual", rc: "{{ np_c2.rc }}", nb: "source: {{ np_c2_nb.results[0].stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}; destination: {{ np_c2_nb.results[1].stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c2.stdout_lines + np_c2.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "sources {{ np_c2_list.stdout_lines | first }}; id {{ np_s2 }}: {{ (np_c2_rb.stdout | from_json).mnemonic | default('?') }} virtual={{ (np_c2_rb.stdout | from_json).virtual | default('?') }}; paired destination: {{ np_c2_dlist.stdout_lines | first }}{{ (', id ' ~ np_d2) if (np_d2_new | bool) else ' (none)' }}" }
+          - { case: "3 RM_DEST_ADD local", rc: "{{ np_c3.rc }}", nb: "{{ np_c3_nb.stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c3.stdout_lines + np_c3.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "destinations {{ np_before.results[1].stdout_lines | first }} -> {{ np_c3_list.stdout_lines | first }}; id {{ np_d1 }}: {{ (np_c3_rb.stdout | from_json).mnemonic | default('?') }}" }
           - { case: "4 RM_SRCE_ADD federation", rc: "{{ np_c4.rc }}", answer: "{{ (np_c4.stdout_lines + np_c4.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "{{ np_c4_list.stdout_lines | first }}" }
           - { case: "5 SRCE_ASSOC_IP federation", rc: "{{ np_c5.rc }}", answer: "{{ (np_c5.stdout_lines + np_c5.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "levels={{ (np_c5_rb.stdout | from_json).levels | default('?') | to_json }}" }
           - { case: "6 RM_SRCE_TAGS federation", rc: "{{ np_c6.rc }}", answer: "{{ (np_c6.stdout_lines + np_c6.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "" }
-          - { case: "7 RM_SRCE_DELETE", rc: "{{ np_c7s.rc }}", answer: "{{ (np_c7s.stdout_lines + np_c7s.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "sources after: {{ np_after.results[0].stdout_lines | first }}" }
-          - { case: "7 RM_DEST_DELETE", rc: "{{ np_c7d.rc }}", answer: "{{ (np_c7d.stdout_lines + np_c7d.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "destinations after: {{ np_after.results[1].stdout_lines | first }}" }
+          - { case: "7 RM_SRCE_DELETE", rc: "{{ np_c7s.rc }}", nb: "{{ np_after_nb.results[0].stdout_lines | first | default('') }}", answer: "{{ (np_c7s.stdout_lines + np_c7s.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "sources after: {{ np_after.results[0].stdout_lines | first }}" }
+          - { case: "7 RM_DEST_DELETE", rc: "{{ np_c7d.rc }}", nb: "{{ np_after_nb.results[1].stdout_lines | first | default('') }}", answer: "{{ (np_c7d.stdout_lines + np_c7d.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "destinations after: {{ np_after.results[1].stdout_lines | first }}" }
           - { case: "8 LEVEL_MNE create", rc: "{{ np_l_create.rc }}", answer: "{{ (np_l_create.stdout_lines + np_l_create.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "levels before: {{ np_l_before.stdout_lines | select('search', 'ZZ-PROBE|count') | list | join(' / ') }}; NB after: {{ np_l_rb.results[0].stdout_lines | select('search', 'ZZ-PROBE|count') | list | join(' / ') }}; RCP: {{ np_l_rb.results[1].stdout_lines | select('search', 'ZZ-PROBE') | list | join(' / ') }}" }
           - { case: "8 LEVEL_MNE rename", rc: "{{ np_l_rename.rc }}", answer: "{{ (np_l_rename.stdout_lines + np_l_rename.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "" }
           - { case: "8 LEVEL_MNE delete attempt", rc: "{{ np_l_delete.rc }}", answer: "{{ (np_l_delete.stdout_lines + np_l_delete.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "levels after: {{ np_l_after.stdout_lines | select('search', 'ZZ-PROBE|count') | list | join(' / ') }} — a ZZ-PROBE level left is deleted in the user interface" }
@@ -343,9 +381,9 @@
     - name: CSV
       ansible.builtin.copy:
         content: |
-          case,rc,answer,readback
+          case,rc,answer,northbound_readback,rcp_readback
           {% for r in np_rows %}
-          "{{ r.case }}",{{ r.rc }},"{{ r.answer | regex_replace('\"', "'") | regex_replace(',', ';') }}","{{ r.readback | regex_replace('\"', "'") | regex_replace(',', ';') }}"
+          "{{ r.case }}",{{ r.rc }},"{{ r.answer | regex_replace('\"', "'") | regex_replace(',', ';') }}","{{ (r.nb | default('')) | regex_replace('\"', "'") | regex_replace(',', ';') | regex_replace(' +', ' ') }}","{{ r.readback | regex_replace('\"', "'") | regex_replace(',', ';') }}"
           {% endfor %}
         dest: "{{ np_dir }}/nb-rm-ops-{{ lookup('ansible.builtin.pipe', 'date -u +%Y-%m-%d') }}.csv"
         mode: "0644"
