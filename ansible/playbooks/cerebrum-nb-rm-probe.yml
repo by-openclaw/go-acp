@@ -1,0 +1,284 @@
+---
+# Cerebrum Northbound v0.17 RouteMaster messages, measured on temporary IOs
+# and undone — the Northbound counterpart of rcp-write-probe.yml, re-run on
+# every Cerebrum release.
+#
+#   1  RM_SRCE_ADD, local               §4.2.3   one source appended
+#   2  RM_SRCE_ADD, VIRTUAL=1           §4.2.3   one virtual source
+#   3  RM_DEST_ADD, local               §4.2.3   one destination
+#   4  RM_SRCE_ADD, FEDERATION=1        §4.2.3   on a standalone server
+#   5  SRCE_ASSOC_IP, FEDERATION=1      §4.1.9   on the temporary source
+#   6  RM_SRCE_TAGS, FEDERATION=1       §4.2.1   on the temporary source
+#   7  RM_SRCE_DELETE / RM_DEST_DELETE  §4.2.4   the temporary IOs
+#
+# Writes go over Northbound (dhs consumer cerebrum-nb); every read-back goes
+# over RCP (dhs consumer rcp list / get), so the two interfaces check each
+# other. The collection sizes are compared before and after.
+#
+# Data: inventory `cerebrum` (host, rcp_port, nb_port, nmos_device) and
+# `nb_probe` (the sender the temporary source is bound to). Account:
+# DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/cerebrum-nb-rm-probe.yml
+
+- name: cerebrum-nb — probe the v0.17 RouteMaster messages on temporary IOs, then undo
+  hosts: plant
+  gather_facts: false
+  vars:
+    np_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    np_dir: "{{ probe_dir | default('/root/rcp-probe') }}"
+    np_settle: 5
+    np_nb: ["{{ np_bin }}", consumer, cerebrum-nb]
+    np_nb_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log, "off"]
+    np_rcp: ["{{ np_bin }}", consumer, rcp]
+    np_rcp_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}", --timeout, "20s"]
+    np_target: "{{ nb_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'VTX-01', 'level': '1'}) }}"
+    np_env:
+      DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+      DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+    np_idre: '^\s+(\d+)\s'
+  tasks:
+    - name: The server and the account are given
+      ansible.builtin.assert:
+        that:
+          - cerebrum.host is defined and cerebrum.rcp_port is defined and cerebrum.nb_port is defined
+          - np_env.DHS_CEREBRUM_USER | length > 0
+        fail_msg: set `cerebrum` in the inventory and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
+        quiet: true
+
+    - name: Output directory
+      ansible.builtin.file:
+        path: "{{ np_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Collections before (RCP)
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['list', '--kind', item] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      loop: [sources, destinations, federation-sources, federation-destinations]
+      register: np_before
+      changed_when: false
+
+    # ---- case 1: one local source -------------------------------------------
+    - name: "Case 1 · RM_SRCE_ADD local"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c1
+      changed_when: np_c1.rc == 0
+      failed_when: false
+
+    - name: "Case 1 · settle"
+      ansible.builtin.pause:
+        seconds: "{{ np_settle }}"
+
+    - name: "Case 1 · sources after (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['list', '--kind', 'sources'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c1_list
+      changed_when: false
+
+    - name: "Case 1 · the new source id (the last one)"
+      ansible.builtin.set_fact:
+        np_s1: "{{ (np_c1_list.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max }}"
+        np_s1_new: "{{ (np_c1_list.stdout_lines | first) != (np_before.results[0].stdout_lines | first) }}"
+
+    - name: "Case 1 · read back (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['get', '--kind', 'sources', '--id', np_s1 | string, '--json'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c1_rb
+      changed_when: false
+      failed_when: false
+
+    # ---- case 2: one virtual source ----------------------------------------
+    - name: "Case 2 · RM_SRCE_ADD VIRTUAL=1"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--virtual', '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c2
+      changed_when: np_c2.rc == 0
+      failed_when: false
+
+    - name: "Case 2 · settle"
+      ansible.builtin.pause:
+        seconds: "{{ np_settle }}"
+
+    - name: "Case 2 · sources after (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['list', '--kind', 'sources'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c2_list
+      changed_when: false
+
+    - name: "Case 2 · the virtual source id"
+      ansible.builtin.set_fact:
+        np_s2: "{{ (np_c2_list.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max }}"
+
+    - name: "Case 2 · read back (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['get', '--kind', 'sources', '--id', np_s2 | string, '--json'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c2_rb
+      changed_when: false
+      failed_when: false
+
+    # ---- case 3: one local destination -------------------------------------
+    - name: "Case 3 · RM_DEST_ADD local"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-add', '--kind', 'destination', '--count', '1', '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c3
+      changed_when: np_c3.rc == 0
+      failed_when: false
+
+    - name: "Case 3 · settle"
+      ansible.builtin.pause:
+        seconds: "{{ np_settle }}"
+
+    - name: "Case 3 · destinations after (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['list', '--kind', 'destinations'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c3_list
+      changed_when: false
+
+    - name: "Case 3 · the new destination id"
+      ansible.builtin.set_fact:
+        np_d1: "{{ (np_c3_list.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max }}"
+
+    - name: "Case 3 · read back (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['get', '--kind', 'destinations', '--id', np_d1 | string, '--json'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c3_rb
+      changed_when: false
+      failed_when: false
+
+    # ---- case 4: a federation source on a standalone server ----------------
+    - name: "Case 4 · RM_SRCE_ADD FEDERATION=1"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--federation', '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c4
+      changed_when: np_c4.rc == 0
+      failed_when: false
+
+    - name: "Case 4 · settle"
+      ansible.builtin.pause:
+        seconds: "{{ np_settle }}"
+
+    - name: "Case 4 · federation-sources after (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['list', '--kind', 'federation-sources'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c4_list
+      changed_when: false
+
+    # ---- case 5: association with FEDERATION=1 on the temporary source -----
+    - name: "Case 5 · SRCE_ASSOC_IP FEDERATION=1"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['assoc', '--kind', 'SRCE_ASSOC_IP', '--srce', np_s1 | string, '--level', np_target.level | string,
+                 '--target-device', np_target.device, '--target-name', np_target.sender, '--sub-device', np_target.sub_device | string, '--federation'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c5
+      changed_when: np_c5.rc == 0
+      failed_when: false
+
+    - name: "Case 5 · read back the source (RCP)"
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['get', '--kind', 'sources', '--id', np_s1 | string, '--json'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c5_rb
+      changed_when: false
+      failed_when: false
+
+    # ---- case 6: tags with FEDERATION=1 on the temporary source ------------
+    - name: "Case 6 · RM_SRCE_TAGS FEDERATION=1"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['set-tags', '--kind', 'RM_SRCE_TAGS', '--srce', np_s1 | string, '--level', np_target.level | string, '--tags', 'ZZ-PROBE', '--federation'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c6
+      changed_when: np_c6.rc == 0
+      failed_when: false
+
+    # ---- case 7: delete the temporary IOs ----------------------------------
+    - name: "Case 7 · RM_SRCE_DELETE the two sources"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'source', '--id', ([np_s1, np_s2] | unique | map('string') | join(',')), '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c7s
+      changed_when: np_c7s.rc == 0
+      failed_when: false
+
+    - name: "Case 7 · RM_DEST_DELETE the destination"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'destination', '--id', np_d1 | string, '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c7d
+      changed_when: np_c7d.rc == 0
+      failed_when: false
+
+    - name: "Case 7 · a federation source, when one was created"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'source', '--id', ((np_c4_list.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max) | string, '--federation', '--output', 'json'] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c7f
+      changed_when: true
+      failed_when: false
+      when: (np_c4_list.stdout | regex_findall(np_idre, multiline=True)) | length > 0
+
+    - name: "Case 7 · settle"
+      ansible.builtin.pause:
+        seconds: "{{ np_settle }}"
+
+    - name: Collections after (RCP)
+      ansible.builtin.command:
+        argv: "{{ np_rcp + ['list', '--kind', item] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      loop: [sources, destinations, federation-sources, federation-destinations]
+      register: np_after
+      changed_when: false
+
+    # Leftovers are removed by mnemonic over RCP before the assert, so a
+    # refused Northbound delete never leaves a probe IO behind.
+    - name: Sizes before and after
+      ansible.builtin.set_fact:
+        np_sizes_before: "{{ np_before.results | map(attribute='stdout_lines') | map('first') | list }}"
+        np_sizes_after: "{{ np_after.results | map(attribute='stdout_lines') | map('first') | list }}"
+
+    - name: Every collection is back to its size before the probe
+      ansible.builtin.assert:
+        that: np_sizes_before == np_sizes_after
+        fail_msg: "a probe IO is left behind: before {{ np_sizes_before }} after {{ np_sizes_after }} — remove it over RCP (rcp delete --kind … --id …)"
+        quiet: true
+
+    - name: Rows
+      ansible.builtin.set_fact:
+        np_rows:
+          - { case: "1 RM_SRCE_ADD local", rc: "{{ np_c1.rc }}", answer: "{{ (np_c1.stdout_lines + np_c1.stderr_lines) | last | default('') }}", readback: "sources {{ np_before.results[0].stdout_lines | first }} -> {{ np_c1_list.stdout_lines | first }}; id {{ np_s1 }}: {{ (np_c1_rb.stdout | from_json).mnemonic | default('?') }} virtual={{ (np_c1_rb.stdout | from_json).virtual | default('?') }}" }
+          - { case: "2 RM_SRCE_ADD virtual", rc: "{{ np_c2.rc }}", answer: "{{ (np_c2.stdout_lines + np_c2.stderr_lines) | last | default('') }}", readback: "sources {{ np_c2_list.stdout_lines | first }}; id {{ np_s2 }}: {{ (np_c2_rb.stdout | from_json).mnemonic | default('?') }} virtual={{ (np_c2_rb.stdout | from_json).virtual | default('?') }}" }
+          - { case: "3 RM_DEST_ADD local", rc: "{{ np_c3.rc }}", answer: "{{ (np_c3.stdout_lines + np_c3.stderr_lines) | last | default('') }}", readback: "destinations {{ np_before.results[1].stdout_lines | first }} -> {{ np_c3_list.stdout_lines | first }}; id {{ np_d1 }}: {{ (np_c3_rb.stdout | from_json).mnemonic | default('?') }}" }
+          - { case: "4 RM_SRCE_ADD federation", rc: "{{ np_c4.rc }}", answer: "{{ (np_c4.stdout_lines + np_c4.stderr_lines) | last | default('') }}", readback: "{{ np_c4_list.stdout_lines | first }}" }
+          - { case: "5 SRCE_ASSOC_IP federation", rc: "{{ np_c5.rc }}", answer: "{{ (np_c5.stdout_lines + np_c5.stderr_lines) | last | default('') }}", readback: "levels={{ (np_c5_rb.stdout | from_json).levels | default('?') | to_json }}" }
+          - { case: "6 RM_SRCE_TAGS federation", rc: "{{ np_c6.rc }}", answer: "{{ (np_c6.stdout_lines + np_c6.stderr_lines) | last | default('') }}", readback: "" }
+          - { case: "7 RM_SRCE_DELETE", rc: "{{ np_c7s.rc }}", answer: "{{ (np_c7s.stdout_lines + np_c7s.stderr_lines) | last | default('') }}", readback: "sources after: {{ np_after.results[0].stdout_lines | first }}" }
+          - { case: "7 RM_DEST_DELETE", rc: "{{ np_c7d.rc }}", answer: "{{ (np_c7d.stdout_lines + np_c7d.stderr_lines) | last | default('') }}", readback: "destinations after: {{ np_after.results[1].stdout_lines | first }}" }
+
+    - name: CSV
+      ansible.builtin.copy:
+        content: |
+          case,rc,answer,readback
+          {% for r in np_rows %}
+          "{{ r.case }}",{{ r.rc }},"{{ r.answer | regex_replace('\"', "'") | regex_replace(',', ';') }}","{{ r.readback | regex_replace('\"', "'") | regex_replace(',', ';') }}"
+          {% endfor %}
+        dest: "{{ np_dir }}/nb-rm-ops-{{ lookup('ansible.builtin.pipe', 'date -u +%Y-%m-%d') }}.csv"
+        mode: "0644"
+      register: np_csv
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: "{{ np_rows }}"
