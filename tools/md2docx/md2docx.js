@@ -79,7 +79,8 @@ function widths(header) {
 }
 
 function table(lines) {
-  const rows = lines.filter((l) => !/^\|\s*:?-+/.test(l)).map((l) => l.replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+  // A cell may carry an escaped pipe (`\|`, the Markdown way of writing "|" inside a table).
+  const rows = lines.filter((l) => !/^\|\s*:?-+/.test(l)).map((l) => l.replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|")));
   const aligns = (lines.find((l) => /^\|\s*:?-+/.test(l)) || "").replace(/^\||\|$/g, "").split("|").map((c) => (c.trim().endsWith(":") ? AlignmentType.RIGHT : undefined));
   const ncol = Math.max(...rows.map((r) => r.length));
   const w = widths(rows[0]);
