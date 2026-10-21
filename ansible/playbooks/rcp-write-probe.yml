@@ -401,10 +401,10 @@
 
     - name: "Case 12 · the current name of level {{ wp_target.level }}"
       ansible.builtin.set_fact:
-        # `mnemonics` prints one level per line: `<id>  "<name>"  alt: ...`
+        # `mnemonics` prints one level per line: `<id>  "<name>"  alt: ...`;
+        # the name is the text between the first pair of double quotes.
         wp_c12_old: >-
-          {{ (wp_c12_names.stdout_lines | select('search', '^' ~ (wp_target.level | string) ~ ' ') | list | first | default(''))
-             | regex_search('"([^"]*)"', '\\1') | default([''], true) | first }}
+          {{ ((wp_c12_names.stdout_lines | select('search', '^' ~ (wp_target.level | string) ~ ' ') | list | first | default('')).split('"') + ['', ''])[1] }}
 
     - name: "Case 12 · rename level {{ wp_target.level }} over RCP"
       ansible.builtin.command:
