@@ -7,6 +7,26 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.46.0](https://github.com/by-openclaw/go-acp/compare/v0.45.0...v0.46.0) (2026-10-21)
+
+
+### Features
+
+* **ansible:** alternate mnemonics of every RouteMaster resource, applied for the fields Cerebrum has ([87d6680](https://github.com/by-openclaw/go-acp/commit/87d6680e810d613356acb78b0590f3eb8f672511))
+* **ansible:** alternate mnemonics of every RouteMaster resource, applied for the fields Cerebrum has ([ef2b766](https://github.com/by-openclaw/go-acp/commit/ef2b76609a80c4a1ff0d4b6e143b84f92e2fcae4))
+* **ansible:** categories of the RouteMaster, with sub-category, text and blank slots ([dc1ce7a](https://github.com/by-openclaw/go-acp/commit/dc1ce7a6549d4c420320f73bd818882e7a4a6d0a))
+* **ansible:** categories of the RouteMaster, with sub-category, text and blank slots ([b7864ef](https://github.com/by-openclaw/go-acp/commit/b7864efab4d00a220ae390929714c8ddf66fbb1a))
+* **ansible:** collect what IP routing holds, one CSV per NMOS node ([5caf8d3](https://github.com/by-openclaw/go-acp/commit/5caf8d317d4745ce901b663db88d2cf75ce448bc))
+* **ansible:** collect what IP routing holds, one CSV per NMOS node ([dd14248](https://github.com/by-openclaw/go-acp/commit/dd142489d73dc8dc4f64583a5033d1cbb0e0aa49))
+* **ansible:** rcp-api-probe — every GET of the RCP document classified, per release ([#1507](https://github.com/by-openclaw/go-acp/issues/1507)) ([2ffedd4](https://github.com/by-openclaw/go-acp/commit/2ffedd4be4839cff1d6aa2a906e9551153dbd768))
+* **ansible:** rcp-write-probe — the write paths of the EVS note on temporary IOs, undone ([#1509](https://github.com/by-openclaw/go-acp/issues/1509)) ([b7bb6fa](https://github.com/by-openclaw/go-acp/commit/b7bb6faef48522965bd7717705b0c3cd987cb824))
+
+
+### Bug Fixes
+
+* **ansible:** a category without items is not the dict method items ([33c70b5](https://github.com/by-openclaw/go-acp/commit/33c70b5b6ee07d73e37121d8a90b838e63184a70))
+* **ansible:** the device column of the IP routing CSV ([142ec7b](https://github.com/by-openclaw/go-acp/commit/142ec7b2c8608f2d9932900874447d9323040c10))
+
 ## [0.45.0](https://github.com/by-openclaw/go-acp/compare/v0.44.0...v0.45.0) (2026-10-12)
 
 
