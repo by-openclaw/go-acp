@@ -231,9 +231,20 @@
       changed_when: np_c7s.rc == 0
       failed_when: false
 
-    - name: "Case 7 · RM_DEST_DELETE the destination and the paired virtual destination"
+    # The source delete above also removed the virtual pair's destination
+    # (a pair goes with either of its ids, measured 2026-10-22), which
+    # renumbered the destinations: the remaining probe destination is read
+    # again before its delete.
+    - name: "Case 7 · destinations after the source delete (RCP)"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-delete', '--kind', 'destination', '--id', (([np_d1] + ([np_d2] if np_d2_new | bool else [])) | unique | map('string') | join(',')), '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_rcp + ['list', '--kind', 'destinations'] + np_rcp_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c7_dlist
+      changed_when: false
+
+    - name: "Case 7 · RM_DEST_DELETE the remaining probe destination (the last id)"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'destination', '--id', ((np_c7_dlist.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max) | string, '--output', 'json'] + np_nb_tail }}"
       environment: "{{ np_env }}"
       register: np_c7d
       changed_when: np_c7d.rc == 0

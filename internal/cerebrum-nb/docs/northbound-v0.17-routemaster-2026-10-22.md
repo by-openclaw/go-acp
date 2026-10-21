@@ -70,7 +70,7 @@ interface our Ansible scripts use today.
 | 7 | Create | proven (`virtual: true` on create) | **no** | `RM_*_ADD` with `VIRTUAL="1"` (§4.2.3) | proven: one `RM_SRCE_ADD VIRTUAL="1"` creates the pair, a virtual source and a virtual destination, both named "Virtual 1" | RCP; Northbound as the second path |
 | 8 | Read | proven | proven | unchanged | proven | RCP |
 | 9 | Update: make an existing IO virtual, and back | accepted, **not applied** (re-tested 2026-10-21) | **no** | **no** | — | none |
-| 10 | Delete | proven | **no** | `RM_*_DELETE` (§4.2.4) | proven, with one difference: deleting the virtual source alone leaves its virtual destination; deleting the destination over RCP removes both. Delete both ids, or the destination | RCP; Northbound as the second path |
+| 10 | Delete | proven: deleting either side removes the pair | **no** | `RM_*_DELETE` (§4.2.4) | proven: deleting either side removes the pair, measured in the four combinations (Northbound source, Northbound destination, RCP source, RCP destination) | RCP; Northbound as the second path |
 
 ### 5.3 Federation sources and destinations
 
@@ -99,8 +99,9 @@ interface our Ansible scripts use today.
 | # | Operation | RCP 2.5.3 (server) | Northbound 0v16 | Northbound v0.17 (document) | Northbound v0.17 (server 2.9.3) | Use |
 |---|---|---|---|---|---|---|
 | 23 | Bind a level to a router input or output | proven | proven (`SRCE_ASSOC` / `DEST_ASSOC`) | unchanged; `FEDERATION="1"` for a federation IO (§4.1.7–§4.1.8) | local: proven earlier; federation variant: not run (no router device bound on this system) | RCP |
-| 24 | Bind a level to an IP sender or receiver | proven | proven (`SRCE_ASSOC_IP` / `DEST_ASSOC_IP`) | unchanged; `FEDERATION="1"` (§4.1.9–§4.2.0) | local: proven earlier; federation variant: accepted, not applied (row 13) | RCP |
+| 24 | Bind a level to an IP sender or receiver | proven | proven (`SRCE_ASSOC_IP` / `DEST_ASSOC_IP`) | unchanged; `FEDERATION="1"` (§4.1.9–§4.2.0) | proven on 2.9.3: a source bound to sender VTX-01 and a destination to receiver VRX-01 of the NMOS slot 1, read back over RCP as `NMOS\|1\|VTX-01` and `NMOS\|1\|VRX-01`; federation variant: accepted, not applied (row 13) | RCP |
 | 25 | Tags on a level | proven | proven (`RM_SRCE_TAGS` / `RM_DEST_TAGS`) | unchanged; `FEDERATION="1"` (§4.2.1–§4.2.2) | local: proven earlier; federation variant: accepted (row 14) | RCP |
+| 26 | Route a source to a destination (crosspoint), IP level | proven | proven (`ROUTE`) | unchanged | proven on 2.9.3: a route between two IOs bound to VTX-01 and VRX-01 was executed on the device at once (IS-05 activation on the receiver), while the RouteMaster routes table still showed no crosspoint two seconds later | RCP; Northbound for batches |
 
 ### 5.6 Names and categories
 
@@ -114,9 +115,9 @@ interface our Ansible scripts use today.
 
 | # | Message (v0.17 section) | Attributes | RCP equivalent | Same semantics? |
 |---|---|---|---|---|
-| 1 | `<ROUTING TYPE="RM_SRCE_ADD|RM_DEST_ADD" COUNT VIRTUAL FEDERATION/>` (§4.2.3) | `COUNT` 1–1000 (default 1), `VIRTUAL` 0/1, `FEDERATION` 0/1 | `POST /routemaster/sources` / `destinations` with `count`, `virtual`; `POST /routemaster/federation-sources` / `federation-destinations` | yes: append N IOs; neither returns the created ids; a virtual add creates the source and destination pair on both |
-| 2 | `<ROUTING TYPE="RM_SRCE_DELETE|RM_DEST_DELETE" SRCE_ID|DEST_ID="21,22,23" FEDERATION/>` (§4.2.4) | comma list of existing ids, no empty element, no 0 | `DELETE /routemaster/…/{id}`, one id per call | yes, with a batch of ids on Northbound; a virtual pair is removed by its destination on RCP, by both ids on Northbound |
-| 3 | `<ROUTING TYPE="RM_SRCE_ADD" FEDERATION="0"><RESULT VALUE="ACCEPTED|FAILED"/></ROUTING>` (§4.2.5) | `ACCEPTED` = validated and queued as a configuration change, not applied | `202 Accepted` | yes, the same "accepted proves nothing"; on this server the change is visible within one second |
+| 1 | `<ROUTING TYPE="RM_SRCE_ADD \| RM_DEST_ADD" COUNT VIRTUAL FEDERATION/>` (§4.2.3) | `COUNT` 1–1000 (default 1), `VIRTUAL` 0/1, `FEDERATION` 0/1 | `POST /routemaster/sources` / `destinations` with `count`, `virtual`; `POST /routemaster/federation-sources` / `federation-destinations` | yes: append N IOs; neither returns the created ids; a virtual add creates the source and destination pair on both |
+| 2 | `<ROUTING TYPE="RM_SRCE_DELETE \| RM_DEST_DELETE" SRCE_ID \| DEST_ID="21,22,23" FEDERATION/>` (§4.2.4) | comma list of existing ids, no empty element, no 0 | `DELETE /routemaster/…/{id}`, one id per call | yes, with a batch of ids on Northbound; a virtual pair is removed by either of its ids on both interfaces |
+| 3 | `<ROUTING TYPE="RM_SRCE_ADD" FEDERATION="0"><RESULT VALUE="ACCEPTED \| FAILED"/></ROUTING>` (§4.2.5) | `ACCEPTED` = validated and queued as a configuration change, not applied | `202 Accepted` | yes, the same "accepted proves nothing"; on this server the change is visible within one second |
 | 4 | `FEDERATION="1"` on `SRCE_ASSOC`, `DEST_ASSOC`, `SRCE_ASSOC_IP`, `DEST_ASSOC_IP` (§4.1.7–§4.2.0) | sends the change to the federation IO instead of the local one; defaults to 0 | the `levels` block of a federation IO | yes |
 | 5 | `FEDERATION="1"` on `RM_SRCE_TAGS`, `RM_DEST_TAGS` (§4.2.1–§4.2.2) | same | the `tags` of a federation IO's level | yes |
 
@@ -134,12 +135,13 @@ binding and tag operations, and 2.9.3 applies them.
 |---|---|---|---|
 | 1 | `RESULT VALUE="ACCEPTED"` means validated and queued, not applied (§4.2.5); on 2.9.3 the change is visible within one second | "accepted" proves nothing by itself | every add and delete is read back over RCP |
 | 2 | A create does not return the ids it created; the server names them "Src N", "Dest N", "Virtual N" | the caller cannot know them | lists before and after; a new IO is the last id |
-| 3 | `VIRTUAL="1"` creates a pair: a virtual source and a virtual destination of the same name | one message, two IOs; deleting the source alone leaves the destination | both ids are deleted; over RCP the destination side removes the pair |
-| 4 | Ids are positions; a delete renumbers the IOs after it | an id noted before a delete may point at another IO after it | one write at a time, read back before the next; IOs matched by mnemonic |
+| 3 | `VIRTUAL="1"` creates a pair: a virtual source and a virtual destination of the same name; deleting either side, on either interface, removes both | one message, two IOs, and one delete for the two | the pair is deleted by one id |
+| 4 | Ids are positions; a delete renumbers the IOs after it, and a pair deletion renumbers both collections | an id noted before a delete may point at another IO after it: in our first run the destination noted as 17 had become 16 and the delete of 17 hit nothing | one delete at a time, ids re-read before each; IOs matched by mnemonic |
 | 5 | The reply to an `RM_*` action is a `<ROUTING>` envelope, not the plain `<ACK>` of every other action | a client that waits for an ACK waits forever | the connector accepts both; an older server's ACK is reported as accepted |
 | 6 | `FEDERATION` is absent from the mnemonic and lock actions | a federation IO's mnemonic is not set over Northbound | mnemonics stay on RCP |
 | 7 | `COUNT` is capped at 1000 and ids at 2147483647; empty list elements and 0 are rejected | a script must validate before sending | the verbs refuse those values before the wire |
 | 8 | A level created over Northbound cannot be deleted by any interface (NACK 8 on an empty name); a level create stopped the server once on 2.9.2, not on 2.9.3 | a level test leaves a level behind | the level case runs last, on an unused id; the level is named for deletion in the user interface |
+| 9 | A route on IOs bound to IP senders and receivers acts on the devices at once (IS-05), even on IOs created seconds before; the routes table lags | a test route on a bound IO is a real connection | the receiver's state is read before any route and restored after; test routes use unbound IOs |
 
 ## 8. What we would ask EVS for
 
@@ -150,8 +152,7 @@ binding and tag operations, and 2.9.3 applies them.
 | 3 | Level delete and level properties | either | levels provisioned and removed without the user interface |
 | 4 | `FEDERATION` on `SRCE_MNE` / `DEST_MNE` | Northbound | the mnemonic of a federation IO without RCP |
 | 5 | A link / unlink of an existing local IO to a federation IO | either | moving a resource between local and federated without delete and re-create |
-| 6 | `RM_SRCE_DELETE` of a virtual source removing its paired destination, as the RCP delete does | Northbound | one rule for a virtual pair on both interfaces |
-| 7 | The document version on the wire (`api_ver` still reports 0.1) | Northbound | a client that knows which messages the server accepts |
+| 6 | The document version on the wire (`api_ver` still reports 0.1) | Northbound | a client that knows which messages the server accepts |
 
 ## 9. Conclusions
 
