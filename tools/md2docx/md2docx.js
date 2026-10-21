@@ -50,7 +50,7 @@ function fillFor(text) {
   const t = text.trim().toLowerCase().replace(/[*`]/g, "");
   if (/^proven\b/.test(t)) return FILL.green;
   if (/^(no\b|not writable|not applicable|not on (the )?server|404\b|400\b|refused|open\b|missing\b)/.test(t)) return FILL.red;
-  if (/^(document\b|back-channel document|accepted\b|partly\b|written to the document|tested\b|stored as written|only when|list answered|request form|subscription accepted|not tried|available;|acknowledged|202\b|unclear|pending|manual\b)/.test(t)) return FILL.yellow;
+  if (/^(document\b|back-channel document|accepted\b|partly\b|written to the document|tested\b|stored as written|only (when|for)|list answered|request form|subscription accepted|not tried|available;|acknowledged|202\b|unclear|pending|manual\b|to measure)/.test(t)) return FILL.yellow;
   return undefined;
 }
 

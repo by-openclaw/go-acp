@@ -432,7 +432,7 @@ VERBS
   lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
-  set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
+  set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT] [--allow-clear: send an empty MNEMONIC, the undocumented clear form]
   set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --level ID --tags a,b,c [--federation: the federation IO instead of the local one, v0.17]
   assoc                    ACTION <ROUTING TYPE='*_ASSOC[_IP]'/> bind a RouteMaster source/destination on one level to a device IO: --kind SRCE_ASSOC|DEST_ASSOC --srce|--dest ID --level ID --target-device NAME [--target-level ID] --target-io N; or an IP sender/receiver: --kind SRCE_ASSOC_IP|DEST_ASSOC_IP … --target-device NAME --target-name SENDER|RECEIVER [--sub-device N]; [--federation: the federation IO instead of the local one, v0.17]
   rm-add                   ACTION <ROUTING TYPE='RM_SRCE_ADD|RM_DEST_ADD'/> (v0.17 §4.2.3) append sources or destinations to the RouteMaster: --kind source|destination [--count N (1-1000)] [--virtual] [--federation] [--output json]. The RESULT reply (ACCEPTED|FAILED) means validated and queued, not applied: read the collection back.
@@ -3084,6 +3084,7 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	dest := fs.String("dest", "", "destination ID")
 	level := fs.String("level", "", "level ID")
 	mnemonic := fs.String("mnemonic", "", "mnemonic text")
+	allowClear := fs.Bool("allow-clear", false, "send an empty MNEMONIC (the clear form; 0v16 does not document it — the server's answer is the measurement)")
 	alt := fs.String("alt", "", "alternate mnemonic slot (ALT_MNE)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live label, report would_change, send nothing")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
@@ -3097,8 +3098,8 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	if err := requireKind(*kind, "set-mnemonic", "LEVEL_MNE", "SRCE_MNE", "DEST_MNE"); err != nil {
 		return err
 	}
-	if *mnemonic == "" {
-		return cerebrumValErr("set-mnemonic", "--mnemonic is required")
+	if *mnemonic == "" && !*allowClear {
+		return cerebrumValErr("set-mnemonic", "--mnemonic is required (or --allow-clear to send the empty clear form)")
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-mnemonic")
 	if err != nil {
