@@ -5,15 +5,15 @@
 **Date:** 2026-10-22
 **Server tested:** Cerebrum 2.9.3 build 15692, web client 2.9.3 build 2222 (staging VM, 10.6.250.5), standalone
 **Documents used:** *Cerebrum Northbound API* v0.17 (October 2026); *EVS Cerebrum RCP* OpenAPI 2.6.1 (the server answers `GET /v2/api` → 2.5.3)
-**Method:** every frame and every answer below is quoted as sent and received on 2026-10-22; "user interface" means the RouteMaster pages of the Cerebrum client. The complete measurements are in our two notes of the same day, one per interface.
+**Method:** every frame and every answer below is quoted as sent and received on 2026-10-22. "User interface" means the RouteMaster pages of the Cerebrum client.
 
 We provision the RouteMaster from a plan: levels, sources and destinations with their bindings, virtual pairs, categories, alternate labels, routes. Four points keep the user interface in every run or leave an error unseen. Federation is out of scope until our licence is installed.
 
-## 1. A level cannot be created with its attributes, and its attributes cannot be read
+## 1. A level's default device, "Multiple Devices" and IP filter cannot be set or read
 
-A level's default device, its "Multiple Devices" setting and its IP filter decide whether any IP binding on that level resolves. Neither interface writes them, and neither returns them.
+These three settings decide whether an IP binding on the level resolves. We set them in the user interface only.
 
-**Northbound.** §4.1.4 `LEVEL_MNE` has the attributes `TYPE`, `DEVICE_NAME` or `IP_ADDRESS`, `DEVICE_TYPE`, `LEVEL_NAME` or `LEVEL_ID`, `MNEMONIC`, `ALT_MNE`, `ON_DEVICE`: the name only. §5.1.4 documents `RM_DEFAULT_DEVICE` in the reply ("this details the target device and level of the associations on this level").
+**Northbound.** §4.1.4 `LEVEL_MNE` has the attributes `TYPE`, `DEVICE_NAME` or `IP_ADDRESS`, `DEVICE_TYPE`, `LEVEL_NAME` or `LEVEL_ID`, `MNEMONIC`, `ALT_MNE`, `ON_DEVICE`. §5.1.4 documents `RM_DEFAULT_DEVICE` in the reply.
 
 | | Frame |
 |---|---|
@@ -26,20 +26,20 @@ A level's default device, its "Multiple Devices" setting and its IP filter decid
 
 Level 6 appears in the Levels tab with no default device, "Multiple Devices" unticked and no IP filter. No `RM_DEFAULT_DEVICE` element in either reply.
 
-**RCP.** The 2.6.1 document defines two operations on levels, `GET /routemaster/levels` and `GET /routemaster/levels/{levelId}`, and a level object with the fields `id`, `mnemonic`, `multipleDevices`, `device` (`name`, `typeId`, `deviceLevel`), `ipFilter`, `sourceTags`, `destinationTags`. The only documented write on a level is `PATCH /devices/{deviceName}/{deviceIndex}/routers/level-mnemonics/{levelId}` with the fields `originalMnemonic`, `alternateMnemonics` and `IOMnemonics`. No documented request takes `multipleDevices`, `device` or `ipFilter` as input. The document itself treats them as set beforehand: the binding update of a source or destination says `"name", "typeId" and "deviceLevel" may only be supplied on a level whose "multipleDevices" is true`.
+**RCP.** The 2.6.1 document defines `GET /routemaster/levels` and `GET /routemaster/levels/{levelId}`, returning a level with `id`, `mnemonic`, `multipleDevices`, `device` (`name`, `typeId`, `deviceLevel`), `ipFilter`, `sourceTags`, `destinationTags`, and `PATCH /devices/{deviceName}/{deviceIndex}/routers/level-mnemonics/{levelId}` with `originalMnemonic`, `alternateMnemonics`, `IOMnemonics`.
 
 | Request | Answer |
 |---|---|
 | `GET /v2/routemaster/levels/6` | `404` `{"reqid":7,"error":{"code":1,"message":"Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]"}}` |
-| `PATCH /v2/devices/Cerebrum/0/routers/level-mnemonics/5` body `{"level_5": {"originalMnemonic": "ZZ-PROBE-L3"}}` | `202`; the `GET` returns the new name. The name is the only attribute of a level that RCP writes |
+| `PATCH /v2/devices/Cerebrum/0/routers/level-mnemonics/5` body `{"level_5": {"originalMnemonic": "ZZ-PROBE-L3"}}` | `202`; the `GET` returns the new name |
 
-**Ask:** a Northbound message and an RCP operation that set a level's default device, "Multiple Devices" and IP filter, and that read them; `RM_DEFAULT_DEVICE` sent in the `LEVEL_MNE` reply as §5.1.4 documents it; `GET /routemaster/levels` served as 2.6.1 documents it.
+**Questions.** Is there a Northbound message or an RCP request that sets a level's default device, "Multiple Devices" and IP filter? Why is `RM_DEFAULT_DEVICE` absent from the `LEVEL_MNE` reply? On which build does `GET /routemaster/levels` answer?
 
 ## 2. The alternate mnemonic names cannot be created or listed
 
-Writing an alternate label on a source, a destination or a level works on both interfaces once the names (`Name 1` … `Name 10` on our server) exist. The names themselves exist only in the user interface.
+Writing an alternate label on a source, a destination or a level works on both interfaces once the names (`Name 1` … `Name 10` on our server) exist. We create the names in the user interface only.
 
-**Northbound.** §4.1.4–§4.1.6: `ALT_MNE` is "the index of the alternate mnemonic being targeted"; §5.1.4–§5.1.6 reply with `ALT_MNE_n`. No message names, creates or lists the alternates.
+**Northbound.** §4.1.4–§4.1.6: `ALT_MNE` is "the index of the alternate mnemonic being targeted"; §5.1.4–§5.1.6 reply with `ALT_MNE_n`.
 
 | | Frame |
 |---|---|
@@ -50,41 +50,39 @@ Writing an alternate label on a source, a destination or a level works on both i
 | TX, slot 2 on source 16 earlier the same day, no name defined yet | `<ACTION MTID="3"><ROUTING TYPE="SRCE_MNE" DEVICE_TYPE="ROUTER" IP_ADDRESS="0.0.0.0" SRCE_ID="16" MNEMONIC="ZZ-ALT2" ALT_MNE="2"/></ACTION>` |
 | RX | `<NACK MTID="3" ERROR="ONE_OR_MORE_ACTIONS_INVALID" ERROR_CODE="8"/>` |
 
-**RCP.** 2.6.1: `alternateMnemonics` is "a map of alternative mnemonics indexed by the Alternative Mnemonic name"; no operation for the names.
+**RCP.** 2.6.1: `alternateMnemonics` is "a map of alternative mnemonics indexed by the Alternative Mnemonic name".
 
 | Request | Answer |
 |---|---|
 | `PATCH /v2/routemaster/sources/16` body `{"alternateMnemonics": {"Eng": "ZZ-PROBE"}}`, no name "Eng" defined | `400`, error code 2, message `Unknown alternate mnemonic name in 'alternateMnemonics'` |
 
-**Ask:** a message and an operation to create, list and rename the alternate mnemonic names.
+**Questions.** Is there a Northbound message or an RCP request that creates, lists or renames the alternate mnemonic names?
 
 ## 3. A create returns no id, and a write that is not applied is acknowledged
 
-A client that creates a resource has to read the whole collection before and after to find what it created, and a client that writes a binding has to read it back and look at the user interface to know whether it is applied.
+To find what it created, our client reads the whole collection before and after. To know whether a binding is applied, it reads it back and we look at the user interface.
 
 **Northbound.**
 
 | | Frame |
 |---|---|
 | TX, add one source | `<ACTION MTID="2"><ROUTING TYPE="RM_SRCE_ADD" COUNT="1" VIRTUAL="0" FEDERATION="0"/></ACTION>` |
-| RX | `<ROUTING TYPE="RM_SRCE_ADD" FEDERATION="0"><RESULT VALUE="ACCEPTED"/></ROUTING>` then `<ACK MTID="2"/>`: no id; the new source was found by an `OBTAIN SRCE_MNE` wildcard before and after |
+| RX | `<ROUTING TYPE="RM_SRCE_ADD" FEDERATION="0"><RESULT VALUE="ACCEPTED"/></ROUTING>` then `<ACK MTID="2"/>`: no id |
 | TX, bind source 17 on level 1, the level having no default device at that time | `<ACTION MTID="2"><ROUTING TYPE="SRCE_ASSOC_IP" DEVICE_TYPE="ROUTER" IP_ADDRESS="0.0.0.0" LOGICAL_SRCE_ID="17" LOGICAL_LEVEL_ID="1" TARGET_DEVICE_NAME="NMOS" TARGET_SENDER_NAME="VTX-01" SUB_DEVICE="1"/></ACTION>` |
 | RX | `<ACK MTID="2"/>`: the user interface shows "Level not configured" for source 17, level 1 |
 | TX, bind source 18 on level 1, the level configured, with a sender name the server does not resolve | `<ACTION MTID="2"><ROUTING TYPE="SRCE_ASSOC_IP" LOGICAL_SRCE_ID="18" LOGICAL_LEVEL_ID="1" TARGET_DEVICE_NAME="NMOS" TARGET_SENDER_NAME="VTX-01" SUB_DEVICE="1"/></ACTION>` |
-| RX | `<ACK MTID="2"/>`: the user interface shows the binding in red; the same action with `TARGET_SENDER_NAME="lab-convert-01\|VTX-01"` is resolved |
+| RX | `<ACK MTID="2"/>`: the user interface shows the binding in red. The same action with `TARGET_SENDER_NAME="lab-convert-01\|VTX-01"` is resolved |
 
 **RCP.**
 
 | Request | Answer |
 |---|---|
-| `POST /v2/routemaster/sources` body `{"count": 1, "mnemonic": "ZZ-PROBE-S"}` | `202 Accepted`, no id in the body; the new source was found by `GET /v2/routemaster/sources` before and after |
-| `PATCH /v2/routemaster/sources/17` body `{"levels": {"level_1": {"device": {"senderReceiver": "VTX-01"}}}}` | `202 Accepted`; the `GET` returns the string as sent; the user interface shows it in red; `"NMOS\|1\|lab-convert-01\|VTX-01"` resolves |
+| `POST /v2/routemaster/sources` body `{"count": 1, "mnemonic": "ZZ-PROBE-S"}` | `202 Accepted`, no id in the body |
+| `PATCH /v2/routemaster/sources/17` body `{"levels": {"level_1": {"device": {"senderReceiver": "VTX-01"}}}}` | `202 Accepted`; the `GET` returns the string as sent; the user interface shows it in red. `"NMOS\|1\|lab-convert-01\|VTX-01"` resolves |
 
-**Ask:** the created ids in the `RESULT` of `RM_SRCE_ADD` / `RM_DEST_ADD` and in the `202` body of `POST`; a `NACK` with a reason, and an error instead of `202`, when a binding cannot be applied (level without device, name that does not resolve); the form `<node>|<sender>` written in the documents for `TARGET_SENDER_NAME`, `TARGET_RECEIVER_NAME` and `senderReceiver`.
+**Questions.** Can the id of a created source or destination be returned, in the `RESULT` of `RM_SRCE_ADD` / `RM_DEST_ADD` and in the body of the `202`? Can a binding on a level without device, or with a name that does not resolve, be refused instead of acknowledged? Which form of `TARGET_SENDER_NAME`, `TARGET_RECEIVER_NAME` and `senderReceiver` does 2.9.3 expect?
 
-## 4. A request the server does not support is not told apart from one it does
-
-We send requests the server cannot honour, by mistake or to find the limit, and the answers do not say what was wrong: an `ACK` for a value that has no target, a `NACK` with a code and no attribute, or a `404` that calls a documented collection unknown.
+## 4. The answer to an unsupported request does not say what was wrong
 
 **Northbound.**
 
@@ -93,15 +91,15 @@ We send requests the server cannot honour, by mistake or to find the limit, and 
 | TX, slot 11 on source 16, ten names defined | `<ACTION MTID="3"><ROUTING TYPE="SRCE_MNE" DEVICE_TYPE="ROUTER" IP_ADDRESS="0.0.0.0" SRCE_ID="16" MNEMONIC="ZZ-ALT11" ALT_MNE="11"/></ACTION>` |
 | RX | `<ACK MTID="3"/>`: nothing stored, no `ALT_MNE_11` in the `OBTAIN` reply quoted in point 2 |
 | TX, slot 2 on source 16, no name defined | `<ACTION MTID="3"><ROUTING TYPE="SRCE_MNE" DEVICE_TYPE="ROUTER" IP_ADDRESS="0.0.0.0" SRCE_ID="16" MNEMONIC="ZZ-ALT2" ALT_MNE="2"/></ACTION>` |
-| RX | `<NACK MTID="3" ERROR="ONE_OR_MORE_ACTIONS_INVALID" ERROR_CODE="8"/>`: the code does not say which attribute or why |
+| RX | `<NACK MTID="3" ERROR="ONE_OR_MORE_ACTIONS_INVALID" ERROR_CODE="8"/>` |
 
 **RCP.**
 
 | Request | Answer |
 |---|---|
-| `GET /v2/routemaster/levels/6`, documented | `404` `{"reqid":7,"error":{"code":1,"message":"Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]"}}` |
-| `PATCH /v2/devices/Cerebrum/0/routers/source-mnemonics/16` body `{"src_16": {"alternateMnemonics": {"Eng": "ZZ"}}}`, no name "Eng" defined | `400`, error code 2, message `Error parsing request`; the same field sent to `/v2/routemaster/sources/16` names the problem (point 2) |
+| `GET /v2/routemaster/levels/6` | `404` `{"reqid":7,"error":{"code":1,"message":"Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]"}}` |
+| `PATCH /v2/devices/Cerebrum/0/routers/source-mnemonics/16` body `{"src_16": {"alternateMnemonics": {"Eng": "ZZ"}}}`, no name "Eng" defined | `400`, error code 2, message `Error parsing request` |
 
-**Ask:** an answer that names the unsupported resource, attribute or value and the reason: a `NACK` with the attribute in question, a `400` that names the field, and the `404` "Unknown RouteMaster collection" only for a collection the document does not define.
+**Questions.** Why is `ALT_MNE="11"` acknowledged? Which attribute does `ERROR_CODE="8"` point to? Why does the documented `GET /routemaster/levels` answer "Unknown RouteMaster collection"? Why does the same unknown alternate name answer `Error parsing request` here and `Unknown alternate mnemonic name` on `/v2/routemaster/sources/16`?
 
 Thank you. We re-run every line above on any build on request.
