@@ -62,6 +62,8 @@ user interface; the level messages are unchanged.
 | 1 | Create | `LEVEL_MNE` on the unused level 5, `MNEMONIC="ZZ-PROBE-L"` (run of 2026-10-21 on this build, when level 5 did not exist) | `ACK` | 5 levels, the new one listed | proven |
 | 2 | Rename | `LEVEL_MNE` level 5, `MNEMONIC="ZZ-PROBE-L"` then `"ZZ-PROBE-L2"` | `ACK` | renamed each time, read back over Northbound and RCP | proven |
 | 3 | Delete | `LEVEL_MNE` level 5, `MNEMONIC=""` | `NACK 8 ONE_OR_MORE_ACTIONS_INVALID` | 5 levels, the test level stays | **no** — the level is deleted in the user interface |
+| 4 | Read the level's default device (§5.1.4 `RM_DEFAULT_DEVICE`, "present for Routemaster levels; the target device and level of the associations on this level") | `OBTAIN LEVEL_MNE LEVEL_ID="*"` | 6 rows | no `RM_DEFAULT_DEVICE` element on any level, the two levels configured in the user interface with the IP Router as default device included; `MNE` and `ALT_MNE_N` only | **missing in the reply** |
+| 5 | Set the level's default device, "Multiple Devices", IP filter | no message; a level created by `LEVEL_MNE` (levels 5 and 6) has none of them | — | the user interface is the only place; the same over RCP, where every write path answers 404, 400 or drops the fields | **no** |
 
 ## 5. The replies behind section 3, as the server sent them
 
@@ -99,7 +101,7 @@ user interface; the level messages are unchanged.
 |---|---|---|---|
 | 1 | The created ids in the `RESULT` of `RM_SRCE_ADD` / `RM_DEST_ADD` | §4.2.5 | safe automation with several clients |
 | 2 | A `NACK` to `SRCE_ASSOC_IP` / `DEST_ASSOC_IP` when the level has no device or the sender name does not resolve; the migration of the bindings 2.9.2 stored (bare sender names) to the 2.9.3 form at installation; and the `<node>\|<sender>` naming of `TARGET_SENDER_NAME` / `TARGET_RECEIVER_NAME` written in §4.1.9–§4.2.0 | §4.1.9–§4.2.0 | no silent `ACK`; an upgrade that keeps the plant's IP routing |
-| 2b | A Northbound message for a level's device and "Multiple Devices", or their read | §4.1.4 | levels provisioned without the user interface, which today decide whether any IP association works |
+| 2b | `RM_DEFAULT_DEVICE` sent in the `LEVEL_MNE` reply as §5.1.4 documents it, and a message to set a level's default device, "Multiple Devices" and IP filter | §4.1.4, §5.1.4 | levels provisioned and verified without the user interface, which today decide whether any IP association works |
 | 3 | `OBTAIN RM_SRCE_TAGS` / `RM_DEST_TAGS` returning the tags of the level, `LIST="Tag1\|Tag2"` as documented | §5.1.7–§5.1.8 | a client that verifies its own tags on Northbound |
 | 4 | A level delete, or a documented way to remove a level | §4.1.4 | levels provisioned and removed without the user interface |
 | 5 | `FEDERATION` on `SRCE_MNE` / `DEST_MNE` | §4.1.5–§4.1.6 | the mnemonic of a federation IO over Northbound |
