@@ -59,7 +59,11 @@ defined in the user interface.
 | 1 | Read the names | `GET /devices/Cerebrum/0/routers/level-mnemonics` | `200`, five levels with their names | proven |
 | 2 | Rename | `PATCH` on the level mnemonic, level 5 `"ZZ-PROBE-L2"` → `"ZZ-PROBE-L3"` and back | `202`, each name read back | proven |
 | 3 | Read a level's properties | `GET /routemaster/levels`, `GET /routemaster/levels/{levelId}` | `404` "Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]" (run of 2026-10-21 on this build) | **not on 2.5.3** — documented in 2.6.1 |
-| 4 | Create, delete, set properties | — | not in the document | **no** |
+| 4 | Create | — (Northbound `LEVEL_MNE` on an unused id creates it, by name only) | not in the document | **no** over RCP |
+| 5 | Set the properties of a level: default device, "Multiple Devices", IP filter | `PATCH` / `POST` / `PUT /routemaster/levels[/6]` with `multipleDevices`, `device`, `ipFilter` | `404` Unknown RouteMaster collection, on every verb | **no** — the UI is the only place |
+| 6 | The same through the mnemonic resource | `PATCH /devices/Cerebrum/0/routers/level-mnemonics/6` with the same fields added | `202`-like `200`, the fields dropped; the read-back holds the names only, and the ten alternate names come back filled with the level's name | **ignored** |
+| 7 | The same through a guessed resource | `PATCH /devices/Cerebrum/0/routers/levels/6` | `400` Invalid request type: levels | **no** |
+| 8 | Delete | — | not in the document; the UI only | **no** |
 
 ## 5. Behaviour to know when automating RCP
 
@@ -77,7 +81,7 @@ defined in the user interface.
 | # | Request | Why |
 |---|---|---|
 | 1 | A server build that implements 2.6.1, or its date; 2.9.3 build 15692 serves 2.5.3 | to validate against the document we were given |
-| 2 | `GET /routemaster/levels` and `/routemaster/levels/{levelId}`, then level create, delete and properties | levels provisioned without the user interface |
+| 2 | `GET /routemaster/levels` and `/routemaster/levels/{levelId}`, then level create, delete and properties (default device, "Multiple Devices", IP filter): today every write path answers `404`, `400` or drops the fields with `200` | levels provisioned without the user interface, which today decide whether any IP binding resolves |
 | 3 | `tieLineGroup` accepted on create and update, as documented | tie line groups without the user interface |
 | 4 | Making an existing IO virtual, and back | today only at creation |
 | 5 | The created ids returned by `POST` | safe automation with several clients |
