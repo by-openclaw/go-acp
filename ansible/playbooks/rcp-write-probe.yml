@@ -40,7 +40,7 @@
     wp_settle: 5
     wp_rcp: ["{{ wp_bin }}", consumer, rcp]
     wp_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}", --timeout, "20s"]
-    wp_target: "{{ rcp_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'VTX-01', 'level': '5'}) }}"
+    wp_target: "{{ rcp_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'node': 'lab-convert-01', 'sender': 'VTX-01', 'level': '5'}) }}"
     wp_idre: '^ +[0-9]+ '
     wp_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
@@ -351,7 +351,7 @@
 
     - name: "Case 10 · the binding body"
       ansible.builtin.copy:
-        content: '{"levels": {"level_1": {"device": {"senderReceiver": "{{ wp_target.device }}|{{ wp_target.sub_device }}|{{ wp_target.sender }}"}}}}'
+        content: '{"levels": {"level_1": {"device": {"senderReceiver": "{{ wp_target.device }}|{{ wp_target.sub_device }}|{{ wp_target.node }}|{{ wp_target.sender }}"}}}}'
         dest: "{{ wp_dir }}/.bind-body.json"
         mode: "0600"
       changed_when: false

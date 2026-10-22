@@ -48,8 +48,8 @@
     np_nb_raw: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log-level, debug, --log-format, json, --log]
     np_rcp: ["{{ np_bin }}", consumer, rcp]
     np_rcp_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}", --timeout, "20s"]
-    np_target: "{{ nb_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'VTX-01', 'level': '1',
-                                      'sender2': 'ATX-01', 'level2': '2', 'router_device': 'Neuron-convert-Hybrid', 'router_level': '1', 'router_io': '1', 'level3': '3'}) }}"
+    np_target: "{{ nb_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'lab-convert-01|VTX-01', 'level': '1',
+                                      'sender2': 'lab-convert-01|ATX-01', 'level2': '2', 'router_device': 'Neuron-convert-Hybrid', 'router_level': '1', 'router_io': '1', 'level3': '3'}) }}"
     np_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
       DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
