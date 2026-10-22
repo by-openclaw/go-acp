@@ -18,6 +18,7 @@ import (
 	"dhs/internal/osc/codec"
 	consumer "dhs/internal/osc/consumer"
 	provider "dhs/internal/osc/provider"
+	"dhs/internal/transport/testnet"
 )
 
 func TestV10_UDP_Loopback_Message(t *testing.T) {
@@ -129,14 +130,22 @@ func TestV10_UDP_Loopback_Bundle_FansToSubscribers(t *testing.T) {
 func TestV10_UDP_MultiInstance_SamePort(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
+	// The shared port comes from testnet, not from a first listener bound
+	// to :0: a reuseport socket's :0 bind may land on a port another
+	// reuseport socket of the same user holds (a parallel integration
+	// package on the runner), and the datagram is then hashed to that one.
+	// Same fix as TestV31_MultiInstance_SamePort.
+	sharedPort := testnet.FreeUDPPort(t)
 	cp1 := consumer.NewPluginV10(logger)
 	defer func() { _ = cp1.Disconnect() }()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := cp1.Connect(ctx, "127.0.0.1", 0); err != nil {
+	if err := cp1.Connect(ctx, "127.0.0.1", sharedPort); err != nil {
 		t.Fatalf("cp1: %v", err)
 	}
-	sharedPort := cp1.BoundAddr().Port
+	if cp1.BoundAddr().Port != sharedPort {
+		t.Fatalf("cp1 port mismatch")
+	}
 
 	cp2 := consumer.NewPluginV10(logger)
 	defer func() { _ = cp2.Disconnect() }()
