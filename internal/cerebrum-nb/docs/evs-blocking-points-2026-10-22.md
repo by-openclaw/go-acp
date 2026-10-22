@@ -26,7 +26,7 @@ A level's default device, its "Multiple Devices" setting and its IP filter decid
 
 Level 6 appears in the Levels tab with no default device, "Multiple Devices" unticked and no IP filter. No `RM_DEFAULT_DEVICE` element in either reply.
 
-**RCP.** The 2.6.1 document defines two operations on levels, `GET /routemaster/levels` and `GET /routemaster/levels/{levelId}`, and a level object with the fields `id`, `mnemonic`, `multipleDevices`, `device` (`name`, `typeId`, `deviceLevel`), `ipFilter`, `sourceTags`, `destinationTags`. The only documented write on a level is `PATCH /devices/{deviceName}/{deviceIndex}/routers/level-mnemonics/{levelId}` with the fields `originalMnemonic` and `alternateMnemonics`. No documented request takes `multipleDevices`, `device` or `ipFilter` as input.
+**RCP.** The 2.6.1 document defines two operations on levels, `GET /routemaster/levels` and `GET /routemaster/levels/{levelId}`, and a level object with the fields `id`, `mnemonic`, `multipleDevices`, `device` (`name`, `typeId`, `deviceLevel`), `ipFilter`, `sourceTags`, `destinationTags`. The only documented write on a level is `PATCH /devices/{deviceName}/{deviceIndex}/routers/level-mnemonics/{levelId}` with the fields `originalMnemonic`, `alternateMnemonics` and `IOMnemonics`. No documented request takes `multipleDevices`, `device` or `ipFilter` as input. The document itself treats them as set beforehand: the binding update of a source or destination says `"name", "typeId" and "deviceLevel" may only be supplied on a level whose "multipleDevices" is true`.
 
 | Request | Answer |
 |---|---|

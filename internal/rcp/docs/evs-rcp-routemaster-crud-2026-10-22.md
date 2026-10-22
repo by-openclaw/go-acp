@@ -60,7 +60,7 @@ defined in the user interface.
 | 2 | Rename | `PATCH` on the level mnemonic, level 5 `"ZZ-PROBE-L2"` → `"ZZ-PROBE-L3"` and back | `202`, each name read back | proven |
 | 3 | Read a level's properties | `GET /routemaster/levels`, `GET /routemaster/levels/{levelId}` | `404` "Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]" (run of 2026-10-21 on this build) | **not on 2.5.3** — documented in 2.6.1 |
 | 4 | Create | — | not in the document | **no** |
-| 5 | Set the properties of a level: default device, "Multiple Devices", IP filter | — | not in the document: the only documented write on a level is `PATCH …/routers/level-mnemonics/{levelId}` with `originalMnemonic` and `alternateMnemonics` (row 2) | **no** — the UI is the only place |
+| 5 | Set the properties of a level: default device, "Multiple Devices", IP filter | — | not in the document: the only documented write on a level is `PATCH …/routers/level-mnemonics/{levelId}` with `originalMnemonic`, `alternateMnemonics` and `IOMnemonics` (row 2) | **no** — the UI is the only place |
 | 6 | Delete | — | not in the document; the UI only | **no** |
 
 ## 5. Behaviour to know when automating RCP
@@ -94,7 +94,7 @@ Federation is left out until our licence is installed; tie line groups and "make
 
 | # | Topic | What we need | Measured over RCP | Status |
 |---|---|---|---|---|
-| 1 | Level: default device, "Multiple Devices", IP filter | a resource that sets them, and their read | no documented request takes them: the only documented write on a level is `PATCH …/routers/level-mnemonics/{levelId}` with `originalMnemonic` and `alternateMnemonics`; the documented read `GET /routemaster/levels` answers `404`. A level shows no device in the user interface until set there, and on such a level a binding is stored and shown "Level not configured" | **open — blocks every provisioning** |
+| 1 | Level: default device, "Multiple Devices", IP filter | a resource that sets them, and their read | no documented request takes them: the only documented write on a level is `PATCH …/routers/level-mnemonics/{levelId}` with `originalMnemonic`, `alternateMnemonics` and `IOMnemonics`; the documented read `GET /routemaster/levels` answers `404`. A level shows no device in the user interface until set there, and on such a level a binding is stored and shown "Level not configured" | **open — blocks every provisioning** |
 | 2 | Level properties read | `GET /routemaster/levels` and `/{levelId}` as 2.6.1 documents | `404` on the 2.5.3 that 2.9.3 serves | **open** |
 | 3 | IP binding name | the form of `levels.level_N.device.senderReceiver` written in the document, and an error on a name that does not resolve | on a configured level, `"NMOS\|1\|lab-convert-01\|VTX-01"` is stored and resolved in the user interface; `"VTX-01"` and `"NMOS\|1\|VTX-01"` are stored as sent and shown unresolved; all answer `202` | **open — silent**: the destination of an unresolved binding never routes |
 | 4 | Bindings after the 2.9.3 installation | the bindings of the previous build migrated, or a release note | the plant's 24 bindings read back in the bare form (`"VTX-01"`) and were shown "Level not configured" in the user interface; written again in the form of point 3 (`202` ×24), the second run changes nothing | **open**: an upgrade silently stops the plant's IP routing |
