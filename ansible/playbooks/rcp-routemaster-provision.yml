@@ -68,7 +68,25 @@
       {%- for name, value in (rcp_alternates.get(key, {}).get(io.mnemonic, {})).items() if name in rcp_alt_fields -%}
       {%- set _ = alts.update({name: value}) -%}
       {%- endfor -%}
-      {%- set _ = merged.append(io | combine({'alternateMnemonics': alts}) if alts else io) -%}
+      {%- set io = io | combine({'alternateMnemonics': alts}) if alts else io -%}
+      {#- Cerebrum 2.9.3 resolves an IP binding only as NMOS|slot|device|name
+          (measured 2026-10-22); the plan names the sender or receiver as the
+          user interface shows it, and the collected IP routing exports give
+          the slot and the device. A name already qualified is kept as is. -#}
+      {%- set kind = 'sender' if key == 'sources' else 'receiver' -%}
+      {%- if key in ['sources', 'destinations'] and io.levels is defined -%}
+      {%- set levels = {} -%}
+      {%- for lid, lv in io.levels.items() -%}
+      {%- set sr = (lv.device | default({})).senderReceiver | default('') -%}
+      {%- if sr and '|' not in sr and sr in rcp_ipmap.get(kind, {}) -%}
+      {%- set _ = levels.update({lid: lv | combine({'device': {'senderReceiver': rcp_ipmap[kind][sr]}}, recursive=True)}) -%}
+      {%- else -%}
+      {%- set _ = levels.update({lid: lv}) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- set io = io | combine({'levels': levels}) -%}
+      {%- endif -%}
+      {%- set _ = merged.append(io) -%}
       {%- endfor -%}
       {%- set _ = out.update({key: merged}) -%}
       {%- else -%}
@@ -77,6 +95,9 @@
       {%- endfor -%}
       {{ out }}
     rcp_categories: "{{ cerebrum_routemaster.categories | default([]) }}"
+    # The IP routing exports of cerebrum-iprouting-collect.yml (one CSV per
+    # node: slot, device, kind, name) qualify the plan's sender / receiver names.
+    rcp_ipdir: "{{ iprouting_dir | default('/root/iprouting-exports') }}"
     rcp_dir: /root/rcp-provision
     rcp_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
@@ -98,6 +119,43 @@
         state: directory
         mode: "0700"
       check_mode: false
+
+    - name: The IP routing exports
+      ansible.builtin.find:
+        paths: "{{ rcp_ipdir }}"
+        patterns: "*.csv"
+      register: rcp_ipfiles
+      check_mode: false
+
+    - name: The IP routing exports are there
+      ansible.builtin.assert:
+        that: rcp_ipfiles.files | length > 0
+        fail_msg: "no IP routing export under {{ rcp_ipdir }}: run cerebrum-iprouting-collect.yml first (workflow step 11)"
+        quiet: true
+
+    - name: The IP routing exports read
+      ansible.builtin.read_csv:
+        path: "{{ item.path }}"
+      loop: "{{ rcp_ipfiles.files | sort(attribute='path') }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      register: rcp_ipcsv
+      check_mode: false
+
+    # name -> NMOS|slot|device|name, per kind; a name present on two nodes
+    # keeps the first file's row (the exports are read in file-name order).
+    - name: The sender / receiver names qualified
+      ansible.builtin.set_fact:
+        rcp_ipmap: >-
+          {%- set m = {'sender': {}, 'receiver': {}} -%}
+          {%- for f in rcp_ipcsv.results -%}
+          {%- for r in f.list -%}
+          {%- if r.kind in m and r.name not in m[r.kind] -%}
+          {%- set _ = m[r.kind].update({r.name: cerebrum.nmos_device ~ '|' ~ r.slot ~ '|' ~ r.device ~ '|' ~ r.name}) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ m }}
 
     - name: The plan
       ansible.builtin.copy:
