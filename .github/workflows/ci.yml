@@ -565,7 +565,11 @@ jobs:
     name: Release Please
     runs-on: ubuntu-24.04
     needs: [test, test-rhel, lint, build-all]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # push to main, or the manual dispatch the trigger comment above promises
+    # as the recovery for a dropped push event (2026-10-22: two merges to main
+    # got no run at all; the dispatched run skipped this job and no release
+    # was cut).
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write
