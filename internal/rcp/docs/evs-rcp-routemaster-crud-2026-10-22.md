@@ -60,10 +60,8 @@ defined in the user interface.
 | 2 | Rename | `PATCH` on the level mnemonic, level 5 `"ZZ-PROBE-L2"` → `"ZZ-PROBE-L3"` and back | `202`, each name read back | proven |
 | 3 | Read a level's properties | `GET /routemaster/levels`, `GET /routemaster/levels/{levelId}` | `404` "Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]" (run of 2026-10-21 on this build) | **not on 2.5.3** — documented in 2.6.1 |
 | 4 | Create | — | not in the document | **no** |
-| 5 | Set the properties of a level: default device, "Multiple Devices", IP filter | `PATCH` / `POST` / `PUT /routemaster/levels[/6]` with `multipleDevices`, `device`, `ipFilter` | `404` Unknown RouteMaster collection, on every verb | **no** — the UI is the only place |
-| 6 | The same through the mnemonic resource | `PATCH /devices/Cerebrum/0/routers/level-mnemonics/6` with the same fields added | `202`-like `200`, the fields dropped; the read-back holds the names only, and the ten alternate names come back filled with the level's name | **ignored** |
-| 7 | The same through a guessed resource | `PATCH /devices/Cerebrum/0/routers/levels/6` | `400` Invalid request type: levels | **no** |
-| 8 | Delete | — | not in the document; the UI only | **no** |
+| 5 | Set the properties of a level: default device, "Multiple Devices", IP filter | — | not in the document: the only documented write on a level is `PATCH …/routers/level-mnemonics/{levelId}` with `originalMnemonic`, `alternateMnemonics` and `IOMnemonics` (row 2) | **no** — the UI is the only place |
+| 6 | Delete | — | not in the document; the UI only | **no** |
 
 ## 5. Behaviour to know when automating RCP
 
@@ -81,7 +79,7 @@ defined in the user interface.
 | # | Request | Why |
 |---|---|---|
 | 1 | A server build that implements 2.6.1, or its date; 2.9.3 build 15692 serves 2.5.3 | to validate against the document we were given |
-| 2 | `GET /routemaster/levels` and `/routemaster/levels/{levelId}`, then level create, delete and properties (default device, "Multiple Devices", IP filter): today every write path answers `404`, `400` or drops the fields with `200` | levels provisioned without the user interface, which today decide whether any IP binding resolves |
+| 2 | `GET /routemaster/levels` and `/routemaster/levels/{levelId}`, then level create, delete and properties (default device, "Multiple Devices", IP filter): today the documented read answers `404` and no documented request writes them | levels provisioned without the user interface, which today decide whether any IP binding resolves |
 | 3 | `tieLineGroup` accepted on create and update, as documented | tie line groups without the user interface |
 | 4 | Making an existing IO virtual, and back | today only at creation |
 | 5 | The created ids returned by `POST` | safe automation with several clients |
@@ -96,13 +94,13 @@ Federation is left out until our licence is installed; tie line groups and "make
 
 | # | Topic | What we need | Measured over RCP | Status |
 |---|---|---|---|---|
-| 1 | Level: default device, "Multiple Devices", IP filter | a resource that sets them, and their read | `PATCH` / `POST` / `PUT /routemaster/levels[/6]` with `multipleDevices`, `device`, `ipFilter`: `404` Unknown RouteMaster collection; `PATCH /devices/Cerebrum/0/routers/levels/6`: `400` Invalid request type; `PATCH /devices/Cerebrum/0/routers/level-mnemonics/6` with the same fields: `200`, the fields dropped. A level shows no device in the user interface until set there, and on such a level a binding is stored and shown "Level not configured" | **open — blocks every provisioning** |
+| 1 | Level: default device, "Multiple Devices", IP filter | a resource that sets them, and their read | no documented request takes them: the only documented write on a level is `PATCH …/routers/level-mnemonics/{levelId}` with `originalMnemonic`, `alternateMnemonics` and `IOMnemonics`; the documented read `GET /routemaster/levels` answers `404`. A level shows no device in the user interface until set there, and on such a level a binding is stored and shown "Level not configured" | **open — blocks every provisioning** |
 | 2 | Level properties read | `GET /routemaster/levels` and `/{levelId}` as 2.6.1 documents | `404` on the 2.5.3 that 2.9.3 serves | **open** |
 | 3 | IP binding name | the form of `levels.level_N.device.senderReceiver` written in the document, and an error on a name that does not resolve | on a configured level, `"NMOS\|1\|lab-convert-01\|VTX-01"` is stored and resolved in the user interface; `"VTX-01"` and `"NMOS\|1\|VTX-01"` are stored as sent and shown unresolved; all answer `202` | **open — silent**: the destination of an unresolved binding never routes |
 | 4 | Bindings after the 2.9.3 installation | the bindings of the previous build migrated, or a release note | the plant's 24 bindings read back in the bare form (`"VTX-01"`) and were shown "Level not configured" in the user interface; written again in the form of point 3 (`202` ×24), the second run changes nothing | **open**: an upgrade silently stops the plant's IP routing |
 | 5 | `202` means applied | an error when a write cannot be applied, or a completion signal | `202` to a binding that never resolves, to `virtual: true` on an existing IO that stays `false`, to a federation create on a standalone server | **open**: a client cannot trust an answer without a read-back |
 | 6 | Created ids | the ids in the answer of `POST /routemaster/sources` / `destinations` | `202`, no id; lists before and after | **open**: unsafe with two clients |
-| 7 | Level create and delete | a resource | none in the document; `/routemaster/levels` answers `404` to every verb | **open** |
+| 7 | Level create and delete | a resource | none in the document; the documented `GET /routemaster/levels` answers `404` | **open** |
 | 8 | Alternate mnemonic names | list, create and rename the names | values proven under a name that exists; `400` Unknown alternate mnemonic name otherwise; the names only in the user interface | **open**: the names are a user-interface step |
 | 9 | Categories | a resource | none in the document | **open — low** for us |
 | 10 | Routes | `PATCH /devices/Cerebrum/0/routers/routes` measured on 2.9.3 | not measured in this campaign | to measure |
