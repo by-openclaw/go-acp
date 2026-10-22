@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"dhs/internal/cerebrum-nb/codec"
+	cerebrum "dhs/internal/cerebrum-nb/consumer"
 )
 
 func cerebrumAssoc(_ context.Context, args []string) error {
@@ -34,6 +35,7 @@ func cerebrumAssoc(_ context.Context, args []string) error {
 	targetName := fs.String("target-name", "", "IP sender (SRCE_ASSOC_IP) or receiver (DEST_ASSOC_IP) name")
 	subDevice := fs.String("sub-device", "", "sub-device of the target (the *_IP kinds)")
 	federation := fs.Bool("federation", false, "bind the federation source/destination instead of the local one (v0.17 FEDERATION=1)")
+	bare := fs.Bool("bare", false, "send the association exactly as §4.1.7-§4.2.0 show it: no IP_ADDRESS / DEVICE_NAME / DEVICE_TYPE router addressing on the action")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -51,7 +53,11 @@ func cerebrumAssoc(_ context.Context, args []string) error {
 	defer func() { _ = p.Disconnect() }()
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.Assoc(ctx, routeTargetFromFlags(*router, *deviceName), a); err != nil {
+	target := routeTargetFromFlags(*router, *deviceName)
+	if *bare {
+		target = cerebrum.RouteTarget{}
+	}
+	if err := sess.Assoc(ctx, target, a); err != nil {
 		return fmt.Errorf("cerebrum-nb assoc: %w", err)
 	}
 	fmt.Printf("[assoc] OK %s %s level=%s -> %s\n", a.Type, a.LogicalSrceID+a.LogicalDestID, a.LogicalLevelID, assocTarget(a))
