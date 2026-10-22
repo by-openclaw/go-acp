@@ -25,8 +25,9 @@ Every v0.17 add and delete is accepted by 2.9.3 and applied for local
 and virtual sources and destinations within one second; the federation
 variants are accepted and not applied on our standalone server; the
 Northbound reads do not return the IP binding nor the tag that the same
-Northbound session has just written (RCP reads both); the level
-messages are unchanged.
+Northbound session has just written (RCP reads both); an alternate
+mnemonic by slot is accepted and not applied, our server having no
+alternate mnemonic set; the level messages are unchanged.
 
 ## 3. The messages on 2.9.3
 
@@ -42,6 +43,8 @@ messages are unchanged.
 | 8 | `RM_SRCE_TAGS` federation (§4.2.1) | as row 6 plus `FEDERATION="1"` | `ACK` | `OBTAIN RM_SRCE_TAGS SRCE_ID="16" LEVEL_ID="1"` answers `LIST=",,,,"`, as in row 6 | accepted — not verifiable on a standalone server |
 | 9 | `RM_SRCE_DELETE` (§4.2.4) | `SRCE_ID="16,17" FEDERATION="0"` | `<ROUTING TYPE="RM_SRCE_DELETE" FEDERATION="0"><RESULT VALUE="ACCEPTED"/></ROUTING>` | `OBTAIN SRCE_MNE` wildcard counts 15 sources; the virtual destination `"Virtual 1"` is gone with its source and `"Dest 17"` now answers at id 16 (id re-read over RCP) | proven: two ids in one message |
 | 10 | `RM_DEST_DELETE` (§4.2.4) | `DEST_ID="16" FEDERATION="0"` | `RESULT VALUE="ACCEPTED"` | `OBTAIN DEST_MNE` wildcard counts 15 destinations | proven |
+| 11 | `SRCE_MNE` alternate mnemonic, slot 1 (§4.1.5 `ALT_MNE`) | `SRCE_ID="16" MNEMONIC="ZZ-ALT1" ALT_MNE="1"` | `ACK` | `OBTAIN SRCE_MNE SRCE_ID="16"` answers the primary mnemonic only, no `ALT_MNE_1` element (RCP: `alternateMnemonics` absent on the source and on the source-mnemonics resource) | accepted, **not applied** — no alternate mnemonic set is defined on our server |
+| 12 | `SRCE_MNE` alternate mnemonic, slot 2 (§4.1.5 `ALT_MNE`) | `SRCE_ID="16" MNEMONIC="ZZ-ALT2" ALT_MNE="2"` | `NACK 8 ONE_OR_MORE_ACTIONS_INVALID` | — | **refused** |
 
 ## 4. Levels, unchanged in v0.17
 
@@ -62,6 +65,7 @@ messages are unchanged.
 | row 5 — `OBTAIN SRCE_MNE SRCE_ID="16" LEVEL_ID="1"` after the binding | `<ROUTING_CHANGE TYPE="SRCE_MNE" IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER" SRCE_ID="16" LEVEL_ID="1"><MNE AVAILABLE="1" MNEMONIC="Src 16" ORIGINAL_MNEMONIC="Src 16"/></ROUTING_CHANGE>` |
 | row 6 — `OBTAIN RM_SRCE_TAGS SRCE_ID="16" LEVEL_ID="1"` after the tag | `<ROUTING_CHANGE TYPE="RM_SRCE_TAGS" SRCE_ID="16" LEVEL_ID="1"><TAGS AVAILABLE="1" LIST=",,,,"/></ROUTING_CHANGE>` |
 | row 6 — `OBTAIN RM_SRCE_TAGS SRCE_ID="16" LEVEL_ID="*"`, first of the five rows | `<ROUTING_CHANGE TYPE="RM_SRCE_TAGS" SRCE_ID="16" LEVEL_ID="1" LEVEL_NAME="Video"><TAGS AVAILABLE="1" LIST=",,,,"/></ROUTING_CHANGE>` |
+| row 11 — `OBTAIN SRCE_MNE SRCE_ID="16"` after `ALT_MNE="1"` | `<ROUTING_CHANGE TYPE="SRCE_MNE" IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER" SRCE_ID="16" LEVEL_ID="*"><MNE AVAILABLE="1" MNEMONIC="Src 16" ORIGINAL_MNEMONIC="Src 16"/></ROUTING_CHANGE>` |
 
 ## 6. Behaviour we observed
 
@@ -76,6 +80,7 @@ messages are unchanged.
 | 7 | `OBTAIN RM_SRCE_TAGS` answers `LIST=",,,,"` for every level, the level that carries the tag included, where §5.1.7 shows `LIST="Tag1\|Tag2"` with the tags of the level asked | §5.1.7 |
 | 8 | `FEDERATION` is not on `SRCE_MNE` / `DEST_MNE` / `LEVEL_MNE`, nor on the lock actions | §4.1 |
 | 9 | The login reply still reports `API_VER="0.1"`; the document version is not visible on the wire | §2.1 |
+| 10 | `ALT_MNE` targets a slot of the alternate mnemonic sets defined in the Cerebrum user interface; with none defined, slot 1 is acknowledged and nothing is stored, slot 2 is refused. Neither document gives a way to define a set | §4.1.5 |
 
 ## 7. What we ask
 
@@ -89,6 +94,7 @@ messages are unchanged.
 | 6 | A `FAILED` result, or a later signal, when a queued change is not applied | §4.2.5 | reliable reporting |
 | 7 | The document version in the login reply | §2.1 | a client that knows which messages the server accepts |
 | 8 | A note in §4.2.3–§4.2.4 that a virtual add creates the pair and that a delete of either id removes it | §4.2.3 | what we measured, written down |
+| 9 | A way to define the alternate mnemonic sets, or a `NACK` when `ALT_MNE` names a slot that has no set | §4.1.5 | an alternate mnemonic provisioned without the user interface, and no silent `ACK` |
 
 Thank you for v0.17: it closes the create and delete gap we had on
 Northbound. The measurement behind this note is automated and takes a
