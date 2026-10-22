@@ -24,10 +24,12 @@ short change on your side would complete the picture.
 Every v0.17 add and delete is accepted by 2.9.3 and applied for local
 and virtual sources and destinations within one second; the federation
 variants are accepted and not applied on our standalone server; the
-Northbound reads do not return the IP binding nor the tag that the same
-Northbound session has just written (RCP reads both); an alternate
-mnemonic by slot is accepted and not applied, our server having no
-alternate mnemonic set; the level messages are unchanged.
+on 2.9.3 the association of a source or destination to an IP sender or
+receiver (`SRCE_ASSOC_IP` / `DEST_ASSOC_IP`) is acknowledged and not
+applied, for new and for pre-existing IOs alike, where it was in effect
+on the previous version; the Northbound read of a tag returns no value;
+alternate mnemonics by slot are proven once their names exist in the
+user interface; the level messages are unchanged.
 
 ## 3. The messages on 2.9.3
 
@@ -37,14 +39,14 @@ alternate mnemonic set; the level messages are unchanged.
 | 2 | `RM_SRCE_ADD` virtual (§4.2.3) | `COUNT="1" VIRTUAL="1" FEDERATION="0"` | `RESULT VALUE="ACCEPTED"` | source 17 `"Virtual 1"` with `ASSOCIATION_1` … `ASSOCIATION_5`, one per level, `SRCE_ID="4294967293" RM_DEVICE_NAME="" RM_DEVICE_TYPE="" RM_LEVEL_ID="0"`; and destination 16 `"Virtual 1"` with `ASSOCIATION_1` … `ASSOCIATION_5`, `DEST_ID="4026531839"`, same empty attributes: the message creates the pair (RCP: both `virtual: true`) | proven |
 | 3 | `RM_DEST_ADD` (§4.2.3) | `COUNT="1" VIRTUAL="0" FEDERATION="0"` | `RESULT VALUE="ACCEPTED"` | `OBTAIN DEST_MNE DEST_ID="17"` answers `MNEMONIC="Dest 17"`, no `ASSOCIATIONS` element (RCP: destinations 15 → 17 after rows 2 and 3) | proven |
 | 4 | `RM_SRCE_ADD` federation (§4.2.3) | `COUNT="1" VIRTUAL="0" FEDERATION="1"` | `<ROUTING TYPE="RM_SRCE_ADD" FEDERATION="1"><RESULT VALUE="ACCEPTED"/></ROUTING>` | `SRCE_MNE` has no `FEDERATION` attribute (§4.1.5), so Northbound cannot list the federation sources; RCP: the federation-sources collection stays at 0 | accepted, not applied — standalone server |
-| 5 | `SRCE_ASSOC_IP` local (§4.1.9, as in 0v16) | `LOGICAL_SRCE_ID="16" LOGICAL_LEVEL_ID="1" TARGET_DEVICE_NAME="NMOS" TARGET_SENDER_NAME="VTX-01" SUB_DEVICE="1"` | `ACK` | `OBTAIN SRCE_MNE SRCE_ID="16"`, with `LEVEL_ID="*"` and again with `LEVEL_ID="1"`: the same reply as before the binding, no `ASSOCIATIONS` element (RCP reads `level_1.device.senderReceiver = "NMOS\|1\|VTX-01"`) | partly — applied on the server (RCP reads it), **not returned by the Northbound read** |
+| 5 | `SRCE_ASSOC_IP` local (§4.1.9, as in 0v16) | `LOGICAL_SRCE_ID="16" LOGICAL_LEVEL_ID="1" TARGET_DEVICE_NAME="NMOS" TARGET_SENDER_NAME="VTX-01" SUB_DEVICE="1"` | `ACK` | `OBTAIN SRCE_MNE SRCE_ID="16"`, with `LEVEL_ID="*"` and again with `LEVEL_ID="1"`: the same reply as before the binding, no `ASSOCIATIONS` element. Repeated on all four levels of a source and of a destination (senders VTX-01, ATX-01, ATX-02, DTX-01 and receivers VRX-01, ARX-01, ARX-02, DRX-01 of device NMOS, sub-device 1): eight `ACK`, and the RouteMaster user interface shows "Level not configured" on every level of both, as it does for every source and destination of the plant, including those configured before 2.9.3 whose bindings are still stored (confirmed over RCP) | **acknowledged, not applied** — in effect on the previous version |
 | 6 | `RM_SRCE_TAGS` local (§4.2.1) | `SRCE_ID="16" LEVEL_ID="1" TAGS="ZZ-PROBE"` | `ACK` | `OBTAIN RM_SRCE_TAGS SRCE_ID="16" LEVEL_ID="1"` (§5.1.7) answers `<TAGS AVAILABLE="1" LIST=",,,,"/>`; with `LEVEL_ID="*"`, five rows, one per level with its `LEVEL_NAME`, all `LIST=",,,,"` (RCP reads `tags: ["ZZ-PROBE"]` on level 1) | partly — applied on the server (RCP reads it), **not returned by the Northbound read** |
 | 7 | `SRCE_ASSOC_IP` federation (§4.1.9) | as row 5 plus `FEDERATION="1"` | `ACK` | no Northbound read of a federation binding; RCP: the local binding of row 5 unchanged, the federation collection empty | accepted — not verifiable on a standalone server |
 | 8 | `RM_SRCE_TAGS` federation (§4.2.1) | as row 6 plus `FEDERATION="1"` | `ACK` | `OBTAIN RM_SRCE_TAGS SRCE_ID="16" LEVEL_ID="1"` answers `LIST=",,,,"`, as in row 6 | accepted — not verifiable on a standalone server |
 | 9 | `RM_SRCE_DELETE` (§4.2.4) | `SRCE_ID="16,17" FEDERATION="0"` | `<ROUTING TYPE="RM_SRCE_DELETE" FEDERATION="0"><RESULT VALUE="ACCEPTED"/></ROUTING>` | `OBTAIN SRCE_MNE` wildcard counts 15 sources; the virtual destination `"Virtual 1"` is gone with its source and `"Dest 17"` now answers at id 16 (id re-read over RCP) | proven: two ids in one message |
 | 10 | `RM_DEST_DELETE` (§4.2.4) | `DEST_ID="16" FEDERATION="0"` | `RESULT VALUE="ACCEPTED"` | `OBTAIN DEST_MNE` wildcard counts 15 destinations | proven |
-| 11 | `SRCE_MNE` alternate mnemonic, slot 1 (§4.1.5 `ALT_MNE`) | `SRCE_ID="16" MNEMONIC="ZZ-ALT1" ALT_MNE="1"` | `ACK` | `OBTAIN SRCE_MNE SRCE_ID="16"` answers the primary mnemonic only, no `ALT_MNE_1` element (RCP: `alternateMnemonics` absent on the source and on the source-mnemonics resource) | accepted, **not applied** — no alternate mnemonic set is defined on our server |
-| 12 | `SRCE_MNE` alternate mnemonic, slot 2 (§4.1.5 `ALT_MNE`) | `SRCE_ID="16" MNEMONIC="ZZ-ALT2" ALT_MNE="2"` | `NACK 8 ONE_OR_MORE_ACTIONS_INVALID` | — | **refused** |
+| 11 | `SRCE_MNE` / `DEST_MNE` / `LEVEL_MNE` alternate mnemonic by slot (§4.1.4–§4.1.6 `ALT_MNE`), ten alternate mnemonic names defined in the user interface | `SRCE_ID="16" MNEMONIC="ZZ-ALT1" ALT_MNE="1"`, `ALT_MNE="10"`; on a virtual source `ALT_MNE="1"`; on its virtual destination `DEST_MNE ALT_MNE="2"`; on level 5 `LEVEL_MNE ALT_MNE="1"` | `ACK` each time | `OBTAIN SRCE_MNE` answers `<ALT_MNE_1 AVAILABLE="1" MNEMONIC="ZZ-ALT1"/>` and `<ALT_MNE_10 AVAILABLE="1" MNEMONIC="ZZ-ALT10"/>`; the virtual source its `ALT_MNE_1`, the virtual destination its `ALT_MNE_2` only (the pair shares the label, not the alternates); `OBTAIN LEVEL_MNE` lists the ten slots, `AVAILABLE="0"` or `"1"` | proven; the user interface shows the same values |
+| 12 | `SRCE_MNE` alternate mnemonic on a slot beyond the defined names | `SRCE_ID="16" MNEMONIC="ZZ-ALT11" ALT_MNE="11"` with ten names defined; earlier, with no name defined, `ALT_MNE="1"` and `ALT_MNE="2"` | `ACK` on slot 11 and on slot 1 without names; `NACK 8` on slot 2 without names | nothing stored, no `ALT_MNE_11` in the reply | **accepted, not applied** — a silent `ACK` |
 
 ## 4. Levels, unchanged in v0.17
 
@@ -73,28 +75,28 @@ alternate mnemonic set; the level messages are unchanged.
 |---|---|---|
 | 1 | `RESULT VALUE="ACCEPTED"` means validated and queued (§4.2.5); on 2.9.3 the change was readable within one second every time | §4.2.5 |
 | 2 | A create does not return the ids it created; the server names the IOs "Src N", "Dest N", "Virtual N" | §4.2.3 |
-| 3 | `VIRTUAL="1"` creates a source and a destination of the same name; deleting the source removes both (this run), and so does deleting the destination (run of 2026-10-21 on this build) | §4.2.3, §4.2.4 |
+| 3 | `VIRTUAL="1"` creates a source and a destination of the same name; renaming the source renames the destination; deleting either removes both (source side this run, destination side on 2026-10-21 on this build) | §4.2.3, §4.2.4 |
 | 4 | Ids are positions: a delete renumbers the IOs after it, and a pair deletion renumbers both collections | §4.2.4 |
 | 5 | The reply to an `RM_*` action is the `<ROUTING>` envelope of §4.2.5, where every other action answers `<ACK>` | §4.2.5 |
-| 6 | The `ASSOCIATIONS` element of §5.1.5–§5.1.6 is sent for a virtual source or destination only: one `ASSOCIATION_N` per level, `RM_DEVICE_NAME` and `RM_DEVICE_TYPE` empty, `RM_LEVEL_ID="0"`, and without the `RM_REVERSED`, `RM_TAGS` and `RM_IP_UID` attributes of the document. A source bound to an IP sender by `SRCE_ASSOC_IP` carries no `ASSOCIATIONS` element, which §5.1.5 says "should be assumed to indicate no association" | §5.1.5 |
+| 6 | On 2.9.3 the associations written by `SRCE_ASSOC_IP` / `DEST_ASSOC_IP` are acknowledged and appear nowhere, not in the `OBTAIN` reply and not in the RouteMaster user interface, whose Levels tab carries no device on any level; the plant's pre-2.9.3 associations are stored and not in effect either. The `ASSOCIATIONS` element of §5.1.5–§5.1.6 is sent for a virtual source or destination only: one `ASSOCIATION_N` per level, `RM_DEVICE_NAME` and `RM_DEVICE_TYPE` empty, `RM_LEVEL_ID="0"`, and without the `RM_REVERSED`, `RM_TAGS` and `RM_IP_UID` attributes of the document. A source bound to an IP sender by `SRCE_ASSOC_IP` carries no `ASSOCIATIONS` element, which §5.1.5 says "should be assumed to indicate no association" | §5.1.5 |
 | 7 | `OBTAIN RM_SRCE_TAGS` answers `LIST=",,,,"` for every level, the level that carries the tag included, where §5.1.7 shows `LIST="Tag1\|Tag2"` with the tags of the level asked | §5.1.7 |
 | 8 | `FEDERATION` is not on `SRCE_MNE` / `DEST_MNE` / `LEVEL_MNE`, nor on the lock actions | §4.1 |
 | 9 | The login reply still reports `API_VER="0.1"`; the document version is not visible on the wire | §2.1 |
-| 10 | `ALT_MNE` targets a slot of the alternate mnemonic sets defined in the Cerebrum user interface; with none defined, slot 1 is acknowledged and nothing is stored, slot 2 is refused. Neither document gives a way to define a set | §4.1.5 |
+| 10 | `ALT_MNE` targets one of the alternate mnemonic names defined in the Cerebrum user interface (ten on our server); a slot beyond them is acknowledged and dropped; with no name defined, slot 1 was acknowledged and dropped and slot 2 refused. No message lists, creates or renames the names; only the `LEVEL_MNE` reply, which carries every slot with `AVAILABLE`, reveals how many exist | §4.1.4–§4.1.6, §5.1.4 |
 
 ## 7. What we ask
 
 | # | Request | Section | Why |
 |---|---|---|---|
 | 1 | The created ids in the `RESULT` of `RM_SRCE_ADD` / `RM_DEST_ADD` | §4.2.5 | safe automation with several clients |
-| 2 | The `ASSOCIATIONS` element for a source or destination bound by `SRCE_ASSOC_IP` / `DEST_ASSOC_IP`, with the `RM_IP_UID`, `RM_TAGS` and `RM_REVERSED` attributes the document lists | §5.1.5–§5.1.6 | a client that verifies its own bindings on Northbound |
+| 2 | `SRCE_ASSOC_IP` / `DEST_ASSOC_IP` applied again on 2.9.3, or the reason the RouteMaster levels no longer hold their IP router since the 2.9.3 installation, and a `NACK` while an association cannot be applied; then the `ASSOCIATIONS` element for the bound IO, with the `RM_IP_UID`, `RM_TAGS` and `RM_REVERSED` attributes the document lists | §4.1.9–§4.2.0, §5.1.5–§5.1.6 | the plant's IP routing through the RouteMaster, and a client that verifies its own bindings |
 | 3 | `OBTAIN RM_SRCE_TAGS` / `RM_DEST_TAGS` returning the tags of the level, `LIST="Tag1\|Tag2"` as documented | §5.1.7–§5.1.8 | a client that verifies its own tags on Northbound |
 | 4 | A level delete, or a documented way to remove a level | §4.1.4 | levels provisioned and removed without the user interface |
 | 5 | `FEDERATION` on `SRCE_MNE` / `DEST_MNE` | §4.1.5–§4.1.6 | the mnemonic of a federation IO over Northbound |
 | 6 | A `FAILED` result, or a later signal, when a queued change is not applied | §4.2.5 | reliable reporting |
 | 7 | The document version in the login reply | §2.1 | a client that knows which messages the server accepts |
 | 8 | A note in §4.2.3–§4.2.4 that a virtual add creates the pair and that a delete of either id removes it | §4.2.3 | what we measured, written down |
-| 9 | A way to define the alternate mnemonic sets, or a `NACK` when `ALT_MNE` names a slot that has no set | §4.1.5 | an alternate mnemonic provisioned without the user interface, and no silent `ACK` |
+| 9 | A `NACK` when `ALT_MNE` names a slot beyond the defined names, and a way to list the names | §4.1.4–§4.1.6 | no silent `ACK`; a client that knows which slots exist |
 
 Thank you for v0.17: it closes the create and delete gap we had on
 Northbound. The measurement behind this note is automated and takes a
