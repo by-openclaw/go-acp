@@ -405,12 +405,12 @@ VERBS
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
-  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1)
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
   list-tags                one-shot OBTAIN RM_SRCE_TAGS | RM_DEST_TAGS (v0.17 §5.1.7-§5.1.8) → the tags of a source / destination, one row per level: --kind source|destination [--id N] [--level L] [--output json]
-  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N = fan-out | --dest N = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L] [--router IP]
+  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N|NAME = fan-out | --dest N|NAME = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L[,L…] IDs or mnemonics] [--router IP]
   replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
@@ -2812,9 +2812,9 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	cf := newCerebrumFlags(fs)
 	router := fs.String("router", "0.0.0.0", "router target — IP_ADDRESS for the route-master sentinel (0.0.0.0) or a physical Router IP")
 	deviceName := fs.String("device-name", "", "alternative to --router: address by DEVICE_NAME")
-	dest := fs.String("dest", "", "destination ID (single-route mode)")
-	srce := fs.String("srce", "", "source ID (single-route mode)")
-	level := fs.String("level", "", "level ID (single-route mode)")
+	dest := fs.String("dest", "", "destination ID or mnemonic (single-route mode)")
+	srce := fs.String("srce", "", "source ID or mnemonic (single-route mode)")
+	level := fs.String("level", "", "level ID or mnemonic (single-route mode); a comma-separated list routes several levels, one ROUTE per level")
 	allLevels := fs.Bool("all-levels", false, "single-route mode without LEVEL_ID: the document's \"all level\" request (§4.1.1), what a panel take on every level sends — ONE action, no read-before, no diff")
 	var routesFlag stringSliceFlag
 	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
@@ -2843,7 +2843,9 @@ func cerebrumRoute(_ context.Context, args []string) error {
 		if *dest == "" || *srce == "" || *level == "" {
 			return fmt.Errorf("--dest/--srce/--level: all three required for single-route mode")
 		}
-		routes = append(routes, routeSpec{Dest: *dest, Srce: *srce, Level: *level})
+		for _, lvl := range cerebrumSplitList(*level) {
+			routes = append(routes, routeSpec{Dest: *dest, Srce: *srce, Level: lvl})
+		}
 	}
 	for _, r := range routesFlag {
 		rs, err := parseRouteFlag(r)
@@ -2890,29 +2892,55 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	sess := p.Session()
-	if *allLevels {
-		// §4.1.1: LEVEL_ID absent = "all level" request; the server may send
-		// several updates for it. Sent as is, the answer is the measurement.
-		body := &codec.RoutingAction{Type: "ROUTE", IPAddress: *router, DeviceName: *deviceName, DeviceType: codec.DeviceType("ROUTER"), DestID: *dest, SrceID: *srce}
-		if err := sess.Action(context.Background(), body); err != nil {
-			return fmt.Errorf("cerebrum-nb route --all-levels dst=%s src=%s: %w", *dest, *srce, err)
-		}
-		fmt.Printf("[route] OK   dst=%s all levels: -> src %s\n", *dest, *srce)
-		return nil
-	}
 	logw := os.Stdout
 	if jsonOut {
 		logw = os.Stderr
+	}
+	if *allLevels {
+		destID, srceID := *dest, *srce
+		if !cerebrumIsID(destID) || !cerebrumIsID(srceID) {
+			// Names: one wildcard read of the mnemonic catalogue resolves
+			// them client-side; the action goes out by ID (§1.8 allows names
+			// on the wire, but an ID round-trips through the read-back).
+			st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
+				SrcMne: true, DstMne: true, Verb: "route",
+			})
+			if serr != nil {
+				return serr
+			}
+			rs, rerr := cerebrumResolveRoutes([]routeSpec{{Dest: destID, Srce: srceID, Level: "*"}}, st, logw)
+			if rerr != nil {
+				return rerr
+			}
+			destID, srceID = rs[0].Dest, rs[0].Srce
+		}
+		// §4.1.1: LEVEL_ID absent = "all level" request; the server may send
+		// several updates for it. Sent as is, the answer is the measurement.
+		body := &codec.RoutingAction{Type: "ROUTE", IPAddress: *router, DeviceName: *deviceName, DeviceType: codec.DeviceType("ROUTER"), DestID: destID, SrceID: srceID}
+		if err := sess.Action(context.Background(), body); err != nil {
+			return fmt.Errorf("cerebrum-nb route --all-levels dst=%s src=%s: %w", destID, srceID, err)
+		}
+		fmt.Printf("[route] OK   dst=%s all levels: -> src %s\n", destID, srceID)
+		return nil
 	}
 
 	// ADR-0007 (amendment): matrix connections MUST converge — read the live
 	// crosspoint state, diff, send only the differences (probel tally-first
 	// template). Never disconnects; identical cells cost no wire write.
+	// Names on --dest/--srce/--level (or in --route / --csv) ride on the
+	// same read: the mnemonic catalogue comes back with the crosspoints
+	// and the specs are resolved to IDs before the diff.
+	needNames := cerebrumRoutesNeedNames(routes)
 	st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
-		Routes: true, Verb: "route",
+		Routes: true, SrcMne: needNames, DstMne: needNames, LvlMne: needNames, Verb: "route",
 	})
 	if serr != nil {
 		return serr
+	}
+	if needNames {
+		if routes, serr = cerebrumResolveRoutes(routes, st, logw); serr != nil {
+			return serr
+		}
 	}
 	changes := diffCerebrumRoutes(st.Routes, routes)
 	diffs := make([]ensureDiff, 0, len(changes))
