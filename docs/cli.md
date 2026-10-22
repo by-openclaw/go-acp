@@ -1889,7 +1889,7 @@ VERBS
   Verb                     Wire
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
-  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1)
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
@@ -1900,7 +1900,7 @@ VERBS
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
-  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
+  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP|NAME [--by-name] [--device-type DEVICE|ROUTER — omitted: DEVICE first, ROUTER if the server refuses (§5.4.2 needs the class; 2.9.3 NACKs 10 without it)]
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME

@@ -404,7 +404,7 @@ VERBS
   Verb                     Wire
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
-  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
   route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1)
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
@@ -415,7 +415,7 @@ VERBS
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
-  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
+  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP|NAME [--by-name] [--device-type DEVICE|ROUTER — omitted: DEVICE first, ROUTER if the server refuses (§5.4.2 needs the class; 2.9.3 NACKs 10 without it)]
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
@@ -744,6 +744,19 @@ func cerebrumListen(ctx context.Context, args []string) error {
 	if router == "" {
 		router = "0.0.0.0"
 	}
+	// --dest N[,N…] / --level L narrow the ROUTING_CHANGE subscriptions to
+	// those destinations (one ROUTE + one DEST_LOCK row each) instead of
+	// the dest=* level=* wildcards — what an operator wants on a
+	// production Cerebrum to follow ONE destination without the whole
+	// snapshot.
+	dests, args, err := extractStringFlag(args, "--dest")
+	if err != nil {
+		return err
+	}
+	level, args, err := extractStringFlag(args, "--level")
+	if err != nil {
+		return err
+	}
 	p, sess, _, _, err := connectAndLogin(args, "listen")
 	if err != nil {
 		return err
@@ -789,25 +802,21 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		name string
 		item codec.SubItem
 	}
-	plan := []sub{
-		// Route-master sentinel per CLAUDE.md "Routing model" + per-type
-		// wildcards verified live 2026-04-29 (audit-FR §wire). Server
-		// requires IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER" plus the
-		// row-specific ID wildcards from spec §5.1; missing them yields
-		// NACK ONE_OR_MORE_EVENTS_INVALID.
-		{"ROUTING_CHANGE TYPE=ROUTE", &codec.RoutingChange{
-			Type: "ROUTE", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
-			DestID: "*", LevelID: "*",
-		}},
-		// SRCE_LOCK deliberately NOT subscribed: every live Cerebrum tested
-		// (RT + per-router, 2026-04..2026-08) NACKs it, and source locks
-		// are unreal in this production. Skipped with a notice below so a
-		// clean run shows 0 failed — re-add the row if a server ever
-		// grants it.
-		{"ROUTING_CHANGE TYPE=DEST_LOCK", &codec.RoutingChange{
-			Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
-			DestID: "*", LevelID: "*",
-		}},
+	// Route-master sentinel per CLAUDE.md "Routing model" + per-type
+	// wildcards verified live 2026-04-29 (audit-FR §wire). Server
+	// requires IP_ADDRESS="0.0.0.0" DEVICE_TYPE="ROUTER" plus the
+	// row-specific ID wildcards from spec §5.1; missing them yields
+	// NACK ONE_OR_MORE_EVENTS_INVALID. With --dest the ID wildcards
+	// become the named destinations (one ROUTE + one DEST_LOCK row each).
+	//
+	// SRCE_LOCK deliberately NOT subscribed: every live Cerebrum tested
+	// (RT + per-router, 2026-04..2026-08) NACKs it, and source locks
+	// are unreal in this production. Skipped with a notice below so a
+	// clean run shows 0 failed — re-add the row if a server ever
+	// grants it.
+	var plan []sub
+	for _, rc := range cerebrumListenRoutingItems(router, dests, level) {
+		plan = append(plan, sub{fmt.Sprintf("ROUTING_CHANGE TYPE=%s dest=%s level=%s", rc.Type, rc.DestID, rc.LevelID), rc})
 	}
 	// Category / salvo / device rows exist only at Routemaster scope
 	// (owner rule: no cat/salvo on a physical ROUTER — 0.0.0.0 RT only).
@@ -840,6 +849,36 @@ func cerebrumListen(ctx context.Context, args []string) error {
 	<-ctx.Done()
 	fmt.Fprintln(os.Stderr, "listen stopped.")
 	return nil
+}
+
+// cerebrumListenRoutingItems builds listen's ROUTING_CHANGE subscriptions:
+// the §5.1 wildcards (dest=* level=*) by default, or one ROUTE + one
+// DEST_LOCK row per destination of --dest (comma-separated IDs), every row
+// on --level (default *). Addressed to the route-master sentinel or the
+// --router given, DEVICE_TYPE=ROUTER as the server requires.
+func cerebrumListenRoutingItems(router, dests, level string) []*codec.RoutingChange {
+	if strings.TrimSpace(level) == "" {
+		level = "*"
+	}
+	ids := []string{"*"}
+	if strings.TrimSpace(dests) != "" {
+		ids = ids[:0]
+		for _, d := range strings.Split(dests, ",") {
+			if d = strings.TrimSpace(d); d != "" {
+				ids = append(ids, d)
+			}
+		}
+	}
+	out := make([]*codec.RoutingChange, 0, 2*len(ids))
+	for _, id := range ids {
+		for _, typ := range []string{"ROUTE", "DEST_LOCK"} {
+			out = append(out, &codec.RoutingChange{
+				Type: typ, IPAddress: router, DeviceType: codec.DeviceType("ROUTER"),
+				DestID: id, LevelID: level,
+			})
+		}
+	}
+	return out
 }
 
 func cerebrumListDevices(_ context.Context, args []string) error {
@@ -883,10 +922,44 @@ type cerebrumDeviceMeta struct {
 	SecondaryState string
 }
 
-func cerebrumDeviceNameJoin(sess *cerebrum.Session, timeout time.Duration, ips []string) map[string]cerebrumDeviceMeta {
-	meta := make(map[string]cerebrumDeviceMeta, len(ips))
-	for _, ip := range ips {
-		got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "DETAILS", IPAddress: ip}, "DETAILS")
+// cerebrumDeviceTarget is one DETAILS obtain of the names join: the IP and
+// the class the LIST row carried. §5.4.2 DETAILS takes ip_address AND
+// device_type; 2.9.3 b15692 NACKs 10 when the class is missing (measured
+// 2026-10-22: every name printed "-"), so the join sends the class it saw.
+type cerebrumDeviceTarget struct {
+	IP    string
+	Class codec.DeviceType
+}
+
+// cerebrumNameJoinTargets picks one DETAILS target per IP from the LIST
+// rows: the first class the LIST emitted for that IP (a Neuron is listed
+// as DEVICE and as ROUTER; both answer the same DETAILS), DEVICE when the
+// row carried none.
+func cerebrumNameJoinTargets(entries []codec.DeviceEntry) []cerebrumDeviceTarget {
+	seen := map[string]bool{}
+	out := make([]cerebrumDeviceTarget, 0, len(entries))
+	for _, d := range entries {
+		if d.IPAddress == "" || seen[d.IPAddress] {
+			continue
+		}
+		seen[d.IPAddress] = true
+		class := d.DeviceType
+		if class == "" && len(d.DeviceTypes) > 0 {
+			class = d.DeviceTypes[0]
+		}
+		if class == "" {
+			class = codec.DeviceType("DEVICE")
+		}
+		out = append(out, cerebrumDeviceTarget{IP: d.IPAddress, Class: class})
+	}
+	return out
+}
+
+func cerebrumDeviceNameJoin(sess *cerebrum.Session, timeout time.Duration, targets []cerebrumDeviceTarget) map[string]cerebrumDeviceMeta {
+	meta := make(map[string]cerebrumDeviceMeta, len(targets))
+	for _, t := range targets {
+		ip := t.IP
+		got, err := obtainSingleDeviceChange(sess, timeout, &codec.DeviceChange{Type: "DETAILS", IPAddress: ip, DeviceType: t.Class}, "DETAILS")
 		if err != nil || got == nil || got.Device == nil {
 			continue
 		}
@@ -946,17 +1019,28 @@ func cerebrumDeviceDetails(_ context.Context, args []string) error {
 	} else {
 		dc.IPAddress = device
 	}
+	// Wire-actual: the server is case-sensitive on DEVICE_TYPE values
+	// and accepts the UPPERCASE forms only (live 2026-08-16: "Router"
+	// NACKs 10, "ROUTER" answers) — normalize so operators can type
+	// either. §5.4.2 DETAILS takes the class; 2.9.3 b15692 NACKs 10
+	// without it (measured 2026-10-22), so an omitted --device-type tries
+	// DEVICE (every listed device) and then ROUTER (the route-master).
+	classes := []string{"DEVICE", "ROUTER"}
 	if deviceType != "" {
-		// Wire-actual: the server is case-sensitive on DEVICE_TYPE values
-		// and accepts the UPPERCASE forms only (live 2026-08-16: "Router"
-		// NACKs 10, "ROUTER" answers) — normalize so operators can type
-		// either.
-		dc.DeviceType = codec.DeviceType(strings.ToUpper(deviceType))
+		classes = []string{strings.ToUpper(deviceType)}
 	}
 	obCtx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
-	if err := sess.Obtain(obCtx, []codec.SubItem{dc}); err != nil {
-		return err
+	for i, class := range classes {
+		dc.DeviceType = codec.DeviceType(class)
+		err := sess.Obtain(obCtx, []codec.SubItem{dc})
+		if err == nil {
+			break
+		}
+		if i == len(classes)-1 {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "device-details: DEVICE_TYPE=%s refused (%v) — retrying with %s\n", class, err, classes[i+1])
 	}
 	<-done
 	timer.Stop()
@@ -1609,15 +1693,7 @@ func obtainAndPrintDeviceList(sess *cerebrum.Session, timeout time.Duration, dev
 	// attributes) — join the per-IP DETAILS rows for name + states.
 	meta := map[string]cerebrumDeviceMeta{}
 	if withNames {
-		seen := map[string]bool{}
-		ips := make([]string, 0, len(entries))
-		for _, d := range entries {
-			if !seen[d.IPAddress] {
-				seen[d.IPAddress] = true
-				ips = append(ips, d.IPAddress)
-			}
-		}
-		meta = cerebrumDeviceNameJoin(sess, timeout, ips)
+		meta = cerebrumDeviceNameJoin(sess, timeout, cerebrumNameJoinTargets(entries))
 	}
 
 	if jsonOut {
