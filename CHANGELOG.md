@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.49.0](https://github.com/by-openclaw/go-acp/compare/v0.48.0...v0.49.0) (2026-10-22)
+
+
+### Features
+
+* **ansible:** RouteMaster plan names qualified as NMOS|slot|device|name from the IP routing exports; notes: the 2.9.3 IP association needs the level's device and that form ([#1529](https://github.com/by-openclaw/go-acp/issues/1529)) ([fd5fac3](https://github.com/by-openclaw/go-acp/commit/fd5fac36b2269a72089463206453c0f388e6bc11))
+
 ## [0.48.0](https://github.com/by-openclaw/go-acp/compare/v0.47.0...v0.48.0) (2026-10-22)
 
 
