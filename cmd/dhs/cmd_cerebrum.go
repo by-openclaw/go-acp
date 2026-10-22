@@ -405,7 +405,7 @@ VERBS
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
-  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1)
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
@@ -2739,6 +2739,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	dest := fs.String("dest", "", "destination ID (single-route mode)")
 	srce := fs.String("srce", "", "source ID (single-route mode)")
 	level := fs.String("level", "", "level ID (single-route mode)")
+	allLevels := fs.Bool("all-levels", false, "single-route mode without LEVEL_ID: the document's \"all level\" request (§4.1.1), what a panel take on every level sends — ONE action, no read-before, no diff")
 	var routesFlag stringSliceFlag
 	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
 	csv := fs.String("csv", "", "CSV file with columns dest,srce,level")
@@ -2758,7 +2759,11 @@ func cerebrumRoute(_ context.Context, args []string) error {
 
 	// Build the route list from flags.
 	var routes []routeSpec
-	if *dest != "" || *srce != "" || *level != "" {
+	if *allLevels {
+		if *dest == "" || *srce == "" || *level != "" || len(routesFlag) > 0 || *csv != "" {
+			return fmt.Errorf("--all-levels takes --dest and --srce only")
+		}
+	} else if *dest != "" || *srce != "" || *level != "" {
 		if *dest == "" || *srce == "" || *level == "" {
 			return fmt.Errorf("--dest/--srce/--level: all three required for single-route mode")
 		}
@@ -2809,6 +2814,16 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 	sess := p.Session()
+	if *allLevels {
+		// §4.1.1: LEVEL_ID absent = "all level" request; the server may send
+		// several updates for it. Sent as is, the answer is the measurement.
+		body := &codec.RoutingAction{Type: "ROUTE", IPAddress: *router, DeviceName: *deviceName, DeviceType: codec.DeviceType("ROUTER"), DestID: *dest, SrceID: *srce}
+		if err := sess.Action(context.Background(), body); err != nil {
+			return fmt.Errorf("cerebrum-nb route --all-levels dst=%s src=%s: %w", *dest, *srce, err)
+		}
+		fmt.Printf("[route] OK   dst=%s all levels: -> src %s\n", *dest, *srce)
+		return nil
+	}
 	logw := os.Stdout
 	if jsonOut {
 		logw = os.Stderr
