@@ -7,6 +7,21 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.47.0](https://github.com/by-openclaw/go-acp/compare/v0.46.0...v0.47.0) (2026-10-22)
+
+
+### Features
+
+* **ansible:** cerebrum-nb-rm-probe — the v0.17 RouteMaster messages on temporary IOs, read back over RCP, undone ([#1513](https://github.com/by-openclaw/go-acp/issues/1513)) ([83aa88b](https://github.com/by-openclaw/go-acp/commit/83aa88b07b2f494bb9e31b1280db22e3caf705e7))
+* **ansible:** the Northbound probe measures the alternate mnemonic by slot; the EVS Northbound note and the audit carry it ([#1522](https://github.com/by-openclaw/go-acp/issues/1522)) ([9097f07](https://github.com/by-openclaw/go-acp/commit/9097f07f639b6a21245f185388f178900d83b233))
+* **cerebrum-nb:** level case in the v0.17 probe, --allow-clear on set-mnemonic, the v0.17 audit measured on 2.9.3 ([#1517](https://github.com/by-openclaw/go-acp/issues/1517)) ([d91d861](https://github.com/by-openclaw/go-acp/commit/d91d8617b5934668318dddb5d68fd65c9215ead9))
+* **cerebrum-nb:** list-sources/list-dests --associations, list-tags; the two EVS RouteMaster notes measured cell by cell on 2.9.3 ([#1520](https://github.com/by-openclaw/go-acp/issues/1520)) ([c41ab5c](https://github.com/by-openclaw/go-acp/commit/c41ab5c085daef8059b38ef8f46ce922a23bd669))
+
+
+### Bug Fixes
+
+* **cli:** regenerate the CLI surface golden and docs/cli.md for the Northbound v0.17 verbs ([#1515](https://github.com/by-openclaw/go-acp/issues/1515)) ([a903993](https://github.com/by-openclaw/go-acp/commit/a903993c5ae2d78fe064bcc66b269821e855deb7))
+
 ## [0.46.0](https://github.com/by-openclaw/go-acp/compare/v0.45.0...v0.46.0) (2026-10-21)
 
 
