@@ -16,6 +16,7 @@
 #   10  bind a level to an IP sender    PATCH levels.level_1.device.senderReceiver on the temporary source
 #   11  tags on a level                 PATCH levels.level_1.tags on the temporary source
 #   12  level names and rename          mnemonics --kind level; set-mnemonic on level `probe_level` and back
+#   13  alternate mnemonic on the body  PATCH {"alternateMnemonics": {"Eng": "ZZ-PROBE"}} on the temporary source
 #
 # The temporary IOs ZZ-PROBE-S and ZZ-PROBE-D are created first and deleted
 # last; the collection sizes are compared before and after. Case 12 renames
@@ -429,6 +430,39 @@
       failed_when: false
       when: wp_c12_old | length > 0
 
+    # The alternate mnemonics as a field of the IO body (routeMasterSourceUpdate
+    # alternateMnemonics: a map alternate-name -> value), the second documented
+    # path after the source-mnemonics resource of case 6.
+    - name: "Case 13 · the alternate mnemonics body"
+      ansible.builtin.copy:
+        content: '{"alternateMnemonics": {"Eng": "ZZ-PROBE"}}'
+        dest: "{{ wp_dir }}/.alt-body.json"
+        mode: "0600"
+      changed_when: false
+
+    - name: "Case 13 · alternate mnemonic on the IO body"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['set', '--kind', 'sources', '--id', wp_sid | string, '--body', wp_dir ~ '/.alt-body.json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c13
+      changed_when: wp_c13.rc == 0
+      failed_when: false
+
+    - name: "Case 13 · read back"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['get', '--kind', 'sources', '--id', wp_sid | string, '--json'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c13_rb
+      changed_when: false
+
+    - name: "Case 13 · the alternate names the server knows (source mnemonics resource)"
+      ansible.builtin.command:
+        argv: "{{ wp_rcp + ['mnemonics', '--kind', 'source'] + wp_tail }}"
+      environment: "{{ wp_env }}"
+      register: wp_c13_names
+      changed_when: false
+      failed_when: false
+
     # ---- undo ---------------------------------------------------------------
     - name: Delete the temporary IOs
       ansible.builtin.command:
@@ -443,7 +477,7 @@
       ansible.builtin.file:
         path: "{{ wp_dir }}/{{ item }}"
         state: absent
-      loop: [.virtual-body.json, .bind-body.json, .tags-body.json]
+      loop: [.virtual-body.json, .bind-body.json, .tags-body.json, .alt-body.json]
       changed_when: false
 
     - name: Collections after
@@ -472,6 +506,7 @@
           - { case: "10 bind level 1 to IP sender", rc: "{{ wp_c10.rc }}", answer: "{{ (wp_c10.stderr_lines + wp_c10.stdout_lines) | last | default('') }}", readback: "levels={{ (wp_c10_rb.stdout | from_json).levels | default('?') | to_json }}" }
           - { case: "11 tags on level 1", rc: "{{ wp_c11.rc }}", answer: "{{ (wp_c11.stderr_lines + wp_c11.stdout_lines) | last | default('') }}", readback: "levels={{ (wp_c11_rb.stdout | from_json).levels | default('?') | to_json }}" }
           - { case: "12 level names + rename", rc: "{{ wp_c12.rc }}", answer: "{{ (wp_c12.stderr_lines + wp_c12.stdout_lines) | last | default('') }}", readback: "before: {{ wp_c12_names.stdout_lines | select('search', '^' ~ (wp_target.level | string) ~ ' ') | list | join(' ') | trim }}; after: {{ wp_c12_rb.stdout_lines | select('search', '^' ~ (wp_target.level | string) ~ ' ') | list | join(' ') | trim }}; renamed back to {{ wp_c12_old | to_json }}" }
+          - { case: "13 alternate mnemonic on the IO body", rc: "{{ wp_c13.rc }}", answer: "{{ (wp_c13.stderr_lines + wp_c13.stdout_lines) | last | default('') }}", readback: "mnemonic={{ (wp_c13_rb.stdout | from_json).mnemonic | default('?') | to_json }}; alternates seen on the server: {{ wp_c13_names.stdout_lines | select('search', 'alt:') | map('trim') | list | join(' / ') | default('none', true) }}" }
 
     - name: CSV
       ansible.builtin.copy:
