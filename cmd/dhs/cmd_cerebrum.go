@@ -2783,7 +2783,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 		}
 		routes = append(routes, rs...)
 	}
-	if len(routes) == 0 {
+	if len(routes) == 0 && !*allLevels {
 		return cerebrumValErr("route", "no routes specified (use --dest/--srce/--level, --route, or --csv)")
 	}
 
