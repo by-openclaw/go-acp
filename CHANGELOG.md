@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.48.0](https://github.com/by-openclaw/go-acp/compare/v0.47.0...v0.48.0) (2026-10-22)
+
+
+### Features
+
+* **cerebrum-nb:** assoc --bare; the probe measures the IP and router association forms; the EVS note names the 2.9.3 IP-association regression ([#1525](https://github.com/by-openclaw/go-acp/issues/1525)) ([e5ea07c](https://github.com/by-openclaw/go-acp/commit/e5ea07c5bc44aa95365eff6be50e15ae3f338e16))
+
 ## [0.47.0](https://github.com/by-openclaw/go-acp/compare/v0.46.0...v0.47.0) (2026-10-22)
 
 
