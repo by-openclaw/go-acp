@@ -254,9 +254,9 @@ func cerebrumUsage(_ context.Context, args []string) error {
 	fs := flag.NewFlagSet("cerebrum-nb usage", flag.ContinueOnError)
 	cf := newCerebrumFlags(fs)
 	router := fs.String("router", "0.0.0.0", "router target (route-master sentinel 0.0.0.0 or a physical Router IP)")
-	srce := fs.String("srce", "", "filter: only this source's assignments (fan-out view in ascii)")
-	dest := fs.String("dest", "", "filter: only this dest's feeds (upstream-chain view in ascii)")
-	level := fs.String("level", "", "filter: one level only")
+	srce := fs.String("srce", "", "filter: only this source's assignments (fan-out view in ascii) — ID or mnemonic")
+	dest := fs.String("dest", "", "filter: only this dest's feeds (upstream-chain view in ascii) — ID or mnemonic")
+	level := fs.String("level", "", "filter: these levels only — one ID, or a comma-separated list of IDs / mnemonics")
 	resolveFlag := fs.Bool("resolve", false, "resolve VIRTUAL chains: add effective_srce + via columns (csv) / render the full chain (ascii)")
 	withNames := fs.Bool("names", false, "csv: append srce_label,dest_label mnemonic columns (#751 G4 — same flag on every connector's usage; ascii always shows names)")
 	format := fs.String("format", "csv", "output format: csv | ascii")
@@ -288,16 +288,43 @@ func cerebrumUsage(_ context.Context, args []string) error {
 	}
 	defer func() { _ = p.Disconnect() }()
 
+	// One numeric level is filtered on the wire (RouteLevel); a level
+	// name or a list is read in full and filtered here once resolved.
+	wireLevel, levelByName := *level, false
+	if *level != "" && !cerebrumIsID(*level) {
+		wireLevel, levelByName = "", true
+	}
 	st, err := cerebrumObtainState(context.Background(), p.Session(), *router, "ROUTER", *idle, cerebrumStateWant{
-		Routes: true, RouteLevel: *level,
-		SrcMne: true, DstMne: true,
+		Routes: true, RouteLevel: wireLevel,
+		SrcMne: true, DstMne: true, LvlMne: levelByName,
 		Verb: "usage",
 	})
 	if err != nil {
 		return err
 	}
+	// --srce / --dest / --level given as mnemonics resolve against the
+	// catalogue just read; the filters below work on IDs as before.
+	if *srce != "" {
+		if *srce, err = cerebrumResolveID("srce", *srce, st.Src); err != nil {
+			return err
+		}
+	}
+	if *dest != "" {
+		if *dest, err = cerebrumResolveID("dest", *dest, st.Dst); err != nil {
+			return err
+		}
+	}
+	var levelIDs []string
+	if levelByName {
+		if levelIDs, err = cerebrumResolveLevels(*level, st.Lvl); err != nil {
+			return err
+		}
+	}
 	virtuals := cerebrumDetectVirtuals(st.Src, st.Dst)
 	rows := cerebrumBuildUsage(st.Routes, virtuals, *resolveFlag)
+	if len(levelIDs) > 0 {
+		rows = cerebrumFilterUsageLevels(rows, levelIDs)
+	}
 
 	// Apply filters AFTER resolution (a --srce filter must not hide
 	// the chains that resolve back to it).
