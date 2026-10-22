@@ -26,12 +26,12 @@ A level's default device, its "Multiple Devices" setting and its IP filter decid
 
 Level 6 appears in the Levels tab with no default device, "Multiple Devices" unticked and no IP filter. No `RM_DEFAULT_DEVICE` element in either reply.
 
-**RCP.** The 2.6.1 document defines two operations on levels, `GET /routemaster/levels` and `GET /routemaster/levels/{levelId}`, and a level object with the fields `id`, `mnemonic`, `multipleDevices`, `device` (`name`, `typeId`, `deviceLevel`), `ipFilter`, `sourceTags`, `destinationTags`. It defines no `POST`, `PATCH`, `PUT` or `DELETE` on levels.
+**RCP.** The 2.6.1 document defines two operations on levels, `GET /routemaster/levels` and `GET /routemaster/levels/{levelId}`, and a level object with the fields `id`, `mnemonic`, `multipleDevices`, `device` (`name`, `typeId`, `deviceLevel`), `ipFilter`, `sourceTags`, `destinationTags`. The only documented write on a level is `PATCH /devices/{deviceName}/{deviceIndex}/routers/level-mnemonics/{levelId}` with the fields `originalMnemonic` and `alternateMnemonics`. No documented request takes `multipleDevices`, `device` or `ipFilter` as input.
 
 | Request | Answer |
 |---|---|
-| `GET /v2/routemaster/levels/6` (documented) | `404` `{"reqid":7,"error":{"code":1,"message":"Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]"}}` |
-| `PATCH /v2/devices/Cerebrum/0/routers/level-mnemonics/6` (documented resource and verb) body `{"level_6": {"originalMnemonic": "ZZ-L6", "multipleDevices": true, "device": {"name": "Cerebrum", "deviceLevel": 1}, "ipFilter": "video"}}`, the three fields taken from the document's level object | `200` `{"reqid":7}`; the following `GET` returns the mnemonics only |
+| `GET /v2/routemaster/levels/6` | `404` `{"reqid":7,"error":{"code":1,"message":"Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]"}}` |
+| `PATCH /v2/devices/Cerebrum/0/routers/level-mnemonics/5` body `{"level_5": {"originalMnemonic": "ZZ-PROBE-L3"}}` | `202`; the `GET` returns the new name. The name is the only attribute of a level that RCP writes |
 
 **Ask:** a Northbound message and an RCP operation that set a level's default device, "Multiple Devices" and IP filter, and that read them; `RM_DEFAULT_DEVICE` sent in the `LEVEL_MNE` reply as §5.1.4 documents it; `GET /routemaster/levels` served as 2.6.1 documents it.
 
@@ -84,7 +84,7 @@ A client that creates a resource has to read the whole collection before and aft
 
 ## 4. A request the server does not support is not told apart from one it does
 
-We send requests the server cannot honour, by mistake or to find the limit, and the answers do not say what was wrong: an `ACK` for a value that has no target, a `NACK` with a code and no attribute, a `200` with the unknown fields dropped, or a `404` that calls a documented collection unknown.
+We send requests the server cannot honour, by mistake or to find the limit, and the answers do not say what was wrong: an `ACK` for a value that has no target, a `NACK` with a code and no attribute, or a `404` that calls a documented collection unknown.
 
 **Northbound.**
 
@@ -100,11 +100,8 @@ We send requests the server cannot honour, by mistake or to find the limit, and 
 | Request | Answer |
 |---|---|
 | `GET /v2/routemaster/levels/6`, documented | `404` `{"reqid":7,"error":{"code":1,"message":"Unknown RouteMaster collection. Supported collections are [sources, destinations, federation-sources, federation-destinations]"}}` |
-| `PATCH` / `POST` / `PUT /v2/routemaster/levels[/6]`, not in the document, sent with the level fields of the document | `404`, the same message |
-| `PATCH /v2/devices/Cerebrum/0/routers/levels/6`, not in the document | `400` `{"reqid":7,"error":{"code":2,"message":"Invalid request type: levels"}}` |
-| `PATCH /v2/devices/Cerebrum/0/routers/level-mnemonics/6` with `multipleDevices`, `device`, `ipFilter` added to the documented body | `200` `{"reqid":7}`, the three fields dropped without a word |
-| `PATCH /v2/devices/Cerebrum/0/routers/source-mnemonics/16` with `alternateMnemonics: {"Eng": "ZZ"}`, no name "Eng" defined | `400`, error code 2, message `Error parsing request` |
+| `PATCH /v2/devices/Cerebrum/0/routers/source-mnemonics/16` body `{"src_16": {"alternateMnemonics": {"Eng": "ZZ"}}}`, no name "Eng" defined | `400`, error code 2, message `Error parsing request`; the same field sent to `/v2/routemaster/sources/16` names the problem (point 2) |
 
-**Ask:** an answer that names the unsupported resource, attribute or value and the reason: a `NACK` with the attribute in question, a `4xx` instead of `200` when a field is unknown, and the same `404` message only for a collection the document does not define.
+**Ask:** an answer that names the unsupported resource, attribute or value and the reason: a `NACK` with the attribute in question, a `400` that names the field, and the `404` "Unknown RouteMaster collection" only for a collection the document does not define.
 
 Thank you. We re-run every line above on any build on request.
