@@ -90,6 +90,24 @@ func TestDedupeCerebrumMnes(t *testing.T) {
 	}
 }
 
+// TestDedupeCerebrumMnesKeepsAssociations pins that the per-level repeats of
+// one row merge their ASSOCIATION rows (§5.1.5) and that the same row sent
+// twice does not double them — the read-back of a binding must survive the
+// merge (2.9.3 measurement, 2026-10-22).
+func TestDedupeCerebrumMnesKeepsAssociations(t *testing.T) {
+	a1 := codec.RoutingAssociation{Index: 1, SrceID: "4026531837", RMDeviceName: "NMOS", RMIPUID: "VTX-01"}
+	a2 := codec.RoutingAssociation{Index: 2, SrceID: "4026531838", RMDeviceName: "NMOS", RMIPUID: "ATX-01"}
+	got := dedupeCerebrumMnes([]cerebrumMneRow{
+		{ID: "16", Mnemonic: "Src 16", Levels: []string{"1"}, Assocs: []codec.RoutingAssociation{a1}},
+		{ID: "16", Mnemonic: "Src 16", Levels: []string{"1"}, Assocs: []codec.RoutingAssociation{a1}},
+		{ID: "16", Mnemonic: "Src 16", Levels: []string{"2"}, Assocs: []codec.RoutingAssociation{a2}},
+	})
+	want := []cerebrumMneRow{{ID: "16", Mnemonic: "Src 16", Levels: []string{"1", "2"}, Assocs: []codec.RoutingAssociation{a1, a2}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("dedupe = %+v, want %+v", got, want)
+	}
+}
+
 // TestCerebrumMneCSVRoundTrip pins format -> parse stability, including a
 // mnemonic containing a comma and a quote.
 func TestCerebrumMneCSVRoundTrip(t *testing.T) {

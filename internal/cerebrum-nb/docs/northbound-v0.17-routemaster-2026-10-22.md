@@ -79,7 +79,7 @@ interface our Ansible scripts use today.
 | 11 | Create | accepted, nothing created (standalone) | **no** | `RM_*_ADD` with `FEDERATION="1"` (§4.2.3) | accepted, not applied: `RESULT ACCEPTED`, the federation collection stays empty (standalone) | RCP; both to prove on a federation |
 | 12 | Read | proven (`GET /routemaster/federation-sources`, empty) | **no** | **no** | — | RCP |
 | 13 | Update: bind a level | document (2.6.1) | **no** | `SRCE_ASSOC_IP` with `FEDERATION="1"` (§4.1.9) | accepted, not applied: ACK, the source's levels unchanged (standalone) | RCP; to prove on a federation |
-| 14 | Update: tags | document (2.6.1) | **no** | `RM_SRCE_TAGS` with `FEDERATION="1"` (§4.2.1) | accepted (ACK); no read-back on a standalone server | RCP; to prove on a federation |
+| 14 | Update: tags | document (2.6.1) | **no** | `RM_SRCE_TAGS` with `FEDERATION="1"` (§4.2.1) | accepted (ACK); the Northbound read `OBTAIN RM_SRCE_TAGS` (§5.1.7) on level 1 answers `LIST=",,,,"`, the same as for the local tags (row 25) | RCP; to prove on a federation |
 | 15 | Delete | document (2.6.1) | **no** | `RM_*_DELETE` with `FEDERATION="1"` (§4.2.4) | not run: nothing to delete on a standalone server | RCP; to prove on a federation |
 | 16 | Link an existing local IO to a federation one, and unlink | accepted, not applied (standalone; `federationUid`, 0 unlinks) | **no** | **no** — `FEDERATION="1"` addresses the federation IO, it does not link a local one | — | RCP; to prove on a federation |
 
@@ -99,8 +99,8 @@ interface our Ansible scripts use today.
 | # | Operation | RCP 2.5.3 (server) | Northbound 0v16 | Northbound v0.17 (document) | Northbound v0.17 (server 2.9.3) | Use |
 |---|---|---|---|---|---|---|
 | 23 | Bind a level to a router input or output | proven | proven (`SRCE_ASSOC` / `DEST_ASSOC`) | unchanged; `FEDERATION="1"` for a federation IO (§4.1.7–§4.1.8) | local: proven earlier; federation variant: not run (no router device bound on this system) | RCP |
-| 24 | Bind a level to an IP sender or receiver | proven | proven (`SRCE_ASSOC_IP` / `DEST_ASSOC_IP`) | unchanged; `FEDERATION="1"` (§4.1.9–§4.2.0) | proven on 2.9.3: a source bound to sender VTX-01 and a destination to receiver VRX-01 of the NMOS slot 1, read back over RCP as `NMOS\|1\|VTX-01` and `NMOS\|1\|VRX-01`; federation variant: accepted, not applied (row 13) | RCP |
-| 25 | Tags on a level | proven | proven (`RM_SRCE_TAGS` / `RM_DEST_TAGS`) | unchanged; `FEDERATION="1"` (§4.2.1–§4.2.2) | local: proven earlier; federation variant: accepted (row 14) | RCP |
+| 24 | Bind a level to an IP sender or receiver | proven | proven (`SRCE_ASSOC_IP` / `DEST_ASSOC_IP`) | unchanged; `FEDERATION="1"` (§4.1.9–§4.2.0) | proven on 2.9.3: a source bound to sender VTX-01 and a destination to receiver VRX-01 of the NMOS slot 1, read back over RCP as `NMOS\|1\|VTX-01` and `NMOS\|1\|VRX-01`; the Northbound `OBTAIN SRCE_MNE` reply of the bound source carries no `ASSOCIATIONS` element, with `LEVEL_ID="*"` and with `LEVEL_ID="1"` (measured 2026-10-22; §5.1.5 says this "should be assumed to indicate no association"); federation variant: accepted, not applied (row 13) | RCP |
+| 25 | Tags on a level | proven | proven (`RM_SRCE_TAGS` / `RM_DEST_TAGS`) | unchanged; `FEDERATION="1"` (§4.2.1–§4.2.2) | local: proven on 2.9.3 (`RM_SRCE_TAGS` → ACK, RCP reads the tag); the Northbound `OBTAIN RM_SRCE_TAGS` (§5.1.7) answers `LIST=",,,,"` on every level, the tagged one included (measured 2026-10-22); federation variant: accepted (row 14) | RCP |
 | 26 | Route a source to a destination (crosspoint), IP level | proven | proven (`ROUTE`) | unchanged | proven on 2.9.3: a route between two IOs bound to VTX-01 and VRX-01 was executed on the device at once (IS-05 activation on the receiver), while the RouteMaster routes table still showed no crosspoint two seconds later | RCP; Northbound for batches |
 
 ### 5.6 Names and categories
