@@ -10,6 +10,7 @@
 #   5a SRCE_ASSOC_IP, local            §4.1.9   on the temporary source; read back
 #                                                with LEVEL_ID="*" and the level
 #   6a RM_SRCE_TAGS, local             §4.2.1   read back with OBTAIN RM_SRCE_TAGS §5.1.7
+#   5b SRCE_ASSOC_IP, document-exact  §4.1.9   --bare, level 2; 5c SRCE_ASSOC router form §4.1.7, level 3
 #   6b SRCE_MNE ALT_MNE=1 / 2          §4.1.5   the alternate mnemonic by slot
 #   5  SRCE_ASSOC_IP, FEDERATION=1      §4.1.9   on the temporary source
 #   6  RM_SRCE_TAGS, FEDERATION=1       §4.2.1   on the temporary source
@@ -47,7 +48,8 @@
     np_nb_raw: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log-level, debug, --log-format, json, --log]
     np_rcp: ["{{ np_bin }}", consumer, rcp]
     np_rcp_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.rcp_port | string }}", --timeout, "20s"]
-    np_target: "{{ nb_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'VTX-01', 'level': '1'}) }}"
+    np_target: "{{ nb_probe | default({'device': cerebrum.nmos_device | default('NMOS'), 'sub_device': '1', 'sender': 'VTX-01', 'level': '1',
+                                      'sender2': 'ATX-01', 'level2': '2', 'router_device': 'Neuron-convert-Hybrid', 'router_level': '1', 'router_io': '1', 'level3': '3'}) }}"
     np_env:
       DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
       DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
@@ -304,6 +306,42 @@
       changed_when: false
       failed_when: false
 
+    # ---- case 5b / 5c: the two other association forms on the temporary
+    # source — the IP form exactly as the document prints it (no router
+    # addressing, --bare) on level 2, and the router form (a router input
+    # of a device registered as ROUTER, §4.1.7) on level 3 — read back over
+    # Northbound: on 2.9.3 only the router form comes back as an ASSOCIATION row
+    - name: "Case 5b · SRCE_ASSOC_IP document-exact (--bare) on level {{ np_target.level2 }}"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['assoc', '--bare', '--kind', 'SRCE_ASSOC_IP', '--srce', np_s1 | string, '--level', np_target.level2 | string,
+                 '--target-device', np_target.device, '--target-name', np_target.sender2, '--sub-device', np_target.sub_device | string] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c5b
+      changed_when: np_c5b.rc == 0
+      failed_when: false
+
+    - name: "Case 5c · SRCE_ASSOC router form on level {{ np_target.level3 }}: {{ np_target.router_device }} level {{ np_target.router_level }} input {{ np_target.router_io }}"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['assoc', '--kind', 'SRCE_ASSOC', '--srce', np_s1 | string, '--level', np_target.level3 | string,
+                 '--target-device', np_target.router_device, '--target-device-type', 'ROUTER', '--target-level', np_target.router_level | string, '--target-io', np_target.router_io | string] + np_nb_tail }}"
+      environment: "{{ np_env }}"
+      register: np_c5c
+      changed_when: np_c5c.rc == 0
+      failed_when: false
+
+    - name: "Case 5b/5c · settle"
+      ansible.builtin.pause:
+        seconds: "{{ np_settle }}"
+
+    - name: "Case 5b/5c · read back (Northbound list-sources --associations)"
+      ansible.builtin.command:
+        argv: "{{ np_nb + ['list-sources', '--id', np_s1 | string, '--associations'] + np_nb_raw + [np_dir ~ '/.nb-raw-c5bc.log'] }}"
+      environment: "{{ np_env }}"
+      register: np_c5bc_rb
+      changed_when: false
+      failed_when: false
+
+
     # ---- case 6b: the alternate mnemonic by slot (§4.1.5 ALT_MNE) on the
     # temporary source — slot 1 and slot 2 — read back over Northbound
     # (OBTAIN SRCE_MNE: ALT_MNE_N elements) and over RCP (alternateMnemonics)
@@ -495,6 +533,8 @@
           - { case: "3 RM_DEST_ADD local", rc: "{{ np_c3.rc }}", nb: "{{ np_c3_nb.stdout_lines | select('search', '^ +([0-9]+ |association)') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c3.stdout_lines + np_c3.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "destinations {{ np_before.results[1].stdout_lines | first }} -> {{ np_c3_list.stdout_lines | first }}; id {{ np_d1 }}: {{ (np_c3_rb.stdout | from_json).mnemonic | default('?') }}" }
           - { case: "4 RM_SRCE_ADD federation", rc: "{{ np_c4.rc }}", answer: "{{ (np_c4.stdout_lines + np_c4.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "{{ np_c4_list.stdout_lines | first }}" }
           - { case: "5a SRCE_ASSOC_IP local", rc: "{{ np_c5a.rc }}", nb: "LEVEL_ID=*: {{ np_c56a_rb.results[0].stdout_lines | select('search', '^ +([0-9]+ |association)') | map('trim') | list | join(' / ') }}; LEVEL_ID={{ np_target.level }}: {{ np_c5a_level.stdout_lines | select('search', '^ +([0-9]+ |association)') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c5a.stdout_lines + np_c5a.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "RCP levels={{ (np_c56a_rb.results[1].stdout | from_json).levels | default('?') | to_json }}" }
+          - { case: "5b SRCE_ASSOC_IP bare (level {{ np_target.level2 }})", rc: "{{ np_c5b.rc }}", nb: "{{ np_c5bc_rb.stdout_lines | select('search', '^ +([0-9]+ |association)') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c5b.stdout_lines + np_c5b.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "" }
+          - { case: "5c SRCE_ASSOC router form (level {{ np_target.level3 }})", rc: "{{ np_c5c.rc }}", nb: "{{ np_c5bc_rb.stdout_lines | select('search', 'association') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c5c.stdout_lines + np_c5c.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "" }
           - { case: "6a RM_SRCE_TAGS local", rc: "{{ np_c6a.rc }}", nb: "RM_SRCE_TAGS level {{ np_target.level }}: {{ np_c6a_tags.results[0].stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}; every level: {{ np_c6a_tags.results[1].stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c6a.stdout_lines + np_c6a.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "RCP tags={{ ((np_c56a_rb.results[1].stdout | from_json).levels | default({})).level_1.tags | default('?') | to_json }}" }
           - { case: "6b SRCE_MNE ALT_MNE=1", rc: "{{ np_c6b1.rc }}", nb: "{{ np_c6b_rb.results[0].stdout_lines | select('search', '^ +[0-9]+ ') | map('trim') | list | join(' / ') }}", answer: "{{ (np_c6b1.stdout_lines + np_c6b1.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "RCP mnemonic={{ (np_c6b_rb.results[1].stdout | from_json).mnemonic | default('?') | to_json }}; mnemonics row: {{ np_c6b_rb.results[2].stdout_lines | select('search', '^' ~ (np_s1 | string) ~ ' ') | map('trim') | list | join(' ') }}" }
           - { case: "6b SRCE_MNE ALT_MNE=2", rc: "{{ np_c6b2.rc }}", nb: "", answer: "{{ (np_c6b2.stdout_lines + np_c6b2.stderr_lines) | select('search', 'result|RESULT|error|nack|OK') | list | last | default('') }}", readback: "" }
