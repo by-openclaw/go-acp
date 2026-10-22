@@ -19,12 +19,14 @@ answers are quoted as received.
 
 ## 2. Result in one line
 
-Local and virtual sources and destinations are fully managed over RCP
-on 2.9.3; federation IOs and links are accepted and not applied on our
-standalone server; levels can be read and renamed, not created,
-deleted or configured; `tieLineGroup` is refused on create and update,
-and an alternate mnemonic can only be written under a name defined in
-the user interface.
+Local and virtual sources and destinations are created, read, renamed
+and deleted over RCP on 2.9.3; the binding of a level to an IP sender or
+receiver is accepted and stored but no longer in effect on 2.9.3, where
+it was on 2.9.2 build 15432; federation IOs and links are accepted and
+not applied on our standalone server; levels can be read and renamed,
+not created, deleted or configured; `tieLineGroup` is refused on create
+and update, and an alternate mnemonic can only be written under a name
+defined in the user interface.
 
 ## 3. Sources and destinations
 
@@ -43,7 +45,7 @@ the user interface.
 | 11 | Make an existing IO virtual | `PATCH …/{id}` `{"virtual": true}` | `202` | `virtual: false` after 5 s | accepted, **not applied** |
 | 12 | Create a federation IO | `POST /routemaster/federation-sources` `{"count": 1, "mnemonic": "ZZ-PROBE-F"}` | `202` | the collection stays at 0 | accepted, not applied — standalone server |
 | 13 | Link a local IO to a federation one | `PATCH …/{id}` `{"federationUid": 1}` | `202` | `federationUid: 0` | accepted, not applied — standalone server |
-| 14 | Bind a level to an IP sender | `PATCH …/{id}` `{"levels": {"level_1": {"device": {"senderReceiver": "NMOS\|1\|VTX-01"}}}}` | `202` | `levels.level_1.device.senderReceiver = "NMOS\|1\|VTX-01"`, `tags: []`, `tagsInherited: true` | proven |
+| 14 | Bind a level to an IP sender or receiver | `PATCH …/{id}` with `levels.level_N.device.senderReceiver`, on all four levels of a source (`VTX-01`, `ATX-01`, `ATX-02`, `DTX-01`) and of a destination (`VRX-01`, `ARX-01`, `ARX-02`, `DRX-01`), as the bare name stored for the plant's own IOs and as the device-qualified `NMOS\|1\|VTX-01` | `202` every time | every binding stored and read back as sent | stored, **not in effect on 2.9.3**: the RouteMaster user interface shows "Level not configured" on every level of these IOs, as it does for every source and destination of the plant bound before 2.9.3, whose bindings are still stored; in effect on 2.9.2 build 15432 last week |
 | 15 | Tags on a level | `PATCH …/{id}` `{"levels": {"level_1": {"tags": ["ZZ-PROBE"]}}}` | `202` | `levels.level_1.tags = ["ZZ-PROBE"]`, `tagsInherited: false` | proven |
 | 16 | Alternate mnemonic, mnemonic resource | `PATCH /devices/Cerebrum/0/routers/source-mnemonics/{id}` with `alternateMnemonics: {"Eng": "ZZ"}` | `400` "Error parsing request" | — | **refused** |
 | 17 | Alternate mnemonic, IO body | `PATCH /routemaster/sources/{id}` `{"alternateMnemonics": {"Eng": "ZZ-PROBE"}}` | `400` "Unknown alternate mnemonic name in 'alternateMnemonics'" | unchanged; no alternate name exists on our server | **refused** for a name not defined; the names are defined in the user interface, and a write under a defined name is untested here |
@@ -80,6 +82,7 @@ the user interface.
 | 6 | An error instead of `202` when a write cannot be applied, or a completion signal | reliable reporting |
 | 7 | Create, list and remove the alternate mnemonic names | today in the user interface only |
 | 8 | A category resource | today Northbound only |
+| 9 | The IP binding (`levels.level_N.device.senderReceiver`) in effect again on 2.9.3 as on 2.9.2 build 15432, or an error instead of `202` while it is not | the plant's IP routing through the RouteMaster |
 
 Thank you for RCP; it is our default interface and everything in
 section 3 but four rows works on the first try. The measurement behind
