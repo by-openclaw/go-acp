@@ -107,7 +107,7 @@ interface our Ansible scripts use today.
 
 | # | Operation | RCP 2.5.3 (server) | Northbound 0v16 | Northbound v0.17 (document) | Northbound v0.17 (server 2.9.3) | Use |
 |---|---|---|---|---|---|---|
-| 26 | Alternate mnemonic: set a value | only for a name that exists in Cerebrum (400 otherwise; re-tested 2026-10-21) | acknowledged; reads back as not available | unchanged | — | RCP |
+| 26 | Alternate mnemonic: set a value | only for a name that exists in Cerebrum: 400 "Unknown alternate mnemonic name" on the IO body, 400 "Error parsing request" on the mnemonic resource (re-tested 2026-10-22, both paths) | acknowledged; reads back as not available | unchanged (`ALT_MNE` slot, §4.1.5) | slot 1: ACK, no `ALT_MNE_1` read back over Northbound nor `alternateMnemonics` over RCP; slot 2: NACK 8 — no alternate mnemonic set exists on this server (measured 2026-10-22) | RCP, once a set is defined in the user interface |
 | 27 | Alternate mnemonic: create, list, remove the names | **no** | **no** | **no** | — | none — in the user interface |
 | 28 | Categories: create, read, update, delete, members | **no** | proven | unchanged | proven | Northbound |
 
