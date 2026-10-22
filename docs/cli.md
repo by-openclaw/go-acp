@@ -88,7 +88,9 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | kratos | probel-sw08p
+  Verbs (kratos):              info, walk, get, set, watch, export + command, table
+                               (antenna controller; run 'dhs consumer kratos -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -170,6 +172,7 @@ PROTOCOLS
   ccm           EVS Neuron CCM (REST/JSON over TLS)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  kratos        Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 75…)
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
@@ -1977,6 +1980,7 @@ PROTOCOLS
   ccm           EVS Neuron CCM (REST/JSON over TLS)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  kratos        Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 75…)
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
@@ -2058,6 +2062,7 @@ PROTOCOLS
   ccm           EVS Neuron CCM (REST/JSON over TLS)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  kratos        Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 75…)
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1

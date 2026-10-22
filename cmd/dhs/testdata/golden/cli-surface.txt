@@ -20,7 +20,9 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | kratos | probel-sw08p
+  Verbs (kratos):              info, walk, get, set, watch, export + command, table
+                               (antenna controller; run 'dhs consumer kratos -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -92,6 +94,7 @@ acp2     port=2072  Axon Control Protocol v2 (AN2/TCP)
 ccm      port=443   EVS Neuron CCM (REST/JSON over TLS) — the model is the device's own api.yml
 cerebrum-nb port=40007 EVS Cerebrum Northbound API (XML over WebSocket; a.k.a. Neuron Bridge)
 emberplus port=9000  Ember+ (Glow/S101/TCP) consumer
+kratos   port=3000  Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 7592827 Rev. E)
 mnset    port=80    Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1); host = one module (slot 0) or MN SET :8080 (frame, one slot per module)
 osc-v10  port=8000  Open Sound Control 1.0 — UDP + TCP/length-prefix; core types i/f/s/b
 osc-v11  port=8000  Open Sound Control 1.1 — UDP + TCP/SLIP; adds T/F/N/I + arrays
