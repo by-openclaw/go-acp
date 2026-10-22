@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"dhs/internal/transport/testnet"
 	"dhs/internal/tsl/codec"
 	consumer "dhs/internal/tsl/consumer"
 	provider "dhs/internal/tsl/provider"
@@ -22,16 +23,26 @@ import (
 func TestV31_MultiInstance_SamePort(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	// Pick an ephemeral port for the first listener, then bind the
-	// second to the same port.
+	// The shared port comes from testnet, NOT from a first listener bound
+	// to :0. The consumer binds with SO_REUSEPORT, and on Linux a :0 bind
+	// of a reuseport socket may be handed a port that another reuseport
+	// socket of the same user already holds — on a CI runner that is a
+	// consumer or sender of the osc / acp1 / snmp integration packages
+	// running in parallel. The datagram is then hashed to that third
+	// socket and neither listener here sees it (main 39699635320, rocky9:
+	// "no listener received"). testnet's port is checked bindable with a
+	// plain socket, which no reuseport group can share.
+	sharedPort := testnet.FreeUDPPort(t)
 	cp1 := consumer.NewPluginV31(logger)
 	defer func() { _ = cp1.Disconnect() }()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := cp1.Connect(ctx, "127.0.0.1", 0); err != nil {
+	if err := cp1.Connect(ctx, "127.0.0.1", sharedPort); err != nil {
 		t.Fatalf("cp1 Connect: %v", err)
 	}
-	sharedPort := cp1.BoundAddr().Port
+	if cp1.BoundAddr().Port != sharedPort {
+		t.Fatalf("cp1 port mismatch: got %d, want %d", cp1.BoundAddr().Port, sharedPort)
+	}
 
 	cp2 := consumer.NewPluginV31(logger)
 	defer func() { _ = cp2.Disconnect() }()
