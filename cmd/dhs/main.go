@@ -46,6 +46,7 @@ import (
 	_ "dhs/internal/ccp/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
 	_ "dhs/internal/emberplus/consumer"
+	_ "dhs/internal/kratos/consumer"
 	_ "dhs/internal/osc/consumer"
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
@@ -338,6 +339,13 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		}
 		rest = remaining
 	}
+	if proto == "kratos" {
+		handled, remaining, err := runKratos(ctx, rest)
+		if handled {
+			return err
+		}
+		rest = remaining
+	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
 	}
@@ -594,9 +602,11 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
+  Verbs (kratos):              info, walk, get, set, watch, export + command, table
+                               (antenna controller; run 'dhs consumer kratos -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
