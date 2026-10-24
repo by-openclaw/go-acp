@@ -2,7 +2,7 @@
 # FABRIC-2 (DCS-7020TR-48) port map.
 ports:
   # PTP grandmaster feed (VLAN 605): pve01 I210 on Et1, second GM reserved on Et2
-  Ethernet1: { profile: gm_feed, desc: PTP-GM }
+  Ethernet1: { profile: gm_feed, desc: PTP-GM, extra: [ptp transport layer2] }   # pve01 ptp4l runs network_transport L2 (2026-10-24)
   Ethernet2: { profile: gm_feed, desc: PTP-GM }
   # Management edge (VLAN 600)
   Ethernet5:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
