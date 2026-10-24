@@ -592,8 +592,16 @@ func runCCPPanel(ctx context.Context, args []string) error {
 						events.Info("ccp take", "panel", host, "dest", d, "dest_label", xy.dstName[d], "src", src,
 							"src_label", xy.srcName[src], "levels", strings.Join(xy.levels, ";"), "confirmed", got == src, "err", fmt.Sprint(err))
 					}
-					if err != nil && strings.Contains(err.Error(), "closed") {
-						_ = xy.connect(ctx)
+					if err != nil {
+						// Any failed take may mean a dead Northbound session
+						// (seen live: a timeout, then "broken pipe" on every
+						// later write). Reconnect and retry the take once.
+						if cerr := xy.connect(ctx); cerr != nil {
+							fmt.Fprintf(os.Stderr, "%s XY reconnect to Cerebrum failed: %v\n", time.Now().Format("15:04:05"), cerr)
+						} else if err = xy.take(ctx, d, src); err == nil {
+							got = xy.sourceOf(d)
+							fmt.Printf("%s XY retake after reconnect: Cerebrum now reads source %s\n", time.Now().Format("15:04:05"), got)
+						}
 					}
 					xyTally(p)
 				case b.Action == codec.ActionDown && knobs[int(b.ID)] != nil:
