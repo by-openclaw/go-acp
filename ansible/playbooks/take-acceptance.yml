@@ -1,0 +1,123 @@
+# Take acceptance test — the timing of an ST 2110 take through Cerebrum,
+# measured on the real receiver (operator, 2026-10-25: "Need this type of
+# measure for acceptance test").
+#
+# Per take (files/take_probe.py, run on the control node):
+#   route_s                    the dhs `cerebrum-nb route` call (connect, read, ROUTE, ACK)
+#   ack_to_request_ms          Cerebrum ACK -> the receiver's IS-05 requested_time
+#   request_to_activation_ms   IS-05 requested_time -> activation_time (immediate mode)
+#   activation_to_seen_ms      activation -> the new sender read back on /active (20 ms polling)
+#   receiver_gap_ms            the receiver's own status reports no stream (NeuronView only)
+# Alternates two sources on one destination; an even take count ends where it began.
+#
+# Not in this play, run by hand from a host holding the fabric key:
+#   network timeline — `tcpdump interface EthernetX/1 file flash:igmp-take.pcap
+#   packet-count N filter igmp` on the receiver's leaf port during the takes,
+#   decoded with `bash tcpdump -n -tt -v -r /mnt/flash/igmp-take.pcap`.
+#   Measured 2026-10-25 on NeuronView: one IGMPv3 report per take carries the
+#   BLOCK of the old group and the ALLOW of the new one — break-before-make.
+#
+#   cd ansible
+#   DHS_CEREBRUM_USER=… DHS_CEREBRUM_PASS=… ansible-playbook -i inventory/hosts.ini \
+#     playbooks/take-acceptance.yml [-e ta_takes=20]
+#
+# Writes /root/take-acceptance/<UTC stamp>/{takes.jsonl,summary.json}. Fails when a
+# take fails or the receiver does not follow. Run twice: the destination ends as it began.
+- name: Take acceptance — Cerebrum route to IS-05 activation, measured on the receiver
+  hosts: plant
+  gather_facts: false
+  vars:
+    ta_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    ta_dir: "{{ take_dir | default('/root/take-acceptance') }}"
+    ta_takes: 20
+    ta_gap: 6
+    # Lab default: NeuronView VIDEO STREAM 1 (Cerebrum VIEW 1) between CONVERT 2 and CONVERT 1.
+    ta_target: "{{ take_target | default({
+      'dest': '5', 'sources': '2,1', 'levels': '1,2',
+      'receiver': 'http://10.6.255.104:3000/x-nmos/connection/v1.1/single/receivers/3ebf6efe-6a2c-4f0d-b033-c435729fa0cf/active',
+      'status': 'https://10.6.255.104/api/v1/inputs/streams', 'stream': 'VIDEO STREAM 1'}) }}"
+    ta_env:
+      DHS_CEREBRUM_USER: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+      DHS_CEREBRUM_PASS: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  tasks:
+    - name: The server and the account are given
+      ansible.builtin.assert:
+        that:
+          - cerebrum is defined
+          - ta_env.DHS_CEREBRUM_USER | length > 0
+        fail_msg: set `cerebrum` in the inventory and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
+
+    - name: Run directory
+      ansible.builtin.set_fact:
+        ta_run: "{{ ta_dir }}/{{ lookup('ansible.builtin.pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+
+    - name: Run directory exists
+      ansible.builtin.file:
+        path: "{{ ta_run }}"
+        state: directory
+        mode: "0755"
+
+    - name: Probe script
+      ansible.builtin.copy:
+        src: files/take_probe.py
+        dest: "{{ ta_dir }}/take_probe.py"
+        mode: "0755"
+
+    - name: "{{ ta_takes }} takes on destination {{ ta_target.dest }}"
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ ta_dir }}/take_probe.py"
+          - --dhs
+          - "{{ ta_bin }}"
+          - --cerebrum
+          - "{{ cerebrum.host }}:{{ cerebrum.nb_port }}"
+          - --dest
+          - "{{ ta_target.dest }}"
+          - --sources
+          - "{{ ta_target.sources }}"
+          - --levels
+          - "{{ ta_target.levels }}"
+          - --receiver
+          - "{{ ta_target.receiver }}"
+          - --status
+          - "{{ ta_target.status | default('') }}"
+          - --stream
+          - "{{ ta_target.stream | default('') }}"
+          - --takes
+          - "{{ ta_takes | string }}"
+          - --gap
+          - "{{ ta_gap | string }}"
+      environment: "{{ ta_env }}"
+      register: ta_out
+      changed_when: false
+      failed_when: false
+
+    - name: Keep the per-take rows
+      ansible.builtin.copy:
+        dest: "{{ ta_run }}/takes.jsonl"
+        content: "{{ ta_out.stdout }}\n"
+        mode: "0644"
+
+    - name: Summary
+      ansible.builtin.set_fact:
+        ta_summary: "{{ (ta_out.stdout_lines | select('search', '\"summary\"') | last | from_json).summary }}"
+
+    - name: Keep the summary
+      ansible.builtin.copy:
+        dest: "{{ ta_run }}/summary.json"
+        content: "{{ ta_summary | to_nice_json }}\n"
+        mode: "0644"
+
+    - name: Result
+      ansible.builtin.debug:
+        msg: "{{ ta_summary }}"
+
+    - name: Every take followed by the receiver, destination restored
+      ansible.builtin.assert:
+        that:
+          - ta_out.rc == 0
+          - ta_summary.failed == 0
+          - ta_summary.not_followed == 0
+          - ta_summary.restored
+        fail_msg: "take acceptance failed — rows in {{ ta_run }}/takes.jsonl"
