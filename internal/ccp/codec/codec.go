@@ -28,30 +28,30 @@ const DefaultPort = 2071
 
 // Client commands (§1.1.0 table, controller → panel).
 const (
-	CmdPoll            = 0x01
-	CmdReset           = 0x02
-	CmdSoundAlarm      = 0x03
-	CmdClear           = 0x04
-	CmdSetColour       = 0x05
-	CmdWriteBitmap     = 0x06
-	CmdShowBitmap      = 0x08
-	CmdWriteText       = 0x09
-	CmdSetGPO          = 0x0A
-	CmdReadGPI         = 0x0B
-	CmdSetDebounce     = 0x0C
-	CmdReadGPO         = 0x0D
-	CmdReadDebounce    = 0x0E
-	CmdReadTBar        = 0x0F
-	CmdSetTextColour   = 0x10
-	CmdReadSubnet      = 0x24
-	CmdReadGateway     = 0x25
-	CmdReadDHCP        = 0x26
-	CmdReadSerial      = 0x28
-	CmdSetBrightness   = 0x29
-	CmdSetRGBColour    = 0x35
-	CmdMultiple        = 0x40
-	CmdReportFirmware  = 0x71
-	CmdReadMAC         = 0x76
+	CmdPoll           = 0x01
+	CmdReset          = 0x02
+	CmdSoundAlarm     = 0x03
+	CmdClear          = 0x04
+	CmdSetColour      = 0x05
+	CmdWriteBitmap    = 0x06
+	CmdShowBitmap     = 0x08
+	CmdWriteText      = 0x09
+	CmdSetGPO         = 0x0A
+	CmdReadGPI        = 0x0B
+	CmdSetDebounce    = 0x0C
+	CmdReadGPO        = 0x0D
+	CmdReadDebounce   = 0x0E
+	CmdReadTBar       = 0x0F
+	CmdSetTextColour  = 0x10
+	CmdReadSubnet     = 0x24
+	CmdReadGateway    = 0x25
+	CmdReadDHCP       = 0x26
+	CmdReadSerial     = 0x28
+	CmdSetBrightness  = 0x29
+	CmdSetRGBColour   = 0x35
+	CmdMultiple       = 0x40
+	CmdReportFirmware = 0x71
+	CmdReadMAC        = 0x76
 )
 
 // Panel commands and responses (§1.1.0 table, panel → controller).

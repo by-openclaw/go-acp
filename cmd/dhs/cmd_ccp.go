@@ -10,6 +10,7 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sort"
@@ -19,6 +20,7 @@ import (
 
 	"dhs/internal/ccp/codec"
 	ccpc "dhs/internal/ccp/consumer"
+	dhsc "dhs/internal/consumer"
 	"dhs/internal/plugin"
 )
 
@@ -80,6 +82,68 @@ type ccpButton struct {
 	colour byte
 	hasCol bool
 	frame  bool
+	image  *codec.Bitmap // a logo; the label, if any, is drawn over it
+	blink  bool          // toggled between its colour and off every --blink-rate
+}
+
+// ccpLoadImage reads "FILE[,invert][,dither][,margin=N]" into a bitmap.
+func ccpLoadImage(spec string) (*codec.Bitmap, error) {
+	parts := strings.Split(spec, ",")
+	opts := codec.ImageOptions{}
+	for _, o := range parts[1:] {
+		o = strings.TrimSpace(strings.ToLower(o))
+		switch {
+		case o == "invert":
+			opts.Invert = true
+		case o == "dither":
+			opts.Dither = true
+		case strings.HasPrefix(o, "margin="):
+			n, err := strconv.Atoi(strings.TrimPrefix(o, "margin="))
+			if err != nil {
+				return nil, fmt.Errorf("image %q: margin=%s", spec, o)
+			}
+			opts.Margin = n
+		case strings.HasPrefix(o, "threshold="):
+			n, err := strconv.Atoi(strings.TrimPrefix(o, "threshold="))
+			if err != nil || n < 1 || n > 255 {
+				return nil, fmt.Errorf("image %q: threshold 1..255", spec)
+			}
+			opts.Threshold = uint8(n)
+		case o == "":
+		default:
+			return nil, fmt.Errorf("image %q: unknown option %q (invert, dither, margin=N, threshold=N)", spec, o)
+		}
+	}
+	f, err := os.Open(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	img, err := codec.LoadImage(f)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", parts[0], err)
+	}
+	b := codec.FromImage(img, opts)
+	return &b, nil
+}
+
+// ccpColumns is how many buttons a row holds per model, buttons numbered
+// left to right then top to bottom (§1.4.0 drawings). The CCP-1601 (one
+// row of 16) and CCP-4200B (two rows of 21) are from the drawings; the
+// other multi-row models are taken as 16 per row until one is measured.
+var ccpColumns = map[string]int{"CCP-1601": 16, "CCP-1601B": 16, "CCP-4200B": 21}
+
+// ccpPosition returns the control kind and its row and column (1-based);
+// the rotary has no row/column (0, 0).
+func ccpPosition(model string, id, rotary int) (string, int, int) {
+	if id == rotary {
+		return "rotary", 0, 0
+	}
+	cols := ccpColumns[model]
+	if cols == 0 {
+		cols = 16
+	}
+	return "button", (id-1)/cols + 1, (id-1)%cols + 1
 }
 
 // ccpKnob is one value a button selects and the rotary changes.
@@ -155,11 +219,27 @@ func runCCPPanel(ctx context.Context, args []string) error {
 	var labels, colours stringSliceFlag
 	fs.Var(&labels, "label", "repeatable: N=TEXT ('|' = new line)")
 	fs.Var(&colours, "colour", "repeatable: N=NAME or N=0xNN")
-	layout := fs.String("layout", "", "CSV file: button,label,colour[,frame]")
+	layout := fs.String("layout", "", "CSV file: button,label,colour[,frame][,image]")
+	var blinkFlags stringSliceFlag
+	fs.Var(&blinkFlags, "blink", "repeatable: button number to blink (colour / off)")
+	blinkRate := fs.Duration("blink-rate", 400*time.Millisecond, "blink half-period")
+	var imageFlags stringSliceFlag
+	fs.Var(&imageFlags, "image", "repeatable: N=FILE[,invert][,dither][,margin=N][,threshold=N] — PNG/JPEG/GIF logo, scaled to 64x32")
 	var knobFlags stringSliceFlag
 	fs.Var(&knobFlags, "knob", "repeatable: N=NAME,MIN,MAX,STEP,UNIT[,INIT] — press button N to select, turn the rotary to change")
 	rotary := fs.Int("rotary", 17, "button id the rotary reports as (CCP-1601: 17)")
 	frameAll := fs.Bool("frame", false, "draw a 1-pixel frame on every label")
+	syslogAddr := fs.String("syslog-addr", "", "also send every action as an RFC 5424 record to host:port (UDP)")
+	logPath := fs.String("log", "", "also append every action as one JSON line to this file")
+	cerebrumTarget := fs.String("cerebrum", "", "XY mode: Cerebrum Northbound host[:port] (account from DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS)")
+	var destFlags, srcFlags stringSliceFlag
+	fs.Var(&destFlags, "dest", "XY mode, repeatable: BUTTON=CEREBRUM_DEST_ID (green; press to select)")
+	fs.Var(&srcFlags, "src", "XY mode, repeatable: BUTTON=CEREBRUM_SRC_ID (purple; press to take onto the selected destination)")
+	xyLevels := fs.String("levels", "", "XY mode: level IDs to take, e.g. 1;2 (empty = every level the source is bound on)")
+	destColour := fs.String("dest-colour", "green", "XY mode: destination colour")
+	srcColour := fs.String("src-colour", "lavender", "XY mode: source colour")
+	tallyColour := fs.String("tally-colour", "yellow", "XY mode: colour of the source feeding the selected destination")
+	labelSet := fs.Int("label-set", 0, "XY mode: Cerebrum label set shown on the keys: 0 = primary mnemonic, N = alternate set N (e.g. Panels)")
 	duration := fs.Duration("duration", 0, "stop after this long (0 = until Ctrl+C)")
 	pollEvery := fs.Duration("poll", time.Second, "poll interval (keeps the session live, detects refresh requests)")
 	if err := parseVerbFlags(fs, args); err != nil {
@@ -197,6 +277,16 @@ func runCCPPanel(ctx context.Context, args []string) error {
 				return fmt.Errorf("%s row %d: button %q", *layout, i+1, r[0])
 			}
 			get(id).label = r[1]
+			if len(r) > 5 && strings.TrimSpace(r[5]) != "" && strings.TrimSpace(r[5]) != "0" {
+				get(id).blink = true
+			}
+			if len(r) > 4 && strings.TrimSpace(r[4]) != "" {
+				img, err := ccpLoadImage(r[4])
+				if err != nil {
+					return fmt.Errorf("%s row %d: %w", *layout, i+1, err)
+				}
+				get(id).image = img
+			}
 			if len(r) > 3 && strings.TrimSpace(r[3]) != "" && strings.TrimSpace(r[3]) != "0" {
 				get(id).frame = true
 			}
@@ -231,6 +321,25 @@ func runCCPPanel(ctx context.Context, args []string) error {
 	}
 
 	knobs := map[int]*ccpKnob{}
+	for _, im := range imageFlags {
+		id, spec, ok := strings.Cut(im, "=")
+		n, err := strconv.Atoi(strings.TrimSpace(id))
+		if !ok || err != nil {
+			return fmt.Errorf("--image %q: expected N=FILE[,invert][,dither][,margin=N][,threshold=N]", im)
+		}
+		img, err := ccpLoadImage(spec)
+		if err != nil {
+			return err
+		}
+		get(n).image = img
+	}
+	for _, bf := range blinkFlags {
+		n, err := strconv.Atoi(strings.TrimSpace(bf))
+		if err != nil {
+			return fmt.Errorf("--blink %q: a button number", bf)
+		}
+		get(n).blink = true
+	}
 	for _, kf := range knobFlags {
 		k, err := parseCCPKnob(kf)
 		if err != nil {
@@ -243,12 +352,116 @@ func runCCPPanel(ctx context.Context, args []string) error {
 			b.colour, b.hasCol = codec.NamedColours["amber"], true
 		}
 	}
+	var xy *ccpXY
+	if *cerebrumTarget != "" {
+		for _, c := range []struct {
+			v   string
+			dst *byte
+		}{{*destColour, &xyDestColour}, {*srcColour, &xySrcColour}, {*tallyColour, &xyTallyColour}} {
+			v, err := ccpc.ParseColour(c.v)
+			if err != nil {
+				return err
+			}
+			*c.dst = v
+		}
+		dm, err := parseXYMap("dest", destFlags)
+		if err != nil {
+			return err
+		}
+		sm, err := parseXYMap("src", srcFlags)
+		if err != nil {
+			return err
+		}
+		var lv []string
+		for _, l := range strings.FieldsFunc(*xyLevels, func(r rune) bool { return r == ';' || r == ',' }) {
+			lv = append(lv, strings.TrimSpace(l))
+		}
+		xy, err = newCCPXY(ctx, *cerebrumTarget, dm, sm, lv, *labelSet)
+		if err != nil {
+			return err
+		}
+		defer xy.close()
+		for b := range dm {
+			bt := get(b)
+			if bt.label == "" {
+				bt.label = xy.label(b)
+			}
+			bt.colour, bt.hasCol = xyDestColour, true
+		}
+		for b := range sm {
+			bt := get(b)
+			if bt.label == "" {
+				bt.label = xy.label(b)
+			}
+			bt.colour, bt.hasCol = xySrcColour, true
+		}
+		fmt.Printf("XY: %d destination(s), %d source(s) from Cerebrum %s, label set %d\n", len(dm), len(sm), *cerebrumTarget, *labelSet)
+	}
+	xySelected := 0
+	// xyTally lights the source feeding the selected destination yellow
+	// and every other source purple; the selected destination is framed.
+	xyTally := func(p *ccpc.Plugin) {
+		if xy == nil {
+			return
+		}
+		feeding := ""
+		if xySelected != 0 {
+			feeding = xy.sourceOf(xy.dests[xySelected])
+		}
+		for b, id := range xy.srcs {
+			c := xySrcColour
+			if id == feeding && feeding != "" {
+				c = xyTallyColour
+			}
+			if buttons[b].colour != c {
+				buttons[b].colour = c
+				_ = p.SetColour(ctx, b, c)
+			}
+		}
+		for b := range xy.dests {
+			sel := b == xySelected
+			if buttons[b].frame != sel {
+				buttons[b].frame = sel
+				_ = p.SetLabelOpts(ctx, b, buttons[b].label, sel)
+			}
+			if buttons[b].blink && !sel {
+				_ = p.SetColour(ctx, b, buttons[b].colour) // stop blinking on its colour, not off
+			}
+			buttons[b].blink = sel
+		}
+	}
+
 	if *frameAll {
 		for _, b := range buttons {
 			b.frame = true
 		}
 	}
 	selected := 0
+
+	// Structured sinks: one record per action, the button's position and
+	// what it shows included, so a collector can tell which key on which
+	// panel was pressed.
+	var sinks []slog.Handler
+	if *syslogAddr != "" {
+		udp, err := dialSyslogUDP(*syslogAddr)
+		if err != nil {
+			return fmt.Errorf("--syslog-addr %s: %w", *syslogAddr, err)
+		}
+		defer udp.Close()
+		sinks = append(sinks, udp.Handler(slog.LevelInfo))
+	}
+	if *logPath != "" {
+		f, err := os.OpenFile(*logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return fmt.Errorf("--log %s: %w", *logPath, err)
+		}
+		defer func() { _ = f.Close() }()
+		sinks = append(sinks, slog.NewJSONHandler(f, nil))
+	}
+	var events *slog.Logger
+	if len(sinks) > 0 {
+		events = slog.New(teeHandler(sinks))
+	}
 
 	host, port, err := splitHostPort(fs.Arg(0), codec.DefaultPort)
 	if err != nil {
@@ -275,7 +488,16 @@ func runCCPPanel(ctx context.Context, args []string) error {
 					fmt.Fprintf(os.Stderr, "button %d colour: %v\n", id, err)
 				}
 			}
-			if b.label != "" {
+			switch {
+			case b.image != nil:
+				bm := *b.image
+				if b.label != "" {
+					bm.Overlay(codec.TextScaled(b.label, b.frame, codec.SizeAuto))
+				}
+				if err := p.SetBitmap(ctx, id, &bm); err != nil {
+					fmt.Fprintf(os.Stderr, "button %d image: %v\n", id, err)
+				}
+			case b.label != "":
 				scale := 0
 				if k := knobs[id]; k != nil {
 					scale = k.scale()
@@ -301,13 +523,35 @@ func runCCPPanel(ctx context.Context, args []string) error {
 		pr, fw, n := p.Status()
 		fmt.Printf("%s connected: %s, protocol %d, firmware %s, %d buttons, PSU A %v B %v\n",
 			time.Now().Format("15:04:05"), pr.Model, pr.ProtocolVersion, fw, n, pr.PSUA, pr.PSUB)
+		if events != nil {
+			events.Info("ccp connected", "panel", host, "model", pr.Model, "protocol", int(pr.ProtocolVersion),
+				"firmware", fw, "buttons", n, "psu_a", pr.PSUA, "psu_b", pr.PSUB)
+		}
+		_ = p.Subscribe(dhsc.ValueRequest{Path: "gpi"}, func(e dhsc.Event) {
+			fmt.Printf("%s GPI %-3d %s\n", time.Now().Format("15:04:05.000"), e.ID, e.Value.Str)
+			if events != nil {
+				events.Info("ccp gpi", "panel", host, "model", pr.Model, "input", e.ID, "state", e.Value.Str)
+			}
+		})
 		knobEvents := make(chan codec.Button, 64)
 		p.OnFrame(func(f codec.Frame) {
 			if f.Cmd == codec.RspButton {
 				b, err := codec.ParseButton(f)
 				if err == nil {
 					fmt.Printf("%s button %-3d %s %d\n", time.Now().Format("15:04:05.000"), b.ID, b.ActionName(), b.Value)
-					if len(knobs) > 0 {
+					if events != nil {
+						control, row, col := ccpPosition(pr.Model, int(b.ID), *rotary)
+						label, colour := "", ""
+						if bt := buttons[int(b.ID)]; bt != nil {
+							label = strings.ReplaceAll(bt.label, "|", " ")
+							if bt.hasCol {
+								colour = fmt.Sprintf("0x%02x", bt.colour)
+							}
+						}
+						events.Info("ccp "+control, "panel", host, "model", pr.Model, "button", int(b.ID), "row", row, "col", col,
+							"action", b.ActionName(), "value", int(b.Value), "label", label, "colour", colour)
+					}
+					if len(knobs) > 0 || xy != nil {
 						select {
 						case knobEvents <- b:
 						default:
@@ -320,6 +564,8 @@ func runCCPPanel(ctx context.Context, args []string) error {
 		})
 		draw(p)
 		tick := time.NewTicker(*pollEvery)
+		blinkTick := time.NewTicker(*blinkRate)
+		blinkOn := true
 	loop:
 		for {
 			select {
@@ -330,6 +576,26 @@ func runCCPPanel(ctx context.Context, args []string) error {
 				break loop
 			case b := <-knobEvents:
 				switch {
+				case xy != nil && b.Action == codec.ActionDown && xy.dests[int(b.ID)] != "":
+					xySelected = int(b.ID)
+					_ = xy.refresh(ctx, false)
+					xyTally(p)
+					d := xy.dests[xySelected]
+					fmt.Printf("%s XY destination %s (%s), fed by source %s\n", time.Now().Format("15:04:05"), d, xy.dstName[d], xy.sourceOf(d))
+				case xy != nil && b.Action == codec.ActionDown && xy.srcs[int(b.ID)] != "" && xySelected != 0:
+					d, src := xy.dests[xySelected], xy.srcs[int(b.ID)]
+					err := xy.take(ctx, d, src)
+					got := xy.sourceOf(d)
+					fmt.Printf("%s XY take %s (%s) <- %s (%s): err=%v, Cerebrum now reads source %s\n", time.Now().Format("15:04:05"),
+						d, xy.dstName[d], src, xy.srcName[src], err, got)
+					if events != nil {
+						events.Info("ccp take", "panel", host, "dest", d, "dest_label", xy.dstName[d], "src", src,
+							"src_label", xy.srcName[src], "levels", strings.Join(xy.levels, ";"), "confirmed", got == src, "err", fmt.Sprint(err))
+					}
+					if err != nil && strings.Contains(err.Error(), "closed") {
+						_ = xy.connect(ctx)
+					}
+					xyTally(p)
 				case b.Action == codec.ActionDown && knobs[int(b.ID)] != nil:
 					prev := selected
 					selected = int(b.ID)
@@ -357,6 +623,22 @@ func runCCPPanel(ctx context.Context, args []string) error {
 					buttons[selected].label = k.text()
 					_ = p.SetLabelScaled(ctx, selected, k.text(), true, k.scale())
 					fmt.Printf("%s %s = %s%s (min %s, max %s)\n", time.Now().Format("15:04:05"), k.name, k.num(k.val), k.unit, k.num(k.min), k.num(k.max))
+					if events != nil {
+						events.Info("ccp knob", "panel", host, "button", selected, "name", k.name, "value", k.val,
+							"unit", k.unit, "min", k.min, "max", k.max, "step", k.step)
+					}
+				}
+			case <-blinkTick.C:
+				blinkOn = !blinkOn
+				for id, b := range buttons {
+					if !b.blink {
+						continue
+					}
+					c := codec.NamedColours["off"]
+					if blinkOn {
+						c = b.colour
+					}
+					_ = p.SetColour(ctx, id, c)
 				}
 			case <-tick.C:
 				pr, err := p.Poll(ctx)
@@ -372,6 +654,7 @@ func runCCPPanel(ctx context.Context, args []string) error {
 			}
 		}
 		tick.Stop()
+		blinkTick.Stop()
 		_ = p.Disconnect()
 	}
 	fmt.Println("released the panel")

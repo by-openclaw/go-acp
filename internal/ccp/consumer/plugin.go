@@ -57,6 +57,7 @@ type Plugin struct {
 	labels   map[int]string
 	colours  map[int]byte
 	subs     []sub
+	gpi      []byte
 	onFrame  []func(codec.Frame)
 }
 
@@ -199,6 +200,12 @@ func (p *Plugin) SetLabelScaled(ctx context.Context, id int, text string, frame 
 	return nil
 }
 
+// SetBitmap draws a ready 64×32 bitmap on a button (§1.2.6).
+func (p *Plugin) SetBitmap(ctx context.Context, id int, b *codec.Bitmap) error {
+	_, err := p.do(ctx, codec.WriteBitmap(byte(id), b))
+	return err
+}
+
 // SetColour sets a button's colour index (§1.2.5).
 func (p *Plugin) SetColour(ctx context.Context, id int, colour byte) error {
 	if _, err := p.do(ctx, codec.SetColour(byte(id), colour)); err != nil {
@@ -256,15 +263,105 @@ func (p *Plugin) dispatch(f codec.Frame) {
 	for _, h := range hooks {
 		h(f)
 	}
-	ev, ok := eventOf(f)
-	if !ok {
-		return
+	var events []dhsc.Event
+	if f.Cmd == codec.RspGPI {
+		events = p.gpiChanges(f)
+	} else if ev, ok := eventOf(f); ok {
+		events = []dhsc.Event{ev}
 	}
-	for _, s := range subs {
-		if s.prefix == "" || strings.HasPrefix(ev.Path, s.prefix) {
-			s.fn(ev)
+	for _, ev := range events {
+		for _, s := range subs {
+			if s.prefix == "" || strings.HasPrefix(ev.Path, s.prefix) {
+				s.fn(ev)
+			}
 		}
 	}
+}
+
+// bitOn reports input/output n (1-based) of a §1.2.10/§1.3.5 bitmap:
+// GPI-1 is the LS bit of the first (MS) byte, GPI-8 its MS bit, GPI-9 the
+// LS bit of the second byte, and so on.
+func bitOn(bitmap []byte, n int) bool {
+	i := (n - 1) / 8
+	return i < len(bitmap) && bitmap[i]>>((n-1)%8)&1 == 1
+}
+
+// gpiChanges turns a GPI frame into one event per input whose state
+// changed since the last frame (every input on the first frame).
+func (p *Plugin) gpiChanges(f codec.Frame) []dhsc.Event {
+	if len(f.Data) < 1 {
+		return nil
+	}
+	cur := f.Data[1:]
+	p.mu.Lock()
+	prev := p.gpi
+	p.gpi = append([]byte(nil), cur...)
+	p.mu.Unlock()
+	now := time.Now()
+	var out []dhsc.Event
+	for n := 1; n <= len(cur)*8; n++ {
+		on := bitOn(cur, n)
+		if prev != nil && len(prev) == len(cur) && bitOn(prev, n) == on {
+			continue
+		}
+		v := "off"
+		if on {
+			v = "on"
+		}
+		out = append(out, dhsc.Event{Path: fmt.Sprintf("gpi.%d", n), Group: "gpi", ID: n, Label: strconv.Itoa(n),
+			Value: dhsc.Value{Kind: dhsc.KindString, Str: v, Raw: []byte(v)}, Timestamp: now, Access: 1})
+	}
+	return out
+}
+
+// ReadGPI asks the state of every input (§1.2.11 → §1.3.5).
+func (p *Plugin) ReadGPI(ctx context.Context) ([]byte, error) {
+	f, err := p.do(ctx, codec.ReadGPI())
+	if err != nil {
+		return nil, err
+	}
+	if len(f.Data) < 1 {
+		return nil, fmt.Errorf("ccp: empty GPI state")
+	}
+	return f.Data[1:], nil
+}
+
+// ReadGPO asks the state of every output (§1.2.13 → §1.3.6).
+func (p *Plugin) ReadGPO(ctx context.Context) ([]byte, error) {
+	f, err := p.do(ctx, codec.ReadGPO())
+	if err != nil {
+		return nil, err
+	}
+	if len(f.Data) < 1 {
+		return nil, fmt.Errorf("ccp: empty GPO state")
+	}
+	return f.Data[1:], nil
+}
+
+// SetGPOs changes the named outputs (1-based) and keeps the others: the
+// set command carries every output (§1.2.10), so the current state is read
+// first.
+func (p *Plugin) SetGPOs(ctx context.Context, change map[int]bool) ([]byte, error) {
+	cur, err := p.ReadGPO(ctx)
+	if err != nil {
+		return nil, err
+	}
+	next := append([]byte(nil), cur...)
+	for n, on := range change {
+		i := (n - 1) / 8
+		if n < 1 || i >= len(next) {
+			return nil, fmt.Errorf("ccp: GPO %d out of range (1..%d)", n, len(next)*8)
+		}
+		if on {
+			next[i] |= 1 << ((n - 1) % 8)
+		} else {
+			next[i] &^= 1 << ((n - 1) % 8)
+		}
+	}
+	if _, err := p.do(ctx, codec.SetGPO(next)); err != nil {
+		return nil, err
+	}
+	return next, nil
 }
 
 func eventOf(f codec.Frame) (dhsc.Event, bool) {
@@ -287,8 +384,6 @@ func eventOf(f codec.Frame) (dhsc.Event, bool) {
 		path := fmt.Sprintf("buttons.%d", b.ID)
 		return dhsc.Event{Path: path, Group: "buttons", ID: int(b.ID), Label: strconv.Itoa(int(b.ID)),
 			Value: dhsc.Value{Kind: dhsc.KindString, Str: v, Raw: []byte(v)}, Timestamp: now, Access: 1}, true
-	case codec.RspGPI:
-		return dhsc.Event{Path: "gpi", Label: "gpi", Value: dhsc.Value{Kind: dhsc.KindString, Str: fmt.Sprintf("% x", f.Data[1:])}, Timestamp: now, Access: 1}, true
 	case codec.RspError:
 		pe, _ := codec.ParseError(f)
 		return dhsc.Event{Path: "status.error", Label: "error", Value: dhsc.Value{Kind: dhsc.KindString, Str: pe.Error()}, Timestamp: now, Access: 1}, true

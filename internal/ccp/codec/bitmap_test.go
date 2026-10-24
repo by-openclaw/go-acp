@@ -40,9 +40,9 @@ func TestBitmapEncodeLayout(t *testing.T) {
 		{63, 31, 0*4 + 1, 0x80}, // bottom-right: first column sent, band 0 → byte 1, MSB = lowest row
 		{63, 24, 0*4 + 1, 0x01},
 		{63, 23, 0*4 + 0, 0x80},
-		{63, 0, 0*4 + 2, 0x01},  // top-right: band 3 → byte 2, LSB = top row of the band
-		{0, 0, 63*4 + 2, 0x01},  // top-left: last column
-		{0, 8, 63*4 + 3, 0x80},  // row 8: band 2 → byte 3, lowest row of the band is 15 → bit 7 is row 15
+		{63, 0, 0*4 + 2, 0x01}, // top-right: band 3 → byte 2, LSB = top row of the band
+		{0, 0, 63*4 + 2, 0x01}, // top-left: last column
+		{0, 8, 63*4 + 3, 0x80}, // row 8: band 2 → byte 3, lowest row of the band is 15 → bit 7 is row 15
 	}
 	for _, c := range cases {
 		var b Bitmap
