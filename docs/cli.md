@@ -88,7 +88,9 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | probel-sw08p
+  Verbs (ccp):                 info, walk, get, set, watch + panel, colours
+                               (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -168,6 +170,7 @@ PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
   ccm           EVS Neuron CCM (REST/JSON over TLS)
+  ccp           Axon Cortex Control Panel Protocol (CCP-1601 …)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
   mnset         Riedel MuoN eMSFP / FusioN
@@ -1975,6 +1978,7 @@ PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
   ccm           EVS Neuron CCM (REST/JSON over TLS)
+  ccp           Axon Cortex Control Panel Protocol (CCP-1601 …)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
   mnset         Riedel MuoN eMSFP / FusioN
@@ -2056,6 +2060,7 @@ PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
   ccm           EVS Neuron CCM (REST/JSON over TLS)
+  ccp           Axon Cortex Control Panel Protocol (CCP-1601 …)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
   mnset         Riedel MuoN eMSFP / FusioN
