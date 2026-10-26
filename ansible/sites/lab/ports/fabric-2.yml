@@ -1,18 +1,20 @@
 ---
 # FABRIC-2 (DCS-7020TR-48) port map.
+# Desired switch configuration only (applied by playbooks/arista-fabric.yml).
+# Which device sits on a port, its optic and its light are discovered live, not written here.
 ports:
   # PTP grandmaster feed (VLAN 605): pve01 I210 on Et1, second GM reserved on Et2
   Ethernet1: { profile: gm_feed, desc: PTP-GM, extra: [ptp transport layer2] }   # pve01 ptp4l runs network_transport L2 (2026-10-24)
   Ethernet2: { profile: gm_feed, desc: PTP-GM }
-  # Management edge (VLAN 600). Devices read live 2026-10-26 (LLDP + MAC table), after the 2026-10-25 rewire.
-  Ethernet5:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # Neuron CONVERT lab-convert-01 control (0003.4120.b460), 1G
-  Ethernet6:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # ATEME DR5000 IRD 10.6.255.114 (40d8.550c.c983), 100M, no LLDP
-  Ethernet7:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # Neuron Shuffler lab-shuffle-01 control (0003.4120.4b90), 1G
-  Ethernet8:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # Neuron VIEW lab-view-01 control (0003.4120.1751), 1G
-  Ethernet9:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # unidentified: 00e0.81cc.6c79 (TYAN OUI), 1G, no LLDP, no ARP entry
+  # Management edge (VLAN 600)
+  Ethernet5:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet6:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet7:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet8:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet9:  { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
   Ethernet10: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
-  Ethernet11: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # link up 100M, no MAC learned (TT1260 .110 / RX1290 .111 do not answer)
-  Ethernet12: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }   # link up 1G, no MAC learned
+  Ethernet11: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
+  Ethernet12: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
   Ethernet21: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
   Ethernet22: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
   Ethernet23: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }

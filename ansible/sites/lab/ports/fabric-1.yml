@@ -2,6 +2,8 @@
 # FABRIC-1 (DCS-7060CX-32S) port map — which port uses which profile.
 # Profiles are defined by the arista_ports role from site.yml; `extra` holds
 # per-port physical settings (speed / FEC). Unlisted ports are not managed.
+# Desired switch configuration only (applied by playbooks/arista-fabric.yml).
+# Which device sits on a port, its optic and its light are discovered live, not written here.
 ports:
   # Management edge (VLAN 600)
   Ethernet1/1: { profile: mgmt_access, desc: MGMT_CTRL-EDGE }
@@ -18,14 +20,14 @@ ports:
   # neuron too"). Rx light read on every port before the change (-0.8..+0.7 dBm);
   # device per port to be confirmed by LLDP once the links are up — only
   # Et25/1 identified (Neuron 0003.4120.4b9c, LR4).
-  Ethernet9/1:  { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }   # 100G DR, CONVERT en8 (0003.4120.b468)
-  Ethernet11/1: { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }   # 100G SR4, NeuronView en8 (0003.4120.1759)
-  Ethernet13/1: { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }   # 100G SR4, Shuffler en8 (0003.4120.4b98)
-  Ethernet19/1: { profile: client_red,  desc: RED-CLIENT,  extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e1 (AR4 split, lane 1), 40a3.6ba2.100c
-  Ethernet21/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }   # 100G DR, CONVERT en12 (0003.4120.b46c)
-  Ethernet23/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }   # 100G SR4, NeuronView en12 (0003.4120.175d)
-  Ethernet25/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }   # 100G DR (FS QSFP28-DR-100G, read 2026-10-26; was noted LR4), Shuffler en12 (0003.4120.4b9c)
-  Ethernet31/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e2 (AR4 split, lane 1), 40a3.6ba2.100d
+  Ethernet9/1:  { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }   # 100G DR
+  Ethernet11/1: { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }   # 100G SR4
+  Ethernet13/1: { profile: client_red,  desc: RED-CLIENT,  extra: [no error-correction encoding] }   # 100G SR4
+  Ethernet19/1: { profile: client_red,  desc: RED-CLIENT,  extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e1 (AR4 split, lane 1)
+  Ethernet21/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }   # 100G DR
+  Ethernet23/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }   # 100G SR4
+  Ethernet25/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [no error-correction encoding] }   # 100G
+  Ethernet31/1: { profile: client_blue, desc: BLUE-CLIENT, extra: [speed forced 25gfull, no error-correction encoding] }   # FusioN e2 (AR4 split, lane 1)
   # Uplinks to FABRIC-2 (profile, description and MST costs from site.yml `uplinks`)
   Ethernet33: { uplink: red }
   Ethernet34: { uplink: blue }
