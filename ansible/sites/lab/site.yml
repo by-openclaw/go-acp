@@ -37,6 +37,9 @@ mgmt:
   snmp: { user: dhs-ro, group: DHS-RO, view: DHS-RO, acl: SNMP-MGMT, auth: sha256, priv: aes }
   eapi: true
   gnmi: true
+  # sFlow samples (1 in N packets) to the control node, from the management VRF.
+  # The only per-flow rate an Arista gives for ST 2110 streams. UDP 6343.
+  sflow: { sample: 16384, collector: 10.6.250.101 }
   # Transit VLAN kept from the original design (default VRF, not used by the
   # in-band control leaks, which are done with router general).
   transit: { vlan: 606, name: FOR_VRF_LEAKING, prefix: "10.6.6", mask: 30 }
