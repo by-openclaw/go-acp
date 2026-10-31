@@ -156,6 +156,30 @@ func TestVerboseListsFindings(t *testing.T) {
 	}
 }
 
+// The DEV-SWITCH-MIB date lies: rf-switch/1986 carries changes up to 2019
+// under a 2014 LAST-UPDATED, so going by date would keep rf-switch/7113.
+func TestDefaultPinOutranksANewerDate(t *testing.T) {
+	dir := t.TempDir()
+	for name, stamp := range map[string]string{"1986": "201410220000Z", "7113": "201701120000Z"} {
+		p := filepath.Join(dir, "dev-systemtechnik", "rf-switch", name, "dev-switch-"+name+".mib")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := "DEV-SWITCH-MIB DEFINITIONS ::= BEGIN\n" +
+			"m MODULE-IDENTITY LAST-UPDATED \"" + stamp + "\" ::= { iso 3 }\nEND\n"
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, _, stderr := execMibc(t, "-v", "-out", filepath.Join(t.TempDir(), "t.gz"), dir)
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if !strings.Contains(stderr, "dev-switch-1986.mib, which was kept (pinned)") {
+		t.Errorf("stderr = %q", stderr)
+	}
+}
+
 func TestUsageAndRefusals(t *testing.T) {
 	dir := tree(t)
 	for _, tc := range []struct {

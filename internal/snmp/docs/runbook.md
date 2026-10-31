@@ -259,7 +259,9 @@ Offline, reviewed in a PR — never at runtime.
 
 ```
 go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-    <by-protocol/mib>/ird <by-protocol/mib>/standard \
+    <by-protocol/mib>/ateme <by-protocol/mib>/ericsson \
+    <by-protocol/mib>/dev-systemtechnik <by-protocol/mib>/novelsat \
+    <by-protocol/mib>/standard \
     internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
     internal/snmp/mib
 ```

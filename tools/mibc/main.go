@@ -7,7 +7,7 @@
 // source is parsed here, by a developer, and the result is committed; the
 // shipped binary reads numbers and names and never a MIB. The roots are
 // every directory the modules come from — today a checkout of
-// github.com/by-protocol/mib (the IRDs and the IETF standard modules) and
+// github.com/by-protocol/mib (the vendor and IETF standard modules) and
 // internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs (the Snell set).
 // Every IMPORT must resolve across the roots together; run tools/mibcheck
 // -fetch first if it does not.
@@ -62,7 +62,7 @@ func run(argv []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("mibc", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	out := fs.String("out", "", "table to write (gzip-compressed TSV)")
-	pins := fs.String("pin", "IP-MIB=RX1290",
+	pins := fs.String("pin", "IP-MIB=RX1290,DEV-SWITCH-MIB=rf-switch/1986",
 		"comma-separated MODULE=PATH-SUBSTRING: which file wins when a module ships in copies no date can decide between")
 	exclude := fs.String("exclude", "Copy of ",
 		"comma-separated filename prefixes to ignore — stray copies left beside the originals")

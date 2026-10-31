@@ -96,13 +96,18 @@ with the `gh` CLI from the desk — a plain `git clone` from the fleet has
 no credentials). Layout:
 
 ```
-ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
-              RX-DUAL-GIGE-EX · TRAP · TT1260-MIB · Types · ip · rxDualGigE
-ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
-              RX1290-MIB · Types · ip-RX1290 · rxDualGigE
-ird/RX8200/   ~20 files, one per functional area
-standard/     RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
-              SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC
+ateme/ird/DR5000/                  ATEME-DR5000-MIB + changelog
+ericsson/ird/TT1260/               AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
+                                   RX-DUAL-GIGE-EX · TRAP · TT1260-MIB · Types · ip · rxDualGigE
+ericsson/ird/RX1290/               AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
+                                   RX1290-MIB · Types · ip-RX1290 · rxDualGigE
+ericsson/ird/RX8200/               ~20 files, one per functional area
+dev-systemtechnik/rf-switch/1986/  DEV-SWITCH-MIB, the default (pinned)
+dev-systemtechnik/rf-switch/7113/  DEV-SWITCH-MIB, kept, not compiled
+novelsat/modem/                    root · common · demodulator · modulator
+standard/                          RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
+                                   SNMPv2-CONF · SNMPv2-MIB · SNMPv2-SMI · SNMPv2-TC
+                                   IF-MIB · IANAifType-MIB · HCNUM-TC · ITU-ALARM-TC-MIB
 ```
 
 `Base.mib` is the root every product MIB imports:
@@ -121,9 +126,9 @@ So the compiler has to take **two** source roots, not one: a checkout of
 frames. Whether the Snell set should later move to `by-protocol/mib` for
 ADR-0015's single-source rule is the codeowner's call; it is not a
 blocker, and moving 232 tracked files is a separate change from
-compiling them. Per
-device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
-six IETF base modules every vendor MIB imports and no vendor ships.
+compiling them. The library is `<manufacturer>/<device-type>/<model>/`, plus
+`standard/` carrying the IETF base modules every vendor MIB imports and no
+vendor ships.
 
 There are **TWO** vendor trees in this plant, not one — code that assumed a
 single vendor root would work against the IRDs and quietly mis-address the
@@ -144,7 +149,7 @@ branch the testbed devices answer on.
 
 The import graph is shallow and shared:
 
-    ird/<device>/*.mib
+    ericsson/ird/<device>/*.mib
       ├── ETV-Base-MIB   (Base.mib)    enterprises 1773
       ├── ETV-Types-TC   (Types.mib)   Uint8 / Uint16 / Uint32 / PIDNumber
       └── standard/      RFC1155-SMI · RFC-1212 · RFC-1215
@@ -169,7 +174,9 @@ are a checkout of `by-protocol/mib` (the IRDs and the IETF standard modules)
 and the Snell set already in this repo:
 
     go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-        <by-protocol/mib>/ird <by-protocol/mib>/standard \
+        <by-protocol/mib>/ateme <by-protocol/mib>/ericsson \
+        <by-protocol/mib>/dev-systemtechnik <by-protocol/mib>/novelsat \
+        <by-protocol/mib>/standard \
         internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
         internal/snmp/mib
 

@@ -192,9 +192,14 @@ func TestTheEmbeddedTableNamesThePlant(t *testing.T) {
 	if got := tb.Name(oid("1.3.6.1.4.1.1773.1.3.200.2.6.4.0"), "ETV-TT1260-MIB"); got != "userLsdPid.0" {
 		t.Errorf("the TT1260's name for .2.6.4 = %q", got)
 	}
-	got, err := Resolve("controlMode.0")
+	got, err := Resolve("ETV-RX1290-MIB::controlMode.0")
 	if err != nil || got.String() != "1.3.6.1.4.1.1773.1.3.200.1.11.0" {
-		t.Errorf("Resolve(controlMode.0) = %s, %v", got, err)
+		t.Errorf("Resolve(ETV-RX1290-MIB::controlMode.0) = %s, %v", got, err)
+	}
+	// The DEV RF switches define controlMode too, elsewhere: a bare name
+	// must ask, never pick the object that takes an IRD off the panel.
+	if _, err := Resolve("controlMode.0"); err == nil {
+		t.Error("a name at two OIDs resolved without its module")
 	}
 }
 
