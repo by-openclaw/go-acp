@@ -42,6 +42,10 @@ const (
 	VersionMismatch = "snmp_reply_version_mismatch"
 	// CommunityMismatch is a reply carrying a community we did not send.
 	CommunityMismatch = "snmp_reply_community_mismatch"
+	// NoDeviceMIB is a device whose sysObjectID selects no table and none
+	// was asked for: vendor objects stay numbers.
+	NoDeviceMIB = "snmp_no_device_mib"
+
 	// BulkOverrun is an agent that returned more repetitions than were
 	// asked for, which a manager that trusted the count would misparse.
 	BulkOverrun = "snmp_bulk_returned_too_much"

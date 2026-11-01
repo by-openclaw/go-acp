@@ -258,10 +258,8 @@ are under [../testdata/](../testdata).
 Offline, reviewed in a PR — never at runtime.
 
 ```
-go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-    <by-protocol/mib>/ird <by-protocol/mib>/standard \
-    internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
-    internal/snmp/mib
+go run ./tools/mibc -library <by-protocol/mib> -out internal/snmp/mib/tables \
+    -set standard=internal/snmp/mib,snell=internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
 ```
 
 `-v` lists duplicate modules and which copy won, and names that did not

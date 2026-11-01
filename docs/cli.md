@@ -1060,7 +1060,7 @@ Usage of get:
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
-    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+    	the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model
   -oid string
     	comma-separated objects, by standard name or dotted number (e.g. sysDescr.0,1.3.6.1.4.1.7995.1)
   -priv string
@@ -1098,7 +1098,7 @@ Usage of walk:
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
-    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+    	the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model
   -oid string
     	subtree root, by standard name or dotted number; the default is the whole tree, standard MIBs and the vendor's own (default "1.3.6.1")
   -priv string
@@ -1159,7 +1159,7 @@ FLAGS
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
-    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+    	the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model
   -oid string
     	the object to write, by standard name or dotted number
   -priv string
@@ -1198,6 +1198,8 @@ Usage of trap-listen:
     	the sender's engine boot count (default 1)
   -engine-id string
     	name in the SENDER's engine ID; a v3 notification is authenticated as the sender's engine, so this must match what it uses (default "dhs-agent")
+  -mib string
+    	the sender's MIB table, ateme-dr5000 for example; without it vendor objects stay numbers
   -priv string
     	v3 privacy: des or aes
   -priv-pass string

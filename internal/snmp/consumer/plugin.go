@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	dhsc "dhs/internal/consumer"
@@ -70,10 +71,14 @@ type Plugin struct {
 
 	deps plugin.Deps
 
-	mu       sync.Mutex
-	sess     *Session
-	host     string
-	sysOID   codec.OID
+	mu     sync.Mutex
+	sess   *Session
+	host   string
+	sysOID codec.OID
+	// mibName is the table asked for; table is the one in use, set at
+	// Connect. One device, one table: see internal/snmp/mib/device.go.
+	mibName   string
+	table     atomic.Pointer[mib.Table]
 	tree      []dhsc.Object
 	byPath    map[string]codec.OID
 	paths     map[string]codec.OID
@@ -81,11 +86,11 @@ type Plugin struct {
 	writeCmty string
 	// v3 is the USM user this connector authenticates as, when one is
 	// configured. It makes every session v3-first; see versionOrder.
-	v3 *V3
+	v3        *V3
 	version   codec.Version
 	writeSess *Session
 	port      int
-	interval time.Duration
+	interval  time.Duration
 
 	poller *pollwatch.Poller
 }
@@ -144,7 +149,12 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			p.sysOID = binds[0].Value.OID
 			p.paths = nil
 		}
+		err = p.selectTable()
 		p.mu.Unlock()
+		if err != nil {
+			_ = sess.Close()
+			return err
+		}
 		// This connector stamps its traffic through RecordRx (every read
 		// below does), so health takes its times from that built-in sink.
 		// It was given the metrics Connector's instead, which nothing here
@@ -389,7 +399,7 @@ func (p *Plugin) objectFor(b codec.VarBind) dhsc.Object {
 	if len(o.Path) > 0 {
 		o.Label = o.Path[len(o.Path)-1]
 	}
-	def, rest := mib.Compiled().Lookup(b.Name)
+	def, rest := p.Table().Lookup(b.Name)
 	if def == nil {
 		o.Kind = o.Value.Kind
 		return o
@@ -418,7 +428,7 @@ func (p *Plugin) objectFor(b codec.VarBind) dhsc.Object {
 //	1.3.6.1.4.1.27338.5.3.2.2.4.1.0
 //	  → dr5000.ChannelConfiguration.Input.Sat.Interface
 func (p *Plugin) pathFor(oid codec.OID) []string {
-	t := mib.Compiled()
+	t := p.Table()
 	var names []string
 	for i := len(oid); i > 0; i-- {
 		if def, rest := t.Lookup(oid[:i]); def != nil && len(rest) == 0 {
@@ -484,7 +494,7 @@ func isWordStart(c byte) bool {
 // ".0"; a column is read at a row index, which the caller must have
 // named in the path (…Table.Entry.Pid.3), and which is already there.
 func (p *Plugin) instanceOf(oid codec.OID) codec.OID {
-	def, _ := mib.Compiled().Lookup(oid)
+	def, _ := p.Table().Lookup(oid)
 	if def != nil && def.Kind == "object-type" && len(def.Index) == 0 {
 		return append(append(codec.OID{}, oid...), 0)
 	}
@@ -562,7 +572,7 @@ func (p *Plugin) SetValue(ctx context.Context, req dhsc.ValueRequest, val dhsc.V
 // wireValue turns a neutral value into the syntax the MIB declares for
 // that object — an operator writes "rf1" or "1", not a type tag.
 func (p *Plugin) wireValue(oid codec.OID, val dhsc.Value) (codec.Value, error) {
-	def, _ := mib.Compiled().Lookup(oid)
+	def, _ := p.Table().Lookup(oid)
 	s := valueString(val)
 
 	// An enum may be written by its name: the MIB is what maps it.
@@ -614,6 +624,44 @@ func valueString(v dhsc.Value) string {
 		return strconv.FormatBool(v.Bool)
 	}
 	return v.Str
+}
+
+// SetMIB names the device's table, for a model its sysObjectID cannot
+// identify. Called before Connect.
+func (p *Plugin) SetMIB(name string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.mibName = name
+}
+
+// selectTable picks the one table this connection names objects from: the
+// one asked for, else the one the sysObjectID selects, else the base table
+// with a compliance note, so vendor objects stay numbers rather than
+// borrow another device's names. The caller holds p.mu.
+func (p *Plugin) selectTable() error {
+	name := p.mibName
+	if name == "" {
+		found, ok := mib.ForObjectID(p.sysOID)
+		if !ok {
+			p.ComplianceProfile().Note(NoDeviceMIB)
+			found = mib.BaseTable
+		}
+		name = found
+	}
+	t, err := mib.Load(name)
+	if err != nil {
+		return err
+	}
+	p.table.Store(t)
+	return nil
+}
+
+// Table is the table this connection names objects from.
+func (p *Plugin) Table() *mib.Table {
+	if t := p.table.Load(); t != nil {
+		return t
+	}
+	return mib.Base()
 }
 
 // SetCommunity takes the v1/v2c passwords. They are passwords, so they
@@ -702,7 +750,7 @@ func (p *Plugin) firstNamed(ctx context.Context, sess *Session, suffixes ...stri
 	if len(root) < 7 || !root.HasPrefix(codec.OID{1, 3, 6, 1, 4, 1}) {
 		return ""
 	}
-	under := mib.Compiled().Under(append(codec.OID{}, root[:7]...))
+	under := p.Table().Under(append(codec.OID{}, root[:7]...))
 	for _, suffix := range suffixes {
 		for _, o := range under {
 			if o.Kind != "object-type" || !strings.HasSuffix(o.Name, suffix) || len(o.Index) != 0 {
@@ -751,7 +799,7 @@ func (p *Plugin) pathIndex() map[string]codec.OID {
 		branches = append(branches, append(codec.OID{}, root[:7]...))
 	}
 	for _, b := range branches {
-		for _, o := range mib.Compiled().Under(b) {
+		for _, o := range p.Table().Under(b) {
 			// Leaves AND branches: a leaf is what `get` names, a branch
 			// is what `watch --path` scopes to.
 			if o.Kind != "object-type" && o.Kind != "object-identifier" {
@@ -799,7 +847,7 @@ func (p *Plugin) resolve(req dhsc.ValueRequest) (codec.OID, error) {
 	if oid, err := codec.ParseOID(name); err == nil {
 		return oid, nil
 	}
-	return mib.Compiled().Resolve(name)
+	return p.Table().Resolve(name)
 }
 
 // Subscribe polls: SNMP notifications are the agent's choice, not the
@@ -969,7 +1017,7 @@ func firstBind(binds []codec.VarBind, oid codec.OID, what string) (codec.Value, 
 // ("rf1", "true", "OK"), because that is what an operator reads and
 // what an alarm rule is written against.
 func (p *Plugin) decode(oid codec.OID, v codec.Value) dhsc.Value {
-	def, _ := mib.Compiled().Lookup(oid)
+	def, _ := p.Table().Lookup(oid)
 	return named(def, toNeutral(v))
 }
 
