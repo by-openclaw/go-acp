@@ -67,6 +67,17 @@
     # and summarise every 900 updates (1 Hz -> 15 min) = ~96 lines/day, still
     # enough for the rms health check below.
     pve_ptp_summary_updates: 900
+    # What the GM announces about its time (owner, 2026-10-24). The offset is
+    # known (37, TAI-UTC) so it is marked valid; the time comes from NTP, so
+    # the source says NTP (0x50) and nothing claims to be traceable. Before
+    # this, currentUtcOffsetValid was 0 and timeSource INTERNAL_OSCILLATOR
+    # (0xa0), and a receiver respecting the flag could not turn TAI into UTC.
+    # ptp4l.conf has no key for these: they are set over its management
+    # socket (GRANDMASTER_SETTINGS_NP) after every start, so a restart keeps them.
+    pve_ptp_gm_settings: >-
+      clockClass 248 clockAccuracy 0xfe offsetScaledLogVariance 0xffff
+      currentUtcOffset 37 leap61 0 leap59 0 currentUtcOffsetValid 1
+      ptpTimescale 1 timeTraceable 0 frequencyTraceable 0 timeSource 0x50
     # journald cap on the node (owner 2026-08-23: "reduce journal too"). It had
     # grown to 3.9 GB. 1 GB total / 128 MB per file keeps weeks of history at
     # the reduced PTP log rate, and vacuum applies the cap immediately.
@@ -310,6 +321,30 @@
               ~ ', faults/24h ' ~ (pve_ptp_faults.stdout | default('?'))
             if pve_ptp_role == 'gm_ntp' else '' }}) ·
           {{ pve_journal_size.stdout | default('journal size unknown') | trim }}
+
+    - name: "ptp4l announces UTC offset valid, time source NTP (re-applied on every start)"
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ptp4l.service.d/dhs-gm-settings.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # managed by go-acp ansible (pve-time.yml) — GM time properties
+          [Service]
+          ExecStartPost=/bin/sh -c 'sleep 2; /usr/sbin/pmc -u -b 0 -d 77 "SET GRANDMASTER_SETTINGS_NP {{ pve_ptp_gm_settings }}" >/dev/null'
+      when: pve_ptp_role == 'gm_ntp'
+      register: pve_ptp_gm_dropin
+    # No ptp4l restart for this (it would drop the GM for seconds): reload the
+    # units and apply the same settings to the running daemon.
+    - name: Reload units after the GM-settings drop-in
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: pve_ptp_gm_dropin is changed
+    - name: Apply the GM settings to the running ptp4l
+      ansible.builtin.command:
+        argv: [/usr/sbin/pmc, -u, -b, "0", -d, "77", "SET GRANDMASTER_SETTINGS_NP {{ pve_ptp_gm_settings }}"]
+      when: pve_ptp_gm_dropin is changed
+      changed_when: true
 
   handlers:
     - name: restart chrony

@@ -1,6 +1,6 @@
 {#- arista_mgmt — management plane. Owns: management VLAN + its VLAN interface
     (switches are the gateway: VRRP), management loopback, NTP, SNMPv3,
-    eAPI / gNMI, default routes. -#}
+    eAPI / gNMI, sFlow, default routes. -#}
 {%- set sw = switches[inventory_hostname] -%}
 vlan {{ mgmt.vlan }}
    name {{ mgmt.vlan_name }}
@@ -60,4 +60,11 @@ management api gnmi
    !! gNMI (grpc 6030) for streaming telemetry / dhs connector. Role arista_mgmt.
    transport grpc default
    provider eos-native
+{% endif %}
+{% if mgmt.sflow | default(none) %}
+!
+sflow sample {{ mgmt.sflow.sample }}
+sflow vrf {{ mgmt.vrf }} destination {{ mgmt.sflow.collector }}
+sflow vrf {{ mgmt.vrf }} source-interface Vlan{{ mgmt.vlan }}
+sflow run
 {% endif %}
