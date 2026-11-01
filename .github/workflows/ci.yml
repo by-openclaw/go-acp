@@ -322,6 +322,10 @@ jobs:
           check internal/ccm/consumer 100
           check internal/ccm/provider 100
           check internal/consumer/compliance 100
+          check internal/virtuoso/codec 100
+          # 99: the one uncovered block is NewTLSClient's error, which this
+          # connector's TLS posture (no files to read) cannot reach.
+          check internal/virtuoso/consumer 99
           # SNMP wire format. Floor verified on the Linux tools host as well
           # as this desk: the package is stdlib-only with no build tags, so
           # the two agree, but the check is what says so.

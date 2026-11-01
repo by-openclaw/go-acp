@@ -88,11 +88,13 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
                                (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (virtuoso):            info, walk, get, set, watch, export
+                               (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -186,6 +188,7 @@ PROTOCOLS
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
+  virtuoso      Nevion Virtuoso MI chassis and cards (REST/JSON)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1997,6 +2000,7 @@ PROTOCOLS
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
+  virtuoso      Nevion Virtuoso MI chassis and cards (REST/JSON)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -2080,6 +2084,7 @@ PROTOCOLS
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
+  virtuoso      Nevion Virtuoso MI chassis and cards (REST/JSON)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
