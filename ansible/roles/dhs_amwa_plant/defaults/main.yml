@@ -8,11 +8,14 @@
 dhs_amwa_plant_dir: /opt/dhs-amwa-plant
 dhs_amwa_plant_bin: "{{ dhs_amwa_plant_dir }}/dhs"
 
+# Start the plant at boot. Off: it runs when someone asks for it.
+dhs_amwa_plant_boot: false
+
 # Where the plant's binary comes from.
 #   release - the released binary the fleet already carries: the one
 #             dhs_host installed at dhs_version (sha-verified from the
 #             GitHub release). The plant then scores exactly what a
-#             release contains, and fleet-converge rolls it.
+#             release contains.
 #   build   - built from the checkout's HEAD on a Go-capable host and
 #             copied over, for scoring a branch before it is released.
 # A plant on its own build once drifted a release behind the fleet and

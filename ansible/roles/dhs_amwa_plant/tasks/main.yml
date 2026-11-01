@@ -231,10 +231,10 @@
 
 # The registry starts first and is RESTARTED (not just started) when
 # the binary or its unit changed, so a new build actually takes over.
-- name: Enable + start the registry
+- name: Start the registry
   ansible.builtin.systemd:
     name: dhs-nmos-registry.service
-    enabled: true
+    enabled: "{{ dhs_amwa_plant_boot }}"
     state: "{{ 'restarted' if (dhs_amwa_plant_bin_changed or dhs_amwa_plant_regunit is changed) else 'started' }}"
 
 - name: Give the registry a moment before the nodes register
@@ -243,10 +243,10 @@
     host: 127.0.0.1
     timeout: 30
 
-- name: Enable + start every node (restart on binary/unit/config change)
+- name: Start every node (restart on binary/unit/config change)
   ansible.builtin.systemd:
     name: "dhs-nmos-{{ item }}.service"
-    enabled: true
+    enabled: "{{ dhs_amwa_plant_boot }}"
     state: "{{ 'restarted' if dhs_amwa_plant_restart else 'started' }}"
   vars:
     dhs_amwa_plant_restart: >-
@@ -258,10 +258,10 @@
   loop: "{{ (dhs_amwa_plant_nodes | map(attribute='name') | list)
             + (range(0, dhs_amwa_plant_scale_count) | map('regex_replace', '^', 'scale') | list) }}"
 
-- name: Enable + start the mirror
+- name: Start the mirror
   ansible.builtin.systemd:
     name: dhs-nmos-mirror.service
-    enabled: true
+    enabled: "{{ dhs_amwa_plant_boot }}"
     daemon_reload: true
     state: "{{ 'restarted' if (dhs_amwa_plant_bin_changed or dhs_amwa_plant_mirrorunit is changed) else 'started' }}"
   when: dhs_amwa_plant_mirror_target != ""

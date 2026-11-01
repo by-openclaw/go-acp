@@ -13,6 +13,9 @@
 #   (on dhs-tools)
 #   cd /root/acp-runner/ansible
 #   ansible-playbook -i inventory/hosts.ini playbooks/amwa-reboot-resilience.yml
+#
+# The plant must have been converged with -e dhs_amwa_plant_boot=true:
+# its units are disabled at boot otherwise.
 
 - name: AMWA reboot resilience — plant
   hosts: plant

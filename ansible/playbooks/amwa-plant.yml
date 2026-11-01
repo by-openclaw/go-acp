@@ -8,10 +8,13 @@
 #   ansible-playbook playbooks/amwa-plant.yml            # again -> 0 changes
 #   ansible-playbook playbooks/amwa-plant.yml -e dhs_amwa_plant_scale_count=0
 #
+# Run on demand, after fleet-converge.yml: a converge never starts the
+# plant, and the units stay disabled at boot unless
+# -e dhs_amwa_plant_boot=true asks otherwise.
+#
 # The plant runs the RELEASED binary the fleet carries (dhs_host at
-# dhs_version, rolled by fleet-converge.yml, which imports this play
-# last) — one binary for the whole fleet, so a sweep scores what a
-# release contains. `-e dhs_amwa_plant_source=build` builds the
+# dhs_version, rolled by fleet-converge.yml) — one binary for the whole
+# fleet, so a sweep scores what a release contains. `-e dhs_amwa_plant_source=build` builds the
 # checkout's HEAD on the Go-capable build host (dhs-tools) instead,
 # for scoring a branch before it is released; the stamp in
 # /opt/dhs-amwa-plant/.source names which one is running.

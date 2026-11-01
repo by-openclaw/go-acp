@@ -4,4 +4,7 @@
 # Before #1176 it was copied by hand to /root/dhs-grafana and had drifted.
 dhs_observability_dir: /root/dhs-grafana
 dhs_observability_src: "{{ playbook_dir }}/../../docs/deployment/grafana/"
+# Restart policy of the containers. "no": the stack is started when someone
+# asks for it, and a reboot of the host leaves it down.
+dhs_observability_restart: "no"
 dhs_observability_promtail_image: grafana/promtail:3.4.1
