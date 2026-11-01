@@ -64,13 +64,16 @@ func Load(name string) (*Table, error) {
 func Base() *Table { return loaders[BaseTable]() }
 
 // byObjectID says which table a device's sysObjectID selects. Only a
-// branch one model owns belongs here: the TT1260 and RX1290 report the same
-// sysObjectID and the DEV switches share one tree, so those take --mib.
+// branch one table covers belongs here: the TT1260 and RX1290 report the same
+// sysObjectID and the DEV switches share one tree, so those take --mib, and
+// every EOS switch reads from one table, its model only a sysObjectID under
+// the same subtree.
 var byObjectID = []struct {
 	root  codec.OID
 	table string
 }{
 	{oid("1.3.6.1.4.1.27338.5"), "ateme-dr5000"},
+	{oid("1.3.6.1.4.1.30065"), "arista-eos"},
 	{SnellWilcox, "snell"},
 	{DHSAgent, BaseTable},
 }

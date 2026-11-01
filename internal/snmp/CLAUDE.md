@@ -99,13 +99,15 @@ no credentials). Layout:
 ateme/ird/DR5000/          ATEME-DR5000-MIB + changelog
 dev-systemtechnik/rf-switch/1986/ · 7113/   DEV-SWITCH-MIB, two branches
 novelsat/modem/            root · common · demodulator · modulator
+arista/switch/EOS/         the ARISTA-* set: one table, every EOS model
 ericsson/ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
               RX-DUAL-GIGE-EX · TRAP · TT1260-MIB · Types · ip · rxDualGigE
 ericsson/ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
               RX1290-MIB · Types · ip-RX1290 · rxDualGigE
 ericsson/ird/RX8200/   ~20 files, one per functional area
 standard/     RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
-              SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC
+              SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC, and the standard modules a
+              managed switch serves: ENTITY-*, RMON, BRIDGE, MAU, PTP, IP-MIB…
 ```
 
 `Base.mib` is the root every product MIB imports:
@@ -181,14 +183,24 @@ runtime knows only numbers, names and types. The sources are a checkout of
 
 (the last root is our own DHS-MIB, so the agent's names resolve too)
 
+mibc refuses a run that leaves any table in `-out` uncompiled, and says which:
+dropping a table is deleting its file.
+
 Findings (duplicate modules and which copy won, names that did not resolve)
 are expected and listed with `-v`; they are not failures. Two rules decide
 between copies: the newest LAST-UPDATED wins, and `-pin` overrides it where
-the codeowner chose (IP-MIB is the RX1290's, the newest product). A vendor
+the codeowner chose (`IP-MIB` is Ericsson's own where an IRD ships one: that
+module of that name is a vendor branch, not RFC 4293's). A vendor
 defect only the vendor's own files can prove is corrected in
 `tools/mibc/patches.txt`, each line with its evidence. Symbols no MIB anywhere
 defines (the Snell QUASAR/IQDLY21 registrations) stay unresolved and
 reported, never invented.
+
+`internal/snmp/mib/enterprises.tsv.gz` is the IANA registry, names only,
+compiled the same offline way; regenerate it when a device's constructor is
+missing:
+
+    go run ./tools/genpen -in enterprise-numbers.txt -out internal/snmp/mib/enterprises.tsv.gz
 
 One OID can carry two names: the TT1260 and RX1290 report the same
 sysObjectID and differ at 34 OIDs. Each has its own table; `--mib ericsson-tt1260` on the
@@ -252,6 +264,29 @@ What the neutral face decides, and why:
   dropped, and a table row's index last. The MIB's own name works as
   an alias, so `sysLocation`, `system.Location` and the number all
   resolve.
+- **A table a parent counts reads through its count** (`WalkBounded`), for
+  a device that pads a table to full size. `Table.Bounded` derives this from
+  the compiled table alone, with no device name: T's INDEX is its parent's
+  plus one, and the parent has an integer column named `<T's stem>Count` or
+  `<parent's stem>N<the rest of T>`. That is a reading of names, so each table
+  proves it on the device first (`provenCount`): the largest count's last row
+  holds data, the row past every count holds none, and non-index columns
+  decide, because a device answers any index with made-up index values. A
+  count that fails, or a count over the index's stated range (or `mib.MaxRows`
+  when none is stated), fires `snmp_count_not_trusted` and that table gets the
+  plain walk: a wrong rule may cost time, it may not hide a row. Only the
+  model walk uses it; a raw `--oid` walk reads everything.
+- **Identity works with no MIB** (`deviceIdentity`): the vendor's objects by
+  name, then the ENTITY-MIB row of class chassis, then sysDescr and
+  sysObjectID. The constructor comes from the enterprise number through the
+  IANA registry, so a device nobody has a table for still names whose MIB is
+  missing, and `info` says where to look. The DM's key is Model@SwRev and it
+  carries only what every unit of that model shares; what one box says of
+  itself (serial, boot firmware, sysDescr) goes in `unit` in its manifest,
+  `.cache/manifest/snmp/<ip>.json`, ADR-0022. `info` prints both.
+- **An address reads as an address**: the object's textual convention
+  decides (`Object.Address`), never its name, in the walk, `get` and the
+  monitor, and a SET takes the same text.
 - **No walk to resolve a name** (`PathNative`): the compiled table is
   the map, so `get --path` on a cold connection is one GET.
 - **Values carry their enumeration's word** — `rf1`, `hdsdi`, `true` —

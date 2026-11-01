@@ -2,7 +2,7 @@
 #
 #   MODULE  SYMBOL  PARENT  ARC  -- evidence
 #
-# Only what the vendor's OWN files prove belongs here. An arc guessed from
+# Only what the vendor's OWN files, or the IETF's, prove belongs here. An arc guessed from
 # a neighbour is an invented OID: the table would label a real device's
 # objects with a name nobody defined, and nothing downstream could tell.
 # Everything unprovable stays unresolved, and mibc reports it.
@@ -11,3 +11,7 @@
 # delete the line then.
 
 SNELL-WILCOX-PRODUCT-REG moduleIQDMX31 snellWilcoxModular 532 -- the 2013 registry defines moduleIQDMX30 twice, at 531 and at 532 (lines 337-338, the second a copy of the first); its MIB-branch twin on line 545 is moduleIQDMX31MIB at 532, and SNELL-IQDMX31-CMD-MIB imports moduleIQDMX31 from this module
+IP-FORWARD-MIB ip RFC1213-MIB::mib-2 4 -- RFC 4292 imports ip from the IETF IP-MIB, and a table that keeps Ericsson's module of that name, a vendor branch at 1773.1.3.29, has no such symbol; RFC1213-MIB, in every table, defines ip ::= { mib-2 4 }, the arc RFC 4293 gives it
+TOKEN-RING-RMON-MIB rmon RFC1213-MIB::mib-2 16 -- RFC 1513 imports rmon, statistics and history from RFC1271-MIB, which RMON-MIB (RFC 2819) obsoleted at the same arcs; loading the obsolete module would put its SMIv1 rows in front of RMON-MIB's
+TOKEN-RING-RMON-MIB statistics rmon 1 -- as above: statistics ::= { rmon 1 } in RMON-MIB
+TOKEN-RING-RMON-MIB history rmon 2 -- as above: history ::= { rmon 2 } in RMON-MIB

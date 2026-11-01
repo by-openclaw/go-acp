@@ -16,6 +16,7 @@ import (
 
 	dhsc "dhs/internal/consumer"
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/mib"
 )
 
 // Session is the slice of an SNMP session the adapter needs. *consumer.Session
@@ -29,11 +30,14 @@ type Session interface {
 // Protocol implements consumer.Protocol over an SNMP session. Only
 // GetValue and SetValue reach the wire; the monitor uses no others.
 type Protocol struct {
-	sess Session
+	sess  Session
+	table *mib.Table
 }
 
-// New wraps an SNMP session as a neutral Protocol.
-func New(sess Session) *Protocol { return &Protocol{sess: sess} }
+// New wraps an SNMP session as a neutral Protocol. table is the device's MIB
+// table, which says what an OCTET STRING holds; nil leaves every value as the
+// wire carried it.
+func New(sess Session, table *mib.Table) *Protocol { return &Protocol{sess: sess, table: table} }
 
 // Connect is a no-op: the session is dialed by the caller and handed in
 // already connected.
@@ -64,7 +68,28 @@ func (p *Protocol) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Va
 	if v.IsException() {
 		return dhsc.Value{}, fmt.Errorf("snmp monitor: %s returned %s", oid, v.Type)
 	}
-	return toNeutral(v), nil
+	return p.neutral(oid, v), nil
+}
+
+// definition is the MIB's row for an object, nil when nothing covers it.
+func (p *Protocol) definition(oid codec.OID) *mib.Object {
+	if p.table == nil {
+		return nil
+	}
+	def, _ := p.table.Lookup(oid)
+	return def
+}
+
+// neutral is toNeutral plus the MIB: an address reads as an address, by its
+// textual convention, the rule the walk and `get` use.
+func (p *Protocol) neutral(oid codec.OID, v codec.Value) dhsc.Value {
+	out := toNeutral(v)
+	if def := p.definition(oid); def != nil && out.Kind == dhsc.KindString {
+		if text, ok := def.Address([]byte(out.Str)); ok {
+			out.Str = text
+		}
+	}
+	return out
 }
 
 // SetValue writes one object with an SNMP SET and returns the echoed value.
@@ -77,6 +102,11 @@ func (p *Protocol) SetValue(ctx context.Context, req dhsc.ValueRequest, val dhsc
 	if err != nil {
 		return dhsc.Value{}, err
 	}
+	if def := p.definition(oid); def != nil && val.Kind == dhsc.KindString {
+		if b, ok := def.AddressBytes(val.Str); ok {
+			cv = codec.Bytes(b)
+		}
+	}
 	binds, err := p.sess.Set(ctx, codec.VarBind{Name: oid, Value: cv})
 	if err != nil {
 		return dhsc.Value{}, err
@@ -84,7 +114,7 @@ func (p *Protocol) SetValue(ctx context.Context, req dhsc.ValueRequest, val dhsc
 	if len(binds) == 0 {
 		return val, nil
 	}
-	return toNeutral(binds[0].Value), nil
+	return p.neutral(oid, binds[0].Value), nil
 }
 
 // The remaining neutral methods are not used by the monitor; they return

@@ -146,7 +146,7 @@ func runWalk(ctx context.Context, args []string) error {
 		// acp1/acp2 (emberplus writes its own manifest from
 		// splitDMByMatrix earlier). Refs #438 + ADR-0024.
 		if cf.protocol != "emberplus" && len(bindings) > 0 {
-			writeSlotManifest("", cf.protocol, host, cf.port, bindings)
+			writeSlotManifest("", cf.protocol, host, info.Port, bindings, unitIdentity(ctx, plug))
 		}
 		fmt.Printf("\nwalked %d present slot(s)\n", walked)
 		return nil
@@ -175,6 +175,11 @@ func runWalk(ctx context.Context, args []string) error {
 		// alongside the DM so the operator can share it with the
 		// device vendor.
 		writeUnknownCTXAuditIfAny(plug, cf.protocol, identity)
+		// A connector with facts about this one box keeps them in a
+		// manifest, since the DM it just wrote is shared by every unit.
+		if unit := unitIdentity(ctx, plug); unit != nil && identity != "" {
+			writeSlotManifest("", cf.protocol, host, connectedPort(ctx, plug, cf.port), []slotBinding{{Slot: *slot, Identity: identity}}, unit)
+		}
 	}
 	objs = filterByPaths(objs, pathSegs)
 	if *tree {

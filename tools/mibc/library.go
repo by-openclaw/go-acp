@@ -25,6 +25,9 @@ type tableSet struct {
 // imports and no vendor ships. Every table carries them.
 const standardDir = "standard"
 
+// tableSuffix ends every table file.
+const tableSuffix = ".tsv.gz"
+
 // runLibrary compiles a MIB library laid out as
 // <manufacturer>/<device-type>/<model>/ into one table per model, under the
 // directory outDir. sets adds tables from outside the library, as
@@ -53,6 +56,9 @@ func compileLibrary(library, outDir, sets string, pins map[string]string, exclud
 		return nil, 0, err
 	}
 	tables = append(tables, extra...)
+	if err := refuseStale(outDir, tables); err != nil {
+		return nil, 0, err
+	}
 
 	standard, err := collect([]string{filepath.Join(library, standardDir)}, exclude)
 	if err != nil {
@@ -94,7 +100,7 @@ func compileLibrary(library, outDir, sets string, pins map[string]string, exclud
 		findings = append(findings, smi.Apply(kept, fixes)...)
 		compiled := smi.Compile(kept)
 		findings = append(findings, compiled.Findings...)
-		path := filepath.Join(outDir, t.name+".tsv.gz")
+		path := filepath.Join(outDir, t.name+tableSuffix)
 		if err := writeTable(path, compiled.Objects); err != nil {
 			return nil, 0, err
 		}
@@ -102,6 +108,31 @@ func compileLibrary(library, outDir, sets string, pins map[string]string, exclud
 			path, len(kept), len(compiled.Objects))
 	}
 	return findings, len(tables), nil
+}
+
+// refuseStale stops a run that would leave a table in outDir uncompiled: a
+// library that lost a model must not quietly ship last year's file in an old
+// layout. Deleting the file is how a table is dropped on purpose.
+func refuseStale(outDir string, tables []tableSet) error {
+	planned := map[string]bool{}
+	for _, t := range tables {
+		planned[t.name+tableSuffix] = true
+	}
+	found, err := filepath.Glob(filepath.Join(outDir, "*"+tableSuffix))
+	if err != nil {
+		return err
+	}
+	var left []string
+	for _, f := range found {
+		if name := filepath.Base(f); !planned[name] {
+			left = append(left, strings.TrimSuffix(name, tableSuffix))
+		}
+	}
+	if len(left) > 0 {
+		return fmt.Errorf("%s: %s not compiled by this run: put its source in the library, "+
+			"or delete the file to drop the table on purpose", outDir, strings.Join(left, ", "))
+	}
+	return nil
 }
 
 // librarySets lists one set per model folder. A table is named

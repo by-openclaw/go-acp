@@ -202,7 +202,12 @@ func (s *Session) acceptable(raw []byte, id int32) (*codec.PDU, error) {
 // like a device with half a tree.
 func (s *Session) Walk(ctx context.Context, root codec.OID,
 	fn func(codec.VarBind) error) error {
-	cursor := root
+	return s.walkFrom(ctx, root, root, fn)
+}
+
+// walkFrom is Walk starting after cursor rather than at root.
+func (s *Session) walkFrom(ctx context.Context, root, cursor codec.OID,
+	fn func(codec.VarBind) error) error {
 	for {
 		binds, err := s.walkStep(ctx, cursor)
 		if err != nil {

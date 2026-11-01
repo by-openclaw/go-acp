@@ -104,10 +104,12 @@ func runSNMPProducer(ctx context.Context, args []string) error {
 type snmpFlags struct {
 	version   string
 	community string
-	timeout   time.Duration
-	retries   int
-	bulk      int
-	mibTable  string
+	// write makes this a SET, which takes the write community.
+	write    bool
+	timeout  time.Duration
+	retries  int
+	bulk     int
+	mibTable string
 
 	// v3 credentials. A user with no passwords is noAuthNoPriv, which
 	// identifies the manager without protecting the exchange; adding
@@ -127,7 +129,7 @@ type snmpFlags struct {
 
 func (f *snmpFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK.")
-	fs.StringVar(&f.community, "community", "public", "read community (write community for `set`)")
+	fs.StringVar(&f.community, "community", "", "read community (write community for `set`); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public")
 	fs.DurationVar(&f.timeout, "timeout", snmpcons.DefaultTimeout, "per-request timeout")
 	fs.StringVar(&f.capture, "capture", "", "record every datagram sent and received as JSONL to this file (read it back with `validate`)")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
@@ -139,6 +141,18 @@ func (f *snmpFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&f.privProto, "priv", "", "v3 privacy: des or aes")
 	fs.StringVar(&f.privPass, "priv-pass", "", "v3 privacy password (prefer SNMP_V3_PRIV_PASS)")
 	fs.StringVar(&f.context, "context", "", "v3 context name; empty is the agent's default context")
+}
+
+// communityEnv is the --community flag, else the environment. Empty leaves
+// the session's default, public.
+func (f *snmpFlags) communityEnv() string {
+	if f.community != "" {
+		return f.community
+	}
+	if f.write {
+		return strings.TrimSpace(os.Getenv("SNMP_WRITE_COMMUNITY"))
+	}
+	return strings.TrimSpace(os.Getenv("SNMP_COMMUNITY"))
 }
 
 // v3Env fills anything the flags left empty from the environment, the
@@ -215,7 +229,7 @@ func (f *snmpFlags) options(addr string, prof compliance.Recorder) (snmpcons.Opt
 		return snmpcons.Options{}, fmt.Errorf("snmp: unknown version %q (expected 1, 2c or 3)", f.version)
 	}
 	opts := snmpcons.Options{
-		Addr: addr, Version: v, Community: f.community,
+		Addr: addr, Version: v, Community: f.communityEnv(),
 		Timeout: f.timeout, Retries: f.retries, MaxRepetitions: f.bulk,
 		Compliance: prof,
 	}
@@ -268,7 +282,9 @@ func runSNMPGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	names, err := resolveOIDs(table, *oids)
+	// A name after the host is a name asked for, the way snmpget takes it:
+	// dropping it would print the system group as if that were the answer.
+	names, err := resolveOIDs(table, strings.Join(append([]string{*oids}, fs.Args()[1:]...), ","))
 	if err != nil {
 		return err
 	}
@@ -312,6 +328,9 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	table, err := f.table(ctx, s, prof)
 	if err != nil {
 		return err
+	}
+	if fs.NArg() > 1 {
+		*root = fs.Arg(1)
 	}
 	start, err := table.ResolveInput(*root)
 	if err != nil {
@@ -374,7 +393,7 @@ func printWalk(out, errOut io.Writer, limit int, table *mib.Table, walk func(fun
 // text can tell them.
 func runSNMPSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ContinueOnError)
-	var f snmpFlags
+	f := snmpFlags{write: true}
 	f.register(fs)
 	oid := fs.String("oid", "", "the object to write, by standard name or dotted number")
 	typ := fs.String("type", "s", "value type: i(nteger) s(tring) x (hex octets) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters")
@@ -382,8 +401,8 @@ func runSNMPSet(ctx context.Context, args []string) error {
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(fs.Output(), `dhs consumer snmp set — write one object
 
-A SET needs the WRITE community in --community, which is NOT the read
-one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+A SET needs the WRITE community in SNMP_WRITE_COMMUNITY, or --community,
+which is NOT the read one. Get that wrong on a Tandberg IRD and you get no answer at all — the
 agent drops a request it will not serve (RFC 1157 §4.1) rather than
 explaining, so it looks exactly like a device that is switched off.
 Theirs is "private".
@@ -566,6 +585,12 @@ func displayValue(v codec.Value, obj *mib.Object, table *mib.Table) string {
 	case codec.TypeOID:
 		name, _ := table.Describe(v.OID)
 		return name
+	case codec.TypeOctetString:
+		if obj != nil {
+			if text, ok := obj.Address(v.Bytes); ok {
+				return text
+			}
+		}
 	}
 	return v.String()
 }
@@ -607,6 +632,9 @@ VERSIONS
 EXAMPLES
   # what a device says it is
   dhs consumer snmp get 10.6.255.113
+
+  # one object, by name or number, after the host as with snmpget
+  dhs consumer snmp get 10.6.255.113 sysName.0
 
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113

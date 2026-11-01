@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"dhs/internal/consumer"
 	"dhs/internal/datastore"
+	"dhs/internal/manifest"
 )
 
 // fakeProber satisfies the new per-slot identityProber contract.
@@ -201,5 +203,109 @@ func TestSaveSlotCache_ACP2_SameCardTwoSlots_OneFile(t *testing.T) {
 			names = append(names, f.Name())
 		}
 		t.Errorf("same-card-two-slots must produce 1 DM file, got %d: %v", len(files), names)
+	}
+}
+
+type describedProber struct{ *fakeProber }
+
+func (describedProber) DeviceIdentity(context.Context) map[string]string {
+	return map[string]string{"constructor": "Acme"}
+}
+
+func (describedProber) UnitIdentity(context.Context) map[string]string {
+	return map[string]string{"serial": "S1"}
+}
+
+// A plugin with more to say than Model@SwRev has it kept in the DM.
+func TestSaveSlotCache_DMCarriesTheIdentity(t *testing.T) {
+	withTempStore(t)
+	prober := describedProber{&fakeProber{identity: "Box@1.0"}}
+	if got := saveSlotCache(context.Background(), prober, "10.0.0.1", "snmp", 0, makeObjs(), nil); got != "Box@1.0" {
+		t.Fatalf("identity %q", got)
+	}
+	raw, err := os.ReadFile(treeStore.IdentityPath("snmp", "Box@1.0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dm datastore.DM
+	if err := json.Unmarshal(raw, &dm); err != nil {
+		t.Fatal(err)
+	}
+	if dm.Identity["constructor"] != "Acme" || dm.Identity["serial"] != "" || dm.Model != "Box" || len(dm.Objects) == 0 {
+		t.Errorf("%+v", dm)
+	}
+}
+
+// What is true of one box goes in its manifest, keyed by its IP.
+func TestUnitFactsGoInTheManifest(t *testing.T) {
+	prev, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(prev) })
+
+	unit := unitIdentity(context.Background(), describedProber{&fakeProber{}})
+	writeSlotManifest("", "snmp", "10.0.0.1", 161, []slotBinding{{Slot: 0, Identity: "Box@1.0"}}, unit)
+	m, err := manifest.Load(filepath.Join(".cache", "manifest", "snmp", "10.0.0.1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Device.Unit["serial"] != "S1" || m.Device.Name != "Box" || m.Device.Endpoints[0].Transport != "udp" {
+		t.Errorf("%+v", m.Device)
+	}
+	if unitIdentity(context.Background(), &fakeProber{}) != nil {
+		t.Error("a plugin with nothing to say says nothing")
+	}
+}
+
+type portPlugin struct {
+	consumer.Protocol
+	port int
+	err  error
+}
+
+func (p portPlugin) GetDeviceInfo(context.Context) (consumer.DeviceInfo, error) {
+	return consumer.DeviceInfo{Port: p.port}, p.err
+}
+
+// With no --port the port is the plugin's default, not a zero in the file.
+func TestConnectedPort(t *testing.T) {
+	ctx := context.Background()
+	if got := connectedPort(ctx, portPlugin{port: 161}, 0); got != 161 {
+		t.Errorf("default = %d", got)
+	}
+	if got := connectedPort(ctx, portPlugin{port: 161}, 1161); got != 1161 {
+		t.Errorf("--port = %d", got)
+	}
+	if got := connectedPort(ctx, portPlugin{err: errors.New("down")}, 0); got != 0 {
+		t.Errorf("no answer = %d", got)
+	}
+}
+
+// A second walk of a Model@SwRev keeps the DM, and still binds the device to it.
+func TestSaveSlotCache_ASecondWalkKeepsTheDM(t *testing.T) {
+	withTempStore(t)
+	prober := &fakeProber{identity: "Box@1.0"}
+	first := []consumer.Object{{Label: "first"}}
+	second := []consumer.Object{{Label: "second"}}
+	if got := saveSlotCache(context.Background(), prober, "10.0.0.1", "snmp", 0, first, nil); got != "Box@1.0" {
+		t.Fatal(got)
+	}
+	if got := saveSlotCache(context.Background(), prober, "10.0.0.2", "snmp", 0, second, nil); got != "Box@1.0" {
+		t.Fatalf("the second unit lost its binding: %q", got)
+	}
+	raw, err := os.ReadFile(treeStore.IdentityPath("snmp", "Box@1.0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dm datastore.DM
+	if err := json.Unmarshal(raw, &dm); err != nil {
+		t.Fatal(err)
+	}
+	if len(dm.Objects) != 1 || dm.Objects[0].Label != "first" {
+		t.Errorf("%+v", dm.Objects)
 	}
 }

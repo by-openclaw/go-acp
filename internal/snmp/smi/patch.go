@@ -28,8 +28,9 @@ type Patch struct {
 //
 //	MODULE  SYMBOL  PARENT  ARC  -- evidence
 //
-// Blank lines and lines starting with # are ignored. The evidence after
-// -- is required.
+// PARENT is a symbol the module can see, or OTHER-MODULE::symbol for one it
+// does not import. Blank lines and lines starting with # are ignored. The
+// evidence after -- is required.
 func ParsePatches(src string) ([]Patch, error) {
 	var out []Patch
 	sc := bufio.NewScanner(strings.NewReader(src))
@@ -78,8 +79,13 @@ func Apply(mods []*Module, patches []Patch) []Finding {
 			out = append(out, Finding{"patches", p.Line, "patch-stale",
 				fmt.Sprintf("%s already defines %s; delete this patch", p.Module, p.Name)})
 		default:
+			parent := p.Parent
+			if from, sym, qualified := strings.Cut(parent, "::"); qualified {
+				m.Imports[sym] = from
+				parent = sym
+			}
 			m.addNode(&Node{Name: p.Name, Kind: KindObjectIdentifier,
-				Value: []OIDComponent{{Name: p.Parent}, {Num: p.Arc, HasNum: true}}})
+				Value: []OIDComponent{{Name: parent}, {Num: p.Arc, HasNum: true}}})
 			out = append(out, Finding{"patches", p.Line, "patched",
 				fmt.Sprintf("defined %s ::= { %s %d } in %s: %s", p.Name, p.Parent, p.Arc, p.Module, p.Why)})
 		}

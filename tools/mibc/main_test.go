@@ -45,7 +45,7 @@ END`)
 END`)
 	// Two copies of one module: the pin decides.
 	write("ird/a/IP-MIB.mib", "IP-MIB DEFINITIONS ::= BEGIN END")
-	write("ird/RX1290/IP-MIB.mib", "IP-MIB DEFINITIONS ::= BEGIN END")
+	write("ericsson/ird/RX1290/IP-MIB.mib", "IP-MIB DEFINITIONS ::= BEGIN END")
 	write("ird/Copy of TT1260-MIB.mib", "must be skipped: broken \"")
 	write("ird/README.txt", "not a module")
 	write("ird/notes.xml", "<xml/>")
@@ -119,7 +119,7 @@ func TestItCompilesATree(t *testing.T) {
 			row = l
 		}
 	}
-	want := "1.3.6.1.4.1.1773.1.3.200.1.11\tcontrolMode\tETV-TT1260-MIB\tobject-type\tINTEGER\t\tread-write\tfp=1;serial=2;ncp=3;snmp=4;web=5\t"
+	want := "1.3.6.1.4.1.1773.1.3.200.1.11\tcontrolMode\tETV-TT1260-MIB\tobject-type\tINTEGER\t\tread-write\tfp=1;serial=2;ncp=3;snmp=4;web=5\t\t"
 	if row != want {
 		t.Errorf("controlMode row\n got %q\nwant %q", row, want)
 	}

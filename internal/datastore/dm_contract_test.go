@@ -441,3 +441,52 @@ func TestValidate_Table(t *testing.T) {
 		})
 	}
 }
+
+// ADR-0022: a second walk of a Model@SwRev keeps the first capture, through
+// either writer, and says so.
+func TestADMIsNeverOverwritten(t *testing.T) {
+	s := NewTreeStore(t.TempDir())
+	first := []consumer.Object{{Label: "first"}}
+	second := []consumer.Object{{Label: "second"}}
+	if err := s.WriteDM("snmp", "Box@1.0", DM{Objects: first, Identity: map[string]string{"table": "vendor"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.WriteDM("snmp", "Box@1.0", DM{Objects: second, Identity: map[string]string{"table": "standard"}}); !errors.Is(err, ErrDMExists) {
+		t.Errorf("WriteDM = %v", err)
+	}
+	if err := s.SaveByIdentity("snmp", "Box@1.0", second); !errors.Is(err, ErrDMExists) {
+		t.Errorf("SaveByIdentity = %v", err)
+	}
+	raw, err := os.ReadFile(s.IdentityPath("snmp", "Box@1.0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"first"`) || !strings.Contains(string(raw), `"vendor"`) || strings.Contains(string(raw), `"second"`) {
+		t.Errorf("%s", raw)
+	}
+	// Another SwRev is another file.
+	if err := s.WriteDM("snmp", "Box@2.0", DM{Objects: second}); err != nil {
+		t.Errorf("a new SwRev = %v", err)
+	}
+}
+
+// `extract --refresh` is the one writer that may replace a DM.
+func TestReplaceDMIsTheExplicitException(t *testing.T) {
+	s := NewTreeStore(t.TempDir())
+	if err := s.WriteDM("cerebrum-nb", "Box@1.0", DM{Objects: []consumer.Object{{Label: "first"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceDM("cerebrum-nb", "Box@1.0", DM{Objects: []consumer.Object{{Label: "second"}}}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(s.IdentityPath("cerebrum-nb", "Box@1.0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"second"`) {
+		t.Errorf("%s", raw)
+	}
+	if err := s.ReplaceDM("", "Box@1.0", DM{}); err == nil {
+		t.Error("an empty proto must be refused")
+	}
+}

@@ -24,13 +24,24 @@ package rollcall_integration
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
 
 const protocolTypesRel = "../testdata/protocol_types"
+
+// frameLine is Wireshark's own wording: 4.4 opens with "Frame 1: Packet, 64
+// bytes on wire", 4.2 with "Frame 1: 64 bytes on wire". It says nothing about
+// RollCall.
+var frameLine = regexp.MustCompile(`(?m)^Frame (\d+): Packet, `)
+
+// normalised is a tree with what belongs to the checkout or to Wireshark
+// taken out.
+func normalised(tree string) string {
+	return frameLine.ReplaceAllString(strings.ReplaceAll(tree, "\r\n", "\n"), "Frame $1: ")
+}
 
 // renderTree draws one capture the way the committed tree was drawn: the
 // RollCall layer only, so a Wireshark that decodes TCP differently does not
@@ -38,10 +49,7 @@ const protocolTypesRel = "../testdata/protocol_types"
 func renderTree(t *testing.T, pcap string) string {
 	t.Helper()
 
-	cmd := exec.Command(findTshark(t),
-		"-r", pcap,
-		"-X", "lua_script:"+mustAbs(t, dissectorRel),
-		"-V", "-O", "dhs_snell_rollcall")
+	cmd := tsharkCommand(t, pcap, mustAbs(t, dissectorRel), "-V", "-O", "dhs_snell_rollcall")
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -84,9 +92,7 @@ func TestProtocolTypesStillRenderAsCommitted(t *testing.T) {
 				t.Fatalf("%s has no committed tree: %v", name, err)
 			}
 
-			// Line endings belong to whoever checked the file out.
-			want := strings.ReplaceAll(string(wantBytes), "\r\n", "\n")
-			got := strings.ReplaceAll(renderTree(t, pcap), "\r\n", "\n")
+			want, got := normalised(string(wantBytes)), normalised(renderTree(t, pcap))
 			if got == want {
 				return
 			}

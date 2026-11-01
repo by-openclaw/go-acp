@@ -336,7 +336,9 @@ func writeCerebrumExtract(identity, deviceName, deviceIP, host string, port int,
 	if treeStore == nil {
 		return "", "", fmt.Errorf("cerebrum-nb extract: tree store not initialised (.cache unavailable)")
 	}
-	if err := treeStore.WriteDM("cerebrum-nb", identity, datastore.DM{
+	// The caller stopped at a cache hit unless --refresh asked for this
+	// capture to replace it (ADR-0028 §6), so reaching here means write.
+	if err := treeStore.ReplaceDM("cerebrum-nb", identity, datastore.DM{
 		Protocol: "cerebrum-nb",
 		Objects:  objs,
 	}); err != nil {

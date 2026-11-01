@@ -62,7 +62,7 @@ func run(argv []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("mibc", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	out := fs.String("out", "", "table to write (gzip-compressed TSV)")
-	pins := fs.String("pin", "IP-MIB=RX1290",
+	pins := fs.String("pin", "IP-MIB=ericsson/ird/",
 		"comma-separated MODULE=PATH-SUBSTRING: which file wins when a module ships in copies no date can decide between")
 	exclude := fs.String("exclude", "Copy of ",
 		"comma-separated filename prefixes to ignore — stray copies left beside the originals")
@@ -245,7 +245,7 @@ func writeTable(path string, objs []smi.Object) (err error) {
 
 // encodeTable writes the objects as gzip-compressed TSV, one per line:
 //
-//	oid  name  module  kind  base  tc  access  enums  index
+//	oid  name  module  kind  base  tc  access  enums  index  max
 //
 // enums are name=value joined by ';', index names by ','. No timestamp and
 // no gzip header name, so the bytes depend only on the input.
@@ -263,7 +263,7 @@ func encodeTable(w io.Writer, objs []smi.Object) error {
 		}
 		row := strings.Join([]string{
 			o.Dotted(), o.Name, o.Module, o.Kind.String(), o.Base, o.TC, o.Access,
-			strings.Join(enums, ";"), strings.Join(o.Index, ","),
+			strings.Join(enums, ";"), strings.Join(o.Index, ","), o.Max,
 		}, "\t")
 		if _, err := fmt.Fprintln(zw, row); err != nil {
 			return err

@@ -995,14 +995,14 @@ func TestIdentityIsTheDevicesOwnWords(t *testing.T) {
 		t.Errorf("model only = %q", got)
 	}
 
-	// A device that publishes neither gets no identity rather than a
-	// guess — the protocol default then governs its template.
+	// A device that publishes neither is named by what every agent has:
+	// its sysObjectID, the same on every unit of the model.
 	delete(vals, model)
 	p3 := scriptedPlugin(t, &scriptedNet{Net: transport.New(transport.Config{}), reply: answers(vals)})
 	if err := p3.Connect(ctx, "127.0.0.1", 161); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := p3.IdentityProbe(ctx, 0); got != "" {
+	if got, _ := p3.IdentityProbe(ctx, 0); got == "" {
 		t.Errorf("nothing published = %q", got)
 	}
 }
@@ -1020,7 +1020,7 @@ func TestIdentityNeedsASessionAndABranch(t *testing.T) {
 	q.mu.Lock()
 	q.sysOID = codec.MustParseOID("1.3.6.1.2.1.1")
 	q.mu.Unlock()
-	if got, err := q.IdentityProbe(context.Background(), 0); got != "" || err != nil {
+	if got, err := q.IdentityProbe(context.Background(), 0); got == "" || err != nil {
 		t.Errorf("no vendor branch = %q, %v", got, err)
 	}
 }
