@@ -48,6 +48,7 @@ import (
 	_ "dhs/internal/emberplus/consumer"
 	_ "dhs/internal/kratos/consumer"
 	_ "dhs/internal/osc/consumer"
+	_ "dhs/internal/prism/consumer"
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
 	_ "dhs/internal/snell-rollcall/consumer"
@@ -347,6 +348,13 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		}
 		rest = remaining
 	}
+	if proto == "prism" {
+		handled, remaining := runPrism(rest)
+		if handled {
+			return nil
+		}
+		rest = remaining
+	}
 	if proto == "virtuoso" {
 		if len(rest) == 0 || isHelpToken(rest[0]) {
 			fmt.Print(virtuosoHelp)
@@ -609,11 +617,13 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p | virtuoso
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
                                (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (prism):               info, walk, get, set, watch, export
+                               (waveform monitor; run 'dhs consumer prism -h')
   Verbs (virtuoso):            info, walk, get, set, watch, export
                                (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,

@@ -88,11 +88,13 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p | virtuoso
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
                                (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (prism):               info, walk, get, set, watch, export
+                               (waveform monitor; run 'dhs consumer prism -h')
   Verbs (virtuoso):            info, walk, get, set, watch, export
                                (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
@@ -181,6 +183,7 @@ PROTOCOLS
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
+  prism         Telestream PRISM waveform monitor (REST/JSON, the instrument…)
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
@@ -1993,6 +1996,7 @@ PROTOCOLS
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
+  prism         Telestream PRISM waveform monitor (REST/JSON, the instrument…)
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
@@ -2077,6 +2081,7 @@ PROTOCOLS
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
+  prism         Telestream PRISM waveform monitor (REST/JSON, the instrument…)
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
