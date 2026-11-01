@@ -20,7 +20,9 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | probel-sw08p
+  Verbs (ccp):                 info, walk, get, set, watch + panel, colours
+                               (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -90,6 +92,7 @@ $ dhs list-protocols
 acp1     port=2071  Axon Control Protocol v1.4 (UDP direct)
 acp2     port=2072  Axon Control Protocol v2 (AN2/TCP)
 ccm      port=443   EVS Neuron CCM (REST/JSON over TLS) — the model is the device's own api.yml
+ccp      port=2071  Axon Cortex Control Panel Protocol (CCP-1601 …) — TCP 2071, binary
 cerebrum-nb port=40007 EVS Cerebrum Northbound API (XML over WebSocket; a.k.a. Neuron Bridge)
 emberplus port=9000  Ember+ (Glow/S101/TCP) consumer
 mnset    port=80    Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1); host = one module (slot 0) or MN SET :8080 (frame, one slot per module)

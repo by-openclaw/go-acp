@@ -43,6 +43,7 @@ import (
 	_ "dhs/internal/acp1/consumer"
 	_ "dhs/internal/acp2/consumer"
 	_ "dhs/internal/ccm/consumer"
+	_ "dhs/internal/ccp/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
 	_ "dhs/internal/emberplus/consumer"
 	_ "dhs/internal/osc/consumer"
@@ -330,6 +331,13 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		// arguments, since the neutral verbs do not define them.
 		rest = remaining
 	}
+	if proto == "ccp" {
+		handled, remaining, err := runCCP(ctx, rest)
+		if handled {
+			return err
+		}
+		rest = remaining
+	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
 	}
@@ -586,7 +594,9 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | probel-sw08p
+  Verbs (ccp):                 info, walk, get, set, watch + panel, colours
+                               (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
