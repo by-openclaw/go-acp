@@ -107,7 +107,7 @@ type snmpFlags struct {
 	timeout   time.Duration
 	retries   int
 	bulk      int
-	prefer    string
+	mibTable  string
 
 	// v3 credentials. A user with no passwords is noAuthNoPriv, which
 	// identifies the manager without protecting the exchange; adding
@@ -132,7 +132,7 @@ func (f *snmpFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&f.capture, "capture", "", "record every datagram sent and received as JSONL to this file (read it back with `validate`)")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
 	fs.IntVar(&f.bulk, "max-repetitions", snmpcons.DefaultMaxRepetitions, "GETBULK window for `walk` (v2c only)")
-	fs.StringVar(&f.prefer, "mib", "", "comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)")
+	fs.StringVar(&f.mibTable, "mib", "", "the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model")
 	fs.StringVar(&f.user, "user", "", "v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user")
 	fs.StringVar(&f.authProto, "auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512")
 	fs.StringVar(&f.authPass, "auth-pass", "", "v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)")
@@ -182,15 +182,22 @@ func (f *snmpFlags) credentials() (*snmpcons.V3, error) {
 	}, nil
 }
 
-// modules is --mib as a list.
-func (f *snmpFlags) modules() []string {
-	var out []string
-	for _, m := range strings.Split(f.prefer, ",") {
-		if m = strings.TrimSpace(m); m != "" {
-			out = append(out, m)
+// table picks the one table this connection names objects from: --mib,
+// else the one the device's sysObjectID selects, else the base table with a
+// compliance note, so vendor objects stay numbers rather than borrow another
+// device's names.
+func (f *snmpFlags) table(ctx context.Context, s *snmpcons.Session, prof compliance.Recorder) (*mib.Table, error) {
+	if f.mibTable != "" {
+		return mib.Load(f.mibTable)
+	}
+	binds, err := s.Get(ctx, mib.SysObjectID)
+	if err == nil && len(binds) > 0 && binds[0].Value.Type == codec.TypeOID {
+		if name, ok := mib.ForObjectID(binds[0].Value.OID); ok {
+			return mib.Load(name)
 		}
 	}
-	return out
+	prof.Note(snmpcons.NoDeviceMIB)
+	return mib.Base(), nil
 }
 
 // options builds the session options, refusing a version this manager
@@ -250,7 +257,18 @@ func runSNMPGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	names, err := resolveOIDs(*oids)
+
+	prof := &compliance.Profile{}
+	s, err := dialSNMP(ctx, &f, host, prof)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = s.Close() }()
+	table, err := f.table(ctx, s, prof)
+	if err != nil {
+		return err
+	}
+	names, err := resolveOIDs(table, *oids)
 	if err != nil {
 		return err
 	}
@@ -261,18 +279,11 @@ func runSNMPGet(ctx context.Context, args []string) error {
 			mib.SysContact, mib.SysName, mib.SysLocation}
 	}
 
-	prof := &compliance.Profile{}
-	s, err := dialSNMP(ctx, &f, host, prof)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = s.Close() }()
-
 	binds, err := s.Get(ctx, names...)
 	if err != nil {
 		return err
 	}
-	printBinds(binds, f.modules())
+	printBinds(binds, table)
 	printSNMPCompliance(prof)
 	return nil
 }
@@ -291,10 +302,6 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	start, err := mib.Resolve(*root)
-	if err != nil {
-		return err
-	}
 
 	prof := &compliance.Profile{}
 	s, err := dialSNMP(ctx, &f, host, prof)
@@ -302,8 +309,16 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = s.Close() }()
+	table, err := f.table(ctx, s, prof)
+	if err != nil {
+		return err
+	}
+	start, err := table.ResolveInput(*root)
+	if err != nil {
+		return err
+	}
 
-	n, walkErr := printWalk(os.Stdout, os.Stderr, *limit, f.modules(), func(fn func(codec.VarBind) error) error {
+	n, walkErr := printWalk(os.Stdout, os.Stderr, *limit, table, func(fn func(codec.VarBind) error) error {
 		return s.Walk(ctx, start, fn)
 	})
 	fmt.Fprintf(os.Stderr, "%d object(s)\n", n)
@@ -327,12 +342,12 @@ const (
 // seconds; with no limit, a device whose tree takes a quarter of an hour
 // to read — an IRD's programme tables — printed nothing for a quarter
 // of an hour and looked dead.
-func printWalk(out, errOut io.Writer, limit int, prefer []string, walk func(func(codec.VarBind) error) error) (int, error) {
+func printWalk(out, errOut io.Writer, limit int, table *mib.Table, walk func(func(codec.VarBind) error) error) (int, error) {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	n := 0
 	err := walk(func(vb codec.VarBind) error {
 		n++
-		writeBind(w, vb, prefer)
+		writeBind(w, vb, table)
 		if n%walkFlushEvery == 0 {
 			_ = w.Flush()
 		}
@@ -403,10 +418,6 @@ FLAGS`)
 	if *oid == "" {
 		return fmt.Errorf("snmp set: --oid names what to write")
 	}
-	name, err := mib.Resolve(*oid)
-	if err != nil {
-		return err
-	}
 	v, err := parseSNMPValue(*typ, *value)
 	if err != nil {
 		return err
@@ -418,6 +429,14 @@ FLAGS`)
 		return err
 	}
 	defer func() { _ = s.Close() }()
+	table, err := f.table(ctx, s, prof)
+	if err != nil {
+		return err
+	}
+	name, err := table.ResolveInput(*oid)
+	if err != nil {
+		return err
+	}
 
 	binds, err := s.Set(ctx, codec.VarBind{Name: name, Value: v})
 	if err != nil {
@@ -425,7 +444,7 @@ FLAGS`)
 	}
 	// The echo is what the device actually took, which is not always
 	// what was asked for.
-	printBinds(binds, f.modules())
+	printBinds(binds, table)
 	printSNMPCompliance(prof)
 	return nil
 }
@@ -443,7 +462,7 @@ func dialSNMP(ctx context.Context, f *snmpFlags, host string,
 }
 
 // resolveOIDs turns a comma-separated list into OIDs.
-func resolveOIDs(list string) ([]codec.OID, error) {
+func resolveOIDs(table *mib.Table, list string) ([]codec.OID, error) {
 	if strings.TrimSpace(list) == "" {
 		return nil, nil
 	}
@@ -453,7 +472,7 @@ func resolveOIDs(list string) ([]codec.OID, error) {
 		if s == "" {
 			continue
 		}
-		o, err := mib.Resolve(s)
+		o, err := table.ResolveInput(s)
 		if err != nil {
 			return nil, err
 		}
@@ -515,25 +534,28 @@ func parseSNMPValue(typ, raw string) (codec.Value, error) {
 
 // printBinds renders a result the way snmpget does: one object a line,
 // name, type, value.
-func printBinds(binds []codec.VarBind, prefer []string) {
+func printBinds(binds []codec.VarBind, table *mib.Table) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for _, vb := range binds {
-		writeBind(w, vb, prefer)
+		writeBind(w, vb, table)
 	}
 	_ = w.Flush()
 }
 
 // writeBind is one line of printBinds or walk.
-func writeBind(w io.Writer, vb codec.VarBind, prefer []string) {
-	name, obj := mib.Describe(vb.Name, prefer...)
-	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, displayValue(vb.Value, obj, prefer))
+func writeBind(w io.Writer, vb codec.VarBind, table *mib.Table) {
+	if table == nil {
+		table = mib.Base()
+	}
+	name, obj := table.Describe(vb.Name)
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, displayValue(vb.Value, obj, table))
 }
 
 // displayValue renders a value the way net-snmp does: an enumerated
 // INTEGER as its MIB label with the number, snmp(4), and an OBJECT
 // IDENTIFIER by name, sysObjectID.0 = dhsAgent. The bare number is what an
 // operator would otherwise have to look up.
-func displayValue(v codec.Value, obj *mib.Object, prefer []string) string {
+func displayValue(v codec.Value, obj *mib.Object, table *mib.Table) string {
 	switch v.Type {
 	case codec.TypeInteger:
 		if obj != nil {
@@ -542,7 +564,7 @@ func displayValue(v codec.Value, obj *mib.Object, prefer []string) string {
 			}
 		}
 	case codec.TypeOID:
-		name, _ := mib.Describe(v.OID, prefer...)
+		name, _ := table.Describe(v.OID)
 		return name
 	}
 	return v.String()

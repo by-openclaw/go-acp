@@ -96,11 +96,14 @@ with the `gh` CLI from the desk — a plain `git clone` from the fleet has
 no credentials). Layout:
 
 ```
-ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
+ateme/ird/DR5000/          ATEME-DR5000-MIB + changelog
+dev-systemtechnik/rf-switch/1986/ · 7113/   DEV-SWITCH-MIB, two branches
+novelsat/modem/            root · common · demodulator · modulator
+ericsson/ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
               RX-DUAL-GIGE-EX · TRAP · TT1260-MIB · Types · ip · rxDualGigE
-ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
+ericsson/ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
               RX1290-MIB · Types · ip-RX1290 · rxDualGigE
-ird/RX8200/   ~20 files, one per functional area
+ericsson/ird/RX8200/   ~20 files, one per functional area
 standard/     RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
               SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC
 ```
@@ -121,9 +124,9 @@ So the compiler has to take **two** source roots, not one: a checkout of
 frames. Whether the Snell set should later move to `by-protocol/mib` for
 ADR-0015's single-source rule is the codeowner's call; it is not a
 blocker, and moving 232 tracked files is a separate change from
-compiling them. Per
-device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
-six IETF base modules every vendor MIB imports and no vendor ships.
+compiling them. The library is `<manufacturer>/<device-type>/<model>/`, plus
+`standard/` carrying the IETF base modules every vendor MIB imports and no
+vendor ships.
 
 There are **TWO** vendor trees in this plant, not one — code that assumed a
 single vendor root would work against the IRDs and quietly mis-address the
@@ -144,7 +147,7 @@ branch the testbed devices answer on.
 
 The import graph is shallow and shared:
 
-    ird/<device>/*.mib
+    ericsson/ird/<device>/*.mib
       ├── ETV-Base-MIB   (Base.mib)    enterprises 1773
       ├── ETV-Types-TC   (Types.mib)   Uint8 / Uint16 / Uint32 / PIDNumber
       └── standard/      RFC1155-SMI · RFC-1212 · RFC-1215
@@ -162,16 +165,19 @@ lexer, grammar, IMPORTS resolution across files — and dragging that into the
 shipped binary is how a connector acquires a dependency tail.
 
 Instead: `tools/mibc` (front end in `internal/snmp/smi`) compiles the MIBs
-into one committed table, `internal/snmp/mib/tables.tsv.gz`, and the
-connector reads that. The compile is a development step whose output is
-reviewed in a PR; the runtime knows only numbers, names and types. The roots
-are a checkout of `by-protocol/mib` (the IRDs and the IETF standard modules)
-and the Snell set already in this repo:
+into committed tables under `internal/snmp/mib/tables/`, **one per device
+model, never merged**: one device is one connection, and that connection loads
+its own table only. A connection picks it from `--mib` or `SNMP_MIB`, else from
+its `sysObjectID`; with neither, vendor objects stay numbers and
+`snmp_no_device_mib` fires. The TT1260 and RX1290 report the same sysObjectID
+and the DEV switches share one tree, so those need `--mib`.
 
-    go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-        <by-protocol/mib>/ird <by-protocol/mib>/standard \
-        internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
-        internal/snmp/mib
+The compile is a development step whose output is reviewed in a PR; the
+runtime knows only numbers, names and types. The sources are a checkout of
+`by-protocol/mib` and the Snell set already in this repo:
+
+    go run ./tools/mibc -library <by-protocol/mib> -out internal/snmp/mib/tables \
+        -set standard=internal/snmp/mib,snell=internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
 
 (the last root is our own DHS-MIB, so the agent's names resolve too)
 
@@ -185,8 +191,8 @@ defines (the Snell QUASAR/IQDLY21 registrations) stay unresolved and
 reported, never invented.
 
 One OID can carry two names: the TT1260 and RX1290 report the same
-sysObjectID and differ at 34 OIDs. Both rows are kept; `--mib MODULE` on the
-consumer verbs (or `prefer` in `mib.Describe`) picks the device's.
+sysObjectID and differ at 34 OIDs. Each has its own table; `--mib ericsson-tt1260` on the
+consumer verbs picks the device's.
 
 Measured for the fork set the codeowner already made under
 `github.com/by-protocol` (per ADR-0005's build-graph rule — what enters OUR

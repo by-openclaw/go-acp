@@ -31,7 +31,7 @@ answers those five with no SNMP in the command line at all.
 | `validate` | decode a captured `frames.jsonl` offline | — |
 
 Shared: `--version 1|2c`, `--community`, `--timeout`, `--retries`,
-`--max-repetitions`, `--mib MODULE`.
+`--max-repetitions`, `--mib TABLE`.
 
 ### Neutral verbs
 

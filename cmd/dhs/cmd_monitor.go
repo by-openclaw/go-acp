@@ -96,14 +96,19 @@ func runMonitorWatch(ctx context.Context, args []string) error {
 	logger, _, logClean, _ := consumerLogger(ctx, "monitor", host, "watch")
 	defer logClean()
 
-	sess, err := dialSNMP(ctx, &f, host, &compliance.Profile{})
+	sessProf := &compliance.Profile{}
+	sess, err := dialSNMP(ctx, &f, host, sessProf)
+	if err != nil {
+		return err
+	}
+	table, err := f.table(ctx, sess, sessProf)
 	if err != nil {
 		return err
 	}
 	adapter := snmpmon.New(sess)
 
 	m := monitor.New(monitor.WithLogger(logger))
-	id, events := m.Subscribe(1024, prefixFilter(*filter))
+	id, events := m.Subscribe(1024, prefixFilter(table, *filter))
 	defer m.Unsubscribe(id)
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -134,14 +139,14 @@ func runMonitorWatch(ctx context.Context, args []string) error {
 			fmt.Printf("stopped: %d reads, %d changes, %d errors\n", s.Reads, s.Changes, s.Errors)
 			return nil
 		case ev := <-events:
-			fmt.Println(renderMonitorEvent(ev))
+			fmt.Println(renderMonitorEvent(table, ev))
 		}
 	}
 }
 
 // prefixFilter builds a bus filter that keeps only events whose OID or
 // resolved name starts with prefix. Empty prefix keeps everything.
-func prefixFilter(prefix string) func(consumer.Event) bool {
+func prefixFilter(table *mib.Table, prefix string) func(consumer.Event) bool {
 	if prefix == "" {
 		return nil
 	}
@@ -150,7 +155,7 @@ func prefixFilter(prefix string) func(consumer.Event) bool {
 			return true
 		}
 		if o, err := codec.ParseOID(ev.Path); err == nil {
-			name, _ := mib.Describe(o)
+			name, _ := table.Describe(o)
 			return strings.HasPrefix(name, prefix)
 		}
 		return false
@@ -159,11 +164,11 @@ func prefixFilter(prefix string) func(consumer.Event) bool {
 
 // renderMonitorEvent formats one change as a line: time, MIB name, value,
 // and what it moved from.
-func renderMonitorEvent(ev consumer.Event) string {
+func renderMonitorEvent(table *mib.Table, ev consumer.Event) string {
 	label := ev.Path
 	var obj *mib.Object
 	if o, err := codec.ParseOID(ev.Path); err == nil {
-		label, obj = mib.Describe(o)
+		label, obj = table.Describe(o)
 	}
 	line := fmt.Sprintf("%s  %-30s = %s",
 		time.Now().UTC().Format("15:04:05"), label, monitorValueString(ev.Value, obj))

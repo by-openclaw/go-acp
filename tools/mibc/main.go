@@ -1,13 +1,13 @@
 // Command mibc compiles SNMP MIB source into the table internal/snmp/mib
 // embeds.
 //
-//	go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz <root>...
+//	go run ./tools/mibc -library <by-protocol/mib> -out internal/snmp/mib/tables -set NAME=DIR,...
 //
 // It is the OFFLINE half of the rule in internal/snmp/CLAUDE.md: MIB
 // source is parsed here, by a developer, and the result is committed; the
 // shipped binary reads numbers and names and never a MIB. The roots are
 // every directory the modules come from — today a checkout of
-// github.com/by-protocol/mib (the IRDs and the IETF standard modules) and
+// github.com/by-protocol/mib (the vendor and IETF standard modules) and
 // internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs (the Snell set).
 // Every IMPORT must resolve across the roots together; run tools/mibcheck
 // -fetch first if it does not.
@@ -66,18 +66,27 @@ func run(argv []string, stdout, stderr io.Writer) int {
 		"comma-separated MODULE=PATH-SUBSTRING: which file wins when a module ships in copies no date can decide between")
 	exclude := fs.String("exclude", "Copy of ",
 		"comma-separated filename prefixes to ignore — stray copies left beside the originals")
+	library := fs.String("library", "",
+		"a MIB library laid out <manufacturer>/<device-type>/<model>/: write one table per model, -out being a directory")
+	sets := fs.String("set", "",
+		"with -library, comma-separated NAME=DIR: further tables, the library's standard modules beside them")
 	verbose := fs.Bool("v", false, "list every finding, not only their counts")
 	if err := fs.Parse(argv); err != nil {
 		return 2
 	}
-	if *out == "" || fs.NArg() == 0 {
+	if *out == "" || (fs.NArg() == 0 && *library == "") {
 		_, _ = fmt.Fprintln(stderr, "usage: mibc -out FILE [-pin MOD=SUBSTR] [-exclude PREFIX] [-v] ROOT...")
+		_, _ = fmt.Fprintln(stderr, "       mibc -library DIR -out DIR [-set NAME=DIR,...] [-v]")
 		return 2
 	}
 	pinMap, err := parsePins(*pins)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "mibc:", err)
 		return 2
+	}
+
+	if *library != "" {
+		return runLibrary(*library, *out, *sets, pinMap, splitList(*exclude), *verbose, stdout, stderr)
 	}
 
 	files, err := collect(fs.Args(), splitList(*exclude))

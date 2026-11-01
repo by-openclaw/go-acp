@@ -5,8 +5,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
+	"dhs/internal/consumer/compliance"
 	"dhs/internal/snmp/codec"
 	snmpcons "dhs/internal/snmp/consumer"
 	"dhs/internal/snmp/mib"
@@ -16,30 +18,37 @@ func TestWriteBind(t *testing.T) {
 	controlMode := codec.MustParseOID("1.3.6.1.4.1.1773.1.3.200.1.11.0")
 	shared := codec.MustParseOID("1.3.6.1.4.1.1773.1.3.200.2.6.4.0")
 	for _, tc := range []struct {
-		name   string
-		vb     codec.VarBind
-		prefer []string
-		want   string
+		name  string
+		vb    codec.VarBind
+		table string
+		want  string
 	}{
-		{"an enumerated value gets its label", codec.VarBind{Name: controlMode, Value: codec.Int(4)}, nil,
+		{"an enumerated value gets its label", codec.VarBind{Name: controlMode, Value: codec.Int(4)}, "ericsson-tt1260",
 			"controlMode.0\tINTEGER\tsnmp(4)\n"},
-		{"a value the MIB does not name stays a number", codec.VarBind{Name: controlMode, Value: codec.Int(9)}, nil,
+		{"a value the MIB does not name stays a number", codec.VarBind{Name: controlMode, Value: codec.Int(9)}, "ericsson-tt1260",
 			"controlMode.0\tINTEGER\t9\n"},
-		{"a string is never labelled", codec.VarBind{Name: controlMode, Value: codec.String("4")}, nil,
+		{"a string is never labelled", codec.VarBind{Name: controlMode, Value: codec.String("4")}, "ericsson-tt1260",
 			"controlMode.0\tOCTET STRING\t4\n"},
-		{"--mib picks the device's name", codec.VarBind{Name: shared, Value: codec.Int(1)}, []string{"ETV-TT1260-MIB"},
+		{"the device's table names it", codec.VarBind{Name: shared, Value: codec.Int(1)}, "ericsson-tt1260",
 			"userLsdPid.0\tINTEGER\t1\n"},
-		{"nothing covers it", codec.VarBind{Name: codec.MustParseOID("2.999.1"), Value: codec.Int(1)}, nil,
+		{"nothing covers it", codec.VarBind{Name: codec.MustParseOID("2.999.1"), Value: codec.Int(1)}, "",
 			"2.999.1\tINTEGER\t1\n"},
 		// The agent's own identity, named from DHS-MIB.
-		{"an OID value is named", codec.VarBind{Name: mib.SysObjectID, Value: codec.ObjectID(mib.DHSAgent)}, nil,
+		{"an OID value is named", codec.VarBind{Name: mib.SysObjectID, Value: codec.ObjectID(mib.DHSAgent)}, "",
 			"sysObjectID.0\t" + codec.TypeOID.String() + "\tdhsAgent\n"},
-		{"an OID value nothing names stays dotted", codec.VarBind{Name: mib.SysObjectID, Value: codec.ObjectID(codec.MustParseOID("2.999"))}, nil,
+		{"an OID value nothing names stays dotted", codec.VarBind{Name: mib.SysObjectID, Value: codec.ObjectID(codec.MustParseOID("2.999"))}, "",
 			"sysObjectID.0\t" + codec.TypeOID.String() + "\t2.999\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var b bytes.Buffer
-			writeBind(&b, tc.vb, tc.prefer)
+			var table *mib.Table
+			if tc.table != "" {
+				var err error
+				if table, err = mib.Load(tc.table); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeBind(&b, tc.vb, table)
 			if b.String() != tc.want {
 				t.Errorf("= %q, want %q", b.String(), tc.want)
 			}
@@ -59,13 +68,9 @@ func TestTrapLine(t *testing.T) {
 	}
 }
 
-func TestSNMPFlagsModules(t *testing.T) {
-	f := snmpFlags{prefer: " ETV-TT1260-MIB, ,SNELL-IQMUX42-CMD "}
-	got := f.modules()
-	if len(got) != 2 || got[0] != "ETV-TT1260-MIB" || got[1] != "SNELL-IQMUX42-CMD" {
-		t.Errorf("= %q", got)
-	}
-	if (&snmpFlags{}).modules() != nil {
-		t.Error("no --mib is no preference")
+func TestSNMPTableRefusesAnUnknownName(t *testing.T) {
+	f := snmpFlags{mibTable: "absent"}
+	if _, err := f.table(context.Background(), nil, &compliance.Profile{}); err == nil {
+		t.Error("an unknown --mib must be refused")
 	}
 }

@@ -169,32 +169,100 @@ func TestABadEmbeddedTablePanics(t *testing.T) {
 	mustLoad([]byte("not a table"))
 }
 
-// The embedded table, against what the plant's devices actually answered:
-// the Snell frame at 10.6.255.113 (IQMUX42 in slot 11) and the IRDs'
-// control gate. These OIDs came off the wire, so a regenerated table that
-// renames them has broken something an operator reads.
-func TestTheEmbeddedTableNamesThePlant(t *testing.T) {
-	tb := Compiled()
-	if tb.Len() < 70000 {
-		t.Fatalf("only %d rows; was the table regenerated from a partial set?", tb.Len())
+func loadTable(t *testing.T, name string) *Table {
+	t.Helper()
+	tb, err := Load(name)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return tb
+}
+
+// One device, one table: the same OID names what that device's own MIB
+// says, and another device's objects are not there at all.
+func TestEachDeviceHasItsOwnNames(t *testing.T) {
+	port29 := oid("1.3.6.1.4.1.21035.41.2.9.1.29")
+	for table, want := range map[string]string{
+		"dev-systemtechnik-1986": "poLabel",
+		"dev-systemtechnik-7113": "poDWDMChannelNumber",
+	} {
+		if got := loadTable(t, table).Name(port29); got != want {
+			t.Errorf("%s names .29 %q, want %q", table, got, want)
+		}
+	}
+	dr := loadTable(t, "ateme-dr5000")
+	if obj, _ := dr.Lookup(port29); obj == nil || obj.Name != "enterprises" {
+		t.Errorf("the DR5000 table names a DEV object: %+v", obj)
+	}
+	if _, err := dr.ResolveInput("controlMode.0"); err == nil {
+		t.Error("the DR5000 table knows the IRDs' controlMode")
+	}
+	got, err := loadTable(t, "ericsson-rx1290").ResolveInput("controlMode.0")
+	if err != nil || got.String() != "1.3.6.1.4.1.1773.1.3.200.1.11.0" {
+		t.Errorf("rx1290 controlMode.0 = %s, %v", got, err)
+	}
+	if got := Base().Name(oid("1.3.6.1.4.1.27338.5.2")); got == "dr5000Unit" {
+		t.Error("the base table holds a vendor's names")
+	}
+}
+
+// Tables and their indexes survive: the DR5000's programme and stream tables
+// are what a walk reads.
+func TestTablesKeepTheirIndex(t *testing.T) {
+	tb := loadTable(t, "ateme-dr5000")
+	o, err := tb.ResolveInput("dr5000StatusTsDescriptorProgramStreamPid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj, rest := tb.Lookup(o.Append(3, 4))
+	if obj == nil || rest.String() != "3.4" {
+		t.Errorf("stream Pid = %+v rest %s", obj, rest)
+	}
+	entry, _ := tb.Lookup(o[:len(o)-1])
+	if entry == nil || len(entry.Index) != 2 {
+		t.Errorf("the stream table is indexed by programme and stream: %+v", entry)
+	}
+}
+
+func TestForObjectID(t *testing.T) {
+	for _, tc := range []struct {
+		oid, want string
+		ok        bool
+	}{
+		{"1.3.6.1.4.1.27338.5.2.2", "ateme-dr5000", true},
+		{"1.3.6.1.4.1.7995.1.3.1.562", "snell", true},
+		{"1.3.6.1.4.1.54981.1.1", BaseTable, true},
+		// Two models share this one, so it needs --mib.
+		{"1.3.6.1.4.1.1773.1.3.200", "", false},
+	} {
+		got, ok := ForObjectID(oid(tc.oid))
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("%s = %q %v", tc.oid, got, ok)
+		}
+	}
+	if _, err := Load("absent"); err == nil {
+		t.Error("an unknown table must be refused")
+	}
+}
+
+// The tables, against what the plant's devices actually answered: the Snell
+// frame at 10.6.255.113 (IQMUX42 in slot 11) and the IRDs' control gate.
+// These OIDs came off the wire, so a regenerated table that renames them has
+// broken something an operator reads.
+func TestTheTablesNameThePlant(t *testing.T) {
+	tb := loadTable(t, "snell")
 	for _, tc := range []struct{ oid, want string }{
 		// The column is .32774; the arc after it is the slot.
 		{"1.3.6.1.4.1.7995.1.3.1.389.1.1.32774.11", "iqmux42SetupSerialNumber.11"},
 		{"1.3.6.1.4.1.7995.1.3.1.562.1.1.32769.1", "iqdbe00AudioSetupFirmware.1"},
-		{"1.3.6.1.4.1.1773.1.3.200.1.11.0", "controlMode.0"},
 		{"1.3.6.1.4.1.7995.1.3.1.532", "moduleIQDMX31"},
 	} {
-		if got := Name(oid(tc.oid)); got != tc.want {
+		if got := tb.Name(oid(tc.oid)); got != tc.want {
 			t.Errorf("%s = %q, want %q", tc.oid, got, tc.want)
 		}
 	}
-	if got := tb.Name(oid("1.3.6.1.4.1.1773.1.3.200.2.6.4.0"), "ETV-TT1260-MIB"); got != "userLsdPid.0" {
+	if got := loadTable(t, "ericsson-tt1260").Name(oid("1.3.6.1.4.1.1773.1.3.200.2.6.4.0")); got != "userLsdPid.0" {
 		t.Errorf("the TT1260's name for .2.6.4 = %q", got)
-	}
-	got, err := Resolve("controlMode.0")
-	if err != nil || got.String() != "1.3.6.1.4.1.1773.1.3.200.1.11.0" {
-		t.Errorf("Resolve(controlMode.0) = %s, %v", got, err)
 	}
 }
 
@@ -203,7 +271,7 @@ func TestDescribe(t *testing.T) {
 	if name != "sysDescr.0" || obj == nil || obj.Base != "OCTET STRING" {
 		t.Errorf("sysDescr = %q %+v", name, obj)
 	}
-	name, obj = Describe(oid("1.3.6.1.4.1.1773.1.3.200.1.11.0"))
+	name, obj = loadTable(t, "ericsson-tt1260").Describe(oid("1.3.6.1.4.1.1773.1.3.200.1.11.0"))
 	if l, _ := obj.EnumName(4); name != "controlMode.0" || l != "snmp" {
 		t.Errorf("controlMode = %q, label %q", name, l)
 	}
@@ -224,7 +292,7 @@ func TestResolveRoutesByForm(t *testing.T) {
 func TestUnderListsOneBranchInOrder(t *testing.T) {
 	// A caller building its own index of a device's branch reads it
 	// from here rather than parsing a MIB at runtime.
-	tbl := Compiled()
+	tbl := Base()
 	sys := tbl.Under(oid("1.3.6.1.2.1.1"))
 	if len(sys) < 6 {
 		t.Fatalf("the system group has at least six objects: %d", len(sys))

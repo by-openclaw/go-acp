@@ -89,7 +89,7 @@ func TestName(t *testing.T) {
 	if got := Name(SysDescr); got != "sysDescr.0" {
 		t.Errorf("= %q", got)
 	}
-	if got := Name(oid("1.3.6.1.4.1.7995.9.9")); got != "snellWilcoxRoot.9.9" {
+	if got := loadTable(t, "snell").Name(oid("1.3.6.1.4.1.7995.9.9")); got != "snellWilcoxRoot.9.9" {
 		t.Errorf("= %q, want the Snell root and the rest", got)
 	}
 	if got := Name(oid("2.999.1")); got != "2.999.1" {
