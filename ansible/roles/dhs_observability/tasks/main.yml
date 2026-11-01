@@ -27,6 +27,8 @@
   ansible.builtin.command:
     cmd: docker compose up -d --remove-orphans
     chdir: "{{ dhs_observability_dir }}"
+  environment:
+    DHS_RESTART: "{{ dhs_observability_restart }}"
   when: dhs_observability_files.changed
   register: dhs_observability_up
   changed_when: true
