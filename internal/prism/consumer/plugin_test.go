@@ -790,3 +790,14 @@ func TestRefusedErrorText(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+// A caller that has already cancelled stops the next answer at once.
+func TestAnswersAlreadyCancelled(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	cancel()
+	answer, done := answers(ctx)()
+	defer done()
+	if answer.Err() == nil {
+		t.Fatal("the answer outlives a cancelled caller")
+	}
+}

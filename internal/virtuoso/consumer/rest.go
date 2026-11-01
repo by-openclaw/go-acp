@@ -82,6 +82,11 @@ func newREST(base string, client *transporthttp.Client, o Options, log *slog.Log
 // slow card would cost every card after it.
 func detach(parent context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
+	// AfterFunc runs on its own goroutine: too late for this request when
+	// the caller has already cancelled.
+	if errors.Is(parent.Err(), context.Canceled) {
+		cancel()
+	}
 	stop := context.AfterFunc(parent, func() {
 		if errors.Is(parent.Err(), context.Canceled) {
 			cancel()
