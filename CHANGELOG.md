@@ -7,6 +7,20 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.51.0](https://github.com/by-openclaw/go-acp/compare/v0.50.0...v0.51.0) (2026-11-01)
+
+
+### Features
+
+* **prism:** consumer for the Telestream PRISM waveform monitor ([#1557](https://github.com/by-openclaw/go-acp/issues/1557)) ([ddb4b3e](https://github.com/by-openclaw/go-acp/commit/ddb4b3e49ad4b1ff7d11e6f756294c025b072e1e))
+* **virtuoso:** consumer for the Nevion Virtuoso MI — REST/JSON, schema-driven walk, PATCH with read-back ([#1559](https://github.com/by-openclaw/go-acp/issues/1559)) ([d295c94](https://github.com/by-openclaw/go-acp/commit/d295c94b42353511d2b4dd07d703d57ccd56941d)), closes [#1556](https://github.com/by-openclaw/go-acp/issues/1556)
+
+
+### Bug Fixes
+
+* **ansible:** the converge leaves the NMOS plant alone and lab services stay off at boot ([#1554](https://github.com/by-openclaw/go-acp/issues/1554)) ([d0557eb](https://github.com/by-openclaw/go-acp/commit/d0557eb8b0ff41c361b9912973647a714d02e6f3)), closes [#1553](https://github.com/by-openclaw/go-acp/issues/1553)
+* **virtuoso,prism:** a caller that has already cancelled stops the request ([#1561](https://github.com/by-openclaw/go-acp/issues/1561)) ([e0bddef](https://github.com/by-openclaw/go-acp/commit/e0bddef80152eaaec1dae40a29940b7bc0afdcad)), closes [#1560](https://github.com/by-openclaw/go-acp/issues/1560)
+
 ## [0.50.0](https://github.com/by-openclaw/go-acp/compare/v0.49.0...v0.50.0) (2026-11-01)
 
 
