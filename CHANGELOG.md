@@ -7,6 +7,22 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.50.0](https://github.com/by-openclaw/go-acp/compare/v0.49.0...v0.50.0) (2026-11-01)
+
+
+### Features
+
+* **ccp:** Axon Cortex Control Panel Protocol consumer — labels, colours, buttons, rotary knobs (CCP-1601) ([#1544](https://github.com/by-openclaw/go-acp/issues/1544)) ([458e4eb](https://github.com/by-openclaw/go-acp/commit/458e4eb3f1827dcc55d87a680d016a2880d501ec))
+* **cerebrum-nb:** listen --dest N[,N] --level L subscribes one destination; DETAILS carries the device class (names join and device-details default) ([#1540](https://github.com/by-openclaw/go-acp/issues/1540)) ([fd4fafa](https://github.com/by-openclaw/go-acp/commit/fd4fafa200b6d0ae34460ec081f808eda894cc0f))
+* **cerebrum-nb:** route and usage take mnemonics for dest, srce and level; --level accepts a list for multi-level routes and reads ([#1541](https://github.com/by-openclaw/go-acp/issues/1541)) ([a9338f8](https://github.com/by-openclaw/go-acp/commit/a9338f8b3c6ff120450d1a52901daf2815012bdd))
+* **kratos:** consumer for the Kratos NGC2 IDU antenna controller — REST/JSON state, MQTT changes, postMessage set and command verbs ([#1542](https://github.com/by-openclaw/go-acp/issues/1542)) ([0af4bcd](https://github.com/by-openclaw/go-acp/commit/0af4bcdadadaab0282a6c9e2254b15cb1437d592))
+* **snmp:** one compiled MIB table per device, never merged ([#1548](https://github.com/by-openclaw/go-acp/issues/1548)) ([6d3e848](https://github.com/by-openclaw/go-acp/commit/6d3e8488fa7e0b8670da89b35680cf462086c3f4)), closes [#1546](https://github.com/by-openclaw/go-acp/issues/1546)
+
+
+### Bug Fixes
+
+* **ci:** Release Please also runs on a manual dispatch of main, the recovery the trigger comment promises ([#1534](https://github.com/by-openclaw/go-acp/issues/1534)) ([b9d6258](https://github.com/by-openclaw/go-acp/commit/b9d625803d160b795ce275b2415b032eb9d396c7))
+
 ## [0.49.0](https://github.com/by-openclaw/go-acp/compare/v0.48.0...v0.49.0) (2026-10-22)
 
 
