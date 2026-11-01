@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "dev": {"$ref": "#/definitions/device-deviceinfo"},
+    "elements": {"$ref": "#/definitions/elements-elements"}
+  },
+  "definitions": {
+    "device-deviceinfo": {
+      "type": "object",
+      "properties": {
+        "product_info": {"$ref": "#/definitions/device-productinfo"}
+      }
+    },
+    "device-productinfo": {
+      "type": "object",
+      "properties": {
+        "devname": {"type": "string", "default": "", "title": "Device name", "description": ""},
+        "uuid": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "model": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "prodname": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "serial": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "serialfull": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "swbuildtime": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "swver": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "board_serial": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true}
+      }
+    },
+    "elements-elements": {
+      "type": "object",
+      "properties": {
+        "sdiinput_coll": {"$ref": "#/definitions/elements-sdiinput_coll"},
+        "ipoutputts_coll": {"$ref": "#/definitions/elements-ipoutputts_coll"}
+      }
+    },
+    "elements-sdiinput_coll": {
+      "type": "object",
+      "allowInsert": false,
+      "autoKey": true,
+      "additionalProperties": {"$ref": "#/definitions/elements-sdiinput"}
+    },
+    "elements-sdiinput": {
+      "type": "object",
+      "properties": {
+        "gid": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "flabel": {"type": "string", "title": "Port", "description": "", "readOnly": true},
+        "sync": {"type": "boolean", "title": "Sync", "description": "", "readOnly": true},
+        "alarms": {"$ref": "#/definitions/alarm-status"}
+      },
+      "required": ["gid"]
+    },
+    "alarm-status": {
+      "type": "object",
+      "properties": {
+        "subid3_coll": {"$ref": "#/definitions/alarm-subid3_coll"}
+      }
+    },
+    "alarm-subid3_coll": {
+      "type": "object",
+      "allowInsert": false,
+      "autoKey": true,
+      "additionalProperties": {"$ref": "#/definitions/alarm-subid3level"}
+    },
+    "alarm-subid3level": {
+      "type": "object",
+      "properties": {
+        "state": {"type": "integer", "minimum": 0, "maximum": 7, "title": "", "description": "", "readOnly": true}
+      }
+    },
+    "elements-ipoutputts_coll": {
+      "type": "object",
+      "allowInsert": true,
+      "autoKey": true,
+      "additionalProperties": {"$ref": "#/definitions/elements-ipoutputts"}
+    },
+    "elements-ipoutputts": {
+      "type": "object",
+      "properties": {
+        "dst_coll": {"$ref": "#/definitions/elements-dst_coll"},
+        "clear_stats": {"$ref": "#/definitions/elements-clearstats"}
+      }
+    },
+    "elements-clearstats": {
+      "type": "object",
+      "rpc": true,
+      "properties": {}
+    },
+    "elements-dst_coll": {
+      "type": "object",
+      "allowInsert": true,
+      "autoKey": true,
+      "additionalProperties": {"$ref": "#/definitions/elements-dst"}
+    },
+    "elements-dst": {
+      "type": "object",
+      "properties": {
+        "enable": {"type": "boolean", "default": false, "title": "Enable", "description": ""},
+        "gain": {"type": "number", "minimum": -12, "maximum": 12, "default": 0, "unit": "dB", "title": "Gain", "description": ""},
+        "ip": {"$ref": "#/definitions/elements-dst-ip"}
+      }
+    },
+    "elements-dst-ip": {
+      "type": "object",
+      "properties": {
+        "dstudpp": {"type": "integer", "minimum": 1, "maximum": 65535, "default": 5004, "title": "UDP port", "description": ""},
+        "destipv4": {"type": "string", "format": "ipv4", "default": "0.0.0.0", "title": "Destination", "description": ""},
+        "destipv6": {"type": "string", "format": "ipv6", "default": "", "title": "Destination v6", "description": ""}
+      }
+    }
+  }
+}

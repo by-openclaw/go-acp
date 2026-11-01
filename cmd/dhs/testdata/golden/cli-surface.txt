@@ -20,11 +20,13 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | probel-sw08p | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
                                (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (virtuoso):            info, walk, get, set, watch, export
+                               (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -108,6 +110,7 @@ snmp     port=161   SNMP v1 / v2c manager — the device model is the agent's ow
 tsl-v31  port=4000  TSL UMD v3.1 — 18-byte UDP frame (binary tallies, no colour)
 tsl-v40  port=4000  TSL UMD v4.0 — v3.1 extended with XDATA + CHKSUM (2-bit colour per LH/Text/RH per display)
 tsl-v50  port=8901  TSL UMD v5.0 — UDP (≤2048 B) or TCP with DLE/STX wrapper; multi-DMSG; UTF-16LE
+virtuoso port=80    Nevion Virtuoso MI chassis and cards (REST/JSON) — the model is the device's own schema
 
 ========== consumer/acp1/info ==========
 $ dhs consumer acp1 info --help
