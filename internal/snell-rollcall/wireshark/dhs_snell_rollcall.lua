@@ -965,12 +965,16 @@ end
 -------------------------------------------------------------------------------
 
 -- varint reads the little-endian 7-bit-continuation integer the format uses.
+-- By multiplication: bit.lshift answers a signed 32-bit number, so a value with
+-- its top bit set came out negative, which string.format refuses on the Lua 5.2
+-- of Wireshark 4.2.
 local function dtp_varint(tvb, off)
-    local value, shift, used = 0, 0, 0
+    local value, shift, scale, used = 0, 0, 1, 0
     while off + used < tvb:len() do
         local b = tvb(off + used, 1):uint()
         used = used + 1
-        value = value + bit.lshift(bit.band(b, 0x7F), shift)
+        value = value + bit.band(b, 0x7F) * scale
+        scale = scale * 128
         shift = shift + 7
         if bit.band(b, 0x80) == 0 then
             return value, used

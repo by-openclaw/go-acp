@@ -53,6 +53,21 @@ var (
 	SysServices = oid("1.3.6.1.2.1.1.7.0")
 )
 
+// The ENTITY-MIB (RFC 6933) columns that say what a box is, in a standard
+// place, for a device with no table of its own. A row of class chassis is
+// the box itself.
+var (
+	EntPhysicalClass       = oid("1.3.6.1.2.1.47.1.1.1.1.5")
+	EntPhysicalFirmwareRev = oid("1.3.6.1.2.1.47.1.1.1.1.9")
+	EntPhysicalSoftwareRev = oid("1.3.6.1.2.1.47.1.1.1.1.10")
+	EntPhysicalSerialNum   = oid("1.3.6.1.2.1.47.1.1.1.1.11")
+	EntPhysicalMfgName     = oid("1.3.6.1.2.1.47.1.1.1.1.12")
+	EntPhysicalModelName   = oid("1.3.6.1.2.1.47.1.1.1.1.13")
+)
+
+// EntPhysicalChassis is entPhysicalClass chassis(3).
+const EntPhysicalChassis = 3
+
 // The RFC 3418 §5 snmp group counters an NMS reads to tell "nobody is
 // polling us" from "we are answering wrong".
 var (

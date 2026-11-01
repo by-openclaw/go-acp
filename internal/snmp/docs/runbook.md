@@ -41,7 +41,27 @@ slots        1
 ```
 
 `dtd_version` is the agent's `sysObjectID` — the vendor and product,
-which is what tells you whose MIB applies.
+which is what tells you whose MIB applies. Under the slot, `info` prints the
+identity: constructor, model, serial, software and the table in use. A model
+walk keeps the serial in the device's manifest,
+`.cache/manifest/snmp/<ip>.json`; the DM holds no per-unit identity.
+
+A DM stays as first captured (ADR-0022): a DM walked with the wrong table is
+replaced by deleting it, and walking again.
+
+## No MIB for this device
+
+```
+next  Acme Inc. (PEN 12345): no MIB loaded. Look in github.com/by-protocol/mib,
+      then https://mibbrowser.online/mibs/ (search page mibdb_search.php)
+```
+
+The device is identified anyway, from ENTITY-MIB or the system group, and its
+vendor objects stay numbers. Put the MIB in the library as
+`<manufacturer>/<device-type>/<model>/`, recompile
+(`internal/snmp/CLAUDE.md`), and add its enterprise to `byObjectID` in `internal/snmp/mib/device.go` when
+one table fits the whole branch. A table is compiled in, so a device whose
+table exists but is not selected takes `--mib` or `SNMP_MIB`.
 
 ## It does not answer
 
@@ -102,6 +122,11 @@ data — and answers more slowly the deeper into the table it is asked,
 down to ten objects a second. It also answers a GET for an index outside
 the table (program 999) with a value instead of noSuchInstance. Everything
 else on the device, about 53 000 objects, walks in half an hour.
+`walk --slot 0` reads those filled tables through their count: 4 456 objects.
+
+If that walk turns slow on a device and `compliance` shows
+`snmp_count_not_trusted`, a count did not hold up on that device and its table
+was walked in full, on purpose: no row is lost, it only costs the time.
 
 A request the agent has not answered is repeated, each time waiting twice
 as long as before (2 s, 4 s, 8 s): the agent answered late 8 079 times in

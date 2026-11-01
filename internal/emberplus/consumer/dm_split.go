@@ -2,6 +2,7 @@ package emberplus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -69,7 +70,7 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *datastore.TreeSto
 		if err := store.WriteDM("emberplus", providerIdentity, datastore.DM{
 			Protocol: "emberplus",
 			Root:     tree.Root,
-		}); err != nil {
+		}); err != nil && !errors.Is(err, datastore.ErrDMExists) {
 			return nil, err
 		}
 		return []SlotRef{{Identity: providerIdentity, OID: rootOID(tree.Root)}}, nil
@@ -96,7 +97,7 @@ func (p *Plugin) SplitAndPersistDM(ctx context.Context, store *datastore.TreeSto
 		if err := store.WriteDM("emberplus", slotIdentity, datastore.DM{
 			Protocol: "emberplus",
 			Root:     nodeChild,
-		}); err != nil {
+		}); err != nil && !errors.Is(err, datastore.ErrDMExists) {
 			return persisted, fmt.Errorf("emberplus: slot DM %q: %w", slotIdentity, err)
 		}
 		persisted = append(persisted, SlotRef{

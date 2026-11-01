@@ -53,7 +53,9 @@ Matrix is a separate entity — see ADR-0023.
 DM versioning rules:
 
 - New `(Model, SwRev)` observed → new file.
-- Never overwrite an existing DM file.
+- Never overwrite an existing DM file. A second walk of a `(Model, SwRev)`,
+  another unit's included, keeps the file and says so. Two ways replace one:
+  `extract --refresh` (ADR-0028 §6) and deleting the file.
 - Never dedupe — two SwRevs with identical trees both persist.
 
 ### Manifest shape
@@ -73,6 +75,8 @@ device:
     - ip: <ipv4>
       port: <int>
       transport: tcp|udp
+  unit:                           # optional: facts of this one box, a serial
+    <key>: <string>               # never in a DM, which every unit shares
 frames:
   - name: <frame-name>
     slots:

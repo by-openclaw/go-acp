@@ -105,7 +105,7 @@ func runMonitorWatch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	adapter := snmpmon.New(sess)
+	adapter := snmpmon.New(sess, table)
 
 	m := monitor.New(monitor.WithLogger(logger))
 	id, events := m.Subscribe(1024, prefixFilter(table, *filter))

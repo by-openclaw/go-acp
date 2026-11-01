@@ -25,13 +25,13 @@ func gz(t *testing.T, s string) []byte {
 }
 
 const smallRows = TableHeader + "\n" +
-	"1.3.6.1.4.1.1773\ttandberg\tTANDBERG-SMI\tobject-identifier\t\t\t\t\t\n" +
-	"1.3.6.1.4.1.1773.1.3.200.1.11\tcontrolMode\tETV-RX1290-MIB\tobject-type\tINTEGER\t\tread-write\tfp=1;snmp=4\t\n" +
-	"1.3.6.1.4.1.1773.1.3.200.2.6.4\tuserAudio3\tETV-RX1290-MIB\tobject-identifier\t\t\t\t\t\n" +
-	"1.3.6.1.4.1.1773.1.3.200.2.6.4\tuserLsdPid\tETV-TT1260-MIB\tobject-type\tINTEGER\tPIDNumber\tread-only\t\t\n" +
-	"1.3.6.1.4.1.7995.1.3.1.389.1.1\tiqmux42Entry\tSNELL-IQMUX42-CMD\tobject-type\t\t\tnot-accessible\t\tslot,param\n" +
-	"1.3.6.1.9.1\tshared\tA-MIB\tobject-type\tINTEGER\t\tread-only\t\t\n" +
-	"1.3.6.1.9.2\tshared\tB-MIB\tobject-type\tINTEGER\t\tread-only\t\t\n"
+	"1.3.6.1.4.1.1773\ttandberg\tTANDBERG-SMI\tobject-identifier\t\t\t\t\t\t\n" +
+	"1.3.6.1.4.1.1773.1.3.200.1.11\tcontrolMode\tETV-RX1290-MIB\tobject-type\tINTEGER\t\tread-write\tfp=1;snmp=4\t\t\n" +
+	"1.3.6.1.4.1.1773.1.3.200.2.6.4\tuserAudio3\tETV-RX1290-MIB\tobject-identifier\t\t\t\t\t\t\n" +
+	"1.3.6.1.4.1.1773.1.3.200.2.6.4\tuserLsdPid\tETV-TT1260-MIB\tobject-type\tINTEGER\tPIDNumber\tread-only\t\t\t\n" +
+	"1.3.6.1.4.1.7995.1.3.1.389.1.1\tiqmux42Entry\tSNELL-IQMUX42-CMD\tobject-type\t\t\tnot-accessible\t\tslot,param\t\n" +
+	"1.3.6.1.9.1\tshared\tA-MIB\tobject-type\tINTEGER\t\tread-only\t\t\t\n" +
+	"1.3.6.1.9.2\tshared\tB-MIB\tobject-type\tINTEGER\t\tread-only\t\t\t\n"
 
 func small(t *testing.T) *Table {
 	t.Helper()
@@ -75,10 +75,11 @@ func TestParseTableRefusals(t *testing.T) {
 	}{
 		{"not gzip", []byte("plain text"), "table:"},
 		{"empty", gz(t, ""), "first line"},
-		{"another layout", gz(t, "# dhs-snmp-mib-table v2\n"), "first line"},
+		{"another layout", gz(t, "# dhs-snmp-mib-table v1\n"), "first line"},
 		{"a short row", gz(t, TableHeader+"\n1.3\tx\n"), "line 2: 2 columns"},
-		{"a bad OID", gz(t, TableHeader+"\nnope\tx\tM\tk\t\t\t\t\t\n"), "line 2"},
-		{"an enum with no number", gz(t, TableHeader+"\n1.3\tx\tM\tk\t\t\t\ta=b\t\n"), `"a=b" has no number`},
+		{"a bad OID", gz(t, TableHeader+"\nnope\tx\tM\tk\t\t\t\t\t\t\n"), "line 2"},
+		{"an enum with no number", gz(t, TableHeader+"\n1.3\tx\tM\tk\t\t\t\ta=b\t\t\n"), `"a=b" has no number`},
+		{"a range top that is no number", gz(t, TableHeader+"\n1.3\tx\tM\tk\t\t\t\t\t\tMAX\n"), `"MAX" is not a number`},
 		{"a row longer than any real one", gz(t, long), "too long"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

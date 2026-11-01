@@ -23,6 +23,9 @@ type Object struct {
 	Access string
 	Enums  []Enum
 	Index  []string
+	// Max is the top of an integer syntax's range, as written; empty when
+	// the MIB states none.
+	Max string
 }
 
 // Dotted renders the OID.
@@ -93,7 +96,7 @@ func Compile(mods []*Module) *Compiled {
 			o := Object{OID: oid, Name: n.Name, Module: m.Name, Kind: n.Kind,
 				Access: n.Access, Index: n.Index}
 			if n.Kind == KindObjectType && n.Syntax != nil {
-				o.Base, o.TC, o.Enums = c.syntax(m, n.Syntax, 0)
+				o.Base, o.TC, o.Enums, o.Max = c.syntax(m, n.Syntax, 0)
 			}
 			out = append(out, o)
 		}
@@ -209,30 +212,58 @@ func (c *compiler) resolveTrap(m *Module, n *Node) ([]uint32, bool) {
 
 // syntax resolves a SYNTAX to the primitive it is carried as, following
 // textual conventions and type assignments. The first named type met is
-// kept as TC; enumerations are the object's own, or inherited from the
-// type when it declares none.
-func (c *compiler) syntax(m *Module, s *Syntax, depth int) (base, tc string, enums []Enum) {
-	enums = s.Enums
+// kept as TC; enumerations and a range are the object's own, or inherited
+// from the type when it declares none.
+func (c *compiler) syntax(m *Module, s *Syntax, depth int) (base, tc string, enums []Enum, top string) {
+	enums, top = s.Enums, rangeTop(s.Constraint)
 	switch {
 	case primitives[s.Base]:
-		return s.Base, "", enums
+		return s.Base, "", enums, top
 	case application[s.Base] != "":
-		return application[s.Base], "", enums
+		return application[s.Base], "", enums, top
 	}
 	if depth > 16 {
-		return "", s.Base, enums
+		return "", s.Base, enums, top
 	}
 	tm, ty := c.lookupType(m, s.Base)
 	if ty == nil || ty.Syntax == nil {
 		// A type this set does not define. The name is still worth
 		// keeping: it is usually a TC the reader recognises.
-		return "", s.Base, enums
+		return "", s.Base, enums, top
 	}
-	b, _, inherited := c.syntax(tm, ty.Syntax, depth+1)
+	b, _, inherited, inheritedTop := c.syntax(tm, ty.Syntax, depth+1)
 	if len(enums) == 0 {
 		enums = inherited
 	}
-	return b, s.Base, enums
+	if top == "" {
+		top = inheritedTop
+	}
+	return b, s.Base, enums, top
+}
+
+// rangeTop is the largest number of a constraint kept as written, (1..32)
+// or (0..7 | 9..12). A SIZE bounds a length, not a value, and a bound that
+// is not a plain number states nothing this table can use.
+func rangeTop(constraint string) string {
+	if constraint == "" || strings.Contains(constraint, "SIZE") {
+		return ""
+	}
+	top, found := int64(0), false
+	for _, part := range strings.FieldsFunc(constraint, func(r rune) bool {
+		return strings.ContainsRune("()| ", r)
+	}) {
+		if _, hi, ok := strings.Cut(part, ".."); ok {
+			part = hi
+		}
+		n, err := strconv.ParseInt(part, 10, 64)
+		if err != nil {
+			return ""
+		}
+		if !found || n > top {
+			top, found = n, true
+		}
+	}
+	return strconv.FormatInt(top, 10)
 }
 
 func (c *compiler) lookupType(m *Module, name string) (*Module, *Type) {

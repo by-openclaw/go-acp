@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -888,6 +889,16 @@ func canonicalTreeFromPlug(ctx context.Context, plug consumer.Protocol) *canonic
 	return exp
 }
 
+// deviceDescriber is a plugin with more to say about a device than
+// Model@SwRev. DeviceIdentity is what every unit of the model shares, and
+// goes into the DM beside the objects; UnitIdentity is what is true of this
+// one box, and goes into its manifest. ADR-0022: the DM answers what, the
+// manifest answers where.
+type deviceDescriber interface {
+	DeviceIdentity(ctx context.Context) map[string]string
+	UnitIdentity(ctx context.Context) map[string]string
+}
+
 // saveSlotCache routes a walked slot to the right on-disk cache.
 //
 // Per DHS 2016 MasterView (#363): any plugin that satisfies the
@@ -919,7 +930,19 @@ func saveSlotCache(ctx context.Context, prober identityProber, host, proto strin
 				"warning: identity probe failed for slot %d (%v); writing fallback DM as %s.json — rename when identity is determined\n",
 				slot, perr, identity)
 		}
-		if serr := saveIdentityCache(treeStore, identity, host, proto, slot, objs, tree); serr != nil {
+		save := func() error { return saveIdentityCache(treeStore, identity, host, proto, slot, objs, tree) }
+		if d, ok := prober.(deviceDescriber); ok && tree == nil {
+			save = func() error {
+				return treeStore.WriteDM(proto, identity, datastore.DM{Objects: objs, Identity: d.DeviceIdentity(ctx)})
+			}
+		}
+		switch serr := save(); {
+		case errors.Is(serr, datastore.ErrDMExists):
+			// ADR-0022: the first capture of a Model@SwRev stands. The
+			// identity still binds: this device has that DM.
+			fmt.Fprintf(os.Stderr, "DM kept: %s (a DM is never overwritten; delete it to capture again)\n",
+				treeStore.IdentityPath(proto, identity))
+		case serr != nil:
 			fmt.Fprintf(os.Stderr, "warning: identity cache save: %v\n", serr)
 			return ""
 		}
@@ -967,7 +990,9 @@ type slotBinding struct {
 	Identity string
 }
 
-func writeSlotManifest(deviceName, proto, host string, port int, bindings []slotBinding) {
+// writeSlotManifest's unit is what the plugin says of this one box, nil for a
+// plugin that has nothing to say.
+func writeSlotManifest(deviceName, proto, host string, port int, bindings []slotBinding, unit map[string]string) {
 	if len(bindings) == 0 {
 		return
 	}
@@ -988,6 +1013,7 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: defaultTransportFor(proto)},
 			},
+			Unit: unit,
 		},
 		Frames: []manifest.Frame{{
 			Name:  "frame",
@@ -1012,7 +1038,7 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 // ACP1 is UDP-by-default; AN2 (ACP2) + Ember+ are TCP.
 func defaultTransportFor(proto string) string {
 	switch proto {
-	case "acp1":
+	case "acp1", "snmp":
 		return "udp"
 	}
 	return "tcp"
@@ -1148,4 +1174,25 @@ func splitIdentityForManifest(identity string) (string, string) {
 		return identity, ""
 	}
 	return identity[:i], identity[i+1:]
+}
+
+// unitIdentity is what a plugin says of the one box it is connected to, nil
+// for a plugin that has nothing to say.
+func unitIdentity(ctx context.Context, plug any) map[string]string {
+	if d, ok := plug.(deviceDescriber); ok {
+		return d.UnitIdentity(ctx)
+	}
+	return nil
+}
+
+// connectedPort is the port a manifest records: --port, or the plugin's own
+// default when none was given, which only the plugin knows.
+func connectedPort(ctx context.Context, plug consumer.Protocol, port int) int {
+	if port != 0 {
+		return port
+	}
+	if info, err := plug.GetDeviceInfo(ctx); err == nil {
+		return info.Port
+	}
+	return port
 }

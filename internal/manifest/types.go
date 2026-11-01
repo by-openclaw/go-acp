@@ -28,6 +28,10 @@ type Device struct {
 	// schema change). NEVER a key.
 	FQDN      string     `json:"fqdn,omitempty"`
 	Endpoints []Endpoint `json:"endpoints"`
+	// Unit is what this one box says of itself, a serial number above all,
+	// for a connector that can read it. A DM is shared by every unit of a
+	// Model@SwRev (ADR-0022), so a fact about one unit can only live here.
+	Unit map[string]string `json:"unit,omitempty"`
 }
 
 // Endpoint is one IP/port/transport tuple. A device with two endpoints

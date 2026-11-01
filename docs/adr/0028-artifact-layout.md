@@ -54,8 +54,8 @@ internal/<proto>/testdata/integration-test/   COMMITTED — curated copies servi
   `dm/cerebrum-nb/CONVERT IP@6.7.4.json`) is the dual-oracle match
   pair — deliberately diffable, never merged. All units of one
   card+firmware share one DM per proto; endpoints/sub-devices are the
-  manifest's job (this is why a second unit overwriting the DM is
-  correct, not a collision).
+  manifest's job (a second unit finds the DM there and keeps it,
+  ADR-0022).
 
 ### 3. Facet-capability matrix (a missing facet file is a protocol fact)
 

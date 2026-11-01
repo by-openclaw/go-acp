@@ -1023,6 +1023,9 @@ EXAMPLES
   # what a device says it is
   dhs consumer snmp get 10.6.255.113
 
+  # one object, by name or number, after the host as with snmpget
+  dhs consumer snmp get 10.6.255.113 sysName.0
+
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
 
@@ -1066,7 +1069,7 @@ Usage of get:
   -capture validate
     	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
-    	read community (write community for set) (default "public")
+    	read community (write community for set); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public
   -context string
     	v3 context name; empty is the agent's default context
   -max-repetitions walk
@@ -1102,7 +1105,7 @@ Usage of walk:
   -capture validate
     	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
-    	read community (write community for set) (default "public")
+    	read community (write community for set); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public
   -context string
     	v3 context name; empty is the agent's default context
   -limit int
@@ -1134,8 +1137,8 @@ Usage of walk:
 ```text
 dhs consumer snmp set — write one object
 
-A SET needs the WRITE community in --community, which is NOT the read
-one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+A SET needs the WRITE community in SNMP_WRITE_COMMUNITY, or --community,
+which is NOT the read one. Get that wrong on a Tandberg IRD and you get no answer at all — the
 agent drops a request it will not serve (RFC 1157 §4.1) rather than
 explaining, so it looks exactly like a device that is switched off.
 Theirs is "private".
@@ -1165,7 +1168,7 @@ FLAGS
   -capture validate
     	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
-    	read community (write community for set) (default "public")
+    	read community (write community for set); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public
   -context string
     	v3 context name; empty is the agent's default context
   -max-repetitions walk

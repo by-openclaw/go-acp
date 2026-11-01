@@ -32,3 +32,28 @@ func TestSNMPSetValueTakesHexOctets(t *testing.T) {
 		t.Error("an unknown type letter was accepted")
 	}
 }
+
+// A password on a command line is in shell history and ps, so a raw verb
+// takes its community from the environment; the flag still wins.
+func TestRawVerbsTakeTheCommunityFromTheEnvironment(t *testing.T) {
+	t.Setenv("SNMP_COMMUNITY", "read-env")
+	t.Setenv("SNMP_WRITE_COMMUNITY", "write-env")
+	for _, tc := range []struct {
+		name string
+		f    snmpFlags
+		want string
+	}{
+		{"a read", snmpFlags{}, "read-env"},
+		{"a write", snmpFlags{write: true}, "write-env"},
+		{"the flag on a read", snmpFlags{community: "flag"}, "flag"},
+		{"the flag on a write", snmpFlags{community: "flag", write: true}, "flag"},
+	} {
+		if got := tc.f.communityEnv(); got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	t.Setenv("SNMP_WRITE_COMMUNITY", "")
+	if got := (&snmpFlags{write: true}).communityEnv(); got != "" {
+		t.Errorf("no write community must not borrow the read one: %q", got)
+	}
+}

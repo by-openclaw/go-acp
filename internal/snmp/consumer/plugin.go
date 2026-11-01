@@ -78,7 +78,9 @@ type Plugin struct {
 	// mibName is the table asked for; table is the one in use, set at
 	// Connect. One device, one table: see internal/snmp/mib/device.go.
 	mibName   string
+	tableName string
 	table     atomic.Pointer[mib.Table]
+	ident     *deviceIdentity
 	tree      []dhsc.Object
 	byPath    map[string]codec.OID
 	paths     map[string]codec.OID
@@ -149,6 +151,7 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 			p.sysOID = binds[0].Value.OID
 			p.paths = nil
 		}
+		p.ident = nil
 		err = p.selectTable()
 		p.mu.Unlock()
 		if err != nil {
@@ -299,10 +302,14 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (dhsc.SlotInfo, erro
 	if slot > 0 {
 		return dhsc.SlotInfo{Slot: slot, Status: dhsc.SlotNoCard, State: dhsc.SlotStateNoCard}, nil
 	}
-	return dhsc.SlotInfo{
+	si := dhsc.SlotInfo{
 		Slot: 0, Status: dhsc.SlotPresent, State: dhsc.SlotStatePresent,
 		IsOnline: true, LiveAt: p.Clock().Now(),
-	}, nil
+	}
+	if id, err := p.identify(ctx); err == nil {
+		si.Identity = id.fields()
+	}
+	return si, nil
 }
 
 // Walk reads the device model: the system group, and the agent's own
@@ -330,7 +337,7 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		// A walk that stopped early still returns what it read: a
 		// device model that is 20 000 objects deep is still a model,
 		// and an IRD's programme tables are that deep.
-		werr := sess.Walk(ctx, root, func(b codec.VarBind) error {
+		werr := sess.WalkBounded(ctx, root, p.Table().Bounded(), func(b codec.VarBind) error {
 			if walkLimit > 0 && len(objs) >= walkLimit {
 				return errStop
 			}
@@ -575,12 +582,16 @@ func (p *Plugin) wireValue(oid codec.OID, val dhsc.Value) (codec.Value, error) {
 	def, _ := p.Table().Lookup(oid)
 	s := valueString(val)
 
-	// An enum may be written by its name: the MIB is what maps it.
+	// An enum may be written by its name: the MIB is what maps it. An
+	// address may be written as one: octets are what the syntax carries.
 	if def != nil {
 		for _, e := range def.Enums {
 			if strings.EqualFold(e.Name, s) {
 				return codec.Int(e.Value), nil
 			}
+		}
+		if b, ok := def.AddressBytes(s); ok {
+			return codec.Bytes(b), nil
 		}
 	}
 	base := ""
@@ -653,6 +664,7 @@ func (p *Plugin) selectTable() error {
 		return err
 	}
 	p.table.Store(t)
+	p.tableName = name
 	return nil
 }
 
@@ -716,29 +728,34 @@ func (p *Plugin) writeSession(ctx context.Context) (*Session, error) {
 
 // IdentityProbe answers "which card am I talking to" the way ADR-0022
 // asks: Model@SwRev, so a per-model alarm template and a per-model DM
-// find each other.
-//
-// SNMP has no standard object for either — sysDescr on this IRD is
-// "Linux dp2 2.6.37", which says what it boots, not what it is. So the
-// vendor's own branch is read by the convention every MIB in this lab
-// follows: an object whose name ends in Model, and one whose name ends
-// in a version. What comes back is the device's own words, and a
-// device that publishes neither gets no identity rather than a guess.
+// find each other. See deviceIdentity for where the words come from. An
+// agent that says nothing at all gets no identity rather than a guess.
 func (p *Plugin) IdentityProbe(ctx context.Context, slot int) (string, error) {
-	sess, err := p.session()
+	id, err := p.identify(ctx)
 	if err != nil {
 		return "", err
 	}
-	model := p.firstNamed(ctx, sess, "UnitModel", "Model", "UnitName", "ProductName")
-	version := p.firstNamed(ctx, sess, "SoftwareCurrentVersion", "CurrentVersion",
-		"SoftwareVersion", "FirmwareVersion", "Version")
-	switch {
-	case model != "" && version != "":
-		return model + "@" + version, nil
-	case model != "":
-		return model, nil
+	return id.key(), nil
+}
+
+// DeviceIdentity is what the DM keeps: what every unit of this Model@SwRev
+// shares.
+func (p *Plugin) DeviceIdentity(ctx context.Context) map[string]string {
+	id, err := p.identify(ctx)
+	if err != nil {
+		return nil
 	}
-	return "", nil
+	return id.modelFields()
+}
+
+// UnitIdentity is what the device's manifest keeps: what is true of this
+// one box.
+func (p *Plugin) UnitIdentity(ctx context.Context) map[string]string {
+	id, err := p.identify(ctx)
+	if err != nil {
+		return nil
+	}
+	return id.unitFields()
 }
 
 // firstNamed reads the first object under the device's own branch
@@ -987,7 +1004,7 @@ func (p *Plugin) walkUnder(ctx context.Context, root codec.OID) ([]dhsc.Object, 
 	}
 	var objs []dhsc.Object
 	errStop := fmt.Errorf("snmp: walk limit")
-	werr := sess.Walk(ctx, root, func(b codec.VarBind) error {
+	werr := sess.WalkBounded(ctx, root, p.Table().Bounded(), func(b codec.VarBind) error {
 		if walkLimit > 0 && len(objs) >= walkLimit {
 			return errStop
 		}
@@ -1021,9 +1038,19 @@ func (p *Plugin) decode(oid codec.OID, v codec.Value) dhsc.Value {
 	return named(def, toNeutral(v))
 }
 
-// named applies an object's enumeration to a value.
+// named applies what the MIB says about a value: an enumeration's word, an
+// address as an address rather than as its octets.
 func named(def *mib.Object, v dhsc.Value) dhsc.Value {
-	if def == nil || len(def.Enums) == 0 || v.Kind != dhsc.KindInt {
+	if def == nil {
+		return v
+	}
+	if v.Kind == dhsc.KindString {
+		if text, ok := def.Address([]byte(v.Str)); ok {
+			v.Str = text
+		}
+		return v
+	}
+	if v.Kind != dhsc.KindInt {
 		return v
 	}
 	for _, e := range def.Enums {

@@ -184,3 +184,38 @@ func TestLibraryStopsOnASecondReadFailure(t *testing.T) {
 		t.Errorf("code %d, stderr %q", code, stderr)
 	}
 }
+
+// A table this run would not compile stops it, before anything is written:
+// a recompile must not keep last year's file, or lose it, in silence.
+func TestARecompileCannotLeaveATableBehind(t *testing.T) {
+	dir := libraryTree(t)
+	out := t.TempDir()
+	stale := filepath.Join(out, "arista-eos.tsv.gz")
+	if err := os.WriteFile(stale, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := execMibc(t, "-library", dir, "-out", out)
+	if code != 2 || !strings.Contains(stderr, "arista-eos not compiled") {
+		t.Fatalf("%d %q", code, stderr)
+	}
+	if entries, _ := os.ReadDir(out); len(entries) != 1 {
+		t.Errorf("a refused run wrote %d files", len(entries))
+	}
+	// With a source it compiles.
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "A.mib"), []byte("A DEFINITIONS ::= BEGIN END"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := execMibc(t, "-library", dir, "-out", out, "-set", "arista-eos="+source); code != 0 {
+		t.Fatalf("%d %q", code, stderr)
+	}
+	if b, _ := os.ReadFile(stale); string(b) == "old" {
+		t.Error("the table was not recompiled")
+	}
+}
+
+func TestABadOutDirIsRefused(t *testing.T) {
+	if err := refuseStale("[", nil); err == nil {
+		t.Error("a pattern that cannot match must be reported")
+	}
+}

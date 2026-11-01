@@ -42,6 +42,10 @@ const (
 	VersionMismatch = "snmp_reply_version_mismatch"
 	// CommunityMismatch is a reply carrying a community we did not send.
 	CommunityMismatch = "snmp_reply_community_mismatch"
+	// CountNotTrusted is a count column the device did not back up, so its
+	// table was walked instead: rows past the count, rows before row 1, a
+	// promised row that is not there, or a value that cannot be a count.
+	CountNotTrusted = "snmp_count_not_trusted"
 	// NoDeviceMIB is a device whose sysObjectID selects no table and none
 	// was asked for: vendor objects stay numbers.
 	NoDeviceMIB = "snmp_no_device_mib"
