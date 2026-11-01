@@ -238,6 +238,11 @@ func answers(ctx context.Context) func() (context.Context, context.CancelFunc) {
 	}
 	wait := time.Until(deadline)
 	base, stop := context.WithCancel(context.WithoutCancel(ctx))
+	// AfterFunc runs on its own goroutine: too late for the next answer
+	// when the caller has already cancelled.
+	if errors.Is(ctx.Err(), context.Canceled) {
+		stop()
+	}
 	context.AfterFunc(ctx, func() {
 		if errors.Is(ctx.Err(), context.Canceled) {
 			stop()
