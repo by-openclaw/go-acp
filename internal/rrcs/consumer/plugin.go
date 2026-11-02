@@ -11,6 +11,8 @@ import (
 	dhsc "dhs/internal/consumer"
 	"dhs/internal/plugin"
 	"dhs/internal/rrcs/codec"
+	"dhs/internal/transport"
+	"dhs/internal/wiretrace"
 )
 
 // The client in this package is RRCS's own shape: one method, one
@@ -72,7 +74,26 @@ type Plugin struct {
 
 	// events holds the subscriptions and the listener they feed from.
 	events subscriptions
+
+	// recorder, when set before Connect, receives every XML document
+	// sent and received (ADR-0028), as the rrcs-own verbs record them.
+	recorder *transport.Recorder
 }
+
+// SetRecorder attaches a capture to the session Connect opens. It is the
+// hook the generic verbs look for when --capture was given; it must be
+// set before Connect, so the capture starts with the first request.
+func (p *Plugin) SetRecorder(rec *transport.Recorder) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.recorder = rec
+}
+
+// PathNative says that a path is the gateway's own address of a thing
+// (net.1.node.61.port.1024.in.PortAes67Input.Channels, conference.555.Label):
+// GetValue and SetValue resolve it on the device, no walk is needed
+// (consumer.PathNative, ADR-0037 P2).
+func (p *Plugin) PathNative() bool { return true }
 
 // Connect opens the session and asks the gateway its version: one
 // request. Nothing else is read until a verb needs it.
@@ -80,7 +101,14 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	if port <= 0 {
 		port = DefaultPort
 	}
-	client, err := NewClient(Config{Addr: net.JoinHostPort(ip, strconv.Itoa(port))})
+	cfg := Config{Addr: net.JoinHostPort(ip, strconv.Itoa(port))}
+	p.mu.Lock()
+	rec := p.recorder
+	p.mu.Unlock()
+	if rec != nil {
+		cfg.Tap = func(dir wiretrace.Direction, _ string, doc []byte) { rec.Record(Name, string(dir), doc) }
+	}
+	client, err := NewClient(cfg)
 	if err != nil {
 		return err
 	}

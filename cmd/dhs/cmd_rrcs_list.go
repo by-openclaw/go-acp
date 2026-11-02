@@ -17,6 +17,9 @@ import (
 var rrcsListKinds = []string{
 	"nodes", "cards", "ports", "panels", "keys", "streams", "sources", "dests", "xp", "conferences", "groups", "ifbs", "logic",
 	"users", "patches", "logicdests",
+	// values is every value of the system as one row, the table import
+	// reads back (--output csv); the former rrcs export (ADR-0037 P2).
+	"values",
 }
 
 // rrcsListsFor names, per kind of `list`, the requests its table is made
@@ -197,6 +200,11 @@ func rrcsList(ctx context.Context, args []string) error {
 	// else: one request for the conferences, not the sixteen of the
 	// whole system.
 	opts := rrcsCollectOpts{Only: rrcsListsFor[kind]}
+	if kind == "values" {
+		// Every list, the keys of the panels and the per-port values:
+		// what a row of import may name.
+		opts = rrcsCollectOpts{Commands: true, Values: true}
+	}
 	if kind == "keys" {
 		opts.Commands, opts.PanelCommands = true, *keys == "panels"
 		if *flt.node != 0 {
@@ -296,6 +304,20 @@ func rrcsList(ctx context.Context, args []string) error {
 					out = append(out, k)
 					cells = append(cells, []string{k.Path, k.PortLabel, k.CommandType, rrcsTarget(k)})
 				}
+			}
+		}
+		rows = out
+	case "values":
+		header = append([]string{}, rrcsCSVHeader...)
+		out := []rrcsRow{}
+		node := ""
+		if *flt.node != 0 {
+			node = ".node." + strconv.Itoa(*flt.node) + "."
+		}
+		for _, r := range rrcsRows(m) {
+			if rrcsHas(r.Path, *flt.match) && strings.Contains(r.Path+".", node) {
+				out = append(out, r)
+				cells = append(cells, r.Record())
 			}
 		}
 		rows = out
@@ -515,78 +537,6 @@ func rrcsTree(ctx context.Context, args []string) error {
 				fmt.Printf("    %-34s %-9s %s\n", mem.Port, mem.Label, mem.Flags)
 			}
 		}
-	}
-	return nil
-}
-
-// rrcsGetPath prints the properties of what a path names.
-func rrcsGetPath(ctx context.Context, src *rrcsSource, hosts []string, path, prop string) error {
-	node, port, _, isPort := rrcsPortOfPath(path)
-	var only func(n, p int, in bool) bool
-	if isPort {
-		only = func(n, p int, _ bool) bool { return n == node && p == port }
-	}
-	// One thing is asked from RRCS with the request that gives it. A port
-	// or a client card has one of its own (GetPort, GetClientCard); a
-	// conference, a group or an IFB comes with its list; a key needs the
-	// keys of its port.
-	parts := strings.Split(path, ".")
-	onKey := isPort && (strings.Contains(path, ".key.") || strings.Contains(path, ".vfunc."))
-	var props map[string]any
-	found := false
-	if *src.from == "" && len(hosts) == 1 && !onKey && (len(parts) == 6 || len(parts) == 7) && strings.HasPrefix(path, "net.") {
-		client, _, closeFn, err := src.cf.open("get", hosts[0])
-		if err != nil {
-			return err
-		}
-		props, found = rrcsCurrentOne(ctx, client, path)
-		closeFn()
-	}
-	if !found {
-		opts := rrcsCollectOpts{Commands: onKey, OnlyPort: only}
-		switch {
-		case onKey:
-			opts.Only = []string{"GetAllPorts"}
-		case strings.HasPrefix(path, "conference."):
-			opts.Only = []string{"GetAllConferences"}
-		case strings.HasPrefix(path, "group."):
-			opts.Only = []string{"GetAllGroups"}
-		case strings.HasPrefix(path, "ifb."):
-			opts.Only = []string{"GetAllIFBs"}
-		case strings.HasPrefix(path, "logic."):
-			opts.Only = []string{"GetAllLogicSources_v2"}
-		}
-		m, err := src.modelWith(ctx, "get", hosts, opts)
-		if err != nil {
-			return err
-		}
-		if props, found = m.Lookup(path); !found {
-			return fmt.Errorf("rrcs get: nothing at %s", path)
-		}
-	}
-	if prop != "" {
-		v, ok := props[prop]
-		if !ok {
-			return fmt.Errorf("rrcs get: %s has no property %q", path, prop)
-		}
-		props = map[string]any{prop: v}
-	}
-	if src.cf.output == "json" {
-		b, err := json.Marshal(props)
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(b))
-		return nil
-	}
-	names := make([]string, 0, len(props))
-	for k := range props {
-		names = append(names, k)
-	}
-	sort.Strings(names)
-	for _, k := range names {
-		b, _ := json.Marshal(props[k])
-		fmt.Printf("%-28s %s\n", k, b)
 	}
 	return nil
 }

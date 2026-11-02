@@ -165,10 +165,17 @@ func runSet(ctx context.Context, args []string) error {
 	// matching `ensure`. Out-of-range numerics are intentionally NOT rejected
 	// (the device clamps them). --raw bypasses this; the caller owns the bytes.
 	meta := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id)
-	if *valueHex == "" && meta != nil {
-		want, cerr := coerceDesired(meta.Kind, *valueStr)
-		if cerr != nil {
-			return cerr
+	if *valueHex == "" && (meta != nil || pathNative(plug, *pathFlag, *label)) {
+		// A path-native plugin (rrcs, ccm) carries no walked meta: the
+		// value goes to its validator as text, typed by the plugin's own
+		// tables (ADR-0037 P6).
+		want := val
+		if meta != nil {
+			typed, cerr := coerceDesired(meta.Kind, *valueStr)
+			if cerr != nil {
+				return cerr
+			}
+			want = typed
 		}
 		if v, ok := plug.(consumer.ValueValidator); ok {
 			if verr := v.ValidateValue(opCtx, req, want); verr != nil {

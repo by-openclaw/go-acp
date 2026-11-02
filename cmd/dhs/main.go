@@ -599,9 +599,10 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
-  Verbs (rrcs):                info, discover, walk, tree, list, get, set,
-                               export, import, ensure, xp, call, watch,
-                               and every generic verb (health, status, alarm, …)
+  Verbs (rrcs):                info, discover, snapshot, tree, list, extract,
+                               import, ensure, xp, call, coverage, watch,
+                               and every generic verb (get, set, walk, export,
+                               health, status, alarm, …; ADR-0037)
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:

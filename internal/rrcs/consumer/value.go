@@ -169,6 +169,12 @@ func valueOf(field string, v any) (dhsc.Value, error) {
 // behind it (net.1.node.61.port.1024.Label,
 // net.1.node.63.port.1064.PortAes67Input.Protocol, conference.555.Label).
 // One request for a port or a card, one for a listed kind.
+//
+// Two more forms keep "show me this thing" one command (ADR-0037 P2): a
+// path that names an object and no property answers every property of
+// the object as one JSON document; an ID and no path asks the gateway
+// GetObjectProperty for that ObjectID (Group "names": the names it
+// supports, GetObjectPropertyNames).
 func (p *Plugin) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Value, error) {
 	p.mu.Lock()
 	client := p.client
@@ -176,9 +182,19 @@ func (p *Plugin) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Valu
 	if client == nil {
 		return dhsc.Value{}, dhsc.ErrNotConnected
 	}
+	if req.Path == "" && req.ID > 0 {
+		return p.objectByID(ctx, client, req.ID, req.Group == "names")
+	}
 	object, block, field, ok := SplitPath(req.Path)
 	if !ok {
-		return dhsc.Value{}, fmt.Errorf("rrcs: %q does not name an object and a property", req.Path)
+		if req.Path == "" || strings.Contains(req.Path, " ") {
+			return dhsc.Value{}, &dhsc.ValidationError{Field: "path", Reason: "rrcs names a thing by --path (object, or object.Block.Field) or by --id OID"}
+		}
+		props, err := p.propsOf(ctx, client, req.Path)
+		if err != nil {
+			return dhsc.Value{}, err
+		}
+		return jsonValue(props)
 	}
 	props, err := p.propsOf(ctx, client, object)
 	if err != nil {
@@ -193,6 +209,35 @@ func (p *Plugin) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Valu
 		return dhsc.Value{}, fmt.Errorf("rrcs: %s reports no %s", object, strings.TrimPrefix(block+"."+field, "."))
 	}
 	return valueOf(field, v)
+}
+
+// objectByID asks the gateway for one object by its ObjectID (§8.9.1
+// GetObjectProperty, or GetObjectPropertyNames with names) and answers
+// the struct as one JSON document.
+func (p *Plugin) objectByID(ctx context.Context, client *Client, id int, names bool) (dhsc.Value, error) {
+	if id > 1<<31-1 {
+		return dhsc.Value{}, &dhsc.ValidationError{Field: "id", Reason: "an ObjectID is a 32-bit number"}
+	}
+	var reply Reply
+	var err error
+	if names {
+		reply, err = client.Call(ctx, "GetObjectPropertyNames", codec.Int(int32(id)))
+	} else {
+		reply, err = client.Call(ctx, "GetObjectProperty", codec.Int(int32(id)), codec.String(""))
+	}
+	if err != nil {
+		return dhsc.Value{}, fmt.Errorf("rrcs: object %d: %w", id, err)
+	}
+	return jsonValue(JSON(reply.Payload()))
+}
+
+// jsonValue is a document as one string value.
+func jsonValue(v any) (dhsc.Value, error) {
+	doc, err := json.Marshal(v)
+	if err != nil {
+		return dhsc.Value{}, err
+	}
+	return dhsc.Value{Kind: dhsc.KindString, Str: string(doc)}, nil
 }
 
 // setDirect are the properties §8.3 to §8.7 write with a method of their

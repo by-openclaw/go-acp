@@ -41,9 +41,13 @@ func rrcsValErr(verb, reason string) error {
 // answered through the registered plugin by the generic table (ADR-0037
 // P1), so health, status, alarm, diff and validate work on rrcs as on
 // every connector.
+//
+// get, set, walk and export are not here: they are the generic verbs,
+// answered through the plugin (ADR-0037 P2). snapshot is the former
+// private walk — everything readable in one document.
 var rrcsOwnVerbs = map[string]bool{
-	"info": true, "discover": true, "watch": true, "walk": true, "get": true,
-	"list": true, "set": true, "export": true, "extract": true, "call": true,
+	"info": true, "discover": true, "watch": true, "snapshot": true,
+	"list": true, "extract": true, "call": true,
 	"ensure": true, "coverage": true, "xp": true, "import": true, "tree": true,
 }
 
@@ -64,16 +68,10 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsQuery(ctx, "discover", rrcsDiscoverMethods, args[1:])
 	case "watch":
 		return rrcsWatch(ctx, args[1:])
-	case "walk":
+	case "snapshot":
 		return rrcsWalk(ctx, args[1:])
-	case "get":
-		return rrcsGet(ctx, args[1:])
 	case "list":
 		return rrcsList(ctx, args[1:])
-	case "set":
-		return rrcsSet(ctx, args[1:])
-	case "export":
-		return rrcsExport(ctx, args[1:])
 	case "extract":
 		return rrcsExtract(ctx, args[1:])
 	case "call":
@@ -109,29 +107,20 @@ VERBS
   discover  GetAllNodes, GetAllClientCards, GetAllDevices, GetAllPorts,
             GetAllConferences, GetAllGroups, GetAllIFBs, GetAllLogicSources_v2,
             GetAllGpIns, GetAllGpOuts, GetAllActiveXps — read only
-  walk      everything readable, into one JSON snapshot: info + discover +
+  snapshot  everything readable, into one JSON document: info + discover +
             type lists, GetLicenseInfo per node, GetObjectList per object
             type, GetObjectProperty of every object, GetPortsCommandLists
-            of every port (what is on its keys) — read only
+            of every port (what is on its keys) — read only. tree, list
+            and extract read it with --from FILE
   tree      the system as a tree: node, client cards, ports, what is on
             each key; conferences, groups, IFBs with members, logic sources
   list      one table: nodes | cards | ports | panels | keys | streams |
             sources | dests | xp | conferences | groups | ifbs | logic |
-            users | patches | logicdests (those three from a walk snapshot);
-            --node, --type, --match select rows. streams = the AES67
+            users | patches | logicdests (those three from a snapshot) |
+            values (every value as one row: the table import reads back,
+            --output csv); --node, --type, --match select rows. streams = the AES67
             receivers and senders; sources and dests = the two axes of the
             crosspoint matrix; xp = the crosspoints active now
-  get       the properties of one thing: --path (as tree and list print it),
-            or --id (GetObjectProperty; --names yes = GetObjectPropertyNames)
-
-  set       WRITES: edit properties of a port or of a client card
-            (ConfigurationChange): --path, --prop NAME=VALUE (repeat).
-            Shows the change and sends nothing unless --apply yes
-
-  export    every value of the system to one file, one row per value, the
-            slot column filled (0 = the node and what belongs to no card,
-            N = bay N): --format json|csv, --out FILE (default: snapshots/
-            rrcs/<host>/params.<ext>, "-" = stdout), --slot N, --path TEXT
   extract   the device models and the inventory (ADR-0022): one model for
             the node type and one per client card type, every type of the
             system as a template — port types, keys, commands, conferences
@@ -161,16 +150,25 @@ VERBS
   call      any method of the specification, parameters as JSON (--arg);
             a method that is not Get… or Is… WRITES and needs --write-to
 
-  tree, list, export and get --path also read a snapshot written by walk:
-  --from FILE
+  tree, list and extract also read a document written by snapshot: --from FILE
   watch     RegisterForAllEvents, then every event RRCS sends; answers
             GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
             pressed and released on the panels (ChangePanelSpyRegistry)
 
 Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
 
-NEUTRAL VERBS — every verb of the generic table works here too, through the
-registered plugin (ADR-0037): health, status, alarm, diff, validate, …
+GENERIC VERBS — the same as on every connector, through the registered
+plugin (ADR-0037 P2):
+  get       one property: --path net.1.node.61.port.1024.in.PortAes67Input.Channels;
+            an object path alone (…port.1024.in) answers every property as
+            JSON; --id OID asks GetObjectProperty (--group names: the names)
+  set       WRITES one property: --path … --value V. --dry-run sends nothing;
+            --write-to HOST confirms the target (refused without it, P5).
+            Two members in one request (an output's link) stay with import
+  walk      the objects of one slot (0 = the node and what belongs to no
+            card, N = bay N) with kind, access, range, unit, named values
+  export    the same for every present slot, to json / yaml / csv
+  health, status, alarm, diff, validate, …
 Run 'dhs consumer rrcs <verb> --help' for each of them as well.
 
 ONE VERB PER METHOD — every other method of the specification, with named

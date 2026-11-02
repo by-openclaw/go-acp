@@ -219,7 +219,7 @@ func TestRRCSWatchValues(t *testing.T) {
 func TestRRCSExportMeta(t *testing.T) {
 	f := newRRCSFake(t, rrcsTreeAnswer)
 	file := filepath.Join(t.TempDir(), "x.csv")
-	rrcsRun(t, "export", f.addr(), "--out", file)
+	rrcsValuesTo(t, file, f.addr())
 	header, rows := rrcsReadExport(t, file)
 	col := map[string]int{}
 	for i, h := range header {

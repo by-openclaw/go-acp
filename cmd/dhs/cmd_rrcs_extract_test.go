@@ -152,7 +152,7 @@ func TestRRCSExtract(t *testing.T) {
 	}
 	// From a walk, without a gateway: the same models and inventory.
 	snap := filepath.Join(t.TempDir(), "walk.json")
-	rrcsRun(t, "walk", f.addr(), "--out", snap, "--skip", "both")
+	rrcsRun(t, "snapshot", f.addr(), "--out", snap, "--skip", "both")
 	before := len(f.methods())
 	if out := rrcsRun(t, "extract", "--from", snap, "--refresh"); !strings.Contains(out, "version:  9.0.RR1-11 (FRAME A)") || !strings.Contains(out, "source:   "+snap) || strings.Count(out, "model written:") != 2 {
 		t.Errorf("--from:\n%s", out)

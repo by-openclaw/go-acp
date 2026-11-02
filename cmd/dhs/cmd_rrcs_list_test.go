@@ -191,7 +191,7 @@ func TestRRCSTreeLive(t *testing.T) {
 func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 	f := newRRCSFake(t, rrcsTreeAnswer)
 	snap := filepath.Join(t.TempDir(), "walk.json")
-	rrcsRun(t, "walk", f.addr(), "--out", snap)
+	rrcsRun(t, "snapshot", f.addr(), "--out", snap)
 	sent := len(f.methods())
 
 	rrcsWant(t, rrcsRun(t, "list", "nodes", "--from", snap), "net.1.node.60  ARTIST_1024  0", "net.1.node.61", "2 nodes")
@@ -242,38 +242,11 @@ func TestRRCSListAndGetFromSnapshot(t *testing.T) {
 		t.Errorf("tree as JSON: %v", err)
 	}
 
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61.port.1026"), `LongName                     "PANEL-02"`, "KeyCount                     32")
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61.port.1026.key.0.1.5"), `GroupName                    "GROUP ALPHA"`)
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "group.200", "--prop", "Label", "--output", "json"), `{"Label":"GRP ALF"}`)
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.60"), `"FRAME A"`)
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.61"), "Ports                        4")
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "net.1.node.60.card.1"), `"CARD 1"`)
-	rrcsWant(t, rrcsRun(t, "get", "--from", snap, "--path", "logic.500"), "State                        true")
+	// The values of the snapshot, offline (the former get --from; ADR-0037).
+	rrcsWant(t, rrcsRun(t, "list", "values", "--from", snap, "--match", "net.1.node.61.port.1026.LongName"), "PANEL-02")
 
 	if len(f.methods()) != sent {
 		t.Errorf("reading a snapshot sent %d requests to the gateway", len(f.methods())-sent)
-	}
-}
-
-// get --path on a live gateway asks the keys of that one port only.
-func TestRRCSGetPathLive(t *testing.T) {
-	f := newRRCSFake(t, rrcsTreeAnswer)
-	rrcsWant(t, rrcsRun(t, "get", f.addr(), "--path", "net.1.node.61.port.1026.key.0.1.1"), `"call-to-port-cmd"`)
-	asked := 0
-	for _, m := range f.methods() {
-		if m == "GetPortsCommandLists" {
-			asked++
-		}
-	}
-	if asked != 1 {
-		t.Errorf("GetPortsCommandLists sent %d times, want 1", asked)
-	}
-	before := len(f.methods())
-	rrcsWant(t, rrcsRun(t, "get", f.addr(), "--path", "net.1.node.61.port.7.in"), `"In seven"`)
-	for _, m := range f.methods()[before:] {
-		if m == "GetPortsCommandLists" {
-			t.Error("a port path asked for the keys")
-		}
 	}
 }
 
@@ -295,10 +268,6 @@ func TestRRCSListRefusals(t *testing.T) {
 		"host and from":      {"list", "ports", "h", "--from", good},
 		"bad output":         {"list", "ports", "--from", good, "--output", "xml"},
 		"tree bad keys":      {"tree", "--from", good, "--keys", "maybe"},
-		"get id and path":    {"get", "h", "--id", "1", "--path", "group.1"},
-		"get id from file":   {"get", "--id", "1", "--from", good},
-		"get neither":        {"get", "h"},
-		"get path two hosts": {"get", "a", "b", "--path", "group.1"},
 	} {
 		if err := runRRCS(ctx, args); !errors.As(err, &val) {
 			t.Errorf("%s: got %v, want a validation error", name, err)
@@ -308,8 +277,6 @@ func TestRRCSListRefusals(t *testing.T) {
 		"missing file":  {"list", "ports", "--from", filepath.Join(dir, "none.json")},
 		"other proto":   {"list", "ports", "--from", notRRCS},
 		"broken file":   {"tree", "--from", broken},
-		"unknown path":  {"get", "--from", good, "--path", "group.1"},
-		"unknown prop":  {"get", "--from", good, "--path", "group.1", "--prop", "x"},
 		"dead gateway":  {"list", "ports", "127.0.0.1:1", "--timeout", "300ms"},
 		"dead for tree": {"tree", "127.0.0.1:1", "--timeout", "300ms"},
 	} {
@@ -352,7 +319,6 @@ func TestRRCSAtomicReads(t *testing.T) {
 		"list xp":          {[]string{"list", "xp"}, "GetAllActiveXps,GetAllPorts"},
 		// The panel is the one port with keys: one request for its keys.
 		"list keys":      {[]string{"list", "keys"}, "GetAllPorts,GetAllCaps,GetPortsCommandLists"},
-		"get conference": {[]string{"get", "--path", "conference.300"}, "GetAllConferences"},
 		"tree":           {[]string{"tree"}, "GetVersion,GetState,IsConnectedToArtist,GetConfigurationID,GetAllNodes,GetAllClientCards,GetAllDevices,GetAllPorts,GetAllConferences,GetAllGroups,GetAllIFBs,GetAllLogicSources_v2,GetAllGpIns,GetAllGpOuts,GetAllActiveXps,GetAllCaps,GetPortsCommandLists"},
 	} {
 		f := newRRCSFake(t, rrcsTreeAnswer)
@@ -367,17 +333,7 @@ func TestRRCSAtomicReads(t *testing.T) {
 			t.Errorf("%s sent %s, want %s", name, got, tc.want)
 		}
 	}
-	// One port, one request.
-	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
-		if call.Method == "GetPort" {
-			return codec.Array(call.Params[0], codec.Int(0), codec.Struct(rrcsMember("LongName", codec.String("In seven")))), true
-		}
-		return rrcsTreeAnswer(call)
-	})
-	rrcsWant(t, rrcsRun(t, "get", f.addr(), "--path", "net.1.node.61.port.7.in"), `LongName                     "In seven"`)
-	if got := strings.Join(f.methods(), ","); got != "GetPort" {
-		t.Errorf("get of a port sent %s", got)
-	}
+	// One port, one request: the generic get through the plugin reads it\n	// with GetPort, never with the lists (ADR-0037 P2).\n	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {\n		if call.Method == "GetPort" {\n			return codec.Array(call.Params[0], codec.Int(0), codec.Struct(rrcsMember("LongName", codec.String("In seven")))), true\n		}\n		return rrcsTreeAnswer(call)\n	})\n	out, err := rrcsStdout(t, func() error {\n		return runGet(context.Background(), []string{f.addr(), "--protocol", "rrcs", "--path", "net.1.node.61.port.7.in.LongName"})\n	})\n	if err != nil || !strings.Contains(out, "In seven") {\n		t.Errorf("get of a port: %v\n%s", err, out)\n	}\n	if got := strings.Join(f.methods(), ","); got != "GetVersion,GetPort" {\n		t.Errorf("get of a port sent %s", got)\n	}
 }
 
 // The CSV table also comes from a live gateway, not only from a file.

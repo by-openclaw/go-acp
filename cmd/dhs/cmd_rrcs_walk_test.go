@@ -76,7 +76,7 @@ func TestRRCSWalk(t *testing.T) {
 	out := filepath.Join(dir, "deep", "walk.json")
 	capture := filepath.Join(dir, "walk.jsonl")
 	text, err := rrcsStdout(t, func() error {
-		return runRRCS(context.Background(), []string{"walk", f.addr(), "--out", out, "--capture", capture, "--online", "no"})
+		return runRRCS(context.Background(), []string{"snapshot", f.addr(), "--out", out, "--capture", capture, "--online", "no"})
 	})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
@@ -135,7 +135,7 @@ func TestRRCSWalk(t *testing.T) {
 			t.Errorf("summary lacks %q:\n%s", want, text)
 		}
 	}
-	if trace, _ := os.ReadFile(capture); !strings.Contains(string(trace), `"note":"rrcs walk: objects conference`) {
+	if trace, _ := os.ReadFile(capture); !strings.Contains(string(trace), `"note":"rrcs snapshot: objects conference`) {
 		t.Error("the capture lacks the notes of the walk")
 	}
 }
@@ -144,7 +144,7 @@ func TestRRCSWalkSkipAndJSON(t *testing.T) {
 	f := newRRCSFake(t, rrcsWalkAnswer)
 	out := filepath.Join(t.TempDir(), "walk.json")
 	text, err := rrcsStdout(t, func() error {
-		return runRRCS(context.Background(), []string{"walk", f.addr(), "--out", out, "--skip", "both", "--output", "json"})
+		return runRRCS(context.Background(), []string{"snapshot", f.addr(), "--out", out, "--skip", "both", "--output", "json"})
 	})
 	if err != nil {
 		t.Fatalf("walk: %v", err)
@@ -169,42 +169,17 @@ func TestRRCSWalkInterruptedAndRefusals(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	// A cancelled context: nothing answers, the walk says so.
-	if err := runRRCS(ctx, []string{"walk", f.addr(), "--out", out}); err == nil {
+	if err := runRRCS(ctx, []string{"snapshot", f.addr(), "--out", out}); err == nil {
 		t.Error("no error")
 	}
 	var val *consumer.ValidationError
 	for name, args := range map[string][]string{
-		"walk no host":  {"walk"},
-		"walk bad skip": {"walk", "h", "--skip", "everything"},
-		"get no host":   {"get", "--id", "1"},
-		"get no id":     {"get", "h"},
-		"get bad names": {"get", "h", "--id", "1", "--names", "maybe"},
+		"snapshot no host":  {"snapshot"},
+		"snapshot bad skip": {"snapshot", "h", "--skip", "everything"},
 	} {
 		if err := runRRCS(context.Background(), args); !errors.As(err, &val) {
 			t.Errorf("%s: got %v, want a validation error", name, err)
 		}
-	}
-}
-
-func TestRRCSGet(t *testing.T) {
-	f := newRRCSFake(t, rrcsWalkAnswer)
-	ctx := context.Background()
-	all, err := rrcsStdout(t, func() error { return runRRCS(ctx, []string{"get", f.addr(), "--id", "77"}) })
-	if err != nil || !strings.Contains(all, `Label                        "Conf 001"`) || !strings.Contains(all, "Owner                        3") {
-		t.Errorf("all: %v\n%s", err, all)
-	}
-	one, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"get", f.addr(), "--id", "77", "--prop", "Label", "--output", "json"})
-	})
-	if err != nil || strings.TrimSpace(one) != `{"Label":"Conf 001"}` {
-		t.Errorf("one: %v\n%s", err, one)
-	}
-	names, err := rrcsStdout(t, func() error { return runRRCS(ctx, []string{"get", f.addr(), "--id", "77", "--names", "yes"}) })
-	if err != nil || !strings.Contains(names, `["Label","Owner"]`) {
-		t.Errorf("names: %v\n%s", err, names)
-	}
-	if err := runRRCS(ctx, []string{"get", f.addr(), "--id", "-5"}); !errors.Is(err, &codec.CodeError{Code: codec.ErrorCode(22)}) {
-		t.Errorf("missing object: %v", err)
 	}
 }
 
@@ -246,7 +221,7 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	})
 	dir := t.TempDir()
 	snapFile := filepath.Join(dir, "walk.json")
-	text := rrcsRun(t, "walk", f.addr(), "--out", snapFile, "--skip", "properties,commands")
+	text := rrcsRun(t, "snapshot", f.addr(), "--out", snapFile, "--skip", "properties,commands")
 	rrcsWant(t, text, "port values          12", "port not online      2")
 	raw, _ := os.ReadFile(snapFile)
 	var snap rrcsWalkSnapshot
@@ -293,12 +268,12 @@ func TestRRCSWalkPortValues(t *testing.T) {
 	}
 	ports := rrcsRun(t, "list", "ports", "--from", snapFile)
 	rrcsWant(t, ports, "ALIAS    GAIN IN  GAIN OUT", "PANEL-02   PNL TWO")
-	rrcsWant(t, rrcsRun(t, "get", "--from", snapFile, "--path", "net.1.node.61.port.7.in", "--prop", "InputGain"), "InputGain                    -12")
-	out := rrcsRun(t, "export", "--from", snapFile, "--out", "-", "--format", "csv", "--path", "port.7.in.InputGain,port.1026.Alias")
-	rrcsWant(t, out, "net.1.node.61.port.1026.Alias,100,Alias,string,R--,PNL TWO", "InputGain,int,R--,-12,,0.5 dB,-128,36")
+	// The gains read per port are in the table (the former get --from and
+	// export --from read them too; both are generic verbs since ADR-0037).
+	rrcsWant(t, ports, "-12")
 
 	// --skip values leaves them out; an unknown part is refused.
-	rrcsRun(t, "walk", f.addr(), "--out", snapFile, "--skip", "properties, commands ,values")
+	rrcsRun(t, "snapshot", f.addr(), "--out", snapFile, "--skip", "properties, commands ,values")
 	raw, _ = os.ReadFile(snapFile)
 	snap = rrcsWalkSnapshot{}
 	_ = json.Unmarshal(raw, &snap)
@@ -306,7 +281,7 @@ func TestRRCSWalkPortValues(t *testing.T) {
 		t.Errorf("--skip values still asked %d", len(snap.PortValues))
 	}
 	var val *consumer.ValidationError
-	if err := runRRCS(context.Background(), []string{"walk", "h", "--skip", "values,everything"}); !errors.As(err, &val) {
+	if err := runRRCS(context.Background(), []string{"snapshot", "h", "--skip", "values,everything"}); !errors.As(err, &val) {
 		t.Errorf("bad --skip: %v", err)
 	}
 }
@@ -335,7 +310,7 @@ func TestRRCSWalkNoGainAndTrunks(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	file := filepath.Join(t.TempDir(), "walk.json")
-	rrcsWant(t, rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,commands"), "port without gain    4")
+	rrcsWant(t, rrcsRun(t, "snapshot", f.addr(), "--out", file, "--skip", "properties,commands"), "port without gain    4")
 	raw, _ := os.ReadFile(file)
 	var snap rrcsWalkSnapshot
 	_ = json.Unmarshal(raw, &snap)
@@ -365,7 +340,7 @@ func TestRRCSWalkSingles(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	file := filepath.Join(t.TempDir(), "walk.json")
-	rrcsWant(t, rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,values"), "single reads")
+	rrcsWant(t, rrcsRun(t, "snapshot", f.addr(), "--out", file, "--skip", "properties,values"), "single reads")
 	want := map[string]int{
 		"GetAlive": 1, "IsRegisteredForEvents": 1, "GetActiveXpsRange": 1,
 		"GetNode": 1, "GetClientCard": 1,
@@ -387,7 +362,7 @@ func TestRRCSWalkSingles(t *testing.T) {
 	}
 	// --skip singles leaves them out.
 	before := asked["GetPort"]
-	rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,values,commands,singles")
+	rrcsRun(t, "snapshot", f.addr(), "--out", file, "--skip", "properties,values,commands,singles")
 	if asked["GetPort"] != before {
 		t.Error("--skip singles still asked GetPort")
 	}
@@ -432,7 +407,7 @@ func TestRRCSWalkOnlineFirst(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	file := filepath.Join(t.TempDir(), "walk.json")
-	rrcsRun(t, "walk", f.addr(), "--out", file, "--skip", "properties,commands", "--listen", "127.0.0.1:0")
+	rrcsRun(t, "snapshot", f.addr(), "--out", file, "--skip", "properties,commands", "--listen", "127.0.0.1:0")
 	raw, _ := os.ReadFile(file)
 	var snap rrcsWalkSnapshot
 	if err := json.Unmarshal(raw, &snap); err != nil {

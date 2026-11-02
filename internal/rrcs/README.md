@@ -108,67 +108,78 @@ any of these tables as CSV, `--output json` as JSON:
 A port that uses a channel above 1 (`SEL`) takes it from the stream of
 another port. RRCS does not report which one: the link is write-only.
 
-### get — one thing
+### get — one thing (generic verb, ADR-0037)
 
 ```
-.\dhs.exe consumer rrcs get HOST --path net.1.node.61.port.1026
-.\dhs.exe consumer rrcs get HOST --path net.1.node.60.card.1 --prop Ptp
+.\dhs.exe consumer rrcs get HOST --path net.1.node.61.port.1026.in.PortAes67Input.Channels
+.\dhs.exe consumer rrcs get HOST --path net.1.node.61.port.1026.in
+.\dhs.exe consumer rrcs get HOST --path net.1.node.60.card.1.Ptp.PTP
 .\dhs.exe consumer rrcs get HOST --id 665663144
-.\dhs.exe consumer rrcs get HOST --id 665663144 --names yes
+.\dhs.exe consumer rrcs get HOST --id 665663144 --group names
 ```
 
-`--path` reads what the lists hold; `--id` asks RRCS for the properties of
-one object.
+The same `get` as on every connector, through the plugin. A path with a
+property answers that value; a path that stops at the object answers
+every property as one JSON document; `--id` asks RRCS for one object by
+its ObjectID (`--group names` lists the names it supports). One request
+for a port or a card (GetPort, GetClientCard), one list for the rest.
+With `--output json` the record also names the device model of the
+value (P4).
 
 ## 2. Keep
 
-### walk — everything, into one file
+### snapshot — everything, into one file
 
 ```
-.\dhs.exe consumer rrcs walk HOST --capture auto
-.\dhs.exe consumer rrcs walk HOST --skip values,commands
+.\dhs.exe consumer rrcs snapshot HOST --capture auto
+.\dhs.exe consumer rrcs snapshot HOST --skip values,commands
 ```
 
 Status, every list, the licence, the properties of every object, the key
 assignments of every port, and per port label, alias, gains and key
 configuration. About 3,500 requests on a 500-port system. `--skip` leaves
-out `properties`, `commands`, `values` or `singles`.
+out `properties`, `commands`, `values` or `singles`. (Until ADR-0037 this
+verb was called `walk`; `walk` is now the generic slot walk below.)
 
-A walk sends nothing RRCS has to refuse. It first learns which ports are on
-line, by a registration of a second that is removed at once (`--online yes`,
-the default; it listens on port 8196, not the port of `watch`), and does
-not ask the others for gain and level; smart panels, which have no gain,
-are not asked either. `--online no` asks every port.
+A snapshot sends nothing RRCS has to refuse. It first learns which ports
+are on line, by a registration of a second that is removed at once
+(`--online yes`, the default; it listens on port 8196, not the port of
+`watch`), and does not ask the others for gain and level; smart panels,
+which have no gain, are not asked either. `--online no` asks every port.
 
 | Collect | Why |
 |---|---|
 | The summary on screen | `failed requests` should be 0; `port not online` counts unplugged ports and is normal |
-| `snapshots\rrcs\<host>\walk-<time>.json` | The snapshot. `tree`, `list`, `get --path` and `export` read it with `--from FILE`, without touching RRCS |
+| `snapshotsrcs\<host>\snapshot-<time>.json` | The document. `tree`, `list` and `extract` read it with `--from FILE`, without touching RRCS |
 | The capture `.jsonl` | The raw answers, to check a doubtful value |
 
-### export — a table to edit
+### walk — the objects of one slot (generic verb)
+
+```
+.\dhs.exe consumer rrcs walk HOST --slot 0
+.\dhs.exe consumer rrcs walk HOST --slot 6 --tree
+```
+
+Slot 0 is the node and what belongs to no card (conferences, groups, IFBs,
+logic sources); slot N is bay N: its client card and the ports of that
+card, each property as one object with kind, access, range, unit and
+named values. Three list requests for a bay, six for slot 0.
+
+### export — a table to edit (generic verb)
 
 ```
 .\dhs.exe consumer rrcs export HOST --out rrcs.csv
-.\dhs.exe consumer rrcs export HOST --out streams.csv --path PortAes67,Ptp,Nmos
-.\dhs.exe consumer rrcs export --from walk.json --out rrcs.csv
+.\dhs.exe consumer rrcs export HOST --slot 6 --format csv --out bay6.csv
 ```
 
-One row per value of the whole system — the node, every client card,
-every port with its keys, and the conferences, groups, IFBs and logic
-sources with one row per member — in the CSV layout of the other dhs
-connectors: `path`, `oid` (object ID), `label`, `kind`, `access`,
-`value`, `value_name`, `unit`, `min`, `max`, `default`, `enum_items`.
-The path is the reference, as Director shows it; the `oid` is the
-ObjectID RRCS itself gives the object. The crosspoints are not rows:
-`list xp` and `xp` carry them.
-`access` is `RW-` for the values `import` can write, `R--` for the rest.
-`--format json` or a `.json` name gives the same rows as JSON.
-
-| Collect | Why |
-|---|---|
-| The CSV | To check that every value is what Director shows; later, to edit and import on a test system |
-| The line `exported N values (M writable)` | A quick size check |
+One row per value of every present slot, in the CSV layout of the other
+dhs connectors: `slot`, `oid` (object ID), `path`, `label`, `kind`,
+`access`, `value`, `value_name`, `unit`, `min`, `max`, `default`,
+`enum_items`, `max_len`. The path is the reference, as Director shows it;
+the `oid` is the ObjectID RRCS itself gives the object. `import` reads
+the file by its `path` and `value` columns. The keys of the panels are
+not rows here: `snapshot` and `extract` carry them. The crosspoints are
+not rows: `list xp` and `xp` carry them.
 
 ### extract — the device models and the inventory
 
@@ -322,30 +333,23 @@ read the way `watch` gets it. The level a panel sets on one of its keys is
 the crosspoint from that key's port **to the panel**. A volume is 0 for
 mute, else `(dB × 2) + 230`: 201 is −14.5 dB.
 
-### set — properties of a port or a client card
+### set — one property (generic verb)
 
 ```
-.\dhs.exe consumer rrcs set TESTHOST --path net.1.node.61.port.7.out --prop PortAes67Output.Multicast=239.250.1.1 --prop PortAes67Output.MulticastPort=5004
-.\dhs.exe consumer rrcs set TESTHOST --path net.1.node.60.card.1 --prop Ptp.PTP=100 --prop Ptp.PtpPriority=128
+.\dhs.exe consumer rrcs set HOST --path net.1.node.61.port.7.out.PortAes67Output.Multicast --value 239.250.1.1 --dry-run
+.\dhs.exe consumer rrcs set HOST --path net.1.node.61.port.7.out.PortAes67Output.Multicast --value 239.250.1.1 --write-to HOST
+.\dhs.exe consumer rrcs set HOST --path net.1.node.60.card.1.Ptp.PTP --value 100 --write-to HOST
 ```
 
-As written above it sends nothing: it shows the current values beside the
-wanted ones, and the request. Add `--apply yes --write-to HOST` to send.
-The names are those `get --path` prints. A set costs three requests: the
-object is read, changed, read again.
-
-An edit that gives address fields to a stream in NMOS mode is refused before
-anything is sent; the mode alone passes (ADR-0035). A link names the main
-port and the channel, nothing else — an input takes them in two sets, an
-output in one:
-
-```
-.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.in  --prop PortAes67Input.Mode=1072
-.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.in  --prop PortAes67Input.Selection=2
-.\dhs.exe consumer rrcs set HOST --path net.1.node.63.port.1073.out --prop PortAes67Output.Mode=1072 --prop PortAes67Output.Selection=2
-```
-
-For more than a port or two, `import` does all of it from one file.
+The same `set` as on every connector, through the plugin. The value is
+typed and bounded by the specification's tables before anything is sent
+(P6); without `--write-to HOST` the verb refuses and stays with the dry
+run (P5). The plugin sends the form ADR-0035 proved: a label, alias or
+gain by its own method; a main's channel count on an NMOS stream through
+manual mode and back; a link of an input as Mode then Selection; an
+address field on an NMOS stream is refused. One property per command: an
+output's link (Mode and Selection in one request) and any edit of several
+members go through `import` of a short file, or `ensure --manifest`.
 
 ### import — a whole file
 

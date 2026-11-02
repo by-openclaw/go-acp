@@ -36,7 +36,7 @@ func TestRRCSNeutralVerbFallsThrough(t *testing.T) {
 			t.Fatalf("dispatchConsumer rrcs --help: %v", err)
 		}
 	})
-	if !strings.Contains(out, "NEUTRAL VERBS") {
+	if !strings.Contains(out, "GENERIC VERBS") {
 		t.Fatalf("rrcs --help does not name the neutral verbs:\n%s", out)
 	}
 }

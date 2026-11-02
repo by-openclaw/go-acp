@@ -54,11 +54,21 @@ func rrcsReadExport(t *testing.T, file string) (header []string, rows map[string
 	return all[0], rows
 }
 
-func TestRRCSExport(t *testing.T) {
+// rrcsValuesTo writes the value table (list values --output csv) to a
+// file, as the former rrcs export did; import reads it back.
+func rrcsValuesTo(t *testing.T, file string, args ...string) {
+	t.Helper()
+	out := rrcsRun(t, append(append([]string{"list", "values"}, args...), "--output", "csv")...)
+	if err := os.WriteFile(file, []byte(out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRRCSListValues(t *testing.T) {
 	f := newRRCSFake(t, rrcsTreeAnswer)
 	dir := t.TempDir()
 	file := filepath.Join(dir, "x.csv")
-	rrcsRun(t, "export", f.addr(), "--out", file)
+	rrcsValuesTo(t, file, f.addr())
 	header, rows := rrcsReadExport(t, file)
 	// The header of the acp connectors, column for column.
 	if strings.Join(header, ",") != "ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status" {
@@ -81,41 +91,30 @@ func TestRRCSExport(t *testing.T) {
 	if card := rows["net.1.node.60.card.1.LongName"]; card == nil || card[9] != "CARD 1" {
 		t.Errorf("card row %v", card)
 	}
-
-	// --path narrows; json by extension; stdout when no --out.
-	js := filepath.Join(dir, "x.json")
-	rrcsRun(t, "export", f.addr(), "--out", js, "--path", "PortAes67Output,card")
-	var list []rrcsRow
-	raw, _ := os.ReadFile(js)
-	if err := json.Unmarshal(raw, &list); err != nil || len(list) == 0 {
-		t.Fatalf("json export: %v, %d rows", err, len(list))
-	}
-	for _, r := range list {
-		if !strings.Contains(r.Path, "PortAes67Output") && !strings.Contains(r.Path, "card") {
-			t.Errorf("row outside --path: %s", r.Path)
-		}
-	}
-	if out := rrcsRun(t, "export", f.addr(), "--out", "-", "--format", "csv", "--path", "nothing-matches"); strings.Count(out, "\n") != 1 {
-		t.Errorf("empty csv export:\n%s", out)
-	}
-	if out := rrcsRun(t, "export", f.addr(), "--out", "-", "--path", "nothing-matches"); strings.TrimSpace(out) != "[]" {
-		t.Errorf("empty json export: %s", out)
-	}
 	// The slot column: 0 for the node and the system objects, the bay for
-	// a card and its ports (the ports' node 61 is the first card's); --slot
-	// keeps one.
+	// a card and its ports (the ports' node 61 is the first card's).
 	if mc[2] != "1" || rows["net.1.node.60.card.1.LongName"][2] != "1" || rows["net.1.node.60.LongName"][2] != "0" || rows["conference.300.Label"][2] != "0" {
 		t.Errorf("slot column: port %q card %q node %q conference %q", mc[2], rows["net.1.node.60.card.1.LongName"][2], rows["net.1.node.60.LongName"][2], rows["conference.300.Label"][2])
 	}
-	zero := rrcsRun(t, "export", f.addr(), "--out", "-", "--format", "csv", "--slot", "0")
-	if strings.Contains(zero, "port.7.out.PortAes67Output") || !strings.Contains(zero, "conference.300.Label") || !strings.Contains(zero, "net.1.node.60.LongName") {
-		t.Errorf("--slot 0:\n%s", zero)
+	// --match narrows; json is the same rows.
+	out := rrcsRun(t, "list", "values", f.addr(), "--match", "PortAes67Output", "--output", "json")
+	var list []rrcsRow
+	if err := json.Unmarshal([]byte(out), &list); err != nil || len(list) == 0 {
+		t.Fatalf("json rows: %v, %d rows", err, len(list))
+	}
+	for _, r := range list {
+		if !strings.Contains(r.Path, "PortAes67Output") {
+			t.Errorf("row outside --match: %s", r.Path)
+		}
+	}
+	if out := rrcsRun(t, "list", "values", f.addr(), "--match", "nothing-matches", "--output", "csv"); strings.Count(out, "\n") != 1 {
+		t.Errorf("empty csv:\n%s", out)
 	}
 	// From a snapshot too.
 	snap := filepath.Join(dir, "walk.json")
-	rrcsRun(t, "walk", f.addr(), "--out", snap, "--skip", "both")
-	if out := rrcsRun(t, "export", "--from", snap, "--out", "-", "--format", "csv", "--path", "port.7.out.PortAes67Output.Multicast,"); !strings.Contains(out, "239.1.2.3") {
-		t.Errorf("export from a snapshot:\n%s", out)
+	rrcsRun(t, "snapshot", f.addr(), "--out", snap, "--skip", "both")
+	if out := rrcsRun(t, "list", "values", "--from", snap, "--match", "port.7.out.PortAes67Output.Multicast", "--output", "csv"); !strings.Contains(out, "239.1.2.3") {
+		t.Errorf("values from a snapshot:\n%s", out)
 	}
 }
 
@@ -153,7 +152,7 @@ func rrcsEditCSV(t *testing.T, file, path, value string, sep rune) {
 func TestRRCSImportRoundTrip(t *testing.T) {
 	f, changes := rrcsSetFake(t, true)
 	file := filepath.Join(t.TempDir(), "x.csv")
-	rrcsRun(t, "export", f.addr(), "--out", file)
+	rrcsValuesTo(t, file, f.addr())
 
 	// Unedited: nothing to apply, read-only rows counted.
 	out := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
@@ -187,7 +186,7 @@ func TestRRCSImportRoundTrip(t *testing.T) {
 func TestRRCSImportNotTaken(t *testing.T) {
 	f, _ := rrcsSetFake(t, false)
 	file := filepath.Join(t.TempDir(), "x.csv")
-	rrcsRun(t, "export", f.addr(), "--out", file, "--path", "port.7.out")
+	rrcsValuesTo(t, file, f.addr(), "--match", "port.7.out")
 	rrcsEditCSV(t, file, "net.1.node.61.port.7.out.PortAes67Output.Multicast", "239.9.9.9", ',')
 	out, err := rrcsStdout(t, func() error {
 		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--output", "json", "--write-to", f.addr()})
@@ -228,7 +227,6 @@ func TestRRCSImportSkipsAndRefusals(t *testing.T) {
 	for name, args := range map[string][]string{
 		"no host":       {"import", "--file", file},
 		"no file":       {"import", "h"},
-		"export format": {"export", "h", "--format", "yaml"},
 	} {
 		if err := runRRCS(ctx, args); !errors.As(err, &val) {
 			t.Errorf("%s: got %v, want a validation error", name, err)
@@ -249,7 +247,6 @@ func TestRRCSImportSkipsAndRefusals(t *testing.T) {
 		"empty file":   {"import", f.addr(), "--file", empty},
 		"bad json":     {"import", f.addr(), "--file", badJSON},
 		"dead gateway": {"import", "127.0.0.1:1", "--file", file, "--timeout", "300ms"},
-		"bad out":      {"export", f.addr(), "--out", filepath.Join(dir, "hand.csv", "x.csv")}, // a file where a directory must be made
 	} {
 		if args[0] == "import" {
 			args = append(args, "--dry-run")
@@ -290,7 +287,7 @@ func TestRRCSExportKeysAndCommands(t *testing.T) {
 		return rrcsTreeAnswer(call)
 	})
 	file := filepath.Join(t.TempDir(), "x.csv")
-	rrcsRun(t, "export", f.addr(), "--out", file, "--path", "node.61.port.1026")
+	rrcsValuesTo(t, file, f.addr(), "--match", "node.61.port.1026")
 	header, rows := rrcsReadExport(t, file)
 	col := map[string]int{}
 	for i, h := range header {

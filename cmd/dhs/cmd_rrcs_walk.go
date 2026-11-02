@@ -13,16 +13,15 @@ import (
 	"sync"
 	"time"
 
-	"dhs/internal/rrcs/codec"
 	rrcs "dhs/internal/rrcs/consumer"
 )
 
 // rrcsWalk reads everything the gateway offers for reading and writes it
 // to one JSON document.
 func rrcsWalk(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("rrcs walk", flag.ContinueOnError)
+	fs := flag.NewFlagSet("rrcs snapshot", flag.ContinueOnError)
 	cf := newRRCSFlags(fs)
-	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/walk-<utcstamp>.json (ADR-0028)")
+	out := fs.String("out", "auto", "snapshot FILE the walk is written to. Literal \"auto\" = snapshots/rrcs/<host>/snapshot-<utcstamp>.json (ADR-0028)")
 	skip := fs.String("skip", "", "leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)")
 	online := fs.String("online", "yes", "yes = first learn which ports are on line, by a registration of a second or two that is removed at once, and do not ask the others for gain and level (RRCS refuses those and logs a warning each time) | no = ask every port")
 	listen := fs.String("listen", ":8196", "with --online yes: local [ip]:port RRCS sends the port states to. Not the port of watch, so a walk can run beside it")
@@ -30,10 +29,10 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return rrcsValErr("walk", "want exactly one host[:port] argument")
+		return rrcsValErr("snapshot", "want exactly one host[:port] argument")
 	}
 	if *online != "yes" && *online != "no" {
-		return rrcsValErr("walk", "--online must be yes or no")
+		return rrcsValErr("snapshot", "--online must be yes or no")
 	}
 	skips := map[string]bool{}
 	for _, part := range strings.Split(*skip, ",") {
@@ -44,10 +43,10 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		case "properties", "commands", "values", "singles":
 			skips[part] = true
 		default:
-			return rrcsValErr("walk", "--skip takes properties, commands, values, singles, comma-separated")
+			return rrcsValErr("snapshot", "--skip takes properties, commands, values, singles, comma-separated")
 		}
 	}
-	client, _, closeFn, err := cf.open("walk", fs.Arg(0))
+	client, _, closeFn, err := cf.open("snapshot", fs.Arg(0))
 	if err != nil {
 		return err
 	}
@@ -55,10 +54,10 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	started := time.Now()
 	if *out == "auto" {
 		*out = filepath.Join(snapshotDir(rrcsProto, hostOnly(fs.Arg(0))),
-			"walk-"+started.UTC().Format("20060102T1504Z")+".json")
+			"snapshot-"+started.UTC().Format("20060102T1504Z")+".json")
 	}
 	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
-		return fmt.Errorf("rrcs walk: %w", err)
+		return fmt.Errorf("rrcs snapshot: %w", err)
 	}
 
 	// Which ports are on line, when something that depends on it is asked.
@@ -66,10 +65,10 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	if *online == "yes" && (!skips["values"] || !skips["singles"]) {
 		ports, err := rrcsOnlinePorts(ctx, cf, client, *listen)
 		if err != nil {
-			cf.say("rrcs walk: the ports on line could not be learnt, every port is asked: %v", err)
+			cf.say("rrcs snapshot: the ports on line could not be learnt, every port is asked: %v", err)
 		} else {
 			onLine = ports
-			cf.say("rrcs walk: %d ports on line; the others are not asked for gain and level", len(ports))
+			cf.say("rrcs snapshot: %d ports on line; the others are not asked for gain and level", len(ports))
 		}
 	}
 
@@ -80,24 +79,24 @@ func rrcsWalk(ctx context.Context, args []string) error {
 		Commands:   !skips["commands"],
 		Values:     !skips["values"],
 		Singles:    !skips["singles"],
-		Step:       func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) },
+		Step:       func(format string, a ...any) { cf.say("rrcs snapshot: "+format, a...) },
 	})
 	if err != nil {
 		return err
 	}
-	step := func(format string, a ...any) { cf.say("rrcs walk: "+format, a...) }
+	step := func(format string, a ...any) { cf.say("rrcs snapshot: "+format, a...) }
 
 	doc, err := json.MarshalIndent(snap, "", " ")
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile(*out, doc, 0o644); err != nil {
-		return fmt.Errorf("rrcs walk: %w", err)
+		return fmt.Errorf("rrcs snapshot: %w", err)
 	}
 	step("%d requests, %d failed, %s — written to %s", snap.Requests, snap.Failed,
 		time.Since(started).Round(time.Millisecond), *out)
 	if !snap.Complete {
-		return fmt.Errorf("rrcs walk: interrupted, the snapshot is partial")
+		return fmt.Errorf("rrcs snapshot: interrupted, the snapshot is partial")
 	}
 	if cf.output == "json" {
 		fmt.Println(string(doc))
@@ -124,60 +123,6 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	fmt.Printf("%-20s %d\n", "single reads", len(snap.Singles))
 	fmt.Printf("%-20s %d of %d\n", "failed requests", snap.Failed, snap.Requests)
 	fmt.Printf("%-20s %s\n", "snapshot", *out)
-	return nil
-}
-
-// rrcsGet reads the properties of one thing: an object by its ID, asked
-// to the gateway, or anything by its path, read from the lists.
-func rrcsGet(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("rrcs get", flag.ContinueOnError)
-	src := newRRCSSource(fs)
-	cf := src.cf
-	id := fs.Int64("id", 0, "object ID, as the lists print it: GetObjectProperty")
-	path := fs.String("path", "", "path, as list and tree print it (e.g. net.1.node.61.port.1026, group.109136507): the properties the lists hold")
-	prop := fs.String("prop", "", "property name; empty = every property")
-	names := fs.String("names", "no", "with --id: yes = list the property names the object supports instead of the values")
-	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
-		return err
-	}
-	if *names != "yes" && *names != "no" {
-		return rrcsValErr("get", "--names must be yes or no")
-	}
-	if (*id == 0) == (*path == "") {
-		return rrcsValErr("get", "want --id or --path, one of them")
-	}
-	if *path != "" {
-		return rrcsGetPath(ctx, src, fs.Args(), *path, *prop)
-	}
-	if fs.NArg() != 1 || *src.from != "" {
-		return rrcsValErr("get", "--id asks a gateway: want exactly one host[:port] argument and no --from")
-	}
-	if *id < -1<<31 || *id > 1<<31-1 {
-		return rrcsValErr("get", "--id must be a 32-bit object ID")
-	}
-	client, _, closeFn, err := cf.open("get", fs.Arg(0))
-	if err != nil {
-		return err
-	}
-	defer closeFn()
-
-	var reply rrcs.Reply
-	if *names == "yes" {
-		reply, err = client.Call(ctx, "GetObjectPropertyNames", codec.Int(int32(*id)))
-	} else {
-		reply, err = client.Call(ctx, "GetObjectProperty", codec.Int(int32(*id)), codec.String(*prop))
-	}
-	if err != nil {
-		return fmt.Errorf("rrcs get: %w", err)
-	}
-	payload := reply.Payload()
-	if cf.output == "json" || payload.Kind != codec.KindStruct {
-		fmt.Println(rrcsCompact(payload))
-		return nil
-	}
-	for _, m := range payload.Members {
-		fmt.Printf("%-28s %s\n", m.Name, rrcsCompact(m.Value))
-	}
 	return nil
 }
 

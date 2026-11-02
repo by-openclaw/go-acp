@@ -155,10 +155,6 @@ func rrcsCompact(v codec.Value) string { return rrcs.Compact(v) }
 
 func rrcsTarget(k *rrcsKey) string { return rrcs.Target(k) }
 
-func rrcsCurrent(ctx context.Context, client *rrcs.Client, path string, values bool) (map[string]any, error) {
-	return rrcs.Current(ctx, client, path, values)
-}
-
 func rrcsCurrentOne(ctx context.Context, client *rrcs.Client, path string) (map[string]any, bool) {
 	return rrcs.CurrentOne(ctx, client, path)
 }
