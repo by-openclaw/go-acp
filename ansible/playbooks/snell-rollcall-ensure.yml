@@ -137,7 +137,7 @@
             cmd: >-
               {{ dhs_bin }} consumer rollcall ensure {{ card_addr }}
               --slot {{ card_slot }} --label {{ card_label }}
-              --value {{ card_value }} --output json
+              --value {{ card_value }} --write-to {{ card_addr }} --output json
           register: v_first
           changed_when: (v_first.stdout | from_json).changed | bool
 
@@ -146,7 +146,7 @@
             cmd: >-
               {{ dhs_bin }} consumer rollcall ensure {{ card_addr }}
               --slot {{ card_slot }} --label {{ card_label }}
-              --value {{ card_value }} --output json
+              --value {{ card_value }} --write-to {{ card_addr }} --output json
           register: v_second
           changed_when: (v_second.stdout | from_json).changed | bool
 

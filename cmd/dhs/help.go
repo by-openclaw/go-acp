@@ -156,9 +156,8 @@ DESCRIPTION
   device.
 
   --dry-run resolves and validates the value and sends nothing.
-  --write-to HOST names the target a second time: a connector that
-  guards its writes (rrcs) refuses to write without it and stays with
-  the dry run; the others write at once (ADR-0037 P5).
+  --write-to HOST names the target a second time: every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
 
 FLAGS
   --slot N           slot number (required)
@@ -405,9 +404,8 @@ DESCRIPTION
   value back to the device. Read-only objects are skipped; alarm
   priorities and frame status are also skipped.
 
-  --write-to HOST names the target a second time. A connector that
-  guards its writes (rrcs) refuses to write without it and stays with
-  the dry run; the others write at once (ADR-0037 P5).
+  --write-to HOST names the target a second time. Every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
 
   --dry-run lists what WOULD be written without touching the device,
   followed by a grouped-by-reason table of every row the importer

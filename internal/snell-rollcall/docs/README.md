@@ -73,7 +73,7 @@ dhs consumer rollcall walk 10.6.250.105 --slot 1
 
 # Read and write an object
 dhs consumer rollcall get 10.6.250.105 --slot 1 --label gain
-dhs consumer rollcall set 10.6.250.105 --slot 1 --label gain --value -6
+dhs consumer rollcall set 10.6.250.105 --slot 1 --label gain --value -6 --write-to 10.6.250.105
 
 # A router
 dhs consumer rollcall router 10.6.250.105

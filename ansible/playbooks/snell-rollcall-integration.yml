@@ -357,7 +357,7 @@
           ansible.builtin.command:
             cmd: >-
               {{ dhs_bin }} consumer rollcall set {{ loopback_host }}:{{ loopback_port }}
-              --slot 1 --label gain --value -6
+              --slot 1 --label gain --value -6 --write-to {{ loopback_host }}:{{ loopback_port }}
           register: loop_set
           # The producer is ephemeral and torn down below, so this run leaves
           # nothing behind: run-twice is the same result (ADR-0025).
@@ -376,7 +376,7 @@
           ansible.builtin.command:
             cmd: >-
               {{ dhs_bin }} consumer rollcall set {{ loopback_host }}:{{ loopback_port }}
-              --slot 1 --label gain --value 9999
+              --slot 1 --label gain --value 9999 --write-to {{ loopback_host }}:{{ loopback_port }}
           register: loop_clamp
           changed_when: false
 
@@ -390,7 +390,7 @@
           ansible.builtin.command:
             cmd: >-
               {{ dhs_bin }} consumer rollcall set {{ loopback_host }}:{{ loopback_port }}
-              --slot 1 --label status --value 1
+              --slot 1 --label status --value 1 --write-to {{ loopback_host }}:{{ loopback_port }}
           register: loop_readonly
           changed_when: false
           failed_when: false

@@ -32,7 +32,7 @@ Start a long-running watch, then in another shell fire a set:
 
 ```bash
 ./bin/dhs consumer acp2 watch 127.0.0.1 --port 2072 --slot 1 &
-./bin/dhs consumer acp2 set   127.0.0.1 --port 2072 --slot 1 --label GainS32 --value 3
+./bin/dhs consumer acp2 set   127.0.0.1 --port 2072 --slot 1 --label GainS32 --value 3 --write-to 127.0.0.1
 ```
 
 The watch session prints the announce as soon as the set completes.

@@ -349,7 +349,7 @@ A loopback check against the shipped consumer:
 dhs producer rollcall serve --tree bin/trees/our-dm/tree.json --port 2050 &
 dhs consumer rollcall info 127.0.0.1:2050
 dhs consumer rollcall walk 127.0.0.1:2050 --slot 1
-dhs consumer rollcall set  127.0.0.1:2050 --slot 2 --id 1 --value "CAM 4"
+dhs consumer rollcall set  127.0.0.1:2050 --slot 2 --id 1 --value "CAM 4" --write-to 127.0.0.1:2050
 ```
 
 Per ADR-0025 the loopback is the last tier, not the first: the vendor emulator

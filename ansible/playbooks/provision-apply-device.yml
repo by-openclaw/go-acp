@@ -39,6 +39,8 @@
       - "{{ entry.item.mgmt_ip }}"
       - --file
       - "{{ site_dir }}/values/{{ entry.item.name }}.csv"
+      - --write-to
+      - "{{ entry.item.mgmt_ip }}"
   when: to_apply | int > 0
   register: applied
   changed_when: true

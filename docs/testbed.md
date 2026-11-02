@@ -238,7 +238,7 @@ they report the same `sysObjectID`.
 This is the trap. A SET carrying `public`:
 
 ```
-$ dhs consumer snmp set --version 1 --community public --oid sysContact.0 ...
+$ dhs consumer snmp set --version 1 --community public --oid sysContact.0 ... --write-to <host>
 error: snmp: no response after 3 attempt(s)
 ```
 

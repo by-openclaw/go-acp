@@ -78,13 +78,13 @@ The canonical generic set (dispatched in `cmd/dhs/main.go`):
 | `walk` | enumerate every object on a slot | full DFS of one slot | ✅ |
 | `tree` | render object tree as ASCII or PlantUML mindmap | view only | ✅ nests sub-group sections (DOWN CONV/…) as parents |
 | `get` | read one object value by slot/group/label (or path) | single object | ✅ walks on cache-miss to resolve `--label`/`--path` |
-| `set` | write one object value | single object; validates type/range/enum | ✅ |
+| `set` | write one object value (`--dry-run`; `--write-to HOST` names the target twice before a write, ADR-0037 P5) | single object; validates type/range/enum | ✅ |
 | `inc` | step an object up by its step (ACP1 setIncValue) | single RW numeric/enum | ✅ |
 | `dec` | step an object down by its step (ACP1 setDecValue) | single RW numeric/enum | ✅ |
 | `reset` | reset an object to its default (ACP1 setDefValue) | single object with setDef access | ✅ |
 | `watch` | subscribe to live announcements | until Ctrl-C | ✅ UDP bcast same-VLAN; TCP/AN2 session-announce cross-VLAN |
 | `export` | dump a walked slot/device → json / yaml / csv | snapshot out | ✅ |
-| `import` | apply values from a snapshot (`--check` dry-run first) | RW objects only; mismatches skipped non-blocking | ○ |
+| `import` | apply values from a snapshot (`--check` dry-run first; `--write-to HOST` to write) | RW objects only; mismatches skipped non-blocking | ○ |
 | `extract` | capture a per-product DM triple (meta+wire+tree) | fixture-layout capture | ○ |
 | `diff` | compare two canonical `tree.json` (text or CHANGELOG) | offline | ○ |
 | `convert` | translate a snapshot json↔yaml↔csv | offline | ○ |
@@ -92,7 +92,7 @@ The canonical generic set (dispatched in `cmd/dhs/main.go`):
 | `profile` | classify provider compliance strict / partial | read-only | ✅ STRICT |
 | `validate` | replay a captured `frames.jsonl` offline; `--out-tree`/`--out-params` write the snapshot (ADR-0021) | offline | ✅ |
 | `health` | 3-layer session health: reachable / connected / live | read-only | ○ |
-| **`ensure`** | declarative converge: read→compare→set-if-diff (`--check` dry-run) | **idempotent — the Ansible primitive (ADR-0007)** | ✅ |
+| **`ensure`** | declarative converge: read→compare→set-if-diff (`--check` dry-run; `--write-to HOST` when it writes) | **idempotent — the Ansible primitive (ADR-0007)** | ✅ |
 | `status` | session/service state | — | ❌ not in CLI |
 | `replay` | re-emit a captured `frames.jsonl` on the wire | — | (deferred, ADR-0021) |
 
@@ -265,7 +265,7 @@ adds `matrix`/`invoke`/`stream`/`bench` (emberplus-only — see §2).
 | `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.6.250.102 --port 2071 --transport tcp --slot 1` |
 | `tree` | render the tree (sub-groups nest as parents) | `dhs consumer acp1 tree 10.6.250.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` (or `--oid 1.2.29`) |
 | `get` | read one value | name → `… get 10.6.250.102 --slot 1 --group control --label Out-Mode` · OID → `… get 10.6.250.102 --slot 1 --group control --id 10` |
-| `set` | write one value | name → `… set 10.6.250.102 --slot 1 --group control --label Out-Mode --value Crossed` · OID → `… set … --group control --id 10 --value Crossed` |
+| `set` | write one value | name → `… set 10.6.250.102 --slot 1 --group control --label Out-Mode --value Crossed --write-to 10.6.250.102` · OID → `… set … --group control --id 10 --value Crossed --write-to <host>` |
 | `inc` / `dec` | step ±1 step (setInc/DecValue; acp1) | OID → `dhs consumer acp1 inc 10.6.250.102 --slot 1 --group control --id 9` · name → `… inc … --group control --label H_delay` |
 | `reset` | restore default (setDefValue; acp1) | `dhs consumer acp1 reset 10.6.250.102 --slot 1 --group control --id 9` (or `--label H_delay`) |
 | `watch` | live announcements | `dhs consumer acp1 watch 10.6.250.102 --port 2071 --transport tcp --slot 1` — **`--transport udp` sees announcements on the same VLAN only (subnet broadcast); across VLANs use `--transport tcp` or `an2` (announce is unicast over the session).** |

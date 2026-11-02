@@ -21,6 +21,8 @@
       - acp1
       - ensure
       - "{{ dhs_device }}"
+      - --write-to
+      - "{{ dhs_device }}"
       - --port
       - "{{ dhs_port | string }}"
       - --slot

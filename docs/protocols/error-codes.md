@@ -163,7 +163,7 @@ This file locks the error contract across every connector.
 ### Bash
 
 ```bash
-err=$(dhs consumer emberplus set ... 2>&1)
+err=$(dhs consumer emberplus set ... --write-to <host> 2>&1)
 case "$err" in
   transport:*)  echo "retry-able transport problem" ;;
   validation:*) echo "fix input" ;;
@@ -176,7 +176,7 @@ echo "exit: $?"
 ### PowerShell
 
 ```powershell
-$err = (dhs consumer emberplus set ... 2>&1)
+$err = (dhs consumer emberplus set ... --write-to <host> 2>&1)
 switch -Regex ($err) {
     '^transport:'  { 'retry-able transport problem' }
     '^validation:' { 'fix input' }
@@ -190,7 +190,7 @@ switch -Regex ($err) {
 
 ```yaml
 - name: gain set
-  command: dhs consumer emberplus set --path ... --value -25
+  command: dhs consumer emberplus set --path ... --value -25 --write-to <host>
   register: r
   failed_when:
     - r.rc != 0

@@ -143,7 +143,7 @@ After `make build`:
 ./bin/dhs consumer acp1 discover
 ./bin/dhs consumer acp1 walk     192.168.1.5 --slot 1
 ./bin/dhs consumer acp1 get      192.168.1.5 --slot 1 --path "control.video_gain"
-./bin/dhs consumer acp1 set      192.168.1.5 --slot 1 --path "control.video_gain" --value -3.0
+./bin/dhs consumer acp1 set      192.168.1.5 --slot 1 --path "control.video_gain" --value -3.0 --write-to 192.168.1.5
 ./bin/dhs consumer acp1 watch    192.168.1.5 --slot 1
 
 ./bin/dhs producer acp1 serve    --tree tree.json --port 2071

@@ -88,7 +88,7 @@ write the device model cache: a handful of leaves is not a model.
 
 ```
 export SNMP_WRITE_COMMUNITY=private
-dhs consumer snmp set 10.6.255.114 \
+dhs consumer snmp set 10.6.255.114 --write-to 10.6.255.114 \
     --path ateme.dr5000.Channel.Configuration.Output.Mapping.Connector1 \
     --value hdsdi
 ```

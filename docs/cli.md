@@ -243,12 +243,14 @@ connector:
 | `--dry-run` (`--check` on ensure, both on set and import) | read, report what would be written, send nothing |
 | `--write-to HOST` | name the target a second time, exactly as the host argument was given |
 
-A connector that guards its writes (`consumer.WriteGuard`; rrcs does,
-after the incident of ADR-0035) refuses to write without `--write-to`
-and says so as a validation error (exit 2), naming the host and the way
-to confirm it. A `--write-to` that differs from the host is refused on
-every connector. A connector without the guard writes at once when
-neither flag is given, as before.
+Every connector that can write declares the guard (`consumer.WriteGuard`;
+rrcs first, after the incident of ADR-0035, all writing connectors since
+2026-11-02) and refuses to write without `--write-to`, as a validation
+error (exit 2) naming the host and the way to confirm it. A `--write-to`
+that differs from the host is refused. `ensure` asks for the flag only
+when the object differs: a converged object is read, not written. A
+connector whose plugin cannot write through the generic verbs (osc, tsl,
+probel-sw02p, probel-sw08p) has nothing to guard.
 
 ### Device model of an answer (ADR-0037 P4)
 
@@ -1090,7 +1092,7 @@ EXAMPLES
   dhs consumer snmp walk 10.6.250.5:1161
 
   # name the device from the NMS
-  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113
+  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113 --write-to 10.6.255.113
 
   # listen for alarms from anything, then narrow it
   dhs consumer snmp trap-listen --bind :1162
@@ -1204,7 +1206,7 @@ and its MIB says it "may always be written to using SNMP" — so a
 receiver left on the front panel can be taken back over the network,
 without a trip to the rack:
 
-  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host>
+  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host> --write-to <host>
 
 The Snell frames have per-slot "SNMP Control" checkboxes on the RollCall
 page instead. Either way a readOnly, notWritable or noSuchName from a

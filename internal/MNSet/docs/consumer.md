@@ -128,7 +128,7 @@ dhs consumer mnset export 10.6.40.54 --format csv --out .cache/exports/fusion-54
 dhs consumer mnset get 10.6.40.54 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr
 239.0.1.2
 
-dhs consumer mnset set 10.6.40.54 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr --value 239.131.3.134
+dhs consumer mnset set 10.6.40.54 --path flows.59d52e04-…-40a36ba2100c.network.dst_ip_addr --value 239.131.3.134 --write-to 10.6.40.54
 239.131.3.134            ← the value the module holds AFTER the write, read back
 ```
 
@@ -171,7 +171,7 @@ mixed state. Give the node a JSON object instead; the keys you give are
 merged over the module's, and the module gets ONE PUT:
 
 ```
-dhs consumer mnset set 10.6.40.54 --path flows.<uuid>.format   --value '{"format_code_t_scan":0,"format_code_p_scan":0,"format_code_mode":0,"format_code_format":0,"format_code_rate":5120,"format_code_sampling":0}'   # 1080i50
+dhs consumer mnset set 10.6.40.54 --path flows.<uuid>.format   --value '{"format_code_t_scan":0,"format_code_p_scan":0,"format_code_mode":0,"format_code_format":0,"format_code_rate":5120,"format_code_sampling":0}' --write-to 10.6.40.54   # 1080i50
 ```
 
 The code tables are MN SET's own, extracted to
