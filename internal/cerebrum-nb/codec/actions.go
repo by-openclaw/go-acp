@@ -329,9 +329,9 @@ func (d *DeviceAction) encodeAction(b *strings.Builder) {
 // ----------------------------------------------------------------------
 // §4.5 — Device Configuration (0v16 pp20-23)
 //
-// CRUD over the Cerebrum device tree. Unlike §4.1-§4.4 these are NOT
-// wrapped in <ACTION>; <DEVICE_CONFIGURATION> is itself a top-level
-// command, so it has its own EncodeDeviceConfiguration entry point.
+// CRUD over the Cerebrum device tree. §2.3 puts every §4 command inside
+// <ACTION>, this one too: sent bare it is NACK 2 UNKNOWN_COMMAND. It keeps
+// its own EncodeDeviceConfiguration entry point for the body builders.
 //
 // The body shape under <CONFIGURATION> varies by DEVICE_TYPE
 // (GENERIC / PANEL / ROUTER / SNMP). REMOVE carries no body (§4.5.2
@@ -574,11 +574,12 @@ func EncodeDeviceConfiguration(mtid uint32, dc *DeviceConfiguration) []byte {
 		ForceAdd("TYPE", string(dc.Type)).
 		Add("IP_ADDRESS", dc.IPAddress).
 		Add("DEVICE_NAME", dc.DeviceName).
-		Add("DEVICE_TYPE", string(dc.DeviceType)).
-		ForceAdd("MTID", formatMTID(mtid))
+		Add("DEVICE_TYPE", string(dc.DeviceType))
 
 	body := dc.bodyFunc(&b)
-	emitElement(&b, "DEVICE_CONFIGURATION", a, body)
+	emitElement(&b, "ACTION", []Attr{{"MTID", formatMTID(mtid)}}, func() {
+		emitElement(&b, "DEVICE_CONFIGURATION", a, body)
+	})
 	return []byte(b.String())
 }
 

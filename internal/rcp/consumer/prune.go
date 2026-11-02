@@ -61,6 +61,12 @@ func (e *ensurer) prune(ctx context.Context, name string, col codec.Collection, 
 	return nil
 }
 
+// namesNoIO reports a plan that states no IO in any collection.
+func (p Plan) namesNoIO() bool {
+	return len(p.Sources)+len(p.Destinations)+len(p.Virtuals)+
+		len(p.FederationSources)+len(p.FederationDestinations) == 0
+}
+
 // pruneAll prunes the four collections against the plan.
 func (e *ensurer) pruneAll(ctx context.Context, plan Plan) error {
 	names := func(lists ...[]PlanIO) map[string]bool {
@@ -68,6 +74,11 @@ func (e *ensurer) pruneAll(ctx context.Context, plan Plan) error {
 		for _, l := range lists {
 			for _, io := range l {
 				m[io.Mnemonic] = true
+				// A linked IO may carry its federation IO's mnemonic on the
+				// server: the plan names it just the same.
+				if io.Federation != nil && *io.Federation != "" {
+					m[*io.Federation] = true
+				}
 			}
 		}
 		return m

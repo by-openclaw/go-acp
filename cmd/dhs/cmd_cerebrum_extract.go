@@ -158,8 +158,15 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 		}
 	}
 
-	// No seeds given → discover the root (acp2/ember parity: nobody
-	// should need to know the DM structure up front).
+	// No seeds given → the same card's model under ACP2 names its top groups;
+	// Northbound itself refuses every root spelling on 2.9.3.
+	if len(starts) == 0 {
+		if roots := cerebrumSiblingRoots(model, swRev); len(roots) > 0 {
+			starts = roots
+			fmt.Printf("roots from the acp2 model of %s: %d top group(s)\n", identity, len(starts))
+		}
+	}
+	// Still none → try the root spellings (a server may answer one).
 	if len(starts) == 0 {
 		discovered, spelling, derr := cerebrumDiscoverRootGroups(sess, cf.timeout, *device, *byName, *subDev)
 		if derr != nil {

@@ -161,6 +161,9 @@ func (c *Client) Ensure(ctx context.Context, plan Plan, opts EnsureOptions) (Rep
 	if opts.Prune && opts.Absent {
 		return Report{}, errors.New("rcp: prune removes what a plan does not name, absent removes what it names — not both")
 	}
+	if opts.Prune && plan.namesNoIO() {
+		return Report{}, errors.New("rcp: prune with a plan that names no IO would remove the whole RouteMaster: refused")
+	}
 	if opts.Settle <= 0 {
 		opts.Settle = 5 * time.Second
 	}

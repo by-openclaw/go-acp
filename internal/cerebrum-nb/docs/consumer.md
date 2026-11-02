@@ -1,6 +1,6 @@
 # Cerebrum NB consumer — `dhs consumer cerebrum-nb`
 
-Drives the **EVS Cerebrum Northbound API 0v16** (a.k.a. **Neuron Bridge**)
+Drives the **EVS Cerebrum Northbound API v0.17** (a.k.a. **Neuron Bridge**)
 over XML-on-WebSocket. One licence per WebSocket connection;
 default port **40007**. (0v13 is the historical baseline; 0v16 is a
 superset and is what this connector targets.)
@@ -53,7 +53,7 @@ samples.
 | `--tls` | off | Use `wss://` instead of `ws://` |
 | `--insecure-skip-verify` | off | With `--tls`, skip cert validation |
 | `--debug` | off | Verbose RX/TX XML logging |
-| `--timeout DUR` | `30s` | Per-request timeout |
+| `--timeout DUR` | `5s` | Per-request timeout |
 
 Credentials default to environment variables so they don't appear in
 shell history or logs. On Windows:
@@ -153,6 +153,7 @@ Every spec deviation surfaces as a named event. Sample names:
 |---|---|
 | `cerebrum_case_normalized` | Peer sent a non-lowercase element / attribute name |
 | `cerebrum_busy_received` | Server returned `<busy>` |
+| `cerebrum_result_without_mtid` | A `<RESULT>` reply came with no MTID, just before the ACK of its action (every one on 2.9.3) |
 | `cerebrum_unknown_notification` | RX root or TYPE not in `keys.md` |
 | `cerebrum_mtid_reused` | Same mtid on two in-flight requests |
 | `cerebrum_server_inactive` | `poll_reply` reported `CONNECTED_SERVER_ACTIVE='0'` |

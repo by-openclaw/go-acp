@@ -6,7 +6,7 @@ Quick-reference card for operators. For wire-format detail see
 [verbs.md](verbs.md); for why there is no provider see
 [provider.md](provider.md).
 
-Authoritative spec: **EVS Cerebrum Northbound API 0v16**
+Authoritative spec: **EVS Cerebrum Northbound API v0.17** (held locally), on top of
 ([../assets/Cerebrum Northbound API 0v16.pdf](../assets/Cerebrum%20Northbound%20API%200v16.pdf)).
 0v13 is the historical baseline.
 
@@ -68,6 +68,9 @@ device we serve (see [provider.md](provider.md)).
 
 | Verb | What it does | Common flags |
 |---|---|---|
+| `listen` | Routing, category, salvo and device events. Reconnects and re-subscribes; `UNSUBSCRIBE` on stop. With a log sink, one record per change, the initial state and repeats left out | `--dest --level --router --metrics-addr --syslog-addr` |
+| `get-route` | What feeds one destination, level by level | `--dest --level --router --output` |
+| `extract-all` | One DM per device | `--roots --refresh` |
 | `route` | Apply one or more routes | `--dest --srce --level`, `--route dst:src:lvl`, `--csv FILE` |
 | `lock` / `unlock` | Lock / unlock a source or dest | `--kind SRCE_LOCK\|DEST_LOCK`, `--mode` (5-value enum), `--level`, `--duration` |
 | `device-config` | Add / modify / remove a device in the Cerebrum tree (0v16 §4.5) | `add\|modify\|remove --device-type generic\|panel\|router\|snmp --ip IP …` |
@@ -81,7 +84,7 @@ device we serve (see [provider.md](provider.md)).
 
 Every read verb takes `--output json` and emits ONE JSON document on
 stdout (the tree verb uses `--format json` — object rows). Every write
-verb converges per ADR-0007: read live state → diff → send only the
+verb the runbook marks ENSURE converges per ADR-0007: read live state → diff → send only the
 differences → report `{changed|would_change, previous, current, diff[]}`
 (`--check` reports without sending; run-twice = 0 changes).
 

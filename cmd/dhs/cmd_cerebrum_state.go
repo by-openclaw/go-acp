@@ -21,6 +21,7 @@ import (
 // cerebrumStateWant selects which snapshots to OBTAIN.
 type cerebrumStateWant struct {
 	Routes     bool
+	RouteDest  string // crosspoint read restricted to one destination; "" = all
 	RouteLevel string // crosspoint read restricted to one level; "" = all ("*")
 	SrcMne     bool
 	DstMne     bool
@@ -127,7 +128,11 @@ func cerebrumObtainState(ctx context.Context, sess *cerebrum.Session, router, de
 		if lvl == "" {
 			lvl = "*"
 		}
-		plan = append(plan, obtainItem{"ROUTE", &codec.RoutingChange{Type: "ROUTE", IPAddress: router, DeviceType: codec.DeviceType(deviceType), DestID: "*", LevelID: lvl}})
+		dest := want.RouteDest
+		if dest == "" {
+			dest = "*"
+		}
+		plan = append(plan, obtainItem{"ROUTE", &codec.RoutingChange{Type: "ROUTE", IPAddress: router, DeviceType: codec.DeviceType(deviceType), DestID: dest, LevelID: lvl}})
 	}
 	// LEVEL_ID="*" on the MNE filters is REQUIRED by live NOC Cerebrum
 	// (NACK 10 without it, 2026-08-15) and spec-harmless on routers.
@@ -189,6 +194,11 @@ collect:
 
 	mu.Lock()
 	defer mu.Unlock()
+	// A snapshot that did not end is a short read: an import would diff
+	// against it and write what is already there.
+	if okSubs > 0 && completes < okSubs {
+		return nil, fmt.Errorf("cerebrum-nb %s: %d of %d snapshot(s) did not complete within %s", want.Verb, okSubs-completes, okSubs, idle)
+	}
 	out := &cerebrumState{
 		Routes:     append([]routeSpec(nil), st.Routes...),
 		Src:        append([]cerebrumMneRow(nil), st.Src...),

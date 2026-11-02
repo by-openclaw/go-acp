@@ -688,6 +688,50 @@ func TestPruneAndAbsentTogetherAreRefused(t *testing.T) {
 	}
 }
 
+func TestPruneWithAPlanThatNamesNoIOIsRefused(t *testing.T) {
+	rm := newRouteMaster()
+	c := session(t, rm)
+	ctx := context.Background()
+	opts := fast
+	opts.FederationOptional = true
+	if _, err := c.Ensure(ctx, fullPlan(), opts); err != nil {
+		t.Fatal(err)
+	}
+	writes := len(rm.writes)
+	opts.Prune = true
+	if _, err := c.Ensure(ctx, Plan{}, opts); err == nil {
+		t.Error("prune with an empty plan was accepted")
+	}
+	if len(rm.writes) != writes {
+		t.Errorf("a refused prune wrote: %v", rm.writes[writes:])
+	}
+}
+
+func TestPruneKeepsAnIOUnderTheMnemonicOfItsFederationLink(t *testing.T) {
+	rm := newRouteMaster()
+	c := session(t, rm)
+	ctx := context.Background()
+	opts := fast
+	opts.FederationOptional = true
+	if _, err := c.Ensure(ctx, fullPlan(), opts); err != nil {
+		t.Fatal(err)
+	}
+	rm.add(codec.Sources, "DHS-FED-LINK", false)
+
+	plan := fullPlan()
+	link := "DHS-FED-LINK"
+	plan.Sources = append(plan.Sources, PlanIO{Mnemonic: "DHS-SRC-LOCAL", Federation: &link})
+	opts.Prune = true
+	opts.Check = true
+	got, err := c.Ensure(ctx, plan, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := actions(got); strings.Contains(a, "delete sources DHS-FED-LINK") {
+		t.Errorf("the linked IO would be deleted: %s", a)
+	}
+}
+
 func TestPlanOfRoundTrips(t *testing.T) {
 	rm := newRouteMaster()
 	c := session(t, rm)

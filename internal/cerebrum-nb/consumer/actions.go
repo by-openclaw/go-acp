@@ -158,8 +158,7 @@ func (s *Session) RMDelete(ctx context.Context, kind RMKind, ids []string, feder
 
 // routingResult sends one RM_* action and returns its §4.2.5 result.
 func (s *Session) routingResult(ctx context.Context, verb string, body codec.ActionBody) (*codec.RoutingResult, error) {
-	mtid := s.nextMTID()
-	f, err := s.roundTrip(ctx, mtid, codec.EncodeAction(mtid, body))
+	f, _, err := s.sendPatiently(ctx, func(mtid uint32) []byte { return codec.EncodeAction(mtid, body) })
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +169,13 @@ func (s *Session) routingResult(ctx context.Context, verb string, body codec.Act
 		}
 		return f.RoutingResult, nil
 	case codec.KindAck:
+		if r := s.actionResult(); r != nil && r.RoutingResult != nil {
+			if !r.RoutingResult.Accepted {
+				s.compliance.Note("cerebrum_rm_failed")
+			}
+			return r.RoutingResult, nil
+		}
 		return &codec.RoutingResult{Value: "ACCEPTED", Accepted: true}, nil
-	case codec.KindBusy:
-		return nil, fmt.Errorf("cerebrum-nb: %s: server busy (mtid %d)", verb, mtid)
 	default:
 		return nil, fmt.Errorf("cerebrum-nb: %s: unexpected reply %s", verb, f.Kind)
 	}
@@ -257,9 +260,7 @@ func (s *Session) DeviceConfig(ctx context.Context, dc *codec.DeviceConfiguratio
 	if dc == nil {
 		return nil, fmt.Errorf("cerebrum-nb: device-config: nil configuration")
 	}
-	mtid := s.nextMTID()
-	payload := codec.EncodeDeviceConfiguration(mtid, dc)
-	f, err := s.roundTrip(ctx, mtid, payload)
+	f, mtid, err := s.sendPatiently(ctx, func(mtid uint32) []byte { return codec.EncodeDeviceConfiguration(mtid, dc) })
 	if err != nil {
 		return nil, err
 	}
@@ -272,8 +273,15 @@ func (s *Session) DeviceConfig(ctx context.Context, dc *codec.DeviceConfiguratio
 			s.compliance.Note("cerebrum_device_config_failed")
 		}
 		return f.DeviceConfig, nil
-	case codec.KindBusy:
-		return nil, fmt.Errorf("cerebrum-nb: device-config: server busy (mtid %d)", mtid)
+	case codec.KindAck:
+		r := s.actionResult()
+		if r == nil || r.DeviceConfig == nil {
+			return nil, fmt.Errorf("cerebrum-nb: device-config: ACK with no RESULT (mtid %d)", mtid)
+		}
+		if !r.DeviceConfig.Accepted {
+			s.compliance.Note("cerebrum_device_config_failed")
+		}
+		return r.DeviceConfig, nil
 	default:
 		return nil, fmt.Errorf("cerebrum-nb: device-config: unexpected reply %s", f.Kind)
 	}

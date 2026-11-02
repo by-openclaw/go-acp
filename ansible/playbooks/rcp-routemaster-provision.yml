@@ -143,7 +143,8 @@
       check_mode: false
 
     # name -> NMOS|slot|device|name, per kind; a name present on two nodes
-    # keeps the first file's row (the exports are read in file-name order).
+    # keeps the first file's row (the exports are read in file-name order),
+    # and the play stops below if the plan uses such a name.
     - name: The sender / receiver names qualified
       ansible.builtin.set_fact:
         rcp_ipmap: >-
@@ -156,6 +157,57 @@
           {%- endfor -%}
           {%- endfor -%}
           {{ m }}
+
+    # A bare name reaches Cerebrum, is answered 202 and never resolves; a name
+    # on two nodes binds whichever export came first. Neither is a success.
+    - name: The plan's senders and receivers
+      ansible.builtin.set_fact:
+        rcp_ipunknown: >-
+          {%- set bad = [] -%}
+          {%- for key, kind in [('sources', 'sender'), ('destinations', 'receiver')] -%}
+          {%- for io in rcp_plan.get(key, []) -%}
+          {%- for lid, lv in (io.levels | default({})).items() -%}
+          {%- set sr = (lv.device | default({})).senderReceiver | default('') -%}
+          {%- if sr and '|' not in sr -%}
+          {%- set _ = bad.append(kind ~ ' ' ~ sr ~ ' (' ~ io.mnemonic ~ ')') -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ bad }}
+        rcp_iptwice: >-
+          {%- set seen = {} -%}
+          {%- set bad = [] -%}
+          {%- for f in rcp_ipcsv.results -%}
+          {%- for r in f.list -%}
+          {%- set k = r.kind ~ ' ' ~ r.name -%}
+          {%- if k in seen and seen[k] != r.slot ~ '|' ~ r.device -%}
+          {%- set _ = bad.append(k) -%}
+          {%- endif -%}
+          {%- set _ = seen.update({k: r.slot ~ '|' ~ r.device}) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ bad }}
+
+    - name: Every sender and receiver of the plan is known, on one node
+      ansible.builtin.assert:
+        that:
+          - rcp_ipunknown | length == 0
+          - rcp_plan_twice | length == 0
+        fail_msg: "not in the IP routing exports: {{ rcp_ipunknown }}; on two nodes: {{ rcp_plan_twice }}. Qualify them as NMOS|slot|device|name or collect the exports again."
+        quiet: true
+      vars:
+        rcp_plan_names: >-
+          {%- set n = [] -%}
+          {%- for key, kind in [('sources', 'sender'), ('destinations', 'receiver')] -%}
+          {%- for io in (cerebrum_routemaster.plan | default({})).get(key, []) -%}
+          {%- for lid, lv in (io.levels | default({})).items() -%}
+          {%- set _ = n.append(kind ~ ' ' ~ ((lv.device | default({})).senderReceiver | default(''))) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ n }}
+        rcp_plan_twice: "{{ rcp_iptwice | intersect(rcp_plan_names) }}"
 
     - name: The plan
       ansible.builtin.copy:
@@ -237,6 +289,17 @@
     - name: Let a new level settle
       ansible.builtin.pause:
         seconds: 10
+      when: rcp_levels_set is changed
+
+    # Cerebrum 2.9.3 resolves an IP binding only once the level has its default
+    # device, which only its user interface can set. Bindings written before
+    # that are answered 202 and stored. Stop here: the next run has no new
+    # level and goes on.
+    - name: A new level needs its default device before any binding
+      ansible.builtin.fail:
+        msg: >-
+          Levels created: set each new level's default device in the Cerebrum
+          user interface (RouteMaster, level, device), then run this play again.
       when: rcp_levels_set is changed
 
     # ---- the RouteMaster.

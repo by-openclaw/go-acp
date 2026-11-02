@@ -187,12 +187,12 @@ func TestCerebrumAltMnemonics(t *testing.T) {
 // 2026-08-15): 0, 0xFFFFFFFE, 0xFFFFFFFF and empty are unrouted cells; real
 // source IDs are not.
 func TestCerebrumNoRouteSentinel(t *testing.T) {
-	for _, s := range []string{"", "0", "4294967294", "4294967295"} {
+	for _, s := range []string{"", "0", "4294967268", "4294967292", "4294967294", "4294967295"} {
 		if !cerebrumNoRouteSentinel(s) {
 			t.Errorf("sentinel %q not detected", s)
 		}
 	}
-	for _, s := range []string{"1", "11", "9191", "28576"} {
+	for _, s := range []string{"1", "11", "9191", "28576", "4026531839", "4294967039", "name"} {
 		if cerebrumNoRouteSentinel(s) {
 			t.Errorf("real source %q misclassified as sentinel", s)
 		}

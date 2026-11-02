@@ -25,7 +25,7 @@ through `$DHS_CEREBRUM_USER` / `$DHS_CEREBRUM_PASS`; note the port is
 Diffing these fixtures against a live capture is still outstanding —
 that is a task nobody has done, not a peer nobody has.
 
-Authoritative spec: **EVS Cerebrum Northbound API 0v16**
+Authoritative spec: **EVS Cerebrum Northbound API v0.17** (held locally), on top of
 ([`../assets/Cerebrum Northbound API 0v16.pdf`](../assets/Cerebrum%20Northbound%20API%200v16.pdf)).
 0v13 is the historical baseline (a strict subset). Wire format + quirks live
 in [`../CLAUDE.md`](../CLAUDE.md); the element/attribute/enum catalogue is
@@ -152,7 +152,7 @@ Codec-generated fixture ([`tx_action_route.xml`](../testdata/fixtures/tx_action_
 from `codec.EncodeAction(&RoutingAction{Type:"ROUTE"})`):
 
 ```xml
-<ACTION MTID="2"><ROUTING TYPE="ROUTE" DEVICE_NAME="MTX1" DEVICE_TYPE="ROUTER" SRCE_ID="60" SRCE_LEVEL_ID="1" DEST_ID="60" DEST_LEVEL_ID="1"/></ACTION>
+<ACTION MTID="2"><ROUTING TYPE="ROUTE" DEVICE_NAME="MTX1" DEVICE_TYPE="ROUTER" SRCE_ID="60" DEST_ID="60" DEST_LEVEL_ID="1"/></ACTION>
 ```
 
 The async confirmation is a `ROUTING_CHANGE TYPE=ROUTE` (§5.1.1) carrying a
@@ -191,6 +191,30 @@ The reply carries a `<DATA>` body (§5.5.1). Codec-generated fixture
 <datastore_change available="1" type="FILE"><data><presets><preset_1 name="Active"/></presets></data></datastore_change>
 ```
 
+## 5b. get-route — one destination, every level
+
+```
+dhs consumer cerebrum-nb get-route HOST --dest PGMv
+dest 16 "PGMv" level 1 "Video" <- 1 "CONVERT 1"
+dest 16 "PGMv" level 2 "StrAudio1" <- unrouted
+```
+
+`--dest` takes an id or a mnemonic, `--level` narrows to one level, `--router`
+reads another router, `--output json` is structured. Every "no route" marker is
+`unrouted`: a virtual's levels carry a value that moves within the top page of
+32 bits.
+
+## 5c. extract-all — one DM per device
+
+```
+dhs consumer cerebrum-nb extract-all HOST [--roots roots.json] [--refresh]
+```
+
+Reads the LIST, then each device's sub-devices, and runs `extract` on each, one
+session at a time. Roots as in `extract`; `--roots` is
+`{"<ip>/<sub-device>": ["FOLDER", …]}` for what has no ACP2 model. Exit 1 names
+every sub-device left without a model.
+
 ## 6. lock — the 0v16 five-mode lock
 
 0v16 §3.2 defines a **five-value** LOCK_STATE enum (p9):
@@ -213,7 +237,13 @@ The lock detail is reported back in a `ROUTING_CHANGE` `<VALUE>` (SRCE_LOCK,
 pre-0v13 `PROTECT` / `RELEASE` strings survive only as deprecated action
 verbs, never as reported LOCK_STATE values (see `codec/actions.go`).
 
-## 7. device-config — the 0v16 §4.5 device-tree CRUD
+## 7. device-config — the §4.5 device-tree CRUD
+
+Sent inside `<ACTION>` (§2.3): bare, it is `NACK 2 UNKNOWN_COMMAND`. Cerebrum
+answers `<RESULT>` with no MTID, then the ACK. `ACCEPTED` is queued, not
+applied, so add and remove read the LIST back, up to 20 s, and fail if it does
+not show the change. `remove` needs `--device-type`. An address is matched with
+its class: a Neuron is listed as DEVICE and as ROUTER.
 
 `device-config` is the headline 0v16 verb: add / modify / remove a device
 in the Cerebrum device tree. `--device-type` selects the body shape
@@ -310,16 +340,10 @@ The category create TX is a fixture too
 
 ## 9. flow control — CONTINUE after BUSY
 
-When the server is busy it returns `<BUSY/>`; the client waits for the 0v16
-`<CONTINUE/>` flow-control frame before resending (§1.4 p5). Codec-generated
-fixture ([`rx_continue.xml`](../testdata/fixtures/rx_continue.xml)):
-
-```xml
-<continue/>
-```
-
-The codec surfaces these as `KindBusy` / `KindContinue` frames; the consumer
-gates resends on `CONTINUE`.
+When the server is busy it returns `<BUSY/>`. Every action then waits for
+`<CONTINUE/>` and sends again with a new MTID, bounded by `--timeout`: a server
+that never continues is an error naming that. The wait counts
+`cerebrum_busy_received`.
 
 ## 10. Wireshark
 
@@ -505,13 +529,12 @@ dhs consumer cerebrum-nb extract HOST --user U --pass P \
 #   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
 ```
 
-- **Zero prior knowledge required** (acp2/ember parity): with no
-  `--path`, the root is discovered by the probe ladder — `OBJECT=""`
-  literal, `OBJECT="ROOT-NODE-V2"` (the acp2 root name; NB paths are
-  that tree root-stripped), `OBJECT="*"`, then the bare no-attribute
-  form — and the walk seeds itself from whatever the server
-  enumerates. `--path "GROUP[;GROUP…]"` remains as manual scope (a
-  partial extract of one folder is legitimate).
+- **The root has to come from somewhere.** Northbound cannot list a device's
+  root: `OBJECT=""`, `ROOT-NODE-V2`, `*` and no attribute are all refused on
+  2.9.3. With no `--path`, the start groups are read from the same card's model
+  under ACP2 (`dm/acp2/<Model@SwRev>.json`, any version of the model if not that
+  one); the same groups exist over both. A device with neither, Cerebrum itself,
+  NMOS, a virtual device, takes its Object Browser folders in `--path`.
 
 - **DM cache: schema once, state on demand** (ADR-0028 §6) — the
   identity probe costs 2–3 obtains; when `dm/cerebrum-nb/

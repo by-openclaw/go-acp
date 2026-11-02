@@ -281,13 +281,16 @@ func mneLevelsFromChange(rc *codec.RoutingChange) []string {
 // (frames-xp.log 2026-08-15, 178,584 cells): "0" (12,248x, with
 // SOURCE_LEVEL_ID=0), "4294967294" (0xFFFFFFFE, 164,093x = disconnected) and
 // "4294967295" (0xFFFFFFFF, 474x). Only 1,769 cells carried real sources.
-// Cells with a sentinel are unrouted: no CSV row, no warning.
+// Cells with a sentinel are unrouted: no CSV row, no warning. A virtual's
+// levels carry a value that moves within the top of the range (4294967268,
+// 4294967284, 4294967292 and 4294967294 measured on 2.9.3), so the whole top
+// page is a marker, not one value.
 func cerebrumNoRouteSentinel(sourceID string) bool {
-	switch sourceID {
-	case "", "0", "4294967294", "4294967295":
+	if sourceID == "" || sourceID == "0" {
 		return true
 	}
-	return false
+	id, err := strconv.ParseUint(sourceID, 10, 32)
+	return err == nil && id >= 0xFFFFFF00
 }
 
 // crossLevelRoute reports whether a routing-snapshot row is a cross-level

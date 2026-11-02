@@ -42,7 +42,7 @@ byte-identical**.
 | `lock` / `unlock` | applied and released across all three levels; `LOCKED_BY` carried the session user and cleared on release — this closes the "release is untested" note in [keys.md](keys.md) |
 | `set-value` | writes (`CorLinkStats.ResetStats` `"0"` → `"1"`) and is idempotent: writing a value it already holds reports `already converged` and sends nothing |
 | `import` | `--check` reports nothing on an unchanged plant and exactly the edited rows after one row is changed; applying reports `changed=3`, and a second run changes nothing |
-| `device-config` | **refused by the server**: `<DEVICE_CONFIGURATION TYPE="ADD" …>` → `NACK 2:UNKNOWN_COMMAND`. The command itself is unknown to this Cerebrum, so no device — router or virtual — can be created over NB here |
+| `device-config` | superseded, see 2026-11-02. **refused by the server**: `<DEVICE_CONFIGURATION TYPE="ADD" …>` → `NACK 2:UNKNOWN_COMMAND`. The command itself is unknown to this Cerebrum, so no device — router or virtual — can be created over NB here |
 
 ## Write verbs, what 2026-09-26 did not cover — 2026-09-27
 
@@ -81,3 +81,20 @@ to the pre-test export afterwards.
 - Redundancy, federation, SQL AlwaysOn replicas and per-service
   `Ext. Log Status` cannot be read on a standalone — their objects are
   `available=0` or empty here.
+
+## Closing the connector — 2026-11-02
+
+Same peer, Cerebrum 2.9.3 b15692. Destination 16 (virtual, no receiver).
+
+| Case | Result |
+|---|---|
+| `route --level 1`, `DEST_LEVEL_ID` | level 1 moves, level 2 stays. The released `LEVEL_ID` moved both: **Cerebrum follows §4.1.1, the "every level moves" of 2026-09-26 was ours** |
+| a route on a virtual | the levels with no route turn from empty to the marker 4294967294; not clearable over ROUTE |
+| `device-config add` / `remove`, SNMP device | accepted inside `<ACTION>`; the RESULT has no MTID and comes before the ACK; the remove is in the LIST after more than 3 s; list identical after |
+| `listen --syslog-addr`, 2 route changes | 2 records, none for the initial state, none for the marker moving |
+| `listen`, stop | 5 SUBSCRIBE, 5 UNSUBSCRIBE |
+| `listen --metrics-addr` | `/metrics` serves the counters |
+| `get-route` | by id, by mnemonic, one level |
+| `extract-all` | DMs written for SHUFFLE 6.0.0, VMI3608-2Q7 1.13.2; roots from their ACP2 models |
+| every root spelling | refused on every device tried |
+| `cerebrum-nb-verbs.yml` | failed=0, run twice, routes identical after |

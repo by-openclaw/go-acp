@@ -6,9 +6,11 @@ Atomic per-protocol context. Read the root `CLAUDE.md` first.
 
 ## Authoritative spec
 
-- **EVS Cerebrum Northbound API 0v16** (authoritative) — at
-  [assets/Cerebrum Northbound API 0v16.pdf](assets/Cerebrum%20Northbound%20API%200v16.pdf).
-  The codec, consumer, CLI, fixtures, dissector and docs all target 0v16.
+- **EVS Cerebrum Northbound API v0.17** (October 2026, authoritative). The
+  PDF is held locally in `assets/`, not in git. v0.17 adds RouteMaster add and
+  delete, and FEDERATION, to
+  [0v16](assets/Cerebrum%20Northbound%20API%200v16.pdf).
+- Measured on Cerebrum 2.9.3 b15692: [docs/live-verification.md](docs/live-verification.md).
 - **0v13** is the **historical baseline** retained for reference at
   [assets/Cerebrum Northbound API 0v13.docx](assets/Cerebrum%20Northbound%20API%200v13.docx)
   (image-heavy original) and the text-only export at
@@ -114,7 +116,7 @@ from §6 each become a `cerebrum_nack_<code>` event.
 
 ## Read the spec before designing
 
-When in doubt, the wire format and command catalogue are in the **0v16
+When in doubt, the wire format and command catalogue are in the **v0.17
 PDF** in [assets/](assets/) — every element, every attribute, every
 enum is documented there. The 0v13 DOCX is the historical baseline.
 `docs/keys.md` is a reading aid; if it disagrees with the 0v16 PDF, the
