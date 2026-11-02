@@ -204,6 +204,7 @@ models are shared by model and version, as ADR-0022 keys them.
 | 2026-11-02 | P9 | 39317800 | --node on the common flags; the rrcs plugin counts the bays of the named node, refuses and lists the nodes otherwise |
 | 2026-11-02 | P7 | 6c5f354c | consumer.SiteLimits; snapshots/<proto>/<host>/site-limits.csv, --site-limits FILE|off; generic and rrcs-own writers; ADR-0036 accepted |
 | 2026-11-02 | P8 | — | design only, in this ADR; no code |
+| 2026-11-03 | P5 | ea7f3f35 | the guard declared on every connector that can write: acp1, acp2, ccm, cerebrum-nb, emberplus, mnset, rollcall, snmp, and the plugin template; plays, verification scripts and documented examples name the target twice; TestEveryWritingPluginGuards fails on a plugin that could write without it. osc, tsl, probel-sw02p and probel-sw08p cannot write through the generic verbs and have nothing to guard |
 
 Shadowed generic verbs that remain on rrcs, as P1 requires them named:
 
