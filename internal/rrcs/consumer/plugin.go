@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,6 +79,58 @@ type Plugin struct {
 	// recorder, when set before Connect, receives every XML document
 	// sent and received (ADR-0028), as the rrcs-own verbs record them.
 	recorder *transport.Recorder
+
+	// node is the Artist node whose bays are the slots, when the
+	// gateway fronts several nodes (ADR-0037 P9); 0 = the only node.
+	node int
+}
+
+// SelectNode names the node whose bays are the slots of this session
+// (--node N, ADR-0037 P9). A gateway that fronts an Artist ring of
+// several nodes refuses to number bays until one is named.
+// Zero means the only node.
+func (p *Plugin) SelectNode(node int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.node = node
+}
+
+// nodeCards are the client cards of the node this session is about:
+// the selected one, or the only one. With several nodes and none
+// selected the bays cannot be numbered, and the refusal lists them.
+func (p *Plugin) nodeCards(cards []Card) ([]Card, error) {
+	p.mu.Lock()
+	node := p.node
+	p.mu.Unlock()
+	if node != 0 {
+		var out []Card
+		for _, c := range cards {
+			if c.Node == node {
+				out = append(out, c)
+			}
+		}
+		if len(out) == 0 && len(cards) > 0 {
+			return nil, fmt.Errorf("rrcs: no client card on node %d; the gateway fronts %s", node, nodeList(cards))
+		}
+		return out, nil
+	}
+	if !oneNode(cards) {
+		return nil, fmt.Errorf("rrcs: the gateway fronts several nodes (%s): name one with --node", nodeList(cards))
+	}
+	return cards, nil
+}
+
+// nodeList prints the distinct node numbers of a card list, in order.
+func nodeList(cards []Card) string {
+	var nodes []string
+	seen := map[int]bool{}
+	for _, c := range cards {
+		if !seen[c.Node] {
+			seen[c.Node] = true
+			nodes = append(nodes, strconv.Itoa(c.Node))
+		}
+	}
+	return strings.Join(nodes, ", ")
 }
 
 // SetRecorder attaches a capture to the session Connect opens. It is the
@@ -141,7 +194,11 @@ func (p *Plugin) Disconnect() error {
 // GetDeviceInfo answers with the version read at Connect and the number
 // of slots: the node and its bays up to the last one that holds a card.
 func (p *Plugin) GetDeviceInfo(ctx context.Context) (dhsc.DeviceInfo, error) {
-	cards, err := p.clientCards(ctx)
+	all, err := p.clientCards(ctx)
+	if err != nil {
+		return dhsc.DeviceInfo{}, err
+	}
+	cards, err := p.nodeCards(all)
 	if err != nil {
 		return dhsc.DeviceInfo{}, err
 	}
@@ -150,11 +207,9 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (dhsc.DeviceInfo, error) {
 	p.mu.Unlock()
 
 	last := 0
-	if oneNode(cards) {
-		for _, c := range cards {
-			if c.Bay > last {
-				last = c.Bay
-			}
+	for _, c := range cards {
+		if c.Bay > last {
+			last = c.Bay
 		}
 	}
 	return dhsc.DeviceInfo{IP: host, Port: port, NumSlots: last + 1, DtdVersion: version}, nil
@@ -163,11 +218,15 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (dhsc.DeviceInfo, error) {
 // GetSlotInfo answers for the node (slot 0) or one bay. A bay with no
 // client card configured is no_card.
 //
-// With client cards of several nodes behind one gateway the numbering of
-// bays as slots is not defined (docs/mapping.md §8), so only slot 0
-// answers present.
+// The bays are those of the selected node, or of the only node; with
+// several nodes and none selected the numbering is not defined and
+// the call refuses, naming the nodes (ADR-0037 P9).
 func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (dhsc.SlotInfo, error) {
-	cards, err := p.clientCards(ctx)
+	all, err := p.clientCards(ctx)
+	if err != nil {
+		return dhsc.SlotInfo{}, err
+	}
+	cards, err := p.nodeCards(all)
 	if err != nil {
 		return dhsc.SlotInfo{}, err
 	}
@@ -175,11 +234,9 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (dhsc.SlotInfo, erro
 	if slot == 0 {
 		return present, nil
 	}
-	if oneNode(cards) {
-		for _, c := range cards {
-			if c.Bay == slot {
-				return present, nil
-			}
+	for _, c := range cards {
+		if c.Bay == slot {
+			return present, nil
 		}
 	}
 	return dhsc.SlotInfo{Slot: slot, Status: dhsc.SlotNoCard, State: dhsc.SlotStateNoCard}, nil

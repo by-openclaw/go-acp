@@ -101,22 +101,35 @@ func TestPluginSessionRequests(t *testing.T) {
 	}
 }
 
-// Cards of several nodes: the bays are not numbered as slots.
+// Cards of several nodes (ADR-0037 P9): the bays are not numbered
+// until a node is named; then they are the bays of that node.
 func TestPluginSeveralNodes(t *testing.T) {
-	f := pluginFake(t, pluginCard(60, 1), pluginCard(70, 1))
+	f := pluginFake(t, pluginCard(60, 1), pluginCard(70, 1), pluginCard(70, 3))
 	p := pluginConnect(t, f)
 	ctx := context.Background()
 
+	if _, err := p.GetDeviceInfo(ctx); err == nil || !strings.Contains(err.Error(), "several nodes (60, 70)") || !strings.Contains(err.Error(), "--node") {
+		t.Fatalf("GetDeviceInfo with two nodes: %v, want the refusal naming them", err)
+	}
+	if _, err := p.GetSlotInfo(ctx, 1); err == nil {
+		t.Error("GetSlotInfo with two nodes: no refusal")
+	}
+	p.SelectNode(70)
 	info, err := p.GetDeviceInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.NumSlots != 1 {
-		t.Errorf("NumSlots = %d, want 1", info.NumSlots)
+	if info.NumSlots != 4 {
+		t.Errorf("NumSlots = %d, want 4 (node 70: bays 1 and 3)", info.NumSlots)
 	}
-	si, _ := p.GetSlotInfo(ctx, 1)
-	if si.Status != dhsc.SlotNoCard {
-		t.Errorf("slot 1 = %s, want no_card", si.Status)
+	for bay, want := range map[int]dhsc.SlotStatus{1: dhsc.SlotPresent, 2: dhsc.SlotNoCard, 3: dhsc.SlotPresent} {
+		if si, _ := p.GetSlotInfo(ctx, bay); si.Status != want {
+			t.Errorf("node 70 bay %d = %s, want %s", bay, si.Status, want)
+		}
+	}
+	p.SelectNode(80)
+	if _, err := p.GetDeviceInfo(ctx); err == nil || !strings.Contains(err.Error(), "no client card on node 80") {
+		t.Errorf("a node without cards: %v", err)
 	}
 }
 

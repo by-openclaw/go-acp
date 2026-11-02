@@ -272,6 +272,16 @@ does); the others give the object of the walked tree and the identity
 probe. The manifest `extract` wrote completes model and template; without
 it the line says so.
 
+### Several devices behind one controller (ADR-0037 P9)
+
+A target may be a controller that fronts several devices: an RRCS
+gateway fronts an Artist ring of several nodes. The common flag
+`--node N` names the device whose slots the verb is about; with several
+nodes and no `--node` the plugin refuses and lists them, with one node
+the flag is optional. A protocol with one device per target refuses the
+flag. The manifest holds one frame per node; the device models are
+shared by model and version (ADR-0022).
+
 ## Producer verbs
 
 `dhs producer --help`

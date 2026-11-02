@@ -45,6 +45,15 @@ A verb sends the requests its answer is made of, and no other:
 | `export`, one slot or all | 4 lists, plus 1 per panel for its keys (`--slot N`: the same reads, the rows of that slot) |
 | `walk` from a live gateway | thousands: the full copy, for once in a while |
 
+## 0b. Several nodes behind one gateway
+
+An RRCS gateway may front an Artist ring of several nodes. The generic
+verbs count slots as the bays of one node: with several nodes they
+refuse until `--node N` names one (`dhs consumer rrcs walk HOST --node 70
+--slot 1`); with one node the flag is optional (ADR-0037 P9). The rrcs-own
+verbs keep their `--node` row filter. The manifest `extract` writes holds
+one frame per node.
+
 ## 1. Look
 
 ### info — is the gateway there
@@ -150,7 +159,8 @@ which have no gain, are not asked either. `--online no` asks every port.
 | Collect | Why |
 |---|---|
 | The summary on screen | `failed requests` should be 0; `port not online` counts unplugged ports and is normal |
-| `snapshotsrcs\<host>\snapshot-<time>.json` | The document. `tree`, `list` and `extract` read it with `--from FILE`, without touching RRCS |
+| `snapshots
+rcs\<host>\snapshot-<time>.json` | The document. `tree`, `list` and `extract` read it with `--from FILE`, without touching RRCS |
 | The capture `.jsonl` | The raw answers, to check a doubtful value |
 
 ### walk — the objects of one slot (generic verb)

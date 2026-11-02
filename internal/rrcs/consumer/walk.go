@@ -3,7 +3,6 @@ package consumer
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -71,15 +70,24 @@ func (p *Plugin) Walk(ctx context.Context, slot int) ([]dhsc.Object, error) {
 		return nil, err
 	}
 
+	// The bays of the selected node, or of the only one (ADR-0037 P9).
+	all := make([]Card, 0, len(m.Cards))
+	for _, c := range m.Cards {
+		all = append(all, *c)
+	}
+	mine, err := p.nodeCards(all)
+	if err != nil {
+		return nil, err
+	}
 	var card *Card
 	for _, c := range m.Cards {
-		if c.Bay == slot {
-			if card != nil {
-				// Two nodes with a card in this bay: which one a slot
-				// names is not defined (docs/mapping.md §8).
-				return nil, fmt.Errorf("rrcs: bay %d holds a card on several nodes", slot)
+		if c.Bay != slot {
+			continue
+		}
+		for _, mc := range mine {
+			if mc.Node == c.Node && mc.Bay == c.Bay {
+				card = c
 			}
-			card = c
 		}
 	}
 	if card == nil {
