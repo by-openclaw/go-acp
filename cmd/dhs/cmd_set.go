@@ -39,6 +39,7 @@ func runSet(ctx context.Context, args []string) error {
 	dryRun := fs.Bool("dry-run", false, dryRunHelp)
 	check := fs.Bool("check", false, "same as --dry-run")
 	writeTo := fs.String("write-to", "", writeToHelp)
+	output := fs.String("output", "text", "output format: text | json (the record of get: value, meta, dm; ADR-0037 P4)")
 	host, rest, err := popHost(args)
 	if err != nil {
 		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>) [--dry-run] [--write-to HOST]")
@@ -203,9 +204,34 @@ func runSet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	// The schema and the device model of the point, beside the value
+	// read back (ADR-0037 P4).
+	described, dm := describePoint(ctx, plug, cf.protocol, host, req)
+	if meta == nil {
+		meta = described
+	}
+	if jsonOut, oerr := resolveEnsureOutput(*output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		out := getValueJSON{Slot: *slot, Path: *pathFlag, Group: *group, Label: *label, Value: formatValue(confirmed, meta), Meta: metaOf(meta), DM: dm}
+		if *id >= 0 {
+			out.ID = id
+		}
+		if len(confirmed.Raw) > 0 {
+			out.Raw = hex.EncodeToString(confirmed.Raw)
+		}
+		if meta != nil {
+			out.Label = meta.Label
+		}
+		return emitReadJSON(out)
+	}
 	fmt.Println("confirmed " + formatValue(confirmed, meta))
 	if len(confirmed.Raw) > 0 {
 		fmt.Printf("raw       = %s\n", hex.EncodeToString(confirmed.Raw))
 	}
+	if meta != nil {
+		printObjectMeta(*meta)
+	}
+	printDMRef(dm)
 	return nil
 }

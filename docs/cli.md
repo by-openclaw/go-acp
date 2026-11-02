@@ -250,6 +250,28 @@ to confirm it. A `--write-to` that differs from the host is refused on
 every connector. A connector without the guard writes at once when
 neither flag is given, as before.
 
+### Device model of an answer (ADR-0037 P4)
+
+`get` and `set` name, beside the value, the schema of the point and the
+device model it belongs to. In text mode they print the `kind`, `access`,
+`range`, `default`, `unit` and named values, then one line
+`dm = Model@SwRev  template = T  path = P`. With `--output json` the
+record carries them as `meta` and `dm`:
+
+```json
+{"slot": 6, "path": "net.1.node.65.port.1097.in.PortAes67Input.Channels", "value": "8",
+ "meta": {"kind": "int", "access": "RW-", "min": 1, "max": 16},
+ "dm": {"model": "AES67", "sw_rev": "9.0.RR1-11", "template": "FOUR_WIRE_SPLIT",
+        "path": "in.PortAes67Input.Channels"}}
+```
+
+`dm` is a pointer into the model file of ADR-0022,
+`.cache/dm/<proto>/<Model@SwRev>.json`, never a copy of it. A plugin that
+knows its schema without a walk answers it (`consumer.Describer`; rrcs
+does); the others give the object of the walked tree and the identity
+probe. The manifest `extract` wrote completes model and template; without
+it the line says so.
+
 ## Producer verbs
 
 `dhs producer --help`

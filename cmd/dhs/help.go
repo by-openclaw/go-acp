@@ -105,6 +105,12 @@ DESCRIPTION
     • --label L --group G  disambiguate a label that exists in
                            multiple groups
 
+  Beside the value, get names the schema of the point and the device
+  model it belongs to (ADR-0037 P4): kind, access, range, default, unit,
+  named values, and dm = Model@SwRev with the template and the path of
+  the point in it, from the plugin, the walked tree and the manifest
+  extract wrote. --output json carries them as "meta" and "dm".
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred — stable across firmware)
