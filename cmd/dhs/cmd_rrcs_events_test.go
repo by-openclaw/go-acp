@@ -199,14 +199,21 @@ func TestRRCSWatchValues(t *testing.T) {
 	js, err := rrcsStdout(t, func() error {
 		return runRRCS(ctx2, []string{"watch", g.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--output", "json"})
 	})
-	// The first line is the watch's own: its registration. The event follows.
-	var line rrcsChangeLine
-	lines := strings.Split(strings.TrimSpace(js), "\n")
-	if !strings.Contains(lines[0], `"label":"Registration","value":"registered"`) {
-		t.Errorf("first line: %s", lines[0])
+	// The watch's own registration line and the event, in either order: the
+	// fake posts the event as soon as it has answered the registration, so
+	// under load the event can be printed first.
+	if !strings.Contains(js, `"label":"Registration","value":"registered"`) {
+		t.Errorf("no registration line:\n%s", js)
 	}
-	if err != nil || json.Unmarshal([]byte(lines[len(lines)-1]), &line) != nil ||
-		line.Path != "logic.500" || line.Value != "on" || line.OID != 500 || line.Event != "LogicSourceChange" {
+	var line rrcsChangeLine
+	found := false
+	for _, l := range strings.Split(strings.TrimSpace(js), "\n") {
+		var c rrcsChangeLine
+		if json.Unmarshal([]byte(l), &c) == nil && c.Event == "LogicSourceChange" {
+			line, found = c, true
+		}
+	}
+	if err != nil || !found || line.Path != "logic.500" || line.Value != "on" || line.OID != 500 {
 		t.Errorf("%v\n%s", err, js)
 	}
 	if err := runRRCS(context.Background(), []string{"watch", "h", "--events", "pretty"}); err == nil {
