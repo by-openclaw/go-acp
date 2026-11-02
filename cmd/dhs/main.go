@@ -318,7 +318,11 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		return runCerebrum(ctx, rest)
 	}
 	if proto == rrcsProto {
-		return runRRCS(ctx, rest)
+		if len(rest) == 0 || isHelpToken(rest[0]) || rrcsHandles(rest[0]) {
+			return runRRCS(ctx, rest)
+		}
+		// A verb rrcs does not own is a neutral one, answered by the
+		// registered plugin through the generic table below (ADR-0037 P1).
 	}
 	if proto == "ccm" {
 		handled, remaining, err := runCCM(ctx, rest)
@@ -596,7 +600,8 @@ CONSUMER (outbound — connect to a device, query / control it)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
   Verbs (rrcs):                info, discover, walk, tree, list, get, set,
-                               export, import, ensure, xp, call, watch
+                               export, import, ensure, xp, call, watch,
+                               and every generic verb (health, status, alarm, …)
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:

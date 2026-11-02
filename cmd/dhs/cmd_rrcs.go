@@ -36,6 +36,22 @@ func rrcsValErr(verb, reason string) error {
 }
 
 // runRRCS is the dispatcher for `dhs consumer rrcs <verb>`.
+// rrcsOwnVerbs are the verbs this dispatcher answers itself. A verb that
+// is neither here nor a method of the specification is a neutral one,
+// answered through the registered plugin by the generic table (ADR-0037
+// P1), so health, status, alarm, diff and validate work on rrcs as on
+// every connector.
+var rrcsOwnVerbs = map[string]bool{
+	"info": true, "discover": true, "watch": true, "walk": true, "get": true,
+	"list": true, "set": true, "export": true, "extract": true, "call": true,
+	"ensure": true, "coverage": true, "xp": true, "import": true, "tree": true,
+}
+
+// rrcsHandles says whether runRRCS answers a verb itself.
+func rrcsHandles(verb string) bool {
+	return rrcsOwnVerbs[verb] || rrcsFindOp(verb) != nil
+}
+
 func runRRCS(ctx context.Context, args []string) error {
 	if len(args) == 0 || isHelpToken(args[0]) {
 		printRRCSHelp()
@@ -152,6 +168,10 @@ VERBS
             pressed and released on the panels (ChangePanelSpyRegistry)
 
 Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
+
+NEUTRAL VERBS — every verb of the generic table works here too, through the
+registered plugin (ADR-0037): health, status, alarm, diff, validate, …
+Run 'dhs consumer rrcs <verb> --help' for each of them as well.
 
 ONE VERB PER METHOD — every other method of the specification, with named
 flags; the ones that are not get-… or line-status WRITE and need --write-to:`)

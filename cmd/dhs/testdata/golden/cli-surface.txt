@@ -30,7 +30,8 @@ CONSUMER (outbound — connect to a device, query / control it)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
   Verbs (rrcs):                info, discover, walk, tree, list, get, set,
-                               export, import, ensure, xp, call, watch
+                               export, import, ensure, xp, call, watch,
+                               and every generic verb (health, status, alarm, …)
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
 
   Examples:
@@ -3665,6 +3666,10 @@ VERBS
 
 Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
 
+NEUTRAL VERBS — every verb of the generic table works here too, through the
+registered plugin (ADR-0037): health, status, alarm, diff, validate, …
+Run 'dhs consumer rrcs <verb> --help' for each of them as well.
+
 ONE VERB PER METHOD — every other method of the specification, with named
 flags; the ones that are not get-… or line-status WRITE and need --write-to:
   set-xp-prio set-xp-destructive set-xp-volume set-port-alias set-port-label
@@ -4185,6 +4190,36 @@ Usage of rrcs coverage:
     	keep one group: call (no verb of its own yet) | unproven (never seen working on a real RRCS) | read | write | register | notify
   -output string
     	output: text | json (default "text")
+
+========== consumer/rrcs/health ==========
+$ dhs consumer rrcs health --help
+usage: dhs consumer <proto> health <host> [flags]
+
+Print the 3-layer session health snapshot:
+  reachable  network path to the device exists
+  connected  active session is open
+  live       device responded within the per-protocol staleness window
+
+flags:
+  --json              emit JSON instead of text
+  --watch             poll until ctrl-C; print a row only when a bit flips
+  --interval <d>      poll interval (default 5s, --watch only)
+
+Common flags from --help apply (--protocol, --transport, --port, ...).
+
+========== consumer/rrcs/status ==========
+$ dhs consumer rrcs status --help
+usage: dhs consumer <proto> status <host> [flags]
+
+One-shot device status — session health + device identity:
+  reachable / connected / live   (3-layer session health)
+  device                          identity from GetDeviceInfo
+
+flags:
+  --output text|json   output format (json is monitoring/Ansible-friendly)
+  --json               deprecated alias for --output json
+
+Common flags from --help apply (--protocol, --transport, --port, --timeout).
 
 ========== consumer/rrcs/set-xp-prio ==========
 $ dhs consumer rrcs set-xp-prio --help
