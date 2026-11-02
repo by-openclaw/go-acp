@@ -18,10 +18,11 @@ import (
 // neutral consumer.Protocol, so an RRCS gateway answers like every other
 // device here. The mapping is docs/mapping.md of this connector.
 //
-// What is here is the first part: the session, the device and its slots.
-// GetValue, SetValue and Subscribe answer ErrNotImplemented until
-// their logic has moved out of cmd/dhs; the rrcs verbs of the command
-// line do not go through this file yet.
+// This file holds the session, the device and its slots. Walk is in
+// walk.go, GetValue and SetValue in value.go (the writes in the forms
+// ADR-0035 proved, through change.go), Subscribe in subscribe.go. The
+// generic verbs of the command line reach the gateway through this
+// plugin (ADR-0037); the rrcs-own verbs that remain are listed there.
 
 // Name is the registry name: dhs consumer rrcs <verb>.
 const Name = "rrcs"

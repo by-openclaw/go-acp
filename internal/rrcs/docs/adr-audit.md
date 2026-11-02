@@ -134,6 +134,12 @@ Closing it means:
 It is a refactor of working code and belongs after the test system has
 confirmed the write shapes, not before.
 
+**Closed 2026-11-02 by ADR-0037.** The write shapes were confirmed on the
+production gateway (three AES67 cards provisioned by `import`, 0 faults).
+Steps 1 and 2 are built; step 3 is ADR-0037 P1 and P2, with the verbs
+that stay rrcs-own and their reasons; step 4 is ADR-0037 P5, the guard on
+the generic verbs.
+
 ## 4. Two RRCS generations in the plant
 
 From the plant's network drawing (v0.3, 2025-04-25):

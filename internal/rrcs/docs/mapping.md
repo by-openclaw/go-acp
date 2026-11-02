@@ -1,9 +1,11 @@
 # RRCS on the shared model — mapping
 
-**Status: proposed, 2026-10-11. Nothing of it is built.** It says how the
-rrcs connector is to be rebuilt like the other connectors, before any code
-moves. It records decisions taken with the codeowner and marks what is
-still open.
+**Status: built in its main part (2026-11-02).** The plugin of §1 exists
+(`plugin.go`, `walk.go`, `value.go`, `subscribe.go`) and the command line
+reaches it through the generic verbs; what stays rrcs-own, and why, is
+the table of ADR-0037 P2. The text below is the design as it was agreed
+on 2026-10-11; where the code differs, ADR-0037 and its Revisions trailer
+are the reference.
 
 ## 1. Why
 

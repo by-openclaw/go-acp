@@ -66,6 +66,7 @@ There is no `superseded` / `deprecated` / `rejected-after-acceptance`.
 | [0034](0034-oracle-testing.md) | Oracles — an independent implementation, run as a process, in both roles | proposed |
 | [0035](0035-rrcs-stream-ownership.md) | RRCS — how a stream block is edited safely | accepted |
 | [0036](0036-site-limits-narrow-factory-limits.md) | Site limits may narrow factory limits, never widen them | proposed |
+| [0037](0037-connector-parity.md) | Connector parity: the generic verbs answer through the plugin, extensions beside them | accepted |
 
 ## ADR-0017 parking note
 
