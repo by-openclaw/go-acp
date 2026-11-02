@@ -74,11 +74,12 @@ func runImport(ctx context.Context, args []string) error {
 	xpointPath := fs.String("xpoint", "", "crosspoint CSV to converge (dest,srce,levels — levels \"0\" on tree matrices)")
 	matrixPath := fs.String("matrix", "", "matrix descriptor CSV from export (-matrix.csv); absent = live walked descriptor")
 	check := fs.Bool("check", false, "dry run: read, report what would change, send nothing (same as --dry-run; ADR-0007)")
+	writeTo := fs.String("write-to", "", writeToHelp)
 	output := fs.String("output", "text", "with --xpoint: stdout format text | json (ADR-0007 {changed|would_change, diff[]})")
 
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--check|--dry-run] | --xpoint FILE [--matrix FILE] [--check|--dry-run] [--output json]")
+		return fmt.Errorf("usage: dhs consumer <proto> import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--check|--dry-run] [--write-to HOST] | --xpoint FILE [--matrix FILE] [--check|--dry-run] [--write-to HOST] [--output json]")
 	}
 	_ = parseVerbFlags(fs, rest)
 	// One dry run, two spellings. --check is the canonical one (ADR-0007,
@@ -99,6 +100,11 @@ func runImport(ctx context.Context, args []string) error {
 			return cerr
 		}
 		defer cleanup()
+		if !*check {
+			if gerr := writeGuard("import", host, *writeTo, plug); gerr != nil {
+				return gerr
+			}
+		}
 		info, ierr := plug.GetDeviceInfo(ctx)
 		if ierr != nil {
 			return fmt.Errorf("device info: %w", ierr)
@@ -167,6 +173,13 @@ func runImport(ctx context.Context, args []string) error {
 		return err
 	}
 	defer cleanup()
+	// ADR-0037 P5: a guarded plugin writes only when --write-to names the
+	// host a second time; a dry run never reaches this check's refusal.
+	if !*dry {
+		if gerr := writeGuard("import", host, *writeTo, plug); gerr != nil {
+			return gerr
+		}
+	}
 
 	// Raw ctx: Apply's internal walk per slot has no deadline (44k
 	// objects on ACP2 takes minutes); individual SetValue calls inside

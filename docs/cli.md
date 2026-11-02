@@ -233,6 +233,23 @@ SNMP VERBS
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.
 ```
 
+### Write guard (ADR-0037 P5)
+
+`set`, `import` and `ensure` take the same two switches on every
+connector:
+
+| Flag | Meaning |
+|---|---|
+| `--dry-run` (`--check` on ensure, both on set and import) | read, report what would be written, send nothing |
+| `--write-to HOST` | name the target a second time, exactly as the host argument was given |
+
+A connector that guards its writes (`consumer.WriteGuard`; rrcs does,
+after the incident of ADR-0035) refuses to write without `--write-to`
+and says so as a validation error (exit 2), naming the host and the way
+to confirm it. A `--write-to` that differs from the host is refused on
+every connector. A connector without the guard writes at once when
+neither flag is given, as before.
+
 ## Producer verbs
 
 `dhs producer --help`

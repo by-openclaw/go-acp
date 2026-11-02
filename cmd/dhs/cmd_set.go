@@ -36,9 +36,12 @@ func runSet(ctx context.Context, args []string) error {
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
 	round := fs.Bool("round", false, "R16 #483: snap an off-step numeric --value to the nearest legal step instead of erroring with validation:step-misaligned (Ember+ only — non-numeric Parameters return validation:round-not-applicable)")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the walk is skipped — refs #438, ADR-0022.`)
+	dryRun := fs.Bool("dry-run", false, dryRunHelp)
+	check := fs.Bool("check", false, "same as --dry-run")
+	writeTo := fs.String("write-to", "", writeToHelp)
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
+		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>) [--dry-run] [--write-to HOST]")
 	}
 	_ = parseVerbFlags(fs, rest)
 	// Detect whether --value / --raw were explicitly passed (even if
@@ -173,6 +176,20 @@ func runSet(ctx context.Context, args []string) error {
 			}
 		}
 		val = want
+	}
+
+	// ADR-0037 P5: a dry run reports and sends nothing; a guarded plugin
+	// writes only when --write-to names the host a second time.
+	if *dryRun || *check {
+		target := orFirst(*pathFlag, *label)
+		if target == "" {
+			target = fmt.Sprintf("id %d", *id)
+		}
+		fmt.Printf("would set %s = %s (dry run, nothing sent)\n", target, formatValue(val, meta))
+		return nil
+	}
+	if err := writeGuard("set", host, *writeTo, plug); err != nil {
+		return err
 	}
 
 	confirmed, err := plug.SetValue(opCtx, req, val)

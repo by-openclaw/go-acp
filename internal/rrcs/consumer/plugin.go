@@ -157,6 +157,12 @@ func (p *Plugin) GetSlotInfo(ctx context.Context, slot int) (dhsc.SlotInfo, erro
 	return dhsc.SlotInfo{Slot: slot, Status: dhsc.SlotNoCard, State: dhsc.SlotStateNoCard}, nil
 }
 
+// WriteGuardReason declares that every write through this plugin must be
+// confirmed with --write-to (consumer.WriteGuard, ADR-0037 P5).
+func (p *Plugin) WriteGuardReason() string {
+	return "a configuration write stopped a production RRCS 9.0 on 2026-10-06, ADR-0035; this connector names its target twice"
+}
+
 // Cards returns the client cards of the gateway: one request the first
 // time in a session, none after.
 func (p *Plugin) Cards(ctx context.Context) ([]Card, error) {
