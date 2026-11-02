@@ -181,6 +181,29 @@ func runImport(ctx context.Context, args []string) error {
 		}
 	}
 
+	// The plant's own limits (ADR-0036, ADR-0037 P7): every row is judged
+	// before anything is sent; one refusal stops the whole file.
+	if limits, lerr := siteLimitsFor(cf.protocol, host, cf.siteLimits); lerr != nil {
+		return lerr
+	} else if limits != nil {
+		refused := 0
+		for _, sd := range snap.Slots {
+			for i := range sd.Objects {
+				o := &sd.Objects[i]
+				if !o.HasWrite() || o.Value.IsZero() {
+					continue
+				}
+				if serr := limits.Check(strings.Join(o.Path, "."), valueText(o.Value), o); serr != nil {
+					refused++
+					fmt.Println("refused     " + serr.Error())
+				}
+			}
+		}
+		if refused > 0 {
+			return &consumer.ValidationError{Field: "import", Reason: fmt.Sprintf("the site limits refuse %d rows; nothing sent", refused)}
+		}
+	}
+
 	// Raw ctx: Apply's internal walk per slot has no deadline (44k
 	// objects on ACP2 takes minutes); individual SetValue calls inside
 	// Apply still follow their own per-plugin timeouts.

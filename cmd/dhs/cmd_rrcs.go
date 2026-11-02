@@ -190,6 +190,9 @@ type rrcsFlags struct {
 	timeout time.Duration
 	output  string
 	capture string
+	// siteLimits names the plant's limits file for the writing verbs
+	// (ADR-0037 P7): "" = the default home when it exists, "off" = none.
+	siteLimits string
 
 	// The uniform logging contract (docs/logging.md): a local file in
 	// syslog format by default, optionally a remote syslog server.
@@ -253,6 +256,7 @@ func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
 	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward the logs as RFC 5424 UDP datagrams to host:port")
 	fs.IntVar(&c.logRetention, "log-retention", 0, "days of daily log files to keep; 0 = keep every day")
 	fs.StringVar(&c.capture, "capture", "", "record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal \"auto\" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
+	fs.StringVar(&c.siteLimits, "site-limits", "", siteLimitsHelp)
 	return c
 }
 

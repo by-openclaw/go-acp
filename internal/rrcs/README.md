@@ -361,6 +361,20 @@ address field on an NMOS stream is refused. One property per command: an
 output's link (Mode and Selection in one request) and any edit of several
 members go through `import` of a short file, or `ensure --manifest`.
 
+### site limits — the plant's own ranges
+
+```
+snapshots\rrcs\<host>\site-limits.csv      read by set, import and ensure when it exists
+.\dhs.exe consumer rrcs import HOST --file x.csv --dry-run --site-limits plant.csv
+```
+
+A CSV with the header `path,min,max,allowed` narrows what the
+specification allows (ADR-0036, ADR-0037 P7): `.PortAes67Input.Channels,1,8,`
+caps every receiver at 8 channels; `.PortAes67Output.Protocol,,,2|5` allows
+Manual and NMOS only. A row the site refuses is a failed row with the
+reason, `refused by the site limit (site 1..8, factory 1..16)`, and is not
+sent; a rule wider than the factory limit is refused as such.
+
 ### import — a whole file
 
 ```

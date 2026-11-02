@@ -3724,6 +3724,8 @@ Usage of rrcs info:
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3746,6 +3748,8 @@ Usage of rrcs discover:
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3788,6 +3792,8 @@ Usage of rrcs watch:
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path string
     	URL path RRCS posts its events to (default "/RPC2")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -spy string
     	panel spy — key pressed and released, rotary encoders (RRCS sends these only for panels registered one by one, and only on a system licensed for panel spy: without the licence every panel answers "No client card acknowledge received"): none (default) | all (every port that has keys and is on line) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit (default "none")
   -spy-events string
@@ -3822,6 +3828,8 @@ Usage of rrcs snapshot:
     	snapshot FILE the walk is written to. Literal "auto" = snapshots/rrcs/<host>/snapshot-<utcstamp>.json (ADR-0028) (default "auto")
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -skip string
     	leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)
   -syslog-addr string
@@ -3943,6 +3951,8 @@ Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|des
     	keep what sits on this node number; 0 = every node
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -3975,6 +3985,8 @@ Usage of rrcs tree:
     	keep what sits on this node number; 0 = every node
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4096,6 +4108,8 @@ Usage of rrcs extract:
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -refresh
     	rewrite a device model that exists (default: a model that exists is kept, the inventory is rewritten)
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4130,6 +4144,8 @@ skipped and listed.
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -path value
     	apply only the rows whose path contains this text; comma-separated or repeated
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4172,6 +4188,8 @@ changes something and is refused without --write-to HOST.
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4202,6 +4220,8 @@ Usage of rrcs xp:
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -src string
     	source: the path of a port that has an input, as list sources prints it
   -state string
@@ -4280,6 +4300,8 @@ Only what the file names is touched. Without --check this WRITES and needs
     	the desired inventory (the manifest extract wrote, edited): the type and the role of each port, brought to the system in the proven order — a PortType create for an absent port, the channel count of a main, the links; values stay with import
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4349,6 +4371,8 @@ SetXpPrio: make a crosspoint with a priority. It WRITES: it needs --write-to HOS
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -priority string
     	priority
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -src string
     	source: the path of a port that has an input
   -syslog-addr string
@@ -4382,6 +4406,8 @@ SetXpDestructive: make a crosspoint and remove the routes it displaces. It WRITE
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -priority string
     	audio priority
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -src string
     	source: the path of a port that has an input
   -syslog-addr string
@@ -4417,6 +4443,8 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -single string
     	set the single volume
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -src string
     	source: the path of a port that has an input
   -syslog-addr string
@@ -4452,6 +4480,8 @@ SetPortAlias: set the alias of a port. It WRITES: it needs --write-to HOST, and 
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4483,6 +4513,8 @@ SetPortLabel: set the 8-character label of a port. It WRITES: it needs --write-t
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4514,6 +4546,8 @@ SetInputGain: set the input gain of a port. It WRITES: it needs --write-to HOST,
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4545,6 +4579,8 @@ SetOutputGain: set the output gain of a port. It WRITES: it needs --write-to HOS
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4576,6 +4612,8 @@ SetGpOutput: switch a GP output. It WRITES: it needs --write-to HOST, and has no
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -slot string
     	slot
   -state string
@@ -4611,6 +4649,8 @@ GetGpInputState: read a GP input. It only reads.
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -slot string
     	slot
   -syslog-addr string
@@ -4644,6 +4684,8 @@ GetGpOutputState: read a GP output. It only reads.
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -slot string
     	slot
   -syslog-addr string
@@ -4675,6 +4717,8 @@ SetLogicSourceState: switch a logic source. It WRITES: it needs --write-to HOST,
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -state string
     	on or off
   -syslog-addr string
@@ -4704,6 +4748,8 @@ SetStateWorking: make this gateway the working one. It WRITES: it needs --write-
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4731,6 +4777,8 @@ SetStateStandby: make this gateway the standby one. It WRITES: it needs --write-
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4760,6 +4808,8 @@ SetNetName: set the long name of the net. It WRITES: it needs --write-to HOST, a
     	long name
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4789,6 +4839,8 @@ ConfigurationChange: apply configuration changes, all or nothing. It WRITES: it 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4818,6 +4870,8 @@ BufferConfigurationChange: buffer configuration changes for a later apply. It WR
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4847,6 +4901,8 @@ BufferConfigurationChangeEx: buffer configuration changes, each handled on its o
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4874,6 +4930,8 @@ ApplyConfigurationChange: send the buffered changes, all or nothing. It WRITES: 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4901,6 +4959,8 @@ ApplyConfigurationChangeEx: send the buffered changes, each handled on its own. 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4930,6 +4990,8 @@ ClearKeyLabel: clear a key label set through RRCS. It WRITES: it needs --write-t
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4961,6 +5023,8 @@ ClearKeyLabelAndMarker: clear a key label and marker set through RRCS. It WRITES
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -4992,6 +5056,8 @@ ClearKeyMarker: clear a key marker set through RRCS. It WRITES: it needs --write
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5027,6 +5093,8 @@ LockKey: lock or unlock a key. It WRITES: it needs --write-to HOST, and has not 
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -pool-port string
     	pool port; -1 for a port without pool ports
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5062,6 +5130,8 @@ PressKey: press or release a key. It WRITES: it needs --write-to HOST, and has n
     	pool port; -1 for a port without pool ports
   -press string
     	press or release
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5097,6 +5167,8 @@ PressKeyEx: press or release a key with a trigger. It WRITES: it needs --write-t
     	pool port; -1 for a port without pool ports
   -press string
     	press or release
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5132,6 +5204,8 @@ SetKeyLabel: set a key label. It WRITES: it needs --write-to HOST, and has not p
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5167,6 +5241,8 @@ SetKeyLabelAndMarker: set a key label and marker. It WRITES: it needs --write-to
     	index of the marker in the configuration
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5200,6 +5276,8 @@ SetKeyMarker: set a key marker. It WRITES: it needs --write-to HOST, and has not
     	index of the marker in the configuration
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5233,6 +5311,8 @@ StartPortCloning: clone the output of a port to a monitoring port. It WRITES: it
     	port to monitor
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5264,6 +5344,8 @@ StopPortCloning: stop a port clone. It WRITES: it needs --write-to HOST, and has
     	port to monitor
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5295,6 +5377,8 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5328,6 +5412,8 @@ RemoveIFBVolumeMixMinus: return the mix-minus level of an IFB to unity. It WRITE
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5357,6 +5443,8 @@ XpVolumeChangeRegistryReset: replace the crosspoints whose level is followed. It
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5390,6 +5478,8 @@ XpVolumeChangeRegistryRemove: stop following the level of crosspoints. It WRITES
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5423,6 +5513,8 @@ RegisterForEvents: register a receiver for the general events. It WRITES: it nee
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5454,6 +5546,8 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5485,6 +5579,8 @@ RegisterForGpInputChange: register a receiver for GP input changes. It WRITES: i
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5516,6 +5612,8 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5547,6 +5645,8 @@ RegisterForGpOutputChange: register a receiver for GP output changes. It WRITES:
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5578,6 +5678,8 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -tcp-port string
@@ -5609,6 +5711,8 @@ SetTrunkingNetAddr: set the trunking net address of the ring. It WRITES: it need
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5638,6 +5742,8 @@ SetLTC: move the local trunk controller to a node. It WRITES: it needs --write-t
     	node
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5669,6 +5775,8 @@ DialNumber: dial a number on a pool port. It WRITES: it needs --write-to HOST, a
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5698,6 +5806,8 @@ HangUpCall: hang up the call of a port. It WRITES: it needs --write-to HOST, and
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5727,6 +5837,8 @@ LineStatus: read the line status of a port. It only reads.
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -port-path string
     	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5754,6 +5866,8 @@ SetSystemTimeOnAllNodes: set the time of the gateway PC on every node. It WRITES
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5785,6 +5899,8 @@ ConnectToArtist: connect the gateway to an Artist system. It WRITES: it needs --
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -redundant string
     	the connection is redundant
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5812,6 +5928,8 @@ DisconnectFromArtist: disconnect the gateway from the Artist system. It WRITES: 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5839,6 +5957,8 @@ ResetAllNodes: RESET every node that is on line. It WRITES: it needs --write-to 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5868,6 +5988,8 @@ DeletePortCommands: delete the commands of a command position. It WRITES: it nee
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
   -position string
     	a key path, a virtual function path, or a port path for every position of the port
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5897,6 +6019,8 @@ SetStageNetAddr: set the stage net address. It WRITES: it needs --write-to HOST,
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration
@@ -5924,6 +6048,8 @@ SetStageRegistryUrl: set the stage registry URL. It WRITES: it needs --write-to 
     	days of daily log files to keep; 0 = keep every day
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
   -timeout duration

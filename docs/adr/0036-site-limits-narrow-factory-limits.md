@@ -1,6 +1,8 @@
 # ADR-0036 — Site limits may narrow factory limits, never widen them
 
-Status: proposed (direction given by the codeowner, 2026-10-14)
+Status: accepted (2026-11-02). Direction given by the codeowner on
+2026-10-14; the home and the format of the site limits are decided by
+ADR-0037 P7, which built them.
 
 ## Context
 
@@ -41,9 +43,9 @@ factory-legal value.
 
 | # | Question |
 | --- | --- |
-| 1 | Where the site limits live: a file beside the plant's desired state, or the platform inventory (NetBox) once Q9/Q10 land |
-| 2 | Their format (the export's metadata columns are the natural shape: path or property, min, max, enum) |
-| 3 | Who may change them (ties to the access and audit scope) |
+| 1 | Decided by ADR-0037 P7: `snapshots/<proto>/<host>/site-limits.csv` by default, `--site-limits FILE` names another, `--site-limits off` applies none. NetBox as a source stays open (Q9/Q10) |
+| 2 | Decided by ADR-0037 P7: CSV, header `path,min,max,allowed`; `path` is a property path or a suffix starting with a dot; `allowed` is `a\|b\|c` |
+| 3 | Who may change them (ties to the access and audit scope) — open |
 
 ## Consequences
 

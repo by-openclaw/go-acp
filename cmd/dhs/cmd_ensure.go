@@ -158,8 +158,18 @@ func runEnsure(ctx context.Context, args []string) error {
 	// object's range client-side keeps the idempotency decision — and the
 	// --check dry-run — consistent with what the device will do.
 	target := desired
-	if meta := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id); meta != nil {
-		target = predictStored(meta, current.Kind, desired)
+	factory := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id)
+	if factory != nil {
+		target = predictStored(factory, current.Kind, desired)
+	}
+	// The plant's own limits (ADR-0036, ADR-0037 P7), checked before the
+	// report, so a dry run refuses what a write would.
+	limits, lerr := siteLimitsFor(cf.protocol, host, cf.siteLimits)
+	if lerr != nil {
+		return lerr
+	}
+	if serr := limits.Check(pointName(req), valueText(want), factoryMetaFor(opCtx, plug, req, factory)); serr != nil {
+		return serr
 	}
 
 	curStr := canonicalValueStr(current)

@@ -78,6 +78,7 @@ type commonFlags struct {
 	userLevel        string
 	clientName       string
 	node             int
+	siteLimits       string
 	verbose          bool
 	logLevel         string
 	logFormat        string
@@ -156,6 +157,7 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.IntVar(&cf.node, "node", 0,
 		"a controller that fronts several devices (rrcs: an Artist ring of several nodes behind one gateway): "+
 			"the node whose bays are the slots. Required when there are several; 0 = the only one (ADR-0037 P9)")
+	fs.StringVar(&cf.siteLimits, "site-limits", "", siteLimitsHelp)
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")

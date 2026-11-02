@@ -186,6 +186,18 @@ func runSet(ctx context.Context, args []string) error {
 		val = want
 	}
 
+	// The plant's own limits, narrower than the factory's (ADR-0036,
+	// ADR-0037 P7). A raw write bypasses typing and is not judged.
+	if *valueHex == "" {
+		limits, lerr := siteLimitsFor(cf.protocol, host, cf.siteLimits)
+		if lerr != nil {
+			return lerr
+		}
+		if serr := limits.Check(pointName(req), valueText(val), factoryMetaFor(opCtx, plug, req, meta)); serr != nil {
+			return serr
+		}
+	}
+
 	// ADR-0037 P5: a dry run reports and sends nothing; a guarded plugin
 	// writes only when --write-to names the host a second time.
 	if *dryRun || *check {

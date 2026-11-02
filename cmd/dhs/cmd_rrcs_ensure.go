@@ -158,6 +158,10 @@ Only what the file names is touched. Without --check this WRITES and needs
 	if fs.NArg() != 1 {
 		return rrcsValErr("ensure", "want exactly one host[:port] argument")
 	}
+	var lerr error
+	if rrcsSiteLimits, lerr = siteLimitsFor(rrcsProto, fs.Arg(0), cf.siteLimits); lerr != nil {
+		return lerr
+	}
 	if *manifestFile != "" {
 		if *file != "" {
 			return rrcsValErr("ensure", "give --file or --manifest, not both")

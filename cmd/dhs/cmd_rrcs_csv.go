@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"dhs/internal/consumer"
+	"dhs/internal/plugin"
 	rrcs "dhs/internal/rrcs/consumer"
 )
 
@@ -110,6 +112,27 @@ type rrcsApplied struct {
 	Wanted string `json:"wanted"`
 	Result string `json:"result"` // would_apply | applied | failed | not_taken
 	Error  string `json:"error,omitempty"`
+}
+
+// rrcsSiteLimits are the plant's limits the writing verbs load before
+// they converge (ADR-0037 P7); nil = none. Each verb sets it from its
+// flags, so a run never inherits another's.
+var rrcsSiteLimits *consumer.SiteLimits
+
+// rrcsDescriber describes a point from the tables, no gateway needed:
+// the factory limits a site rule is checked against.
+var rrcsDescriber, _ = (&rrcs.Factory{}).New(plugin.Deps{}).(consumer.Describer)
+
+// rrcsFactoryMeta is the factory schema of a row's point, or nil.
+func rrcsFactoryMeta(path string) *consumer.Object {
+	if rrcsDescriber == nil {
+		return nil
+	}
+	o, _, err := rrcsDescriber.Describe(context.Background(), consumer.ValueRequest{Path: path})
+	if err != nil {
+		return nil
+	}
+	return &o
 }
 
 // rrcsConverge compares rows with the live system and, unless dryRun,
@@ -255,6 +278,13 @@ func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep
 		}
 		if wanted == now {
 			unchanged++
+			continue
+		}
+		// The plant's own limits, narrower than the factory's (ADR-0036,
+		// ADR-0037 P7): a row they refuse is a failure, nothing is sent for it.
+		if serr := rrcsSiteLimits.Check(row.Path, wanted, rrcsFactoryMeta(row.Path)); serr != nil {
+			failed++
+			applied = append(applied, &rrcsApplied{Path: row.Path, Live: now, Wanted: wanted, Result: "failed", Error: serr.Error()})
 			continue
 		}
 		// The type comes from the specification's property table first
@@ -448,6 +478,9 @@ skipped and listed.
 	rows, err := rrcsReadRows(*file)
 	if err != nil {
 		return fmt.Errorf("rrcs import: %w", err)
+	}
+	if rrcsSiteLimits, err = siteLimitsFor(rrcsProto, fs.Arg(0), cf.siteLimits); err != nil {
+		return err
 	}
 	client, _, closeFn, err := cf.open("import", fs.Arg(0))
 	if err != nil {

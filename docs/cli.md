@@ -282,6 +282,28 @@ the flag is optional. A protocol with one device per target refuses the
 flag. The manifest holds one frame per node; the device models are
 shared by model and version (ADR-0022).
 
+### Site limits (ADR-0036, ADR-0037 P7)
+
+A plant may narrow the factory limits of a device family, never widen
+them. The rules are a CSV with the header `path,min,max,allowed`:
+
+```text
+path,min,max,allowed
+.PortAes67Input.Channels,1,8,
+.PortAes67Output.Channels,1,8,
+.PortAes67Output.Protocol,,,2|5
+```
+
+`path` is a full property path or a suffix that starts with a dot and
+applies to every object; the exact path wins over a suffix, a longer
+suffix over a shorter one. `set`, `import` and `ensure` read
+`snapshots/<proto>/<host>/site-limits.csv` when it exists; `--site-limits
+FILE` names another file, `--site-limits off` applies none. A value the
+site refuses is a validation error that names both ranges, `refused by
+the site limit (site 1..8, factory 1..16)`, and nothing is sent; a rule
+wider than the factory limit is refused as such. The rrcs-own `import`
+and `ensure` apply the same file.
+
 ## Producer verbs
 
 `dhs producer --help`
