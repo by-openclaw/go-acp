@@ -42,6 +42,14 @@ const (
 	VersionMismatch = "snmp_reply_version_mismatch"
 	// CommunityMismatch is a reply carrying a community we did not send.
 	CommunityMismatch = "snmp_reply_community_mismatch"
+	// CountNotTrusted is a count column the device did not back up, so its
+	// table was walked instead: rows past the count, rows before row 1, a
+	// promised row that is not there, or a value that cannot be a count.
+	CountNotTrusted = "snmp_count_not_trusted"
+	// NoDeviceMIB is a device whose sysObjectID selects no table and none
+	// was asked for: vendor objects stay numbers.
+	NoDeviceMIB = "snmp_no_device_mib"
+
 	// BulkOverrun is an agent that returned more repetitions than were
 	// asked for, which a manager that trusted the count would misparse.
 	BulkOverrun = "snmp_bulk_returned_too_much"
@@ -61,7 +69,8 @@ type Options struct {
 	Version codec.Version
 	// Community is the v1/v2c password. Empty means "public".
 	Community string
-	// Timeout bounds one request. Zero means the default.
+	// Timeout bounds the first attempt of a request; each retry waits
+	// twice as long as the one before. Zero means the default.
 	Timeout time.Duration
 	// Retries is how many times a request is repeated before it is a
 	// timeout. UDP loses datagrams; a manager that did not retry would
@@ -80,6 +89,12 @@ type Options struct {
 	// Compliance records what an agent did that the RFCs do not
 	// describe. Nil is fine — the profile answers every method.
 	Compliance compliance.Recorder
+
+	// Tap, when set, is handed every datagram of the session as it goes
+	// out ("tx") and as it comes in ("rx") — the request, each repeat of
+	// it, and whatever arrives, ours or not. It is what `--capture`
+	// records: a manager's view of the wire, to read again offline.
+	Tap func(dir string, datagram []byte)
 }
 
 // Defaults, chosen from what the devices in docs/testbed.md actually

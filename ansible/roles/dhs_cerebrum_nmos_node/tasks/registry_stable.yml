@@ -1,0 +1,47 @@
+---
+# The devices of the node, as the registry has them, once they have
+# stopped changing. A node that has just registered adds its senders and
+# receivers over several seconds: a list read too early is not the
+# reference. Two reads `cerebrum.nmos_settle` seconds apart must be equal;
+# otherwise read again, `cerebrum.nmos_wait_retries` times at most.
+
+- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry (read {{ cnn_tries | default(1) }})"
+  ansible.builtin.uri:
+    url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+    return_content: true
+  register: cnn_reg_a
+  until: cnn_reg_a.status == 200 and cnn_reg_a.json is defined
+  retries: "{{ cerebrum.nmos_wait_retries }}"
+  delay: "{{ cerebrum.nmos_wait_delay }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — leave the registry {{ cerebrum.nmos_settle }} s"
+  ansible.builtin.pause:
+    seconds: "{{ cerebrum.nmos_settle }}"
+  when: cnn_registered_now | default(true)
+
+- name: "{{ cerebrum_nmos_node_label }} — its devices in the registry, again"
+  ansible.builtin.uri:
+    url: "{{ cnn_registry }}/devices?node_id={{ cnn_id }}&paging.limit={{ cerebrum.nmos_page_limit }}"
+    return_content: true
+  register: cnn_reg_devs
+  until: cnn_reg_devs.status == 200 and cnn_reg_devs.json is defined
+  retries: "{{ cerebrum.nmos_wait_retries }}"
+  delay: "{{ cerebrum.nmos_wait_delay }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — the registry is still filling"
+  ansible.builtin.assert:
+    that: (cnn_tries | default(1) | int) < (cerebrum.nmos_wait_retries | int)
+    fail_msg: "{{ cerebrum_nmos_node_label }}: its devices in the registry kept changing — nothing written to Cerebrum"
+    quiet: true
+  when: cnn_reg_a.json != cnn_reg_devs.json or cnn_reg_devs.json | length == 0
+
+- name: "{{ cerebrum_nmos_node_label }} — one more read"
+  ansible.builtin.set_fact:
+    cnn_tries: "{{ (cnn_tries | default(1) | int) + 1 }}"
+  when: cnn_reg_a.json != cnn_reg_devs.json or cnn_reg_devs.json | length == 0
+
+- name: "{{ cerebrum_nmos_node_label }} — read again"
+  ansible.builtin.include_tasks: registry_stable.yml
+  vars:
+    cnn_registered_now: true
+  when: cnn_reg_a.json != cnn_reg_devs.json or cnn_reg_devs.json | length == 0

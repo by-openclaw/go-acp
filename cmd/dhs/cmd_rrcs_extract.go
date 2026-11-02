@@ -157,7 +157,13 @@ func rrcsExtract(ctx context.Context, args []string) error {
 			return nil
 		}
 		dm := datastore.DM{Model: f.Model, SwRev: f.SwRev, Protocol: rrcsProto, Root: f.Export.Root, Templates: f.Export.Templates}
-		if err := treeStore.WriteDM(rrcsProto, f.Identity, dm); err != nil {
+		// A model that exists is kept (ADR-0022); --refresh is one of the two
+		// ways it is replaced (ADR-0028 §6), so it writes through ReplaceDM.
+		write := treeStore.WriteDM
+		if *refresh {
+			write = treeStore.ReplaceDM
+		}
+		if err := write(rrcsProto, f.Identity, dm); err != nil {
 			return fmt.Errorf("rrcs extract: %w", err)
 		}
 		sum, _ := sha256File(path)

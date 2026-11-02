@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -444,6 +445,7 @@ func (r *stdlibResponder) Update(ctx context.Context, ins dnssd.Instance) error 
 		r.mu.Unlock()
 		return fmt.Errorf("dnssd: Update: instance %q not announced", full)
 	}
+	replaced := r.instances[idx]
 	r.instances[idx].TXT = maps.Clone(ins.TXT) // kept and read later: its own copy
 	updated := r.instances[idx]
 	conns := append([]*net.UDPConn(nil), r.conns...)
@@ -453,6 +455,17 @@ func (r *stdlibResponder) Update(ctx context.Context, ins dnssd.Instance) error 
 	if err != nil {
 		return err
 	}
+	// The record being replaced is withdrawn by name before the new one
+	// goes out: the cache-flush bit alone leaves it readable for a
+	// second more, and IS-04-01 test_12 read a registered Node's ver_*
+	// records from exactly that copy.
+	if !maps.Equal(replaced.TXT, updated.TXT) {
+		if bye, berr := dnssd.EncodeTXTGoodbye(replaced); berr == nil {
+			for _, c := range conns {
+				_, _ = c.WriteToUDP(bye, &mdnsIPv4)
+			}
+		}
+	}
 	for _, c := range conns {
 		if _, werr := c.WriteToUDP(pkt, &mdnsIPv4); werr != nil {
 			if r.logger != nil && ctx.Err() == nil {
@@ -461,6 +474,30 @@ func (r *stdlibResponder) Update(ctx context.Context, ins dnssd.Instance) error 
 		}
 	}
 	return nil
+}
+
+// answersQuestion says whether the Instance owns a record the question
+// asks for: its PTR under the service type, its SRV and TXT under its
+// own name, its A under its host (RFC 6762 §6 — a responder answers for
+// every record it is authoritative for). Only the PTR used to be
+// answered: a resolver that already knew the instance and asked for its
+// TXT again — to replace a copy it had just been told to flush — got
+// nothing and kept, or lost, what it had.
+func answersQuestion(ins dnssd.Instance, q dnssd.Question) bool {
+	same := func(a, b string) bool {
+		return strings.EqualFold(strings.TrimSuffix(a, "."), strings.TrimSuffix(b, "."))
+	}
+	switch q.Type {
+	case dnssd.TypePTR:
+		return same(q.Name, ins.PTRName())
+	case dnssd.TypeSRV, dnssd.TypeTXT:
+		return same(q.Name, ins.FullName())
+	case dnssd.TypeA:
+		return same(q.Name, ins.Host)
+	case dnssd.TypeANY:
+		return same(q.Name, ins.PTRName()) || same(q.Name, ins.FullName()) || same(q.Name, ins.Host)
+	}
+	return false
 }
 
 func (r *stdlibResponder) serveQueries(ctx context.Context) {
@@ -498,7 +535,7 @@ func (r *stdlibResponder) serveQueries(ctx context.Context) {
 					r.mu.Lock()
 					matches := make([]dnssd.Instance, 0, len(r.instances))
 					for _, ins := range r.instances {
-						if q.Name == ins.PTRName() && (q.Type == dnssd.TypePTR || q.Type == dnssd.TypeANY) {
+						if answersQuestion(ins, q) {
 							matches = append(matches, ins)
 						}
 					}

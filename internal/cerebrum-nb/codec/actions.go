@@ -164,6 +164,16 @@ type RoutingAction struct {
 
 	// RM_TAGS actions
 	Tags string
+
+	// v0.17 (§4.2.3-§4.2.4): RM_SRCE_ADD / RM_DEST_ADD carry COUNT (1-1000),
+	// VIRTUAL and FEDERATION; RM_SRCE_DELETE / RM_DEST_DELETE carry the ids
+	// as a comma list in SrceID / DestID plus FEDERATION. FEDERATION="1" on
+	// the ASSOC and RM_*_TAGS actions (§4.1.7-§4.2.2) sends the change to
+	// the federation source / destination instead of the local one; absent
+	// means local, as before v0.17.
+	Count      string
+	Virtual    string
+	Federation string
 }
 
 // addMnemonic emits MNEMONIC normally (omitted when empty), or force-emits
@@ -210,7 +220,10 @@ func (r *RoutingAction) encodeAction(b *strings.Builder) {
 		Add("TARGET_SENDER_NAME", r.TargetSenderName).
 		Add("TARGET_RECEIVER_NAME", r.TargetReceiverName).
 		Add("SUB_DEVICE", r.SubDevice).
-		Add("TAGS", r.Tags)
+		Add("TAGS", r.Tags).
+		Add("COUNT", r.Count).
+		Add("VIRTUAL", r.Virtual).
+		Add("FEDERATION", r.Federation)
 	emitElement(b, "ROUTING", a, nil)
 }
 
@@ -316,9 +329,9 @@ func (d *DeviceAction) encodeAction(b *strings.Builder) {
 // ----------------------------------------------------------------------
 // §4.5 — Device Configuration (0v16 pp20-23)
 //
-// CRUD over the Cerebrum device tree. Unlike §4.1-§4.4 these are NOT
-// wrapped in <ACTION>; <DEVICE_CONFIGURATION> is itself a top-level
-// command, so it has its own EncodeDeviceConfiguration entry point.
+// CRUD over the Cerebrum device tree. §2.3 puts every §4 command inside
+// <ACTION>, this one too: sent bare it is NACK 2 UNKNOWN_COMMAND. It keeps
+// its own EncodeDeviceConfiguration entry point for the body builders.
 //
 // The body shape under <CONFIGURATION> varies by DEVICE_TYPE
 // (GENERIC / PANEL / ROUTER / SNMP). REMOVE carries no body (§4.5.2
@@ -561,11 +574,12 @@ func EncodeDeviceConfiguration(mtid uint32, dc *DeviceConfiguration) []byte {
 		ForceAdd("TYPE", string(dc.Type)).
 		Add("IP_ADDRESS", dc.IPAddress).
 		Add("DEVICE_NAME", dc.DeviceName).
-		Add("DEVICE_TYPE", string(dc.DeviceType)).
-		ForceAdd("MTID", formatMTID(mtid))
+		Add("DEVICE_TYPE", string(dc.DeviceType))
 
 	body := dc.bodyFunc(&b)
-	emitElement(&b, "DEVICE_CONFIGURATION", a, body)
+	emitElement(&b, "ACTION", []Attr{{"MTID", formatMTID(mtid)}}, func() {
+		emitElement(&b, "DEVICE_CONFIGURATION", a, body)
+	})
 	return []byte(b.String())
 }
 

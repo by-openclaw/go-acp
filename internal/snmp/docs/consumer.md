@@ -31,14 +31,15 @@ answers those five with no SNMP in the command line at all.
 | `validate` | decode a captured `frames.jsonl` offline | — |
 
 Shared: `--version 1|2c`, `--community`, `--timeout`, `--retries`,
-`--max-repetitions`, `--mib MODULE`.
+`--max-repetitions`, `--mib TABLE`.
 
 ### Neutral verbs
 
 | Verb | Notes |
 |---|---|
-| `info` | agent identity — `sysObjectID` as the DTD version, one slot |
+| `info` | agent identity — `sysObjectID` as the DTD version, one slot, and under it constructor, model, serial, software, sysObjectID and the MIB table in use |
 | `walk --slot 0` | the device model: the system group plus the agent's own enterprise branch |
+| `walk --slot 0` on a filled table | a table a parent table counts is read through that count once the device has backed the count up: the DR5000 stream table costs its real rows, not 4 096 × 12 objects. `--oid` stays the raw walk and reads every row |
 | `walk --slot 0 --path A,B` | reads only those branches (`WalkUnder`), it does not read everything and filter |
 | `get\|set --path` | one round trip on a cold connection — no walk is needed to resolve a name |
 | `tree`, `export` | the walked model, rendered or written out |
@@ -72,6 +73,15 @@ exists.
 branch** — the one its `sysObjectID` names. Walking all of MIB-2 on a
 device with 26 000 objects to reach the six that matter is not a device
 model, it is a denial of service on yourself.
+
+**A device with no MIB is still identified.** Model and version come from
+the vendor's objects, then the ENTITY-MIB chassis row, then sysDescr and
+sysObjectID, in that order; the constructor comes from the enterprise number
+in sysObjectID through the IANA registry, which needs no MIB. With no table
+for that enterprise, `info` prints `next`: the constructor, its number, and
+where to find the MIB. The DM is saved as Model@SwRev from what was found, and
+carries what every unit of that model shares. What one box says of itself goes
+in its manifest, `.cache/manifest/snmp/<ip>.json`, under `unit`.
 
 **Paths are the MIB's hierarchy, made readable.** Each ancestor
 contributes a segment with the parent's shared head trimmed, the

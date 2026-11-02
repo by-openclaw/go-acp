@@ -1,0 +1,47 @@
+---
+# What IP routing holds: for each NMOS node of the inventory, the devices
+# of its slot on the Network Media Server with their senders and
+# receivers, as Cerebrum lists them — one CSV per node, read over RCP in
+# one session per node. Reads only; nothing is written to Cerebrum.
+#
+# The files are what a RouteMaster plan binds to (the `senderReceiver`
+# names). Data: inventory `cerebrum`, `cerebrum_nmos_subids`.
+# Account: DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/cerebrum-iprouting-collect.yml
+#   ... -e only="lab-convert-01"                       one node
+#   ... -e iprouting_dir=/some/dir                     where the CSVs go
+
+- name: cerebrum — collect senders and receivers from IP routing
+  hosts: plant
+  gather_facts: false
+  vars:
+    cic_bin: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    cic_dir: "{{ iprouting_dir | default('/root/iprouting-exports') }}"
+    cic_nodes: "{{ cerebrum_nmos_subids | selectattr('label', 'equalto', only) | list if only is defined else cerebrum_nmos_subids }}"
+    cic_objects: "{{ [cic_bin, 'consumer', 'rcp', 'objects', cerebrum.host, '--port', cerebrum.rcp_port | string,
+                      '--timeout', cerebrum.nmos_read_timeout, '--device', cerebrum.nmos_device] }}"
+    cic_tab: "\t"
+  tasks:
+    - name: The server, the nodes and the account are given
+      ansible.builtin.assert:
+        that:
+          - cerebrum.host is defined and cerebrum.rcp_port is defined and cerebrum.nmos_device is defined
+          - cic_nodes | length > 0
+          - lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') | length > 0
+        fail_msg: set `cerebrum` and `cerebrum_nmos_subids` in the inventory, and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
+        quiet: true
+
+    - name: Export directory
+      ansible.builtin.file:
+        path: "{{ cic_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: One node at a time
+      ansible.builtin.include_tasks: cerebrum-iprouting-collect-node.yml
+      loop: "{{ cic_nodes }}"
+      loop_control:
+        loop_var: cic_node
+        label: "{{ cic_node.label }} (slot {{ cic_node.subid }})"

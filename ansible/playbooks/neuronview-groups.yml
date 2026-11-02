@@ -1,0 +1,12 @@
+---
+# EVS Neuron VIEW input groups, from the inventory (`neuronview` in
+# inventory/group_vars/plant.yml).
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/neuronview-groups.yml
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/neuronview-groups.yml   # -> changed=0
+
+- name: neuronview — input groups
+  hosts: plant
+  gather_facts: false
+  roles:
+    - dhs_neuronview_groups

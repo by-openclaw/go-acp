@@ -1,0 +1,74 @@
+Frame 1: 63 bytes on wire (504 bits), 63 bytes captured (504 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 1, Ack: 1, Len: 9
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 100266000103961003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 6600010396
+    Command: rx 102 All Dest Assoc Names Request (0x66) — rx 102 All Dest Assoc Names Request
+    Command (dec): 102
+    Extended command: False
+    Byte Count: 3
+    [BTC OK: True]
+    Checksum: 0x96
+    [Checksum (calc): 0x96]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Matrix ID: 0
+    Level ID: 0
+    Name Length: 8-char (1)
+
+Frame 2: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 1, Ack: 10, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+
+Frame 3: 195 bytes on wire (1560 bits), 195 bytes captured (1560 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 3, Ack: 10, Len: 141
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 10026b00010000101049503030312d303149503030312d303249503030312d3033495030…
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 6b00010000101049503030312d303149503030312d303249503030312d30334950303031…
+    Command: tx 107 Dest Assoc Names Response (0x6b) — tx 107 Dest Assoc Names Response
+    Command (dec): 107
+    Extended command: False
+    Byte Count: 134
+    [BTC OK: True]
+    Checksum: 0x45
+    [Checksum (calc): 0x45]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Matrix ID: 0
+    Level ID: 0
+    Name Length: 8-char (1)
+    First Destination: 0
+    Names: 16
+    Name[0]: "IP001-01"
+    Name[1]: "IP001-02"
+    Name[2]: "IP001-03"
+    Name[3]: "IP001-04"
+    Name[4]: "IP001-05"
+    Name[5]: "IP001-06"
+    Name[6]: "IP001-07"
+    Name[7]: "IP001-08"
+    Name[8]: "IP001-09"
+    Name[9]: "IP001-10"
+    Name[10]: "IP001-11"
+    Name[11]: "IP001-12"
+    Name[12]: "IP001-13"
+    Name[13]: "IP001-14"
+    Name[14]: "IP001-15"
+    Name[15]: "IP001-16"
+
+Frame 4: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 10, Ack: 144, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+

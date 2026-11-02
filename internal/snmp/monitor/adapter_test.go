@@ -8,6 +8,7 @@ import (
 
 	dhsc "dhs/internal/consumer"
 	"dhs/internal/snmp/codec"
+	"dhs/internal/snmp/mib"
 )
 
 // compile-time proof the adapter is a neutral Protocol.
@@ -59,7 +60,7 @@ func TestGetValueConvertsTypes(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fs := &fakeSession{getResp: []codec.VarBind{{Name: oid("1.1"), Value: c.in}}}
-			p := New(fs)
+			p := New(fs, nil)
 			got, err := p.GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"})
 			if err != nil {
 				t.Fatal(err)
@@ -91,23 +92,23 @@ func TestGetValueConvertsTypes(t *testing.T) {
 
 func TestGetValueException(t *testing.T) {
 	fs := &fakeSession{getResp: []codec.VarBind{{Name: oid("1.1"), Value: codec.NoSuchObject()}}}
-	if _, err := New(fs).GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}); err == nil {
+	if _, err := New(fs, nil).GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}); err == nil {
 		t.Fatal("noSuchObject should be an error, not data")
 	}
 }
 
 func TestGetValueEmptyAndError(t *testing.T) {
-	if _, err := New(&fakeSession{}).GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}); err == nil {
+	if _, err := New(&fakeSession{}, nil).GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}); err == nil {
 		t.Error("empty response should error")
 	}
 	fs := &fakeSession{getErr: errors.New("timeout")}
-	if _, err := New(fs).GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}); err == nil {
+	if _, err := New(fs, nil).GetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}); err == nil {
 		t.Error("session error should propagate")
 	}
 }
 
 func TestGetValueBadRequest(t *testing.T) {
-	p := New(&fakeSession{})
+	p := New(&fakeSession{}, nil)
 	if _, err := p.GetValue(context.Background(), dhsc.ValueRequest{}); err == nil {
 		t.Error("no address should error")
 	}
@@ -118,7 +119,7 @@ func TestGetValueBadRequest(t *testing.T) {
 
 func TestSetValueRoundTrip(t *testing.T) {
 	fs := &fakeSession{}
-	p := New(fs)
+	p := New(fs, nil)
 	got, err := p.SetValue(context.Background(), dhsc.ValueRequest{Path: "1.3.6.1.4.1.1773.1.1.1.8.0"},
 		dhsc.Value{Kind: dhsc.KindInt, Int: 1})
 	if err != nil {
@@ -148,7 +149,7 @@ func TestSetValueKinds(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fs := &fakeSession{}
-			if _, err := New(fs).SetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}, c.in); err != nil {
+			if _, err := New(fs, nil).SetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"}, c.in); err != nil {
 				t.Fatal(err)
 			}
 			if fs.lastSet[0].Value.Type != c.typ {
@@ -160,23 +161,23 @@ func TestSetValueKinds(t *testing.T) {
 
 func TestSetValueErrors(t *testing.T) {
 	// unsupported kind
-	if _, err := New(&fakeSession{}).SetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"},
+	if _, err := New(&fakeSession{}, nil).SetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"},
 		dhsc.Value{Kind: dhsc.KindFrame}); err == nil {
 		t.Error("unsupported kind should error")
 	}
 	// bad OID
-	if _, err := New(&fakeSession{}).SetValue(context.Background(), dhsc.ValueRequest{Path: "nope"},
+	if _, err := New(&fakeSession{}, nil).SetValue(context.Background(), dhsc.ValueRequest{Path: "nope"},
 		dhsc.Value{Kind: dhsc.KindInt}); err == nil {
 		t.Error("bad OID should error")
 	}
 	// session error
 	fs := &fakeSession{setErr: errors.New("readOnly")}
-	if _, err := New(fs).SetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"},
+	if _, err := New(fs, nil).SetValue(context.Background(), dhsc.ValueRequest{Path: "1.1"},
 		dhsc.Value{Kind: dhsc.KindInt, Int: 1}); err == nil {
 		t.Error("session set error should propagate")
 	}
 	// empty echo falls back to the written value
-	got, err := New(&fakeSession{setResp: []codec.VarBind{}}).SetValue(context.Background(),
+	got, err := New(&fakeSession{setResp: []codec.VarBind{}}, nil).SetValue(context.Background(),
 		dhsc.ValueRequest{Path: "1.1"}, dhsc.Value{Kind: dhsc.KindInt, Int: 7})
 	if err != nil || got.Int != 7 {
 		t.Errorf("empty echo: got %+v err %v, want int 7", got, err)
@@ -185,14 +186,14 @@ func TestSetValueErrors(t *testing.T) {
 
 func TestDisconnectAndUnsupported(t *testing.T) {
 	fs := &fakeSession{}
-	p := New(fs)
+	p := New(fs, nil)
 	if err := p.Connect(context.Background(), "10.0.0.1", 161); err != nil {
 		t.Errorf("Connect should be a no-op, got %v", err)
 	}
 	if err := p.Disconnect(); err != nil || !fs.closed {
 		t.Errorf("Disconnect should close the session")
 	}
-	if err := New(nil).Disconnect(); err != nil {
+	if err := New(nil, nil).Disconnect(); err != nil {
 		t.Errorf("Disconnect with nil session should be safe")
 	}
 	if _, err := p.GetDeviceInfo(context.Background()); err == nil {
@@ -209,5 +210,39 @@ func TestDisconnectAndUnsupported(t *testing.T) {
 	}
 	if err := p.Unsubscribe(dhsc.ValueRequest{}); err == nil {
 		t.Error("Unsubscribe should be unsupported")
+	}
+}
+
+// The same rule as the walk: the object's textual convention decides.
+func TestAnAddressReadsAsAnAddress(t *testing.T) {
+	table, err := mib.Load("ateme-dr5000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const o = "1.3.6.1.4.1.27338.5.3.2.2.2.1.0" // an InetAddress
+	s := &fakeSession{getResp: []codec.VarBind{{Name: codec.MustParseOID(o), Value: codec.Bytes([]byte{10, 6, 255, 114})}}}
+	v, err := New(s, table).GetValue(context.Background(), dhsc.ValueRequest{Path: o})
+	if err != nil || v.Str != "10.6.255.114" {
+		t.Fatalf("%+v, %v", v, err)
+	}
+	// With no table the octets stay as the wire carried them.
+	if v, _ := New(s, nil).GetValue(context.Background(), dhsc.ValueRequest{Path: o}); v.Str != "\x0a\x06\xff\x72" {
+		t.Errorf("%q", v.Str)
+	}
+}
+
+func TestAnAddressIsWrittenAsItsOctets(t *testing.T) {
+	table, err := mib.Load("ateme-dr5000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const o = "1.3.6.1.4.1.27338.5.3.2.2.2.1.0"
+	s := &fakeSession{}
+	if _, err := New(s, table).SetValue(context.Background(), dhsc.ValueRequest{Path: o},
+		dhsc.Value{Kind: dhsc.KindString, Str: "10.0.0.1"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.lastSet) != 1 || string(s.lastSet[0].Value.Bytes) != "\x0a\x00\x00\x01" {
+		t.Errorf("%+v", s.lastSet)
 	}
 }

@@ -76,10 +76,9 @@ dhs_amwa_logging_level: -20
 # How many virtual senders/receivers the reference node publishes.
 dhs_amwa_node_how_many: 2
 
-# Left running between sessions. The stack is a fixture, not a job:
-# `restart: unless-stopped` survives a reboot of the tooling host, so
-# the oracle is there whenever someone needs to settle an argument.
-dhs_amwa_restart_policy: unless-stopped
+# Started when someone asks for it; a reboot of the tooling host leaves
+# the stack down until then.
+dhs_amwa_restart_policy: "no"
 
 # Seconds to wait for each endpoint to answer before declaring the
 # converge failed. nmos-cpp is quick; the testing tool loads a large

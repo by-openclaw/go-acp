@@ -261,6 +261,29 @@ func TestAction_Nack_UnknownCode(t *testing.T) {
 	}
 }
 
+func TestAction_BusyWaitsForContinueThenResends(t *testing.T) {
+	sent := 0
+	fs := newFakeCerebrum(t, func(fc *fakeConn) {
+		drainClient(fc, func(frame []byte) ([]byte, bool) {
+			sent++
+			if sent == 1 {
+				_ = fc.writeText([]byte(`<BUSY MTID="` + mtidOf(frame) + `"/>`))
+				return []byte(`<CONTINUE/>`), true
+			}
+			return ackFor(frame), true
+		})
+	})
+	_, sess := dialFake(t, fs)
+	ctx, cancel := ctx2s(t)
+	defer cancel()
+	if err := sess.SetDeviceValue(ctx, "DEV", "SUB", "OBJ", "1"); err != nil {
+		t.Fatalf("SetDeviceValue: %v", err)
+	}
+	if sent != 2 {
+		t.Fatalf("sent %d times, want 2", sent)
+	}
+}
+
 func TestAction_Busy(t *testing.T) {
 	fs := newFakeCerebrum(t, actionFakeReplying(func(f []byte) []byte {
 		return []byte(`<BUSY MTID="` + mtidOf(f) + `"/>`)
@@ -308,7 +331,11 @@ func TestActionWrappers_AllAck(t *testing.T) {
 		{"lock", func() error { return sess.Lock(ctx, "DEST_LOCK", codec.LockProtect, tgt, "", "60", "1", "") }},
 		{"unlock", func() error { return sess.Lock(ctx, "DEST_LOCK", codec.LockRelease, tgt, "", "60", "1", "") }},
 		{"set-mnemonic", func() error { return sess.SetMnemonic(ctx, "DEST_MNE", tgt, "", "60", "1", "CAM1", "") }},
-		{"set-tags", func() error { return sess.SetTags(ctx, "RM_DEST_TAGS", tgt, "", "60", "live,hd") }},
+		{"set-tags", func() error { return sess.SetTags(ctx, "RM_DEST_TAGS", tgt, "", "60", "1", "live,hd", false) }},
+		{"assoc", func() error {
+			return sess.Assoc(ctx, tgt, codec.RoutingAction{Type: "SRCE_ASSOC", LogicalSrceID: "7", LogicalLevelID: "1",
+				TargetDeviceName: "Snell SW-P-08", TargetDeviceType: "ROUTER", TargetLevelID: "1", TargetSrceID: "31"})
+		}},
 		{"salvo-run", func() error { return sess.Salvo(ctx, "RUN", "G", "I", "", "") }},
 		{"salvo-save", func() error { return sess.Salvo(ctx, "SAVE", "G", "I", "", "desc") }},
 		{"salvo-rename", func() error { return sess.Salvo(ctx, "RENAME", "G", "I", "NEW", "") }},

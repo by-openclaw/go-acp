@@ -1,0 +1,78 @@
+Frame 1: 66 bytes on wire (528 bits), 66 bytes captured (528 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 1, Ack: 1, Len: 12
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 10028a000010104f05121003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 8a000010104f0512
+    Command: rx 138 Protect Interrogate (ext) (0x8a) — rx 138 Protect Interrogate (ext)
+    Command (dec): 138
+    Extended command: True
+    Byte Count: 5
+    [BTC OK: True]
+    Checksum: 0x12
+    [Checksum (calc): 0x12]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Payload: 8a000010104f0512
+
+Frame 2: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 1, Ack: 13, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+
+Frame 3: 69 bytes on wire (552 bits), 69 bytes captured (552 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 3, Ack: 13, Len: 15
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 10028b00000010104f0000080e1003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 8b00000010104f0000080e
+    Command: tx 139 Protect Tally (ext) (0x8b) — tx 139 Protect Tally (ext)
+    Command (dec): 139
+    Extended command: True
+    Byte Count: 8
+    [BTC OK: True]
+    Checksum: 0x0e
+    [Checksum (calc): 0x0e]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Payload: 8b00000010104f0000080e
+
+Frame 4: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 13, Ack: 18, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+
+Frame 5: 68 bytes on wire (544 bits), 68 bytes captured (544 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 15, Ack: 18, Len: 14
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 10028c000010104f000907051003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 8c000010104f00090705
+    Command: rx 140 Protect Connect (ext) (0x8c) — rx 140 Protect Connect (ext)
+    Command (dec): 140
+    Extended command: True
+    Byte Count: 7
+    [BTC OK: True]
+    Checksum: 0x05
+    [Checksum (calc): 0x05]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+    Payload: 8c000010104f00090705
+
+Frame 6: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 18, Ack: 29, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+

@@ -30,7 +30,8 @@ func ETVAlarmTrapName(enterprise codec.OID, generic codec.GenericTrap, specific 
 	if !enterprise.HasPrefix(etvRoot) {
 		return "", false
 	}
-	obj, rest := Compiled().Lookup(etvAlarmTraps.Append(uint32(specific)))
+	// Every ETV product ships this AlarmTrap module.
+	obj, rest := loaders["ericsson-rx1290"]().Lookup(etvAlarmTraps.Append(uint32(specific)))
 	if obj == nil || len(rest) != 0 {
 		return "", false // no exact ETV-AlarmTrap notification at this sub-id
 	}

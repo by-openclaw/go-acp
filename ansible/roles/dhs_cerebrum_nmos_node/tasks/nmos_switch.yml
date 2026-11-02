@@ -1,0 +1,49 @@
+---
+# NMOS on or off on the device (`cnn_on`), by its type. Read first, write
+# only what differs.
+
+- name: "{{ cerebrum_nmos_node_label }} — NMOS setting on the device"
+  ansible.builtin.command:
+    argv: ["{{ cerebrum_nmos_node_bin }}", consumer, "{{ cnn_sw.proto }}", get, "{{ cnn_device.mgmt_ip }}", --path, "{{ item.path }}"]
+  loop: "{{ cnn_sw.set }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: cnn_sw_now
+  changed_when: false
+
+- name: "{{ cerebrum_nmos_node_label }} — NMOS {{ 'on' if cnn_on else 'off' }} on the device"
+  ansible.builtin.command:
+    argv: ["{{ cerebrum_nmos_node_bin }}", consumer, "{{ cnn_sw.proto }}", set, "{{ cnn_device.mgmt_ip }}", --path, "{{ item.item.path }}", --value, "{{ cnn_want }}"]
+  loop: "{{ cnn_sw_now.results }}"
+  loop_control:
+    label: "{{ item.item.path }} -> {{ cnn_want }}"
+  register: cnn_sw_set
+  when: (item.stdout_lines | select('match', '^value = ') | first | default('') | regex_replace('^value = ', '') | regex_replace('^"|"$', '')) != cnn_want
+  vars:
+    cnn_raw: "{{ item.item['on'] if cnn_on else item.item['off'] }}"
+    cnn_want: "{{ cnn_raw | replace('{registry_host}', cnn_site.registry_host.value) | replace('{registry_port}', cnn_site.registry_port.value) | replace('{registry_backup}', cnn_site.registry_backup.value) }}"
+
+- name: "{{ cerebrum_nmos_node_label }} — NMOS settings of the Neuron VIEW"
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/misc/nmos"
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+    return_content: true
+  register: cnn_view
+  when: cnn_sw.proto == 'rest'
+
+- name: "{{ cerebrum_nmos_node_label }} — NMOS {{ 'on' if cnn_on else 'off' }} on the Neuron VIEW"
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/misc/nmos"
+    method: PUT
+    body_format: json
+    body: "{{ cnn_view_want }}"
+    status_code: [200, 204]
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+  when: cnn_sw.proto == 'rest' and cnn_view.json != cnn_view_want
+  changed_when: true
+  register: cnn_view_put
+  vars:
+    cnn_view_want: >-
+      {{ cnn_view.json | combine({'enabled': cnn_on} if not cnn_on else
+           {'enabled': true, 'discoveryMode': 'manual', 'addressOverride': cnn_site.registry_host.value,
+            'portOverride': cnn_site.registry_port.value | int}) }}

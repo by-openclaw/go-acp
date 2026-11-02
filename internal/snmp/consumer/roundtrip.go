@@ -46,7 +46,13 @@ func (s *Session) roundTrip(ctx context.Context, p *codec.PDU) (*codec.PDU, erro
 		if err != nil {
 			return nil, err
 		}
-		resp, err := s.attempt(ctx, conn, raw, p.RequestID)
+		// Each retry waits twice as long as the attempt before it. An agent
+		// that did not answer in time is more often busy than gone — an
+		// ATEME DR5000 took over six seconds on one table after forty
+		// minutes of a walk — and a busy agent is helped by time, not by
+		// the same datagram again at the same pace. The request id is the
+		// same on every attempt, so an answer to an earlier one still counts.
+		resp, err := s.attempt(ctx, conn, raw, p.RequestID, s.opts.Timeout<<uint(attempt))
 		if err == nil {
 			return resp, nil
 		}
@@ -92,8 +98,8 @@ func (s *Session) encodeRequest(p *codec.PDU) ([]byte, error) {
 }
 
 // attempt is one send and one wait.
-func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int32) (*codec.PDU, error) {
-	deadline := s.clk.Now().Add(s.opts.Timeout)
+func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int32, wait time.Duration) (*codec.PDU, error) {
+	deadline := s.clk.Now().Add(wait)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
 		deadline = d
 	}
@@ -102,6 +108,9 @@ func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int
 	}
 	if _, err := conn.Write(raw); err != nil {
 		return nil, fmt.Errorf("snmp: send: %w", err)
+	}
+	if s.opts.Tap != nil {
+		s.opts.Tap("tx", raw)
 	}
 
 	buf := make([]byte, codec.MaxMessageSize)
@@ -113,6 +122,9 @@ func (s *Session) attempt(ctx context.Context, conn net.Conn, raw []byte, id int
 				return nil, ErrTimeout
 			}
 			return nil, fmt.Errorf("snmp: receive: %w", err)
+		}
+		if s.opts.Tap != nil {
+			s.opts.Tap("rx", buf[:n])
 		}
 
 		resp, aerr := s.acceptable(buf[:n], id)
@@ -190,7 +202,12 @@ func (s *Session) acceptable(raw []byte, id int32) (*codec.PDU, error) {
 // like a device with half a tree.
 func (s *Session) Walk(ctx context.Context, root codec.OID,
 	fn func(codec.VarBind) error) error {
-	cursor := root
+	return s.walkFrom(ctx, root, root, fn)
+}
+
+// walkFrom is Walk starting after cursor rather than at root.
+func (s *Session) walkFrom(ctx context.Context, root, cursor codec.OID,
+	fn func(codec.VarBind) error) error {
 	for {
 		binds, err := s.walkStep(ctx, cursor)
 		if err != nil {

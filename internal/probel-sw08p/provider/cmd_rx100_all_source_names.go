@@ -4,15 +4,10 @@ import (
 	"dhs/internal/probel-sw08p/codec"
 )
 
-// handleAllSourceNames: rx 100 → tx 106.  Builds one tx 106 frame from
-// the tree's source labels for (matrix, level), capped at
-// NameLength.MaxNamesPerMessage (spec §3.3.19). Missing labels get a
-// positional default ("SRC 0001", "SRC 0002", …) so controllers always
-// see a stable string for every source.
-//
-// Multi-frame pagination for > cap names is a future scope item; this
-// handler returns only the first frame (caller retries with single-name
-// requests for the rest).
+// handleAllSourceNames: rx 100 → tx 106. Every source label of (matrix,
+// level), NameLength.MaxNamesPerMessage per tx 106 message (allNames).
+// Missing labels get a positional default ("SRC 0001", "SRC 0002", …) so
+// controllers always see a stable string for every source.
 //
 // Reference: SW-P-08 §3.2.18 (rx 100) → §3.3.19 (tx 106).
 func (s *server) handleAllSourceNames(f codec.Frame) (handlerResult, error) {
@@ -29,20 +24,14 @@ func (s *server) handleAllSourceNames(f codec.Frame) (handlerResult, error) {
 		})
 		return handlerResult{reply: &empty}, nil
 	}
-	max := p.NameLength.MaxNamesPerMessage()
-	count := st.sourceCount
-	if count > max {
-		count = max
-	}
-	names := make([]string, count)
-	for i := 0; i < count; i++ {
-		names[i] = sourceNameOrDefault(st, i)
-	}
-	reply := codec.EncodeSourceNamesResponse(codec.SourceNamesResponseParams{
-		MatrixID: p.MatrixID, LevelID: p.LevelID, NameLength: p.NameLength,
-		FirstSourceID: 0, Names: names,
-	})
-	return handlerResult{reply: &reply}, nil
+	return allNames(st.sourceCount, p.NameLength.MaxNamesPerMessage(),
+		func(i int) string { return sourceNameOrDefault(st, i) },
+		func(first int, names []string) codec.Frame {
+			return codec.EncodeSourceNamesResponse(codec.SourceNamesResponseParams{
+				MatrixID: p.MatrixID, LevelID: p.LevelID, NameLength: p.NameLength,
+				FirstSourceID: uint16(first), Names: names,
+			})
+		}), nil
 }
 
 // sourceNameOrDefault returns the declared label at index i, or a

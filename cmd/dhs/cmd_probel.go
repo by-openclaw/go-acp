@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"strconv"
@@ -18,11 +19,25 @@ import (
 // the decoded reply + the wire hex on stderr (hex goes via the slog
 // INFO handler inside session.Client).
 //
+// probelNotServed says in the operator's words what ErrNoReply means: the
+// matrix took the frame (DLE ACK) and sent nothing back, which is how a
+// matrix answers a command it does not implement — SW-P-08 has no
+// "unsupported" reply. A Neuron does it for dual-status, the protect writes,
+// salvos and the association names. It is a fact about the matrix, not a
+// failure of the link, and reads as one whichever verb met it.
+func probelNotServed(err error) error {
+	if err == nil || !errors.Is(err, probelproto.ErrNoReply) {
+		return err
+	}
+	return fmt.Errorf("%w — not served by this matrix (it acknowledged the request and sent no reply)", err)
+}
+
 // Global --capture FILE.jsonl is parsed at the top level and stashed in
 // the context so every subcommand sees the same recorder. Same JSONL
 // shape as acp1/acp2/emberplus capture — one {ts, proto, dir, hex, len}
 // object per frame (including DLE ACK / DLE NAK control sequences).
-func runProbelsw08p(ctx context.Context, args []string) error {
+func runProbelsw08p(ctx context.Context, args []string) (err error) {
+	defer func() { err = probelNotServed(err) }()
 	// Uniform logging flags (epic #987): strip them here so every verb's own
 	// FlagSet is unaffected; consumerLogger reads them back from ctx.
 	var lf *logFlags

@@ -302,7 +302,7 @@ func TestValuesComeBackUnderTheirMIBNames(t *testing.T) {
 	// ordinal, because that is what an operator and an alarm rule both
 	// say. Everything else keeps its own shape.
 	p := connected(t, provider.Communities{Read: "public"})
-	def, _ := mib.Compiled().Lookup(codec.MustParseOID("1.3.6.1.4.1.54981.3.0"))
+	def, _ := mib.Base().Lookup(codec.MustParseOID("1.3.6.1.4.1.54981.3.0"))
 	if def == nil {
 		t.Skip("the DHS-MIB is not in the compiled table")
 	}
@@ -477,7 +477,7 @@ func TestWireValueSpeaksTheSyntaxTheMIBDeclares(t *testing.T) {
 		}
 	}
 	// An enumerated object takes the word from its own item list.
-	def, _ := mib.Compiled().Lookup(codec.MustParseOID("1.3.6.1.4.1.54981.3.0"))
+	def, _ := mib.Base().Lookup(codec.MustParseOID("1.3.6.1.4.1.54981.3.0"))
 	if def != nil && len(def.Enums) > 0 {
 		v, err := p.wireValue(codec.MustParseOID("1.3.6.1.4.1.54981.3.0"),
 			dhsc.Value{Kind: dhsc.KindString, Str: def.Enums[0].Name})
@@ -621,8 +621,20 @@ func TestEnterpriseRootSaysNothingWhenTheAgentDoes(t *testing.T) {
 	}
 }
 
-func TestObjectForCarriesWhatTheMIBDeclares(t *testing.T) {
+// dr5000Plugin is a plugin that has connected to a DR5000, as far as names go.
+func dr5000Plugin(t *testing.T) *Plugin {
+	t.Helper()
+	tb, err := mib.Load("ateme-dr5000")
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := &Plugin{}
+	p.table.Store(tb)
+	return p
+}
+
+func TestObjectForCarriesWhatTheMIBDeclares(t *testing.T) {
+	p := dr5000Plugin(t)
 	// An ATEME status object: enumerated, and the MIB marks it
 	// read-write even though it is a reading.
 	o := p.objectFor(codec.VarBind{
@@ -846,7 +858,7 @@ func TestAWalkedPathIsWhatTheDeviceSaidItWas(t *testing.T) {
 }
 
 func TestWriteAnEnumByTheWordTheManualUses(t *testing.T) {
-	p := &Plugin{}
+	p := dr5000Plugin(t)
 	// The ATEME IRD's lock state: "true" and "false" are its own words.
 	v, err := p.wireValue(codec.MustParseOID("1.3.6.1.4.1.27338.5.5.3.3.1"),
 		dhsc.Value{Kind: dhsc.KindString, Str: "true"})
@@ -983,14 +995,14 @@ func TestIdentityIsTheDevicesOwnWords(t *testing.T) {
 		t.Errorf("model only = %q", got)
 	}
 
-	// A device that publishes neither gets no identity rather than a
-	// guess — the protocol default then governs its template.
+	// A device that publishes neither is named by what every agent has:
+	// its sysObjectID, the same on every unit of the model.
 	delete(vals, model)
 	p3 := scriptedPlugin(t, &scriptedNet{Net: transport.New(transport.Config{}), reply: answers(vals)})
 	if err := p3.Connect(ctx, "127.0.0.1", 161); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := p3.IdentityProbe(ctx, 0); got != "" {
+	if got, _ := p3.IdentityProbe(ctx, 0); got == "" {
 		t.Errorf("nothing published = %q", got)
 	}
 }
@@ -1008,7 +1020,7 @@ func TestIdentityNeedsASessionAndABranch(t *testing.T) {
 	q.mu.Lock()
 	q.sysOID = codec.MustParseOID("1.3.6.1.2.1.1")
 	q.mu.Unlock()
-	if got, err := q.IdentityProbe(context.Background(), 0); got != "" || err != nil {
+	if got, err := q.IdentityProbe(context.Background(), 0); got == "" || err != nil {
 		t.Errorf("no vendor branch = %q, %v", got, err)
 	}
 }
@@ -1074,7 +1086,7 @@ func TestAConfiguredV3UserIsTriedFirst(t *testing.T) {
 	// v1 and v2c put a password in clear on every datagram. A device
 	// that offers v3 must not be polled the weaker way because the
 	// connector happened to try v2c first.
-	p, _, _ := pluginUnder(t, provider.Communities{Read: "public"})
+	p := connected(t, provider.Communities{Read: "public"})
 	if got := p.versionOrder(nil); len(got) != 2 || got[0] != codec.Version2c {
 		t.Errorf("with no user = %v, want v2c then v1", got)
 	}
@@ -1152,5 +1164,54 @@ func TestTheNeutralConnectorPollsOverV3(t *testing.T) {
 	}
 	if got.Int != 42 {
 		t.Errorf("read back %+v", got)
+	}
+}
+
+// The agent's answer to Connect is traffic: a datagram protocol has no
+// connect to prove the path with, so the reply is the proof. `health` on an
+// agent that had just answered used to say "reachable=false, no rx yet".
+func TestHealthAfterConnectIsReachableAndLive(t *testing.T) {
+	p := connected(t, provider.Communities{Read: "public"})
+	h := p.SessionHealth(context.Background())
+	if !h.Connected || !h.Live || !h.Reachable {
+		t.Errorf("health right after Connect: connected=%v live=%v reachable=%v, want all three", h.Connected, h.Live, h.Reachable)
+	}
+}
+
+// A table that does not exist stops the connection: naming a device from
+// nothing would be worse than refusing.
+func TestConnectRefusesAnUnknownTable(t *testing.T) {
+	p := connected(t, provider.Communities{Read: "public"})
+	host, port := p.host, p.port
+	p.SetMIB("absent")
+	if err := p.Connect(context.Background(), host, port); err == nil {
+		t.Error("an unknown table must stop the connection")
+	}
+}
+
+func TestSetMIBNamesTheTable(t *testing.T) {
+	p := connected(t, provider.Communities{Read: "public"})
+	host, port := p.host, p.port
+	p.SetMIB("ateme-dr5000")
+	if err := p.Connect(context.Background(), host, port); err != nil {
+		t.Fatal(err)
+	}
+	if want, _ := mib.Load("ateme-dr5000"); p.Table() != want {
+		t.Error("the table asked for is not the one in use")
+	}
+}
+
+// With no table found, a device stays on the base table and it is noted.
+func TestAnUnknownDeviceStaysOnTheBaseTable(t *testing.T) {
+	p := &Plugin{}
+	p.sysOID = codec.MustParseOID("1.3.6.1.4.1.1.2.3")
+	if err := p.selectTable(); err != nil {
+		t.Fatal(err)
+	}
+	if p.Table() != mib.Base() {
+		t.Error("an unknown device must get the base table")
+	}
+	if got := p.ComplianceProfile().Snapshot()[NoDeviceMIB]; got != 1 {
+		t.Errorf("%s fired %d times", NoDeviceMIB, got)
 	}
 }

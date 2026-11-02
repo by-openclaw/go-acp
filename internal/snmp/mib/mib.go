@@ -53,6 +53,21 @@ var (
 	SysServices = oid("1.3.6.1.2.1.1.7.0")
 )
 
+// The ENTITY-MIB (RFC 6933) columns that say what a box is, in a standard
+// place, for a device with no table of its own. A row of class chassis is
+// the box itself.
+var (
+	EntPhysicalClass       = oid("1.3.6.1.2.1.47.1.1.1.1.5")
+	EntPhysicalFirmwareRev = oid("1.3.6.1.2.1.47.1.1.1.1.9")
+	EntPhysicalSoftwareRev = oid("1.3.6.1.2.1.47.1.1.1.1.10")
+	EntPhysicalSerialNum   = oid("1.3.6.1.2.1.47.1.1.1.1.11")
+	EntPhysicalMfgName     = oid("1.3.6.1.2.1.47.1.1.1.1.12")
+	EntPhysicalModelName   = oid("1.3.6.1.2.1.47.1.1.1.1.13")
+)
+
+// EntPhysicalChassis is entPhysicalClass chassis(3).
+const EntPhysicalChassis = 3
+
 // The RFC 3418 §5 snmp group counters an NMS reads to tell "nobody is
 // polling us" from "we are answering wrong".
 var (
@@ -135,23 +150,12 @@ func Name(o codec.OID) string {
 	if n, ok := names[o.String()]; ok {
 		return n
 	}
-	return Compiled().Name(o)
+	return Base().Name(o)
 }
 
-// Describe is [Name] for a caller that knows which device it is talking
-// to: prefer lists the modules to name from first where two devices name
-// one OID differently. It also returns the compiled object, nil when
-// nothing covers o, so an enumerated value can be labelled.
-func Describe(o codec.OID, prefer ...string) (string, *Object) {
-	obj, rest := Compiled().Lookup(o, prefer...)
-	if n, ok := names[o.String()]; ok {
-		return n, obj
-	}
-	if obj == nil {
-		return o.String(), nil
-	}
-	return withSuffix(obj.Name, rest), obj
-}
+// Describe is [Table.Describe] on the base table, for a caller with no
+// device behind it.
+func Describe(o codec.OID) (string, *Object) { return Base().Describe(o) }
 
 // names is the reverse index for [Name]. Built from the variables above
 // rather than written twice, so a corrected OID cannot leave a stale
@@ -194,19 +198,11 @@ func Standard() map[string]codec.OID {
 }
 
 // Resolve turns what an operator typed into an OID: a standard name, a
-// dotted numeric form, or a name from the compiled MIBs — controlMode.0,
-// or ETV-TT1260-MIB::controlMode.0 where a bare name is ambiguous.
+// dotted numeric form, or a name from the base table. A vendor's name needs
+// that device's table: see [Table.ResolveInput].
 //
 // All of them, because all of them get typed. A manager's own
 // documentation says sysDescr.0, a vendor's says 1.3.6.1.4.1.7995.1.2.3.4,
 // and the vendor's MIB says controlMode, and an operator pasting any of
 // them should not have to know which this tool wants.
-func Resolve(s string) (codec.OID, error) {
-	if o, ok := Standard()[s]; ok {
-		return o, nil
-	}
-	if s == "" || s[0] == '.' || (s[0] >= '0' && s[0] <= '9') {
-		return codec.ParseOID(s)
-	}
-	return Compiled().Resolve(s)
-}
+func Resolve(s string) (codec.OID, error) { return Base().ResolveInput(s) }

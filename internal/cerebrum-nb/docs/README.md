@@ -1,6 +1,6 @@
 # Cerebrum NB plugin
 
-EVS **Cerebrum Northbound API 0v16** (authoritative) — also branded
+EVS **Cerebrum Northbound API v0.17** (authoritative) — also branded
 **Neuron Bridge**. XML over WebSocket, default port **40007**.
 0v13 is the historical baseline; 0v16 is a superset.
 

@@ -20,7 +20,7 @@ func TestHandleAllSourceNames(t *testing.T) {
 	if res.reply == nil || res.reply.ID != codec.TxSourceNamesResponse {
 		t.Fatalf("reply = %+v; want tx 0x6A", res.reply)
 	}
-	decoded, err := codec.DecodeSourceNamesResponse(*res.reply)
+	decoded, err := codec.DecodeSourceNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestHandleSingleSourceName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	decoded, err := codec.DecodeSourceNamesResponse(*res.reply)
+	decoded, err := codec.DecodeSourceNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestHandleAllDestAssocNames(t *testing.T) {
 	if res.reply.ID != codec.TxDestAssocNamesResponse {
 		t.Fatalf("reply ID = %#x; want 0x6B", res.reply.ID)
 	}
-	decoded, err := codec.DecodeDestAssocNamesResponse(*res.reply)
+	decoded, err := codec.DecodeDestAssocNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestHandleSingleDestAssocName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	decoded, err := codec.DecodeDestAssocNamesResponse(*res.reply)
+	decoded, err := codec.DecodeDestAssocNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}

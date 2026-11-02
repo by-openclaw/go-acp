@@ -1,10 +1,7 @@
 # ADR-0022 — Card data model (Device / Frame / Slot / Card / DM)
 
 Status: accepted
-
-This ADR is a **living document**. Add new facts in the Revisions
-trailer at the end. Do not spawn a new ADR number unless the whole
-record is being superseded.
+Date: 2026-10-18
 
 ## Context
 
@@ -45,23 +42,30 @@ Matrix is a separate entity — see ADR-0023.
 - Same card walked at any slot at any IP yields the **same DM file**.
 - Two slots holding the same card reference the same DM by string; no
   on-disk duplication.
+- A card whose ports differ by type (rrcs: the port types of an AES67
+  card) holds one template per port type in `templates[]`; the manifest
+  slot names its template. The shape comes from the specification and
+  one walk confirms it.
 
 ### Storage layout (locked)
 
 ```
 .cache/dm/<proto>/<Model@SwRev>.json     per-card schema, versioned
-.cache/manifest/<device-name>.yaml       per-device wiring
+.cache/manifest/<device>.json            per-device wiring
 ```
 
 DM versioning rules:
 
 - New `(Model, SwRev)` observed → new file.
-- Never overwrite an existing DM file.
+- Never overwrite an existing DM file. A second walk of a `(Model, SwRev)`,
+  another unit's included, keeps the file and says so. Two ways replace one:
+  `extract --refresh` (ADR-0028 §6) and deleting the file.
 - Never dedupe — two SwRevs with identical trees both persist.
 
 ### Manifest shape
 
-The manifest answers **where**; the DM answers **what**.
+The manifest answers **where**; the DM answers **what**. The file is
+JSON on disk; the shape is shown as YAML for readability.
 
 ```yaml
 device:
@@ -75,6 +79,8 @@ device:
     - ip: <ipv4>
       port: <int>
       transport: tcp|udp
+  unit:                           # optional: facts of this one box, a serial
+    <key>: <string>               # never in a DM, which every unit shares
 frames:
   - name: <frame-name>
     slots:
@@ -193,9 +199,3 @@ protocol) feeding the federation layer.
   shape, or Frame entity → block until this ADR is updated".
 - CI check: DM JSON files MUST NOT contain top-level `device`,
   `slots`, `created_at`, `generator`, `host`, `ip`, or `port`.
-
-## Revisions
-
-- 2026-05-14 — initial — yboujraf
-- 2026-05-14 — every connector boots from manifest+DM; legacy `--tree singlefile.json` is retired parity debt. Default value resolves per-instance override → per-DM override → vendor DM default — yboujraf
-- 2026-10-20 — rrcs: the DM of a card type holds one template per port type (canonical `templates[]`, the shape from the specification confirmed by one walk), the node type's DM the templates of the system objects, keys and commands; every port is its own manifest entry (`addr`: bay, node, port, oid per half, type, template, role) — the shared `Slot` shape unchanged. `extract` writes both; the inventory is rewritten on each run, a model only with `--refresh` — by-rune

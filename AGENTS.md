@@ -419,7 +419,7 @@ Commit message style (observed across the repo):
 
 <body — why, not what>
 
-Co-Authored-By: Claude Opus ...
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 ```
 
 Where `<type>` ∈ `{feat, fix, refactor, docs, test, chore}` and `<scope>`

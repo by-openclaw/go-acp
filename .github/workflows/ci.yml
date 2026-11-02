@@ -316,12 +316,19 @@ jobs:
           check tools/mibcheck 100
           check tools/gencli 100
           check tools/gen-probel-tree 100
+          check tools/gen-prism-catalogue 100
+          check internal/prism/codec 100
+          check internal/prism/consumer 100
           check internal/auth 100
           check internal/plugin 100
           check internal/ccm/codec 100
           check internal/ccm/consumer 100
           check internal/ccm/provider 100
           check internal/consumer/compliance 100
+          check internal/virtuoso/codec 100
+          # 99: the one uncovered block is NewTLSClient's error, which this
+          # connector's TLS posture (no files to read) cannot reach.
+          check internal/virtuoso/consumer 99
           # SNMP wire format. Floor verified on the Linux tools host as well
           # as this desk: the package is stdlib-only with no build tags, so
           # the two agree, but the check is what says so.
@@ -333,6 +340,7 @@ jobs:
           check internal/snmp/smi 100
           check internal/snmp/mibgen 100
           check tools/mibc 100
+          check tools/genpen 100
           check internal/cerebrum-nb/consumer 100
           # AMWA NMOS controller path — gold-template gated. dnssd is not
           # listed: its Linux-only avahi/DBus and unix multicast-loop files
@@ -460,6 +468,11 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.1.6
+          # The action's "config verify" step downloads a JSON schema from
+          # golangci-lint.run on every run. On 2026-10-07 that site did not
+          # answer and the Lint job failed before linting a line. The
+          # config is checked by the linter itself when it loads it.
+          verify: false
 
       # ADR-0005 rule 2. docs/adr/0005-deps.json has named this gate in its
       # own policy block since it was written; the script did not exist, so
@@ -560,7 +573,11 @@ jobs:
     name: Release Please
     runs-on: ubuntu-24.04
     needs: [test, test-rhel, lint, build-all]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # push to main, or the manual dispatch the trigger comment above promises
+    # as the recovery for a dropped push event (2026-10-22: two merges to main
+    # got no run at all; the dispatched run skipped this job and no release
+    # was cut).
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write

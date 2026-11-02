@@ -692,3 +692,65 @@ END`)
 		t.Errorf("real definition moved: %+v", o)
 	}
 }
+
+func TestRangeTop(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                "",
+		"(SIZE (0..32))":  "",
+		"(1..32)":         "32",
+		"(0..7 | 9..12)":  "12",
+		"(5)":             "5",
+		"(0..MAX)":        "",
+		"(-20..-10)":      "-10",
+		"(0..2147483647)": "2147483647",
+	} {
+		if got := rangeTop(in); got != want {
+			t.Errorf("%q = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// A range is the object's own, or its textual convention's.
+func TestCompileKeepsARange(t *testing.T) {
+	mods, _, err := Parse("t.mib", []byte(`T DEFINITIONS ::= BEGIN
+  IMPORTS enterprises FROM S;
+  Small ::= TEXTUAL-CONVENTION STATUS current DESCRIPTION "x" SYNTAX Integer32 (1..32)
+  a OBJECT-TYPE SYNTAX Small MAX-ACCESS read-only STATUS current DESCRIPTION "x" ::= { enterprises 1 }
+  b OBJECT-TYPE SYNTAX Small (1..8) MAX-ACCESS read-only STATUS current DESCRIPTION "x" ::= { enterprises 2 }
+  c OBJECT-TYPE SYNTAX Integer32 (0..7) MAX-ACCESS read-only STATUS current DESCRIPTION "x" ::= { enterprises 3 }
+END
+S DEFINITIONS ::= BEGIN
+  enterprises OBJECT IDENTIFIER ::= { iso 3 6 1 4 1 }
+END`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, o := range Compile(mods).Objects {
+		got[o.Name] = o.Max
+	}
+	if got["a"] != "32" || got["b"] != "8" || got["c"] != "7" {
+		t.Errorf("%v", got)
+	}
+}
+
+// A patch may hang a symbol off one its module does not import.
+func TestAPatchCanNameAParentInAnotherModule(t *testing.T) {
+	mods, _, err := Parse("t.mib", []byte(`A DEFINITIONS ::= BEGIN
+  top OBJECT IDENTIFIER ::= { iso 3 }
+END
+B DEFINITIONS ::= BEGIN
+  x OBJECT IDENTIFIER ::= { y 1 }
+END`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	Apply(mods, []Patch{{Module: "B", Name: "y", Parent: "A::top", Arc: 4, Why: "evidence"}})
+	got := map[string]string{}
+	for _, o := range Compile(mods).Objects {
+		got[o.Name] = o.Dotted()
+	}
+	if got["y"] != "1.3.4" || got["x"] != "1.3.4.1" {
+		t.Errorf("%v", got)
+	}
+}

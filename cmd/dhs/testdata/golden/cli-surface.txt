@@ -20,7 +20,15 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p | rrcs
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
+  Verbs (ccp):                 info, walk, get, set, watch + panel, colours
+                               (Axon control panels; run 'dhs consumer ccp -h')
+  Verbs (kratos):              info, walk, get, set, watch, export + command, table
+                               (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (prism):               info, walk, get, set, watch, export
+                               (waveform monitor; run 'dhs consumer prism -h')
+  Verbs (virtuoso):            info, walk, get, set, watch, export
+                               (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -34,6 +42,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                and every generic verb (get, set, walk, export,
                                health, status, alarm, …; ADR-0037)
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
+  Verbs (rcp):                 info, list, get, export, create, set, delete
+                               (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113
@@ -93,11 +103,14 @@ $ dhs list-protocols
 acp1     port=2071  Axon Control Protocol v1.4 (UDP direct)
 acp2     port=2072  Axon Control Protocol v2 (AN2/TCP)
 ccm      port=443   EVS Neuron CCM (REST/JSON over TLS) — the model is the device's own api.yml
+ccp      port=2071  Axon Cortex Control Panel Protocol (CCP-1601 …) — TCP 2071, binary
 cerebrum-nb port=40007 EVS Cerebrum Northbound API (XML over WebSocket; a.k.a. Neuron Bridge)
 emberplus port=9000  Ember+ (Glow/S101/TCP) consumer
+kratos   port=3000  Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 7592827 Rev. E)
 mnset    port=80    Riedel MuoN eMSFP / FusioN — direct REST control (emsfp/node/v1); host = one module (slot 0) or MN SET :8080 (frame, one slot per module)
 osc-v10  port=8000  Open Sound Control 1.0 — UDP + TCP/length-prefix; core types i/f/s/b
 osc-v11  port=8000  Open Sound Control 1.1 — UDP + TCP/SLIP; adds T/F/N/I + arrays
+prism    port=9000  Telestream PRISM waveform monitor (REST/JSON, the instrument's /api/help page)
 probel-sw02p port=2002  Probel SW-P-02 matrix controller (TCP)
 probel-sw08p port=2008  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
 rollcall port=2050  Snell RollCall over IPShare, 16-bit and 32-bit generations
@@ -106,6 +119,7 @@ snmp     port=161   SNMP v1 / v2c manager — the device model is the agent's ow
 tsl-v31  port=4000  TSL UMD v3.1 — 18-byte UDP frame (binary tallies, no colour)
 tsl-v40  port=4000  TSL UMD v4.0 — v3.1 extended with XDATA + CHKSUM (2-bit colour per LH/Text/RH per display)
 tsl-v50  port=8901  TSL UMD v5.0 — UDP (≤2048 B) or TCP with DLE/STX wrapper; multi-DMSG; UTF-16LE
+virtuoso port=80    Nevion Virtuoso MI chassis and cards (REST/JSON) — the model is the device's own schema
 
 ========== consumer/acp1/info ==========
 $ dhs consumer acp1 info --help
@@ -1334,17 +1348,19 @@ VERBS
   Verb                     Wire
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
-  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
-  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
-  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
-  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
+  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
+  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
+  get-route                one-shot OBTAIN of one destination, every level: --dest ID|NAME [--level L] [--router IP] [--output json]
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
-  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N = fan-out | --dest N = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L] [--router IP]
+  list-tags                one-shot OBTAIN RM_SRCE_TAGS | RM_DEST_TAGS (v0.17 §5.1.7-§5.1.8) → the tags of a source / destination, one row per level: --kind source|destination [--id N] [--level L] [--output json]
+  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N|NAME = fan-out | --dest N|NAME = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L[,L…] IDs or mnemonics] [--router IP]
   replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
-  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
+  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP|NAME [--by-name] [--device-type DEVICE|ROUTER — omitted: DEVICE first, ROUTER if the server refuses (§5.4.2 needs the class; 2.9.3 NACKs 10 without it)]
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
@@ -1353,6 +1369,7 @@ VERBS
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
+  extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<ip>/<sub>": ["FOLDER"]})
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
@@ -1364,8 +1381,11 @@ VERBS
   lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
-  set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
-  set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
+  set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT] [--allow-clear: send an empty MNEMONIC, the undocumented clear form]
+  set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --level ID --tags a,b,c [--federation: the federation IO instead of the local one, v0.17]
+  assoc                    ACTION <ROUTING TYPE='*_ASSOC[_IP]'/> bind a RouteMaster source/destination on one level to a device IO: --kind SRCE_ASSOC|DEST_ASSOC --srce|--dest ID --level ID --target-device NAME [--target-level ID] --target-io N; or an IP sender/receiver: --kind SRCE_ASSOC_IP|DEST_ASSOC_IP … --target-device NAME --target-name SENDER|RECEIVER [--sub-device N]; [--federation: the federation IO instead of the local one, v0.17] [--bare: the document's attributes only, no IP_ADDRESS / DEVICE_TYPE]
+  rm-add                   ACTION <ROUTING TYPE='RM_SRCE_ADD|RM_DEST_ADD'/> (v0.17 §4.2.3) append sources or destinations to the RouteMaster: --kind source|destination [--count N (1-1000)] [--virtual] [--federation] [--output json]. The RESULT reply (ACCEPTED|FAILED) means validated and queued, not applied: read the collection back.
+  rm-delete                ACTION <ROUTING TYPE='RM_SRCE_DELETE|RM_DEST_DELETE'/> (v0.17 §4.2.4) --kind source|destination --id 21,22,23 [--federation] [--output json]
   salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
                            ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
   category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|modify-all|modify-desc|delete|delete-item --category C [--index N] [--item-type T] [--value V] [--name N] [--label L] [--inherits P] [--description D]
@@ -1762,6 +1782,8 @@ error: validation: cerebrum-nb watch: --device IP|NAME is required
 ========== consumer/cerebrum-nb/route ==========
 $ dhs consumer cerebrum-nb route --help
 Usage of cerebrum-nb route:
+  -all-levels
+    	single-route mode without LEVEL_ID: the document's "all level" request (§4.1.1), what a panel take on every level sends — ONE action, no read-before, no diff
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -1771,13 +1793,13 @@ Usage of cerebrum-nb route:
   -debug
     	verbose RX/TX XML logging
   -dest string
-    	destination ID (single-route mode)
+    	destination ID or mnemonic (single-route mode)
   -device-name string
     	alternative to --router: address by DEVICE_NAME
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
   -level string
-    	level ID (single-route mode)
+    	level ID or mnemonic (single-route mode); a comma-separated list routes several levels, one ROUTE per level
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1797,7 +1819,7 @@ Usage of cerebrum-nb route:
   -router string
     	router target — IP_ADDRESS for the route-master sentinel (0.0.0.0) or a physical Router IP (default "0.0.0.0")
   -srce string
-    	source ID (single-route mode)
+    	source ID or mnemonic (single-route mode)
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)
   -timeout duration
@@ -1815,7 +1837,7 @@ Usage of cerebrum-nb usage:
   -debug
     	verbose RX/TX XML logging
   -dest string
-    	filter: only this dest's feeds (upstream-chain view in ascii)
+    	filter: only this dest's feeds (upstream-chain view in ascii) — ID or mnemonic
   -format string
     	output format: csv | ascii (default "csv")
   -idle duration
@@ -1823,7 +1845,7 @@ Usage of cerebrum-nb usage:
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
   -level string
-    	filter: one level only
+    	filter: these levels only — one ID, or a comma-separated list of IDs / mnemonics
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1845,7 +1867,7 @@ Usage of cerebrum-nb usage:
   -router string
     	router target (route-master sentinel 0.0.0.0 or a physical Router IP) (default "0.0.0.0")
   -srce string
-    	filter: only this source's assignments (fan-out view in ascii)
+    	filter: only this source's assignments (fan-out view in ascii) — ID or mnemonic
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)
   -timeout duration
@@ -1958,6 +1980,8 @@ Usage of cerebrum-nb export:
 ========== consumer/cerebrum-nb/list-sources ==========
 $ dhs consumer cerebrum-nb list-sources --help
 Usage of cerebrum-nb list-srce:
+  -associations
+    	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -2002,6 +2026,8 @@ Usage of cerebrum-nb list-srce:
 ========== consumer/cerebrum-nb/list-dests ==========
 $ dhs consumer cerebrum-nb list-dests --help
 Usage of cerebrum-nb list-dest:
+  -associations
+    	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -2046,6 +2072,8 @@ Usage of cerebrum-nb list-dest:
 ========== consumer/cerebrum-nb/list-levels ==========
 $ dhs consumer cerebrum-nb list-levels --help
 Usage of cerebrum-nb list-level:
+  -associations
+    	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -2258,6 +2286,8 @@ error: validation: cerebrum-nb device-config: unknown operation "--help" (want a
 ========== consumer/cerebrum-nb/set-mnemonic ==========
 $ dhs consumer cerebrum-nb set-mnemonic --help
 Usage of cerebrum-nb set-mnemonic:
+  -allow-clear
+    	send an empty MNEMONIC (the clear form; 0v16 does not document it — the server's answer is the measurement)
   -alt string
     	alternate mnemonic slot (ALT_MNE)
   -capture string
@@ -2318,10 +2348,14 @@ Usage of cerebrum-nb set-tags:
     	destination ID
   -device-name string
     	address by DEVICE_NAME
+  -federation
+    	send the change to the federation source/destination instead of the local one (v0.17 FEDERATION=1)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
   -kind string
     	tags kind: RM_SRCE_TAGS | RM_DEST_TAGS (default "RM_DEST_TAGS")
+  -level string
+    	RouteMaster level ID the tags are set on (§4.1 RM_*_TAGS carries LEVEL_ID; the server refuses the action without it)
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string

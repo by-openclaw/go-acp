@@ -446,6 +446,8 @@ func runSNMPTrapListen(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("trap-listen", flag.ContinueOnError)
 	bind := fs.String("bind", fmt.Sprintf(":%d", snmpcons.TrapPort),
 		"address to listen on. Port 162 needs privilege on Linux.")
+	mibTable := fs.String("mib", "",
+		"the sender's MIB table, ateme-dr5000 for example; without it vendor objects stay numbers")
 	communities := fs.String("community", "",
 		"comma-separated v1/v2c communities to accept. EMPTY ACCEPTS ANY, which is what a diagnostic listener wants and a production one must not have.")
 	user := fs.String("user", "", "USM user name to accept v3 notifications as")
@@ -490,11 +492,19 @@ func runSNMPTrapListen(ctx context.Context, args []string) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	table := mib.Base()
+	if *mibTable != "" {
+		loaded, err := mib.Load(*mibTable)
+		if err != nil {
+			return err
+		}
+		table = loaded
+	}
 	err := l.Listen(ctx, func(t snmpcons.Trap) {
 		fmt.Printf("%s %s\n", time.Now().UTC().Format(time.RFC3339), trapLine(t))
 		for _, vb := range t.VarBinds {
-			name, obj := mib.Describe(vb.Name)
-			fmt.Printf("    %s = %s\n", name, displayValue(vb.Value, obj, nil))
+			name, obj := table.Describe(vb.Name)
+			fmt.Printf("    %s = %s\n", name, displayValue(vb.Value, obj, table))
 		}
 	})
 	if prof, ok := opts.Compliance.(*compliance.Profile); ok {

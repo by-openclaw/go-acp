@@ -17,7 +17,7 @@ import (
 func TestEveryWritingPluginGuards(t *testing.T) {
 	guarded := map[string]bool{
 		"acp1": true, "acp2": true, "ccm": true, "cerebrum-nb": true, "emberplus": true,
-		"mnset": true, "rollcall": true, "rrcs": true, "snmp": true,
+		"ccp": true, "kratos": true, "mnset": true, "prism": true, "rollcall": true, "rrcs": true, "snmp": true, "virtuoso": true,
 	}
 	cannotWrite := map[string]bool{
 		"osc-v10": true, "osc-v11": true, "probel-sw02p": true, "probel-sw08p": true,

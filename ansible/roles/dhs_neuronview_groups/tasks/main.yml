@@ -1,0 +1,122 @@
+---
+# EVS Neuron VIEW input groups: IP GROUP n = VIDEO STREAM n,
+# AUDIO STREAM 2n-1 + AUDIO STREAM 2n, DATA STREAM n — the layout of the
+# Groups page of the device. The video and data streams of a group are
+# left as they are; only its audio streams and their channel mapping are
+# set.
+#
+# The device ships one audio stream per group. A second one per group
+# does not exist until it is created, so the missing streams are created
+# first (disabled, no SDP — connecting them is the business of NMOS).
+#
+# Idempotent: a group that already holds the right streams and mapping is
+# not written.
+
+- name: The layout is given by the inventory
+  ansible.builtin.assert:
+    that:
+      - neuronview.api is defined
+      - neuronview.groups | int > 0
+      - neuronview.audio_streams_per_group | int > 0
+      - neuronview.audio_channels_per_stream | int > 0
+    fail_msg: set `neuronview` in the inventory (see the role defaults)
+    quiet: true
+
+- name: Streams on the device
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/inputs/streams"
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+    return_content: true
+  register: nvg_streams
+
+- name: Audio streams the layout needs and the device does not have
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/inputs/streams/"
+    method: POST
+    body_format: json
+    body: {enable: false, name: "{{ nvg_name }}", nmosLabel: "", sdp: "", type: audio}
+    status_code: 201
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+  vars:
+    nvg_name: "{{ neuronview.audio_stream_name | format(item) }}"
+  loop: "{{ range(1, (neuronview.groups | int) * (neuronview.audio_streams_per_group | int) + 1) | list }}"
+  loop_control:
+    label: "{{ nvg_name }}"
+  when: nvg_name not in (nvg_streams.json | map(attribute='name') | list)
+  changed_when: true
+  register: nvg_created
+
+- name: Streams and groups as they now are
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/inputs/{{ item }}"
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+    return_content: true
+  loop: [streams, groups]
+  register: nvg_now
+
+- name: Audio streams of each group
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/inputs/groups/{{ nvg_group.uuid }}"
+    method: PUT
+    body_format: json
+    body:
+      name: "{{ nvg_group.name }}"
+      videoUuids: "{{ nvg_group.videoUuids }}"
+      dataUuids: "{{ nvg_group.dataUuids }}"
+      bindings: "{{ nvg_group.bindings }}"
+      audioUuids: "{{ nvg_audio }}"
+      audioChannelMapping: "{{ nvg_mapping }}"
+    status_code: 200
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+  vars:
+    nvg_uuid_of: "{{ dict(nvg_now.results[0].json | map(attribute='name') | zip(nvg_now.results[0].json | map(attribute='uuid'))) }}"
+    nvg_group: "{{ nvg_now.results[1].json | selectattr('name', 'equalto', neuronview.group_name | format(item)) | first }}"
+    nvg_per: "{{ neuronview.audio_streams_per_group | int }}"
+    nvg_ch: "{{ neuronview.audio_channels_per_stream | int }}"
+    nvg_audio: >-
+      {%- set out = [] -%}
+      {%- for k in range(nvg_per | int) -%}
+      {%- set _ = out.append(nvg_uuid_of[neuronview.audio_stream_name | format((item - 1) * (nvg_per | int) + k + 1)]) -%}
+      {%- endfor -%}
+      {{ out }}
+    nvg_mapping: >-
+      {%- set out = [] -%}
+      {%- for k in range(nvg_per | int) -%}
+      {%- for c in range(nvg_ch | int) -%}
+      {%- set _ = out.append(nvg_audio[k] ~ '::' ~ c ~ '::' ~ (k * (nvg_ch | int) + c)) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ out }}
+  loop: "{{ range(1, (neuronview.groups | int) + 1) | list }}"
+  loop_control:
+    label: "{{ neuronview.group_name | format(item) }}"
+  when: nvg_group.audioUuids != nvg_audio or nvg_group.audioChannelMapping != nvg_mapping
+  changed_when: true
+  register: nvg_set
+
+- name: Groups as the device now reports them
+  ansible.builtin.uri:
+    url: "{{ neuronview.api }}/inputs/groups"
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+    return_content: true
+  register: nvg_final
+
+- name: Every group holds its audio streams
+  ansible.builtin.assert:
+    that:
+      - nvg_short | length == 0
+    fail_msg: "groups without {{ neuronview.audio_streams_per_group }} audio stream(s): {{ nvg_short }}"
+    success_msg: >-
+      {{ neuronview.groups }} group(s), {{ neuronview.audio_streams_per_group }} audio stream(s) each —
+      {{ nvg_created.results | selectattr('changed') | list | length }} stream(s) created,
+      {{ nvg_set.results | selectattr('changed') | list | length }} group(s) written
+  vars:
+    nvg_short: >-
+      {%- set out = [] -%}
+      {%- for n in range(1, (neuronview.groups | int) + 1) -%}
+      {%- set g = nvg_final.json | selectattr('name', 'equalto', neuronview.group_name | format(n)) | list -%}
+      {%- if g | length != 1 or (g[0].audioUuids | length) != (neuronview.audio_streams_per_group | int) -%}
+      {%- set _ = out.append(neuronview.group_name | format(n)) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ out }}

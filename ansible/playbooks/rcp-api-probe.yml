@@ -1,0 +1,213 @@
+---
+# Cerebrum RCP: call every GET operation of the API document against a
+# server and classify the answers — the measurement behind the EVS feedback
+# note (internal/rcp/docs/evs-rcp-2.5.3-vs-2.6.1.md §3), re-run on every
+# Cerebrum release. Read-only: GET only, one login, one logout; nothing is
+# written to the server. Idempotent: the output files are the only change.
+#
+# The calls go through curl, not `uri`: the server matches the mandatory
+# `reqid` header case-sensitively and the uri module sends it as `Reqid`.
+# The token and the password live in root-only files for the duration of
+# the play, never on a command line, and are removed at the end.
+#
+# Path parameters are substituted from `rcp_probe_params` (an id of 1, the
+# Cerebrum's own NMOS device, a nil uuid): an endpoint that then answers 404
+# "not found" exists but has no such object; one that answers 404 "Unknown
+# collection" is not on this server. The classes are the ones of §3.
+#
+# Data: inventory `cerebrum` (host, rcp_port, nmos_device); the document
+# under internal/rcp/assets. Account: DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS
+# in the environment.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/rcp-api-probe.yml
+#   ... -e probe_dir=/some/dir          where the CSV and the summary go
+
+- name: rcp — probe every GET operation of the API document
+  hosts: plant
+  gather_facts: false
+  vars:
+    rcp_base: "http://{{ cerebrum.host }}:{{ cerebrum.rcp_port }}/v2"
+    rcp_spec_file: "{{ playbook_dir }}/../../internal/rcp/assets/Cerebrum RCP API-2_6_1.json"
+    rcp_spec: "{{ lookup('ansible.builtin.file', rcp_spec_file) | from_json }}"
+    rcp_probe_dir: "{{ probe_dir | default('/root/rcp-probe') }}"
+    rcp_probe_timeout: 20
+    rcp_probe_cfg: "/root/.rcp-probe-curl.cfg"
+    rcp_probe_login: "/root/.rcp-probe-login.json"
+    rcp_curl: ["curl", "-s", "-m", "{{ rcp_probe_timeout }}", "-H", "Accept: application/json"]
+    rcp_probe_params:
+      id: "1"
+      sourceId: "1"
+      destinationId: "1"
+      levelId: "1"
+      deviceIndex: "0"
+      channel: "1"
+      faderID: "1"
+      keyID: "1"
+      pageID: "1"
+      sceneID: "1"
+      showID: "1"
+      headId: "1"
+      equaliserBand: "1"
+      filterBand: "1"
+      deviceName: "Cerebrum"
+      instanceName: "Cerebrum"
+      objectPath: "Nodes"
+      uuid: "00000000-0000-0000-0000-000000000000"
+      uri: "x"
+      cameraPresetName: "x"
+    # Per path family, parameters that differ: the device objects are read on
+    # the NMOS device (its `Nodes` table), everything else on the Cerebrum.
+    rcp_probe_overrides:
+      "/devices/{deviceName}/{deviceIndex}/objects":
+        deviceName: "{{ cerebrum.nmos_device | default('NMOS') }}"
+    # The GET operations of the document, path parameters substituted.
+    rcp_gets: >-
+      {%- set out = [] -%}
+      {%- for path, item in rcp_spec.paths.items() if 'get' in item -%}
+      {%- set ns = namespace(p=path, params=rcp_probe_params) -%}
+      {%- for prefix, over in rcp_probe_overrides.items() if path.startswith(prefix) -%}
+      {%- set ns.params = ns.params | combine(over) -%}
+      {%- endfor -%}
+      {%- for k, v in ns.params.items() -%}
+      {%- set ns.p = ns.p | replace('{' ~ k ~ '}', v) -%}
+      {%- endfor -%}
+      {%- set _ = out.append({'doc': path, 'path': ns.p}) -%}
+      {%- endfor -%}
+      {{ out }}
+    rcp_user: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER') }}"
+    rcp_pass: "{{ lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS') }}"
+  tasks:
+    - name: The server, the document and the account are given
+      ansible.builtin.assert:
+        that:
+          - cerebrum.host is defined and cerebrum.rcp_port is defined
+          - rcp_spec.info.version is defined
+          - rcp_gets | length > 0
+          - rcp_user | length > 0
+        fail_msg: set `cerebrum` in the inventory, keep the API document under internal/rcp/assets, and DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment
+        quiet: true
+
+    - name: API version served (no login)
+      ansible.builtin.command:
+        argv: "{{ rcp_curl + ['-H', 'reqid: 1', rcp_base ~ '/api'] }}"
+      register: rcp_api_raw
+      changed_when: false
+
+    - name: Served version
+      ansible.builtin.set_fact:
+        rcp_api: "{{ (rcp_api_raw.stdout | from_json).api }}"
+        rcp_served: "{{ (rcp_api_raw.stdout | from_json).api.majorVersion }}.{{ (rcp_api_raw.stdout | from_json).api.minorVersion }}.{{ (rcp_api_raw.stdout | from_json).api.patchVersion }}"
+
+    - name: Login body (root-only, removed below)
+      ansible.builtin.copy:
+        content: "{{ {'username': rcp_user, 'password': rcp_pass} | to_json }}"
+        dest: "{{ rcp_probe_login }}"
+        mode: "0600"
+      changed_when: false
+      no_log: true
+
+    - name: Login
+      ansible.builtin.command:
+        argv: "{{ rcp_curl + ['-H', 'reqid: 2', '-H', 'Content-Type: application/json', '--data', '@' ~ rcp_probe_login, '-X', 'POST', rcp_base ~ '/login'] }}"
+      register: rcp_login_raw
+      changed_when: false
+      no_log: true
+
+    - name: Remove the login body
+      ansible.builtin.file:
+        path: "{{ rcp_probe_login }}"
+        state: absent
+      changed_when: false
+
+    - name: Token present
+      ansible.builtin.assert:
+        that: ((rcp_login_raw.stdout | from_json).login.token | default('')) | length > 0
+        fail_msg: "login answered without a token: {{ (rcp_login_raw.stdout | from_json).error | default(rcp_login_raw.stdout[:120]) }}"
+        quiet: true
+
+    - name: Curl config with the bearer token (root-only, removed below)
+      ansible.builtin.copy:
+        content: |
+          header = "Authorization: Bearer {{ (rcp_login_raw.stdout | from_json).login.token }}"
+        dest: "{{ rcp_probe_cfg }}"
+        mode: "0600"
+      changed_when: false
+      no_log: true
+
+    - name: "Every GET of the document ({{ rcp_gets | length }} operations)"
+      ansible.builtin.command:
+        argv: "{{ rcp_curl + ['-K', rcp_probe_cfg, '-H', 'reqid: ' ~ (100 + idx), '-w', '\\n%{http_code}', rcp_base ~ item.path] }}"
+      loop: "{{ rcp_gets }}"
+      loop_control:
+        index_var: idx
+        label: "{{ item.doc }}"
+      register: rcp_get
+      changed_when: false
+      failed_when: false
+      no_log: true
+
+    - name: Logout
+      ansible.builtin.command:
+        argv: "{{ rcp_curl + ['-K', rcp_probe_cfg, '-H', 'reqid: 9999', '-X', 'DELETE', rcp_base ~ '/login'] }}"
+      changed_when: false
+      failed_when: false
+      no_log: true
+
+    - name: Remove the curl config
+      ansible.builtin.file:
+        path: "{{ rcp_probe_cfg }}"
+        state: absent
+      changed_when: false
+
+    # One class per answer, the classes of the feedback note §3.
+    - name: Classify
+      ansible.builtin.set_fact:
+        rcp_rows: >-
+          {%- set rows = [] -%}
+          {%- for r in rcp_get.results -%}
+          {%- set lines = r.stdout_lines | default([]) -%}
+          {%- set st = (lines[-1] | int) if lines | length > 0 else -1 -%}
+          {%- set body = (lines[:-1] | join(' ')) if lines | length > 1 else '' -%}
+          {%- if st >= 200 and st < 300 -%}{%- set cls = 'ok' -%}
+          {%- elif st == 404 and ('Unknown RouteMaster collection' in body or 'Unknown collection' in body) -%}{%- set cls = 'not-on-server' -%}
+          {%- elif st == 404 and 'RouteMaster IO not found' in body -%}{%- set cls = 'no-such-io' -%}
+          {%- elif st == 404 and ('not available yet' in body or 'not found' in body) -%}{%- set cls = 'no-such-object' -%}
+          {%- elif st == 404 and body | trim == '' -%}{%- set cls = '404-empty' -%}
+          {%- elif st == 404 -%}{%- set cls = '404-other' -%}
+          {%- elif st <= 0 -%}{%- set cls = 'no-answer' -%}
+          {%- elif st >= 500 -%}{%- set cls = '5xx' -%}
+          {%- else -%}{%- set cls = '4xx' -%}
+          {%- endif -%}
+          {%- set msg = (body | regex_replace('"', "'"))[:160] -%}
+          {%- set _ = rows.append({'doc': r.item.doc, 'path': r.item.path, 'status': st, 'class': cls, 'message': msg}) -%}
+          {%- endfor -%}
+          {{ rows }}
+
+    - name: Output directory
+      ansible.builtin.file:
+        path: "{{ rcp_probe_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: "CSV: document path, called path, status, class, message"
+      ansible.builtin.copy:
+        content: |
+          doc_path,called_path,status,class,message
+          {% for r in rcp_rows %}
+          "{{ r.doc }}","{{ r.path }}",{{ r.status }},{{ r.class }},"{{ r.message }}"
+          {% endfor %}
+        dest: "{{ rcp_probe_dir }}/get-ops-{{ rcp_served }}.csv"
+        mode: "0644"
+      register: rcp_csv
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: >-
+          served API {{ rcp_served }} · document {{ rcp_spec.info.version }} · {{ rcp_gets | length }} GET operations ·
+          {% for c in ['ok', 'no-such-object', 'no-such-io', 'not-on-server', '404-empty', '404-other', '4xx', '5xx', 'no-answer'] %}{{ c }}={{ rcp_rows | selectattr('class', 'equalto', c) | list | length }} {% endfor %}
+          -> {{ rcp_csv.dest }}{{ ' (changed)' if rcp_csv is changed else ' (unchanged)' }}
+
+    - name: Not on this server, or unclear
+      ansible.builtin.debug:
+        msg: "{{ rcp_rows | selectattr('class', 'in', ['not-on-server', '404-empty', '404-other', '4xx', '5xx', 'no-answer']) | map(attribute='doc') | list }}"

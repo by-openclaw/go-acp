@@ -12,6 +12,7 @@ package datastore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -218,6 +219,10 @@ func sanitizeSeg(s string) string {
 	return s
 }
 
+// ErrDMExists says a Model@SwRev already has its DM, which stays. It is not a
+// failure: the schema was captured, and a caller reports it and moves on.
+var ErrDMExists = errors.New("storage: this Model@SwRev already has a DM")
+
 // DM is the on-disk format for an identity-keyed cache file.
 //
 // Per DHS 2016 MasterView contract (refs #430): the DM is a per-card
@@ -233,6 +238,10 @@ type DM struct {
 	Model    string `json:"model"`
 	SwRev    string `json:"sw_rev"`
 	Protocol string `json:"protocol"`
+	// Identity is what the plugin found out about the device beyond model
+	// and revision, for a plugin that has more to say (SNMP: constructor,
+	// serial, sysObjectID, the MIB table in use).
+	Identity map[string]string `json:"identity,omitempty"`
 	// Root is the canonical-tree root element — the same JSON layout
 	// `dhs export --format json` outputs and `dhs producer --tree
 	// X.json` reads. Preferred for any protocol whose plugin satisfies
@@ -258,6 +267,7 @@ func (d *DM) UnmarshalJSON(data []byte) error {
 		Model     string                     `json:"model"`
 		SwRev     string                     `json:"sw_rev"`
 		Protocol  string                     `json:"protocol"`
+		Identity  map[string]string          `json:"identity"`
 		Root      json.RawMessage            `json:"root"`
 		Templates []*canonical.TemplateEntry `json:"templates"`
 		Objects   []consumer.Object          `json:"objects"`
@@ -269,6 +279,7 @@ func (d *DM) UnmarshalJSON(data []byte) error {
 	d.Model = raw.Model
 	d.SwRev = raw.SwRev
 	d.Protocol = raw.Protocol
+	d.Identity = raw.Identity
 	d.Templates = raw.Templates
 	d.Objects = raw.Objects
 	if len(raw.Root) > 0 && string(raw.Root) != "null" {
@@ -317,6 +328,34 @@ func splitIdentity(identity string) (string, string) {
 //
 // Atomic write same as SaveByIdentity.
 func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
+	if err := prepareDM(proto, identity, &dm); err != nil {
+		return err
+	}
+	return s.writeNewDM(proto, identity, dm)
+}
+
+// ReplaceDM is WriteDM over an existing file, for the one caller ADR-0028 §6
+// gives that right: `extract --refresh`, an operator asking for a new capture
+// by name. A walk never comes here.
+func (s *TreeStore) ReplaceDM(proto, identity string, dm DM) error {
+	if err := prepareDM(proto, identity, &dm); err != nil {
+		return err
+	}
+	return s.writeDMToPath(proto, identity, dm)
+}
+
+// writeNewDM writes a DM only if its Model@SwRev has none: ADR-0022, a DM is
+// versioned and never overwritten, and the first capture stands. A later walk
+// of the same model may have had a worse MIB, or be another unit.
+func (s *TreeStore) writeNewDM(proto, identity string, dm DM) error {
+	if _, err := os.Stat(s.identityPath(proto, identity)); err == nil {
+		return ErrDMExists
+	}
+	return s.writeDMToPath(proto, identity, dm)
+}
+
+// prepareDM checks a DM's key and fills what the key already says.
+func prepareDM(proto, identity string, dm *DM) error {
 	if proto == "" {
 		return fmt.Errorf("storage: WriteDM: empty proto")
 	}
@@ -350,7 +389,7 @@ func (s *TreeStore) WriteDM(proto, identity string, dm DM) error {
 		}
 		dm.Objects = clean
 	}
-	return s.writeDMToPath(proto, identity, dm)
+	return nil
 }
 
 // writeDMToPath is the shared atomic write used by SaveByIdentity and
@@ -400,39 +439,12 @@ func (s *TreeStore) SaveByIdentity(proto, identity string, objs []consumer.Objec
 		clean[i] = o
 		clean[i].Slot = 0
 	}
-	dm := DM{
+	return s.writeNewDM(proto, identity, DM{
 		Model:    model,
 		SwRev:    swRev,
 		Protocol: proto,
 		Objects:  clean,
-	}
-
-	path := s.identityPath(proto, identity)
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("storage: mkdir %s: %w", dir, err)
-	}
-	tmp := path + ".tmp"
-	f, err := os.Create(tmp)
-	if err != nil {
-		return fmt.Errorf("storage: create %s: %w", tmp, err)
-	}
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(dm); err != nil {
-		_ = f.Close()
-		_ = os.Remove(tmp)
-		return fmt.Errorf("storage: encode: %w", err)
-	}
-	if err := closeFile(f); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("storage: close: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("storage: rename: %w", err)
-	}
-	return nil
+	})
 }
 
 // LoadByIdentity reads the identity-keyed cache. Returns (nil, nil)

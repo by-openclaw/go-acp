@@ -80,18 +80,6 @@ for the live catalogue.
 `--dsts N`, `--srcs N` (matrix-config bootstrap + keep-alive),
 `--initial-poll`, `--app-keepalive`, `--bootstrap-spacing`.
 
-> **Known CLI limitation — `salvo-connect --dsts` collides with the global
-> `--dsts`.** The global matrix-config parser consumes `--dsts` (accepting
-> only a single uint) **before** subcommand dispatch, so the
-> `salvo-connect` subcommand's own `--dsts` (which accepts a CSV/range like
-> `0-7`) never receives the value: `--dsts 0-2` fails with `strconv.ParseUint
-> parsing "0-2"`, and even `--dsts 1` is swallowed globally so the
-> subcommand then errors `--dsts is required`. The salvo wire path itself
-> is fully implemented and proven by the loopback integration test
-> `TestSalvoConnectOnGoThenGo` (rx 35 ×N → rx 36 → tx 38 + read-back); only
-> the CLI flag plumbing is currently unreachable. The group-salvo wire
-> shape (cmd 35/36/37/38) is captured in that test, not via this CLI verb.
-
 The generic `consumer.Protocol` methods (`Walk`, `GetValue`, `SetValue`,
 `Subscribe`) intentionally do **not** map onto SW-P-02's matrix addressing
 (matrix / level / dst / src does not fit the slot/group/label tree those

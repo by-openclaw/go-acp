@@ -2,6 +2,7 @@
 
 | Role | Doc | Status |
 |---|---|---|
+| **Where it stands (ADR-0025)** | [status.md](status.md) | the six deliverables, with evidence |
 | **Verbs & config reference** | [verbs.md](verbs.md) | every verb + transport/redundancy/interrogate/connect/protect/lock/reports/ensure/wireshark/ansible, with real captures |
 | Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer | [consumer.md](consumer.md) | ✓ shipping — full matrix verb set (interrogate / connect / connect-on-go / go / protect-* / dual-status / lock-status / status / router-config / watch) over TCP |
@@ -11,6 +12,7 @@
 
 | Document | Path | Description |
 |---|---|---|
+| **Where it stands (ADR-0025)** | [status.md](status.md) | the six deliverables, with evidence |
 | SW-P-02 Issue 26 | [SW-P-02 issue 26.doc](../../../internal/probel-sw02p/assets/probel-sw02/SW-P-02%20issue%2026.doc) | Full specification (original Word document) |
 | SW-P-02 Issue 26 (text) | [SW-P-02_issue_26.txt](../../../internal/probel-sw02p/assets/probel-sw02/SW-P-02_issue_26.txt) | antiword-extracted plain text |
 | Wireshark dissector | [dhs_probel_sw02p.lua](../../../internal/probel-sw02p/wireshark/dhs_probel_sw02p.lua) | Byte-exact reference |

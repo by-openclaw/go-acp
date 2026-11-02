@@ -343,6 +343,13 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 		}
 	}
 
+	// The device's MIB table, for a model its sysObjectID cannot identify.
+	if p, ok := plug.(interface{ SetMIB(string) }); ok {
+		if name := os.Getenv("SNMP_MIB"); name != "" {
+			p.SetMIB(name)
+		}
+	}
+
 	// And the v3 credential, from the same place for the same reason.
 	// A user configured here makes every session v3-FIRST: v1 and v2c
 	// put a password in clear on every datagram, so a device that

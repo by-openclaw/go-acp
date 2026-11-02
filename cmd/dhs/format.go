@@ -115,6 +115,8 @@ func printSlotTree(slot int, objs []consumer.Object, filter string) {
 // falls back to the compact inline formatter otherwise.
 func walkValueColumn(o consumer.Object) string {
 	switch o.Value.Kind {
+	case consumer.KindBool:
+		return fmt.Sprintf("%t", o.Value.Bool)
 	case consumer.KindInt:
 		return appendUnit(fmt.Sprintf("%d", o.Value.Int), &o)
 	case consumer.KindUint:

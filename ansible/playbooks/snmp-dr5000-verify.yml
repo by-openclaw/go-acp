@@ -1,0 +1,164 @@
+---
+# snmp Tier-3 oracle: the consumer verbs against a REAL agent — the lab's
+# ATEME DR5000 decoder — Ansible-driven per ADR-0025 #3.
+#
+# What is written on the device, and nothing else: its unit name
+# (dr5000UnitName.0, a label). It is read first, changed, read back from
+# the device, and put back as it was whatever happens in between
+# (`always`). The write community is not the read one.
+#
+# Flags are written AFTER the host on purpose: that is how every usage
+# line reads, and until v0.41.0 they were dropped there without a word.
+#
+# The whole-tree walk (about 100 000 objects, tens of minutes on this
+# agent) is not part of every run; ask for it with -e snmp_full_walk=true.
+#
+# Nothing differs on the host or on the device after a run, so
+# run-twice = 0 changes.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/snmp-dr5000-verify.yml
+
+- name: snmp — real-agent oracle (ATEME DR5000), every verb
+  hosts: plant
+  gather_facts: false
+  vars:
+    sn_bin: /usr/local/bin/dhs
+    sn_host: 10.6.255.114
+    sn_write_community: private
+    sn_name_oid: dr5000UnitName.0
+    sn_name_test: "DHS-VERIFY"
+    sn_vendor_root: 1.3.6.1.4.1
+    sn_vendor_sample: 500
+    sn_full_walk_min: 50000
+    snmp_full_walk: false
+    sn_cli: "{{ sn_bin }} consumer snmp"
+  tasks:
+    - name: Receipts path (one timestamp for the whole run)
+      ansible.builtin.set_fact:
+        sn_out: "/root/snmp-dr5000-verify/{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%S') }}"
+
+    - name: Receipts directory
+      ansible.builtin.file:
+        path: "{{ sn_out }}"
+        state: directory
+        mode: "0755"
+      changed_when: false
+
+    - name: Released binary under test
+      ansible.builtin.command: "{{ sn_bin }} version"
+      register: sn_version
+      changed_when: false
+
+    - name: info — what the agent says it is, and in which version it answered
+      ansible.builtin.command: "{{ sn_cli }} info {{ sn_host }}"
+      register: sn_info
+      changed_when: false
+      failed_when: sn_info.rc != 0 or 'protocol     snmp' not in sn_info.stdout
+
+    - name: health — an agent that answers is reachable and live
+      ansible.builtin.command: "{{ sn_cli }} health {{ sn_host }}"
+      register: sn_health
+      changed_when: false
+      failed_when: >-
+        sn_health.rc != 0 or 'reachable=true' not in sn_health.stdout
+        or 'connected=true' not in sn_health.stdout or 'live=true' not in sn_health.stdout
+
+    - name: get — the default (the system group)
+      ansible.builtin.command: "{{ sn_cli }} get {{ sn_host }}"
+      register: sn_get_default
+      changed_when: false
+      failed_when: sn_get_default.rc != 0 or 'sysDescr.0' not in sn_get_default.stdout
+
+    - name: get — named objects, a standard one and the vendor's own, flags after the host
+      ansible.builtin.command: "{{ sn_cli }} get {{ sn_host }} --oid sysUpTime.0,{{ sn_name_oid }}"
+      register: sn_get
+      changed_when: false
+      failed_when: >-
+        sn_get.rc != 0 or 'sysUpTime.0' not in sn_get.stdout
+        or sn_name_oid not in sn_get.stdout
+
+    - name: What the device holds for its name
+      ansible.builtin.set_fact:
+        sn_name_home: "{{ sn_get.stdout_lines | select('search', sn_name_oid) | first | regex_replace('^.*OCTET STRING +', '') | trim }}"
+
+    - name: walk — a named subtree (the system group, six objects on this agent)
+      ansible.builtin.command: "{{ sn_cli }} walk {{ sn_host }} --oid system"
+      register: sn_walk_sys
+      changed_when: false
+      failed_when: sn_walk_sys.rc != 0 or 'sysDescr.0' not in sn_walk_sys.stdout or 'object(s)' not in sn_walk_sys.stderr
+
+    - name: walk — the vendor's tree, stopped where the operator said
+      ansible.builtin.command: >-
+        {{ sn_cli }} walk {{ sn_host }} --oid {{ sn_vendor_root }} --limit {{ sn_vendor_sample }}
+        --capture {{ sn_out }}/walk-vendor.jsonl
+      register: sn_walk_vendor
+      changed_when: false
+      failed_when: >-
+        (sn_walk_vendor.stdout_lines | length) != sn_vendor_sample
+        or ('--limit of ' ~ sn_vendor_sample) not in sn_walk_vendor.stderr
+        or 'dr5000' not in sn_walk_vendor.stdout
+
+    - name: validate — the captured frames decode offline
+      ansible.builtin.command: "{{ sn_cli }} validate {{ sn_out }}/walk-vendor.jsonl"
+      register: sn_validate
+      changed_when: false
+
+    - name: set — refused with the read community, and said so
+      ansible.builtin.command: "{{ sn_cli }} set {{ sn_host }} --oid {{ sn_name_oid }} --type s --value {{ sn_name_test }}"
+      register: sn_set_ro
+      changed_when: false
+      failed_when: sn_set_ro.rc == 0 or 'noAccess' not in sn_set_ro.stderr
+
+    - name: Write verb on the device
+      block:
+        - name: set — the unit name, with the write community
+          ansible.builtin.command: >-
+            {{ sn_cli }} set {{ sn_host }} --community {{ sn_write_community }}
+            --oid {{ sn_name_oid }} --type s --value {{ sn_name_test }}
+          register: sn_set
+          changed_when: false
+          failed_when: sn_set.rc != 0 or sn_name_test not in sn_set.stdout
+
+        - name: set — read back from the device
+          ansible.builtin.command: "{{ sn_cli }} get {{ sn_host }} --oid {{ sn_name_oid }}"
+          register: sn_rb
+          retries: 5
+          delay: 1
+          until: sn_name_test in sn_rb.stdout
+          changed_when: false
+      always:
+        - name: Put the name back
+          ansible.builtin.command: >-
+            {{ sn_cli }} set {{ sn_host }} --community {{ sn_write_community }}
+            --oid {{ sn_name_oid }} --type s --value {{ sn_name_home }}
+          changed_when: false
+
+        - name: The name is back as it was
+          ansible.builtin.command: "{{ sn_cli }} get {{ sn_host }} --oid {{ sn_name_oid }}"
+          register: sn_restored
+          retries: 5
+          delay: 1
+          until: (sn_restored.stdout_lines | select('search', sn_name_oid) | first | regex_replace('^.*OCTET STRING +', '') | trim) == sn_name_home
+          changed_when: false
+
+    - name: walk — the whole tree, no flags (-e snmp_full_walk=true)
+      ansible.builtin.shell: >-
+        {{ sn_cli }} walk {{ sn_host }} > {{ sn_out }}/walk-all.txt 2> {{ sn_out }}/walk-all.err;
+        echo rc=$? rows=$(wc -l < {{ sn_out }}/walk-all.txt)
+      register: sn_walk_all
+      changed_when: false
+      failed_when: >-
+        'rc=0 ' not in sn_walk_all.stdout
+        or (sn_walk_all.stdout | regex_search('rows=[0-9]+') | regex_replace('[^0-9]', '') | int) < sn_full_walk_min
+      when: snmp_full_walk | bool
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          snmp oracle green vs {{ sn_host }} — {{ sn_version.stdout_lines[0] }};
+          {{ sn_info.stdout_lines | select('search', 'protocol') | first | trim }};
+          get, walk (system: {{ sn_walk_sys.stdout_lines | length }} objects; vendor tree stopped at {{ sn_vendor_sample }}), validate, health;
+          {{ sn_name_oid }} written with the write community, read back and back as "{{ sn_name_home }}";
+          the read community was refused the write;
+          {{ ('whole tree: ' ~ sn_walk_all.stdout ~ ' in ' ~ sn_walk_all.delta) if (snmp_full_walk | bool) else 'whole-tree walk not asked for' }};
+          receipts in {{ sn_out }}

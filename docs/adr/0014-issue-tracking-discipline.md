@@ -1,6 +1,7 @@
 # ADR-0014 — Issue tracking discipline
 
 Status: accepted
+Date: 2026-10-18
 
 ## Context
 
@@ -54,11 +55,11 @@ Before closing any issue, post a final comment with:
 | Step | Detail |
 |---|---|
 | 1. Issue | new tracker issue with title + scope + acceptance + labels (`proto:<name>` + `bug` / `enhancement` / `documentation` + optional `cli`) |
-| 2. Branch | new branch off `main`, named after the work (`feat/<proto>-<verb>` / `fix/<proto>-<bug>` / `docs/adr-NNNN-<title>`) |
+| 2. Branch | new branch off `main`, named `<type>/<slug>` with the conventional-commit type (ADR-0013) as prefix: `feat/<proto>-<verb>`, `fix/<proto>-<bug>`, `docs/adr-NNNN-<title>`, `chore/…`, `refactor/…`, `test/…`, `ci/…` |
 | 3. Code | one coherent unit per ADR-0013; always `go build` to `bin/` before committing |
 | 4. Unit tests | table-driven, byte-exact against the spec |
 | 5. Integration tests | real peer / live device — pass on the rig before opening PR (symmetric self-tests don't count) |
-| 6. PR | opened against `main` (or the long-running protocol branch per ADR-0014) with results table + `Closes #N` |
+| 6. PR | opened against `main` with results table + `Closes #N` |
 | 7. CI green | all checks pass; never merge a red PR |
 | 8. Codeowner approval | **`@yboujraf` codeowner approval required** — `.github/CODEOWNERS` enforces |
 | 9. Merge | only after green + approval |

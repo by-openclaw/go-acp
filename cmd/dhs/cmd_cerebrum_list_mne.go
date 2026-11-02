@@ -36,6 +36,7 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 	idle := fs.Duration("idle", 5*time.Second, "stop collecting this long after the last row if no WILDCARD_COMPLETE arrives")
 	out := fs.String("out", "", "write the list as a CSV here (default: print a table)")
 	output := fs.String("output", "text", "stdout format: text | json")
+	assoc := fs.Bool("associations", false, "print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -86,6 +87,7 @@ func cerebrumListMne(_ context.Context, args []string, mneType, keyCol string) e
 			// Capability: which levels this src/dst EXISTS on (associations;
 			// row LEVEL_ID fallback) — the shuffle-decision input.
 			row.Levels = mneLevelsFromChange(rc)
+			row.Assocs = rc.Associations
 		}
 		mu.Lock()
 		rows = append(rows, row)
@@ -160,15 +162,31 @@ collect:
 	}
 	switch *output {
 	case "json":
+		type assocRow struct {
+			Level    int    `json:"level"`
+			Device   string `json:"device"`
+			Type     string `json:"type"`
+			PortID   string `json:"port_id"`
+			IPUID    string `json:"ip_uid"`
+			Tags     string `json:"tags"`
+			Reversed string `json:"reversed"`
+		}
 		type row struct {
 			ID       string         `json:"id"`
 			Mnemonic string         `json:"mnemonic"`
 			Alts     map[int]string `json:"alts,omitempty"`
 			Levels   []string       `json:"levels,omitempty"`
+			Assocs   []assocRow     `json:"associations,omitempty"`
 		}
 		jrows := []row{}
 		for _, r := range list {
-			jrows = append(jrows, row{r.ID, r.Mnemonic, r.Alts, r.Levels})
+			jr := row{ID: r.ID, Mnemonic: r.Mnemonic, Alts: r.Alts, Levels: r.Levels}
+			if *assoc {
+				for _, a := range r.Assocs {
+					jr.Assocs = append(jr.Assocs, assocRow{a.Index, a.RMDeviceName, string(a.RMDeviceType), a.SrceID + a.DestID, a.RMIPUID, a.RMTags, a.RMReversed})
+				}
+			}
+			jrows = append(jrows, jr)
 		}
 		return printCerebrumJSON(map[string][]row{keyCol: jrows})
 	case "text":
@@ -186,6 +204,15 @@ collect:
 			lv = joinSemis(r.Levels)
 		}
 		fmt.Printf("%8s  %-16s  %-28s  %s\n", r.ID, lv, r.Mnemonic, formatAlts(r.Alts))
+		if *assoc {
+			if len(r.Assocs) == 0 {
+				fmt.Printf("%8s  associations: none sent\n", "")
+			}
+			for _, a := range r.Assocs {
+				fmt.Printf("%8s  association %d: level=%d device=%q type=%q port_id=%q ip_uid=%q tags=%q reversed=%q\n",
+					"", a.Index, a.Index, a.RMDeviceName, string(a.RMDeviceType), a.SrceID+a.DestID, a.RMIPUID, a.RMTags, a.RMReversed)
+			}
+		}
 	}
 	return nil
 }

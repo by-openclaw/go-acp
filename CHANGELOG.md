@@ -7,6 +7,234 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.52.1](https://github.com/by-openclaw/go-acp/compare/v0.52.0...v0.52.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **cerebrum-nb:** close the connector for a new install ([#1568](https://github.com/by-openclaw/go-acp/issues/1568)) ([90b73f8](https://github.com/by-openclaw/go-acp/commit/90b73f88e78a5ed89b86257b74f21deac8804104)), closes [#1567](https://github.com/by-openclaw/go-acp/issues/1567)
+
+## [0.52.0](https://github.com/by-openclaw/go-acp/compare/v0.51.0...v0.52.0) (2026-11-01)
+
+
+### Features
+
+* **snmp:** strong for any device — derived fast walk, identity with no MIB, missing libraries ([#1564](https://github.com/by-openclaw/go-acp/issues/1564)) ([597d201](https://github.com/by-openclaw/go-acp/commit/597d201bf843e65fe87f2746265609acdc4b3492))
+
+## [0.51.0](https://github.com/by-openclaw/go-acp/compare/v0.50.0...v0.51.0) (2026-11-01)
+
+
+### Features
+
+* **prism:** consumer for the Telestream PRISM waveform monitor ([#1557](https://github.com/by-openclaw/go-acp/issues/1557)) ([ddb4b3e](https://github.com/by-openclaw/go-acp/commit/ddb4b3e49ad4b1ff7d11e6f756294c025b072e1e))
+* **virtuoso:** consumer for the Nevion Virtuoso MI — REST/JSON, schema-driven walk, PATCH with read-back ([#1559](https://github.com/by-openclaw/go-acp/issues/1559)) ([d295c94](https://github.com/by-openclaw/go-acp/commit/d295c94b42353511d2b4dd07d703d57ccd56941d)), closes [#1556](https://github.com/by-openclaw/go-acp/issues/1556)
+
+
+### Bug Fixes
+
+* **ansible:** the converge leaves the NMOS plant alone and lab services stay off at boot ([#1554](https://github.com/by-openclaw/go-acp/issues/1554)) ([d0557eb](https://github.com/by-openclaw/go-acp/commit/d0557eb8b0ff41c361b9912973647a714d02e6f3)), closes [#1553](https://github.com/by-openclaw/go-acp/issues/1553)
+* **virtuoso,prism:** a caller that has already cancelled stops the request ([#1561](https://github.com/by-openclaw/go-acp/issues/1561)) ([e0bddef](https://github.com/by-openclaw/go-acp/commit/e0bddef80152eaaec1dae40a29940b7bc0afdcad)), closes [#1560](https://github.com/by-openclaw/go-acp/issues/1560)
+
+## [0.50.0](https://github.com/by-openclaw/go-acp/compare/v0.49.0...v0.50.0) (2026-11-01)
+
+
+### Features
+
+* **ccp:** Axon Cortex Control Panel Protocol consumer — labels, colours, buttons, rotary knobs (CCP-1601) ([#1544](https://github.com/by-openclaw/go-acp/issues/1544)) ([458e4eb](https://github.com/by-openclaw/go-acp/commit/458e4eb3f1827dcc55d87a680d016a2880d501ec))
+* **cerebrum-nb:** listen --dest N[,N] --level L subscribes one destination; DETAILS carries the device class (names join and device-details default) ([#1540](https://github.com/by-openclaw/go-acp/issues/1540)) ([fd4fafa](https://github.com/by-openclaw/go-acp/commit/fd4fafa200b6d0ae34460ec081f808eda894cc0f))
+* **cerebrum-nb:** route and usage take mnemonics for dest, srce and level; --level accepts a list for multi-level routes and reads ([#1541](https://github.com/by-openclaw/go-acp/issues/1541)) ([a9338f8](https://github.com/by-openclaw/go-acp/commit/a9338f8b3c6ff120450d1a52901daf2815012bdd))
+* **kratos:** consumer for the Kratos NGC2 IDU antenna controller — REST/JSON state, MQTT changes, postMessage set and command verbs ([#1542](https://github.com/by-openclaw/go-acp/issues/1542)) ([0af4bcd](https://github.com/by-openclaw/go-acp/commit/0af4bcdadadaab0282a6c9e2254b15cb1437d592))
+* **snmp:** one compiled MIB table per device, never merged ([#1548](https://github.com/by-openclaw/go-acp/issues/1548)) ([6d3e848](https://github.com/by-openclaw/go-acp/commit/6d3e8488fa7e0b8670da89b35680cf462086c3f4)), closes [#1546](https://github.com/by-openclaw/go-acp/issues/1546)
+
+
+### Bug Fixes
+
+* **ci:** Release Please also runs on a manual dispatch of main, the recovery the trigger comment promises ([#1534](https://github.com/by-openclaw/go-acp/issues/1534)) ([b9d6258](https://github.com/by-openclaw/go-acp/commit/b9d625803d160b795ce275b2415b032eb9d396c7))
+
+## [0.49.0](https://github.com/by-openclaw/go-acp/compare/v0.48.0...v0.49.0) (2026-10-22)
+
+
+### Features
+
+* **ansible:** RouteMaster plan names qualified as NMOS|slot|device|name from the IP routing exports; notes: the 2.9.3 IP association needs the level's device and that form ([#1529](https://github.com/by-openclaw/go-acp/issues/1529)) ([fd5fac3](https://github.com/by-openclaw/go-acp/commit/fd5fac36b2269a72089463206453c0f388e6bc11))
+
+## [0.48.0](https://github.com/by-openclaw/go-acp/compare/v0.47.0...v0.48.0) (2026-10-22)
+
+
+### Features
+
+* **cerebrum-nb:** assoc --bare; the probe measures the IP and router association forms; the EVS note names the 2.9.3 IP-association regression ([#1525](https://github.com/by-openclaw/go-acp/issues/1525)) ([e5ea07c](https://github.com/by-openclaw/go-acp/commit/e5ea07c5bc44aa95365eff6be50e15ae3f338e16))
+
+## [0.47.0](https://github.com/by-openclaw/go-acp/compare/v0.46.0...v0.47.0) (2026-10-22)
+
+
+### Features
+
+* **ansible:** cerebrum-nb-rm-probe — the v0.17 RouteMaster messages on temporary IOs, read back over RCP, undone ([#1513](https://github.com/by-openclaw/go-acp/issues/1513)) ([83aa88b](https://github.com/by-openclaw/go-acp/commit/83aa88b07b2f494bb9e31b1280db22e3caf705e7))
+* **ansible:** the Northbound probe measures the alternate mnemonic by slot; the EVS Northbound note and the audit carry it ([#1522](https://github.com/by-openclaw/go-acp/issues/1522)) ([9097f07](https://github.com/by-openclaw/go-acp/commit/9097f07f639b6a21245f185388f178900d83b233))
+* **cerebrum-nb:** level case in the v0.17 probe, --allow-clear on set-mnemonic, the v0.17 audit measured on 2.9.3 ([#1517](https://github.com/by-openclaw/go-acp/issues/1517)) ([d91d861](https://github.com/by-openclaw/go-acp/commit/d91d8617b5934668318dddb5d68fd65c9215ead9))
+* **cerebrum-nb:** list-sources/list-dests --associations, list-tags; the two EVS RouteMaster notes measured cell by cell on 2.9.3 ([#1520](https://github.com/by-openclaw/go-acp/issues/1520)) ([c41ab5c](https://github.com/by-openclaw/go-acp/commit/c41ab5c085daef8059b38ef8f46ce922a23bd669))
+
+
+### Bug Fixes
+
+* **cli:** regenerate the CLI surface golden and docs/cli.md for the Northbound v0.17 verbs ([#1515](https://github.com/by-openclaw/go-acp/issues/1515)) ([a903993](https://github.com/by-openclaw/go-acp/commit/a903993c5ae2d78fe064bcc66b269821e855deb7))
+
+## [0.46.0](https://github.com/by-openclaw/go-acp/compare/v0.45.0...v0.46.0) (2026-10-21)
+
+
+### Features
+
+* **ansible:** alternate mnemonics of every RouteMaster resource, applied for the fields Cerebrum has ([87d6680](https://github.com/by-openclaw/go-acp/commit/87d6680e810d613356acb78b0590f3eb8f672511))
+* **ansible:** alternate mnemonics of every RouteMaster resource, applied for the fields Cerebrum has ([ef2b766](https://github.com/by-openclaw/go-acp/commit/ef2b76609a80c4a1ff0d4b6e143b84f92e2fcae4))
+* **ansible:** categories of the RouteMaster, with sub-category, text and blank slots ([dc1ce7a](https://github.com/by-openclaw/go-acp/commit/dc1ce7a6549d4c420320f73bd818882e7a4a6d0a))
+* **ansible:** categories of the RouteMaster, with sub-category, text and blank slots ([b7864ef](https://github.com/by-openclaw/go-acp/commit/b7864efab4d00a220ae390929714c8ddf66fbb1a))
+* **ansible:** collect what IP routing holds, one CSV per NMOS node ([5caf8d3](https://github.com/by-openclaw/go-acp/commit/5caf8d317d4745ce901b663db88d2cf75ce448bc))
+* **ansible:** collect what IP routing holds, one CSV per NMOS node ([dd14248](https://github.com/by-openclaw/go-acp/commit/dd142489d73dc8dc4f64583a5033d1cbb0e0aa49))
+* **ansible:** rcp-api-probe — every GET of the RCP document classified, per release ([#1507](https://github.com/by-openclaw/go-acp/issues/1507)) ([2ffedd4](https://github.com/by-openclaw/go-acp/commit/2ffedd4be4839cff1d6aa2a906e9551153dbd768))
+* **ansible:** rcp-write-probe — the write paths of the EVS note on temporary IOs, undone ([#1509](https://github.com/by-openclaw/go-acp/issues/1509)) ([b7bb6fa](https://github.com/by-openclaw/go-acp/commit/b7bb6faef48522965bd7717705b0c3cd987cb824))
+
+
+### Bug Fixes
+
+* **ansible:** a category without items is not the dict method items ([33c70b5](https://github.com/by-openclaw/go-acp/commit/33c70b5b6ee07d73e37121d8a90b838e63184a70))
+* **ansible:** the device column of the IP routing CSV ([142ec7b](https://github.com/by-openclaw/go-acp/commit/142ec7b2c8608f2d9932900874447d9323040c10))
+
+## [0.45.0](https://github.com/by-openclaw/go-acp/compare/v0.44.0...v0.45.0) (2026-10-12)
+
+
+### Features
+
+* **ansible:** the four RouteMaster levels, and a real dry run for the RouteMaster play ([3c598bb](https://github.com/by-openclaw/go-acp/commit/3c598bb5a66c4dd17c29cab5a16774047f7af940))
+* **ansible:** the NMOS node role reads and writes Cerebrum over RCP ([ff07240](https://github.com/by-openclaw/go-acp/commit/ff072406ed0bc5ebcac1e98d3a335e7cbb34e621))
+* **ansible:** the NMOS node role reads and writes Cerebrum over RCP ([804a174](https://github.com/by-openclaw/go-acp/commit/804a17476d873e9f5a8aaed14bff1c8d11ea5a8c))
+* **rcp:** a plan moves a resource between local and federated with one update ([1e47950](https://github.com/by-openclaw/go-acp/commit/1e47950ac643819424562099b3372258f602395b))
+* **rcp:** a plan moves a resource between local and federated with one update ([284f3a7](https://github.com/by-openclaw/go-acp/commit/284f3a79fbba6ef1c4e8216aa38591239206be8f))
+
+
+### Bug Fixes
+
+* **ansible:** a dry run that would change nothing reports no change ([86ef374](https://github.com/by-openclaw/go-acp/commit/86ef374e903fabffa87dca1fb629b2ca79fe96c1))
+* **ansible:** the levels of the RouteMaster play are read in check mode too ([674a7a6](https://github.com/by-openclaw/go-acp/commit/674a7a69d72989cbc2480b470e8890e7887f5571))
+* **ansible:** the RouteMaster play has a real dry run ([4b531a7](https://github.com/by-openclaw/go-acp/commit/4b531a78f28895a1d17d98e6ec1399b5a6efd985))
+
+## [0.44.0](https://github.com/by-openclaw/go-acp/compare/v0.43.0...v0.44.0) (2026-10-11)
+
+
+### Features
+
+* **ansible:** the NMOS node role picks its driver by device protocol and version ([24d8ac2](https://github.com/by-openclaw/go-acp/commit/24d8ac21381d3049f1e56d67e6877f028ab81bb7))
+* **ansible:** the NMOS node role picks its driver by device protocol and version ([97df8ad](https://github.com/by-openclaw/go-acp/commit/97df8ad259d96c62a8a6102db285030450471cd3))
+* **rcp:** Cerebrum RCP connector — session and RouteMaster CRUD ([d3759be](https://github.com/by-openclaw/go-acp/commit/d3759be8517d67c8cbb5b0ccaf603db47ac1e033))
+* **rcp:** Cerebrum RCP connector — session and RouteMaster CRUD ([dbe2aa7](https://github.com/by-openclaw/go-acp/commit/dbe2aa7f09f2cbee783ecffca761a8dc520f9a28)), closes [#1480](https://github.com/by-openclaw/go-acp/issues/1480)
+* **rcp:** crosspoints, mnemonics, device objects, ensure and the provisioning play ([#1482](https://github.com/by-openclaw/go-acp/issues/1482)) ([d73823c](https://github.com/by-openclaw/go-acp/commit/d73823c106a6e7f803caaedef74533a84579d529))
+* **rcp:** objects — several device objects read in one session ([8c06c24](https://github.com/by-openclaw/go-acp/commit/8c06c24cd4e4441905d9ea90e2836f10d02d08c9))
+* **rcp:** objects — several device objects read in one session ([4633e5e](https://github.com/by-openclaw/go-acp/commit/4633e5ef37a4671f4b8b398ca30e1719551ba3a7))
+
+
+### Bug Fixes
+
+* **ansible:** a registry answer that is not a list is read again ([a00ff2f](https://github.com/by-openclaw/go-acp/commit/a00ff2fe8112042c2588ed058925a521c080c0cc))
+* **ansible:** the reference of a move is the registry once it has stopped changing ([d567c3c](https://github.com/by-openclaw/go-acp/commit/d567c3cc2075ea8f27756c3ead00da4054fd7b6d))
+* **ansible:** the registry re-read counter is a fact, not a variable of itself ([fa9535b](https://github.com/by-openclaw/go-acp/commit/fa9535beb6a355a997424674db71c0b42ebf4239))
+
+## [0.43.0](https://github.com/by-openclaw/go-acp/compare/v0.42.0...v0.43.0) (2026-10-08)
+
+
+### Features
+
+* **snmp:** set takes hex octets (--type x) ([50af3f2](https://github.com/by-openclaw/go-acp/commit/50af3f24e756612ac28b440d9db2e3f8eb75e118))
+* **snmp:** set takes hex octets (--type x) ([0534306](https://github.com/by-openclaw/go-acp/commit/0534306733852721f4c0758983c99455d454c31c)), closes [#1467](https://github.com/by-openclaw/go-acp/issues/1467)
+
+
+### Bug Fixes
+
+* **probel-sw08p:** bench fails when operations failed ([4cc0f77](https://github.com/by-openclaw/go-acp/commit/4cc0f775ea133985c69dd8d0c3a0e4f8d783f7e1))
+* **probel-sw08p:** bench fails when operations failed ([8e3dcda](https://github.com/by-openclaw/go-acp/commit/8e3dcda8a70e087537839996c3d07ac731c6e7e9)), closes [#1470](https://github.com/by-openclaw/go-acp/issues/1470)
+
+## [0.42.0](https://github.com/by-openclaw/go-acp/compare/v0.41.2...v0.42.0) (2026-10-08)
+
+
+### Features
+
+* **snmp:** --capture records every datagram of a session ([5f16b0d](https://github.com/by-openclaw/go-acp/commit/5f16b0d29a7559a000abfc304310a1a5aca23a34))
+* **snmp:** validate reads a capture back offline ([b087b62](https://github.com/by-openclaw/go-acp/commit/b087b62118469077f3afbbd605ad82c1e1ab8f09)), closes [#1459](https://github.com/by-openclaw/go-acp/issues/1459)
+
+## [0.41.2](https://github.com/by-openclaw/go-acp/compare/v0.41.1...v0.41.2) (2026-10-08)
+
+
+### Bug Fixes
+
+* **snmp:** health sees the traffic the connector stamps ([c1410d8](https://github.com/by-openclaw/go-acp/commit/c1410d8b194dbec7b0df1fed773400833d796d5a))
+
+## [0.41.1](https://github.com/by-openclaw/go-acp/compare/v0.41.0...v0.41.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **snmp,ccm:** each snmp retry waits twice as long; ccm walk and export take their host after flags too ([6565add](https://github.com/by-openclaw/go-acp/commit/6565add8cdc31513eecbf29bfd136717e7d7bf7f))
+* **snmp,ccm:** each snmp retry waits twice as long; ccm walk and export take their host after flags too ([b2340e8](https://github.com/by-openclaw/go-acp/commit/b2340e8b34adb0627cccb7aed9363c2fdd5adee3)), closes [#1454](https://github.com/by-openclaw/go-acp/issues/1454)
+
+## [0.41.0](https://github.com/by-openclaw/go-acp/compare/v0.40.4...v0.41.0) (2026-10-08)
+
+
+### Features
+
+* **ansible:** a resident probel-sw02p producer on the plant host, and its controller check ([490cd7c](https://github.com/by-openclaw/go-acp/commit/490cd7c37214fb6ca707d7ad2f4897a7b0e67004))
+* **ansible:** a resident probel-sw02p producer on the plant host, and its controller check ([9951348](https://github.com/by-openclaw/go-acp/commit/9951348f4178a00cc601bb6314412dd0ab46d746))
+* **ansible:** a resident probel-sw08p producer on the plant host, and its controller check ([ca89ee0](https://github.com/by-openclaw/go-acp/commit/ca89ee0ec3d5c936f3238b3c4334e0d1894747c3))
+* **ansible:** a resident probel-sw08p producer on the plant host, and its controller check ([f07a71b](https://github.com/by-openclaw/go-acp/commit/f07a71b88380d3643e199ac979e22728d26c0ed0)), closes [#1433](https://github.com/by-openclaw/go-acp/issues/1433)
+
+
+### Bug Fixes
+
+* **ci:** the lint job does not depend on a schema fetched from another site ([7f1ceb6](https://github.com/by-openclaw/go-acp/commit/7f1ceb67f99dc031f793aa43a6870029985f5ec2))
+* **ci:** the lint job does not depend on a schema fetched from another site ([6233ed1](https://github.com/by-openclaw/go-acp/commit/6233ed1fc5373de306b931119e2b7975a0ef499e))
+* **cli:** a flag written after the target is honoured; snmp walk starts at the whole tree ([c44368c](https://github.com/by-openclaw/go-acp/commit/c44368c51784d6d111b0296179c9d7ab3275d1aa))
+* **cli:** a flag written after the target is honoured; snmp walk starts at the whole tree ([c392da3](https://github.com/by-openclaw/go-acp/commit/c392da37fd435c355b77313e2dbd91bbe7d6f462)), closes [#1450](https://github.com/by-openclaw/go-acp/issues/1450)
+* **probel-sw02p:** an unrouted destination of the matrix is not "out of range" ([20a08d0](https://github.com/by-openclaw/go-acp/commit/20a08d0604ddb2ba7f40045e88f2d3eab029c091))
+* **probel-sw02p:** an unrouted destination of the matrix is not "out of range" ([35c2c54](https://github.com/by-openclaw/go-acp/commit/35c2c54b049f483f54ce58484be3a4b03d741ba4)), closes [#1447](https://github.com/by-openclaw/go-acp/issues/1447)
+* **probel:** generated labels are distinct within eight characters ([590b750](https://github.com/by-openclaw/go-acp/commit/590b750241a113fdd98c84672a0a46872aea6c4f))
+* **probel:** generated labels are distinct within eight characters ([fbbe717](https://github.com/by-openclaw/go-acp/commit/fbbe7175193a562a72b6851a68f700d14b03d245)), closes [#1445](https://github.com/by-openclaw/go-acp/issues/1445)
+
+## [0.40.4](https://github.com/by-openclaw/go-acp/compare/v0.40.3...v0.40.4) (2026-10-07)
+
+
+### Bug Fixes
+
+* **probel-sw08p:** a request ACKed and not answered is one verdict, whichever timer ends it ([34135db](https://github.com/by-openclaw/go-acp/commit/34135db4fa28cbb77d5716a9cd575fc6cf3cf2e1)), closes [#1433](https://github.com/by-openclaw/go-acp/issues/1433)
+* **probel-sw08p:** one verdict for an unanswered command; the consumer verbs against the real Neuron ([eae7262](https://github.com/by-openclaw/go-acp/commit/eae7262a67c44b0c2303d424f37eedb7a2e2e370))
+* **probel-sw08p:** the provider answers an all-names request with every name ([456e89b](https://github.com/by-openclaw/go-acp/commit/456e89bfddeb91df2cede48d256271f175074aff))
+* **probel-sw08p:** the provider answers an all-names request with every name ([ecef991](https://github.com/by-openclaw/go-acp/commit/ecef9913885ae88bdda9498702f07fdd2b21db4e)), closes [#1435](https://github.com/by-openclaw/go-acp/issues/1435)
+
+## [0.40.3](https://github.com/by-openclaw/go-acp/compare/v0.40.2...v0.40.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* **ansible:** the fault drills read a state that outlasts the next task ([ee57d0b](https://github.com/by-openclaw/go-acp/commit/ee57d0b8d47e3bd34d1ffb13508550e2794cac00))
+
+## [0.40.2](https://github.com/by-openclaw/go-acp/compare/v0.40.1...v0.40.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **amwa:** a replaced mDNS TXT record is withdrawn by name, and the responder answers for every record it owns ([eb4e45e](https://github.com/by-openclaw/go-acp/commit/eb4e45e789432121918add1d5ec81ba91ed93da6))
+* **amwa:** a replaced mDNS TXT record is withdrawn by name, and the responder answers for every record it owns ([6fbd957](https://github.com/by-openclaw/go-acp/commit/6fbd957255f9b178dcd531a5464d5e6efd2cd5dd)), closes [#1413](https://github.com/by-openclaw/go-acp/issues/1413)
+
+## [0.40.1](https://github.com/by-openclaw/go-acp/compare/v0.40.0...v0.40.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **acp1:** a session leaves the registry before its send channel is closed ([4f97902](https://github.com/by-openclaw/go-acp/commit/4f979026adbfe1f31d3edd15ce4dc0db366d03b0))
+* **acp1:** a session leaves the registry before its send channel is closed ([b306492](https://github.com/by-openclaw/go-acp/commit/b3064925c1d90be3153e060d71a37d92219e0a58)), closes [#1405](https://github.com/by-openclaw/go-acp/issues/1405)
+* **acp1:** the AN2 registry pointer is read and set under the server lock ([c4396f2](https://github.com/by-openclaw/go-acp/commit/c4396f2bfcaf5a342987bb5fff0a4920a57d9b80)), closes [#1405](https://github.com/by-openclaw/go-acp/issues/1405)
+* **amwa:** before v1.3 the ver_* records leave the announce when the registration starts ([ae2b9d5](https://github.com/by-openclaw/go-acp/commit/ae2b9d5b16291b8da384c7709e53ce625d76c368))
+* **amwa:** before v1.3 the ver_* records leave the announce when the registration starts ([ec39ba7](https://github.com/by-openclaw/go-acp/commit/ec39ba72f78a53acd9ac82cb6d8716ab267683e8)), closes [#1408](https://github.com/by-openclaw/go-acp/issues/1408)
+* **ansible:** the validation window's node minor is the entry's own, not its first row's ([2488e4d](https://github.com/by-openclaw/go-acp/commit/2488e4d7a66f580b0563cae3fb8190a2115cb765))
+* **ansible:** the validation window's node minor is the entry's own, not its first row's ([f5858ac](https://github.com/by-openclaw/go-acp/commit/f5858ac7bea6a8bd96b432534861dca50ad02b66)), closes [#1403](https://github.com/by-openclaw/go-acp/issues/1403)
+
 ## [0.40.0](https://github.com/by-openclaw/go-acp/compare/v0.39.0...v0.40.0) (2026-10-05)
 
 

@@ -1,0 +1,42 @@
+---
+# Which protocol and version the device speaks, read from the device, and
+# the driver written for exactly that. No driver: stop, nothing written.
+
+- name: "{{ cerebrum_nmos_node_label }} — what the device says it is (ccm, mnset)"
+  ansible.builtin.command:
+    argv: ["{{ cerebrum_nmos_node_bin }}", consumer, "{{ cnn_proto }}", info, "{{ cnn_device.mgmt_ip }}"]
+  register: cnn_info
+  changed_when: false
+  when: cnn_proto in ['ccm', 'mnset']
+
+- name: "{{ cerebrum_nmos_node_label }} — firmware of a FusioN"
+  ansible.builtin.uri:
+    url: "http://{{ cnn_device.mgmt_ip }}/emsfp/node/v1/self/information/"
+    return_content: true
+  register: cnn_fw
+  when: cnn_proto == 'mnset'
+
+- name: "{{ cerebrum_nmos_node_label }} — API document of a Neuron VIEW"
+  ansible.builtin.uri:
+    url: "{{ neuronview.spec }}"
+    validate_certs: "{{ neuronview.validate_certs | default(false) }}"
+    return_content: true
+  register: cnn_spec
+  when: cnn_proto == 'rest'
+
+- name: "{{ cerebrum_nmos_node_label }} — its protocol and version"
+  ansible.builtin.set_fact:
+    cnn_version: >-
+      {{ (cnn_fw.json.current_version if cnn_proto == 'mnset'
+          else (cnn_spec.content | regex_search('(?m)^  version: *(\S+)', '\1') | first) if cnn_proto == 'rest'
+          else (cnn_info.stdout | regex_search('dtd_version +(\S+)', '\1') | first)) | string }}
+
+- name: "{{ cerebrum_nmos_node_label }} — a driver exists for {{ cnn_proto }} {{ cnn_version }}"
+  ansible.builtin.assert:
+    that: (cnn_proto ~ ' ' ~ cnn_version) in cerebrum_nmos_node_nmos
+    fail_msg: "{{ cerebrum_nmos_node_label }} speaks {{ cnn_proto }} {{ cnn_version }}: no NMOS driver for that protocol and version (have: {{ cerebrum_nmos_node_nmos.keys() | list }}) — nothing written"
+    quiet: true
+
+- name: "{{ cerebrum_nmos_node_label }} — its driver"
+  ansible.builtin.set_fact:
+    cnn_driver: "{{ {'proto': cnn_proto} | combine(cerebrum_nmos_node_nmos[cnn_proto ~ ' ' ~ cnn_version]) }}"

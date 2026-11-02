@@ -1,0 +1,15 @@
+---
+# The released dhs binary on the fleet, and nothing else: role dhs_host.
+# A service that is running is restarted onto the new binary; a service
+# that is stopped stays stopped.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/dhs-binary.yml
+#   ... --limit dhs-debian          one host
+#   ... -e dhs_version=v0.44.0      another release than the role default
+
+- name: dhs binary at the released version
+  hosts: dhs_clients
+  gather_facts: true
+  roles:
+    - dhs_host

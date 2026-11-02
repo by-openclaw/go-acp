@@ -248,6 +248,36 @@ func EncodeGoodbye(i Instance, asResponse bool) ([]byte, error) {
 	return msg.Encode()
 }
 
+// EncodeTXTGoodbye builds a goodbye (RFC 6762 §10.1, TTL=0) for the
+// instance's TXT record alone, with the TXT it carries: the record a
+// responder is about to replace with other data. A cache-flush record
+// only marks what it replaces to expire a second later (§10.2), and a
+// cache that is asked in that second — or one that revives the marked
+// record on the next flush, as python-zeroconf does — still serves the
+// old data. The goodbye names the old record itself and evicts it. It
+// carries no cache-flush bit: it withdraws one record, it does not
+// speak for the rrset.
+func EncodeTXTGoodbye(i Instance) ([]byte, error) {
+	if i.Name == "" || i.Service == "" {
+		return nil, fmt.Errorf("dnssd: instance missing required fields")
+	}
+	txtSegs, err := EncodeTXT(i.TXT)
+	if err != nil {
+		return nil, err
+	}
+	msg := &Message{}
+	msg.Header.SetResponse(true)
+	msg.Header.SetAuthoritative(true)
+	msg.Answers = append(msg.Answers, RR{
+		Name:  i.FullName(),
+		Type:  TypeTXT,
+		Class: ClassIN,
+		TTL:   0,
+		TXT:   txtSegs,
+	})
+	return msg.Encode()
+}
+
 // EncodeQuery builds a single-question DNS query for a service type.
 // queryUnicast sets the QU bit (RFC 6762 §5.4) requesting unicast reply.
 func EncodeQuery(qname string, qtype uint16, queryUnicast bool) ([]byte, error) {

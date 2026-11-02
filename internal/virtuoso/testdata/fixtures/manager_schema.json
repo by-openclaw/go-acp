@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "dev": {"$ref": "#/definitions/device-deviceinfo"},
+    "network": {"$ref": "#/definitions/network-network"},
+    "alarms": {"$ref": "#/definitions/alarm-alarms"}
+  },
+  "definitions": {
+    "device-deviceinfo": {
+      "type": "object",
+      "properties": {
+        "product_info": {"$ref": "#/definitions/device-productinfo"},
+        "system": {"$ref": "#/definitions/device-system"},
+        "temperature": {"type": "number", "minimum": -40, "maximum": 125.5, "unit": "C", "title": "Temperature", "description": "Board temperature", "readOnly": true}
+      }
+    },
+    "device-productinfo": {
+      "type": "object",
+      "properties": {
+        "devname": {"type": "string", "default": "", "title": "Device name", "description": ""},
+        "inventory_id": {"type": "string", "default": "", "title": "Inventory ID", "description": ""},
+        "location": {"type": "string", "default": "", "title": "Location", "description": ""},
+        "contact": {"type": "string", "default": "", "title": "Contact", "description": ""},
+        "uuid": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "model": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "prodname": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "serial": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "serialfull": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "swbuildtime": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "swver": {"type": "string", "title": "", "description": "", "readOnly": true},
+        "board_serial": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true}
+      }
+    },
+    "device-system": {
+      "type": "object",
+      "properties": {
+        "do_reset": {"$ref": "#/definitions/device-rebootreq"},
+        "uptime": {"type": "integer", "minimum": 0, "maximum": 4294967295, "unit": "s", "title": "Uptime", "description": "", "readOnly": true}
+      }
+    },
+    "device-rebootreq": {
+      "type": "object",
+      "rpc": true,
+      "properties": {
+        "delay": {"type": "integer", "minimum": 1000, "maximum": 20000, "default": 1000, "unit": "ms", "title": "", "description": "Delay before the reboot"},
+        "dev": {"type": "integer", "enum": [0, 1, 2, 3], "labels": ["This", "A+B", "A", "B"], "default": 0, "title": "", "description": ""},
+        "details": {"type": "string", "title": "", "description": "", "readOnly": true}
+      }
+    },
+    "network-network": {
+      "type": "object",
+      "properties": {
+        "routev4_static_coll": {"$ref": "#/definitions/network-routev4_static_coll"},
+        "ipinterface_coll": {"$ref": "#/definitions/network-ipinterface_coll"},
+        "snmp": {"$ref": "#/definitions/snmp-snmp"}
+      }
+    },
+    "network-routev4_static_coll": {
+      "type": "object",
+      "allowInsert": true,
+      "autoKey": false,
+      "additionalProperties": {"$ref": "#/definitions/network-routev4"}
+    },
+    "network-routev4": {
+      "type": "object",
+      "properties": {
+        "dest": {"type": "string", "format": "ipv4", "title": "Destination", "description": ""},
+        "prefix_len": {"type": "integer", "minimum": 0, "maximum": 32, "title": "", "description": ""},
+        "metric": {"type": "integer", "minimum": 0, "maximum": 65535, "title": "", "description": ""},
+        "gw": {"type": "string", "format": "ipv4", "default": "", "title": "Gateway", "description": ""},
+        "label": {"type": "string", "pattern": "^[a-z0-9 ]*$", "default": "", "title": "Label", "description": ""}
+      },
+      "required": ["dest", "prefix_len", "metric"]
+    },
+    "network-ipinterface_coll": {
+      "type": "object",
+      "allowInsert": false,
+      "autoKey": true,
+      "additionalProperties": {"$ref": "#/definitions/network-ipinterface"}
+    },
+    "network-ipinterface": {
+      "type": "object",
+      "properties": {
+        "gid": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "enable": {"type": "boolean", "default": false, "title": "Enable", "description": ""},
+        "mtu": {"type": "integer", "minimum": 576, "maximum": 9000, "default": 1500, "unit": "B", "title": "MTU", "description": ""},
+        "type": {"type": "string", "title": "Type", "description": "", "readOnly": true},
+        "stats": {"type": "object", "properties": {"rx_rate": {"type": "number", "unit": "bit/s", "title": "", "description": "", "readOnly": true}}}
+      },
+      "required": ["gid"]
+    },
+    "snmp-snmp": {
+      "type": "object",
+      "properties": {
+        "trap_type": {"type": "integer", "enum": [1, 2], "labels": ["TRAP", "INFORM"], "default": 2, "title": "SNMP message type", "description": "Select the type of SNMP message"},
+        "port_id": {"type": "integer", "minimum": -1, "maximum": 65535, "default": -1, "title": "", "description": ""},
+        "community_set": {"$ref": "#/definitions/snmp-setcommunity"}
+      }
+    },
+    "snmp-setcommunity": {
+      "type": "object",
+      "rpc": true,
+      "properties": {"result": {"$ref": "#/definitions/snmp-setresult"}}
+    },
+    "snmp-setresult": {
+      "type": "object",
+      "properties": {"ok": {"type": "boolean", "title": "", "description": "", "readOnly": true}}
+    },
+    "alarm-alarms": {
+      "type": "object",
+      "properties": {
+        "toplevel": {"type": "integer", "enum": [0, 1, 2, 3], "labels": ["None", "Warning", "Minor", "Major"], "title": "Top level", "description": "", "readOnly": true},
+        "count": {"type": "integer", "minimum": 0, "maximum": 4294967295, "title": "", "description": "", "readOnly": true},
+        "log_note": {"type": "string", "title": "", "description": "Absent from the data", "readOnly": true}
+      }
+    }
+  }
+}

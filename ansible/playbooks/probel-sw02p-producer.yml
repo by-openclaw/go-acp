@@ -1,0 +1,93 @@
+---
+# probel-sw02p provider fleet deploy: a resident SW-P-02 matrix on the
+# plant host, for a third-party controller to drive (ADR-0025 #2/#3 — a
+# producer is proven by a client we did not write; the lab's Cerebrum is
+# that client, see probel-sw02p-producer-verify.yml). No device in the lab
+# speaks SW-P-02, so this producer under a controller IS the connector's
+# third-party evidence.
+#
+# The matrix served is the same 64 x 64 interop tree as the SW-P-08
+# producer: one matrix, one level.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/probel-sw02p-producer.yml
+
+- name: probel-sw02p — provider serve, resident
+  hosts: plant
+  gather_facts: false
+  vars:
+    s2p_root: /etc/dhs/probel-sw02p
+    s2p_port: 2002
+    s2p_metrics: ":9104"
+    s2p_tree: "{{ playbook_dir }}/../../internal/probel-sw08p/assets/interop_1mtx_64_1lvl.json"
+    s2p_cli: "/usr/local/bin/dhs consumer probel-sw02p --dsts 64 --srcs 64"
+  tasks:
+    - name: Fixture directory
+      ansible.builtin.file:
+        path: "{{ s2p_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Committed matrix tree
+      ansible.builtin.copy:
+        src: "{{ s2p_tree }}"
+        dest: "{{ s2p_root }}/tree.json"
+        mode: "0644"
+      notify: restart dhs-probel-sw02p
+
+    - name: dhs-probel-sw02p.service
+      ansible.builtin.copy:
+        content: |
+          # Managed by ansible/playbooks/probel-sw02p-producer.yml.
+          [Unit]
+          Description=dhs probel-sw02p provider (64x64 interop matrix)
+          After=network.target
+          [Service]
+          ExecStart=/usr/local/bin/dhs producer probel-sw02p serve \
+            --tree {{ s2p_root }}/tree.json \
+            --port {{ s2p_port }} --host 0.0.0.0 \
+            --metrics-addr {{ s2p_metrics }} \
+            --log-level info
+          Restart=always
+          RestartSec=2
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/dhs-probel-sw02p.service
+        mode: "0644"
+      notify: restart dhs-probel-sw02p
+
+    - name: Service enabled + running
+      ansible.builtin.systemd:
+        name: dhs-probel-sw02p
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Flush handlers (restart before verifying)
+      ansible.builtin.meta: flush_handlers
+
+    # ---- smoke: the service answers. Not the oracle — that is the
+    # controller's session, asserted by probel-sw02p-producer-verify.yml.
+    - name: The matrix answers an interrogate
+      ansible.builtin.command: "{{ s2p_cli }} interrogate 127.0.0.1:{{ s2p_port }} --dst 63"
+      register: s2p_int
+      changed_when: false
+      retries: 5
+      delay: 2
+      until: s2p_int.rc == 0
+
+    - name: Metrics endpoint serves the connector scrape
+      ansible.builtin.uri:
+        url: "http://127.0.0.1{{ s2p_metrics }}/metrics"
+        return_content: true
+      register: s2p_metrics_probe
+      changed_when: false
+      failed_when: >-
+        s2p_metrics_probe.status != 200
+        or 'rx_frames' not in s2p_metrics_probe.content
+
+  handlers:
+    - name: restart dhs-probel-sw02p
+      ansible.builtin.systemd:
+        name: dhs-probel-sw02p
+        state: restarted
+        daemon_reload: true

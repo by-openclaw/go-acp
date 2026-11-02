@@ -512,6 +512,29 @@ func (t *tree) buildRouterConfigResponse1() codec.RouterConfigResponse1Params {
 	return codec.RouterConfigResponse1Params{LevelMap: bitmap, Levels: levels}
 }
 
+// tallySource is the source a tally reports for (matrix, level, dst): the
+// recorded route; source 0 for a destination of the matrix that nothing
+// has been routed to yet; and the reserved 1023 only for what §3.2.5
+// reserves it for — a destination out of range (or a matrix with no
+// declared size, where no destination is known to be in it). Every
+// destination used to read 1023 until its first connect: a controller
+// surveying a fresh matrix was told the whole of it was out of range.
+func (t *tree) tallySource(m, l uint8, dst uint16) uint16 {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	st, ok := t.matrices[matrixKey{matrix: m, level: l}]
+	if !ok {
+		return codec.DestOutOfRangeSource
+	}
+	if src, routed := st.sources[dst]; routed {
+		return src
+	}
+	if int(dst) < st.targetCount {
+		return 0
+	}
+	return codec.DestOutOfRangeSource
+}
+
 // lookupSource returns the currently-routed source for (matrix, level,
 // dst). The second return is true when the tree has a recorded route;
 // callers encode the §3.2.5 "destination out of range" sentinel

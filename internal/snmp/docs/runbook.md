@@ -41,7 +41,27 @@ slots        1
 ```
 
 `dtd_version` is the agent's `sysObjectID` — the vendor and product,
-which is what tells you whose MIB applies.
+which is what tells you whose MIB applies. Under the slot, `info` prints the
+identity: constructor, model, serial, software and the table in use. A model
+walk keeps the serial in the device's manifest,
+`.cache/manifest/snmp/<ip>.json`; the DM holds no per-unit identity.
+
+A DM stays as first captured (ADR-0022): a DM walked with the wrong table is
+replaced by deleting it, and walking again.
+
+## No MIB for this device
+
+```
+next  Acme Inc. (PEN 12345): no MIB loaded. Look in github.com/by-protocol/mib,
+      then https://mibbrowser.online/mibs/ (search page mibdb_search.php)
+```
+
+The device is identified anyway, from ENTITY-MIB or the system group, and its
+vendor objects stay numbers. Put the MIB in the library as
+`<manufacturer>/<device-type>/<model>/`, recompile
+(`internal/snmp/CLAUDE.md`), and add its enterprise to `byObjectID` in `internal/snmp/mib/device.go` when
+one table fits the whole branch. A table is compiled in, so a device whose
+table exists but is not selected takes `--mib` or `SNMP_MIB`.
 
 ## It does not answer
 
@@ -83,6 +103,35 @@ dhs consumer snmp walk 10.6.255.114 --slot 0
 
 A scoped walk reads only those branches and deliberately does **not**
 write the device model cache: a handful of leaves is not a model.
+
+The protocol verb walks OIDs rather than paths, starts at the whole tree
+(`1.3.6.1`) and has no object limit; flags go on either side of the host:
+
+```
+dhs consumer snmp walk 10.6.255.114                          # everything the agent has
+dhs consumer snmp walk 10.6.255.114 --oid 1.3.6.1.4.1 --limit 500
+```
+
+**The DR5000's whole tree is 381 079 objects and takes twelve hours**
+(measured 2026-10-08, v0.42.0; net-snmp 5.9.3 walks it at the same
+pace). 327 680 of them are one table, the DVB subtitle services
+(`dr5000StatusTsDescriptorProgramStreamDvbSubService…`): the agent
+returns a row for every possible program x stream x service index
+(128 x 32 x 16) whether or not the service exists — one row carried real
+data — and answers more slowly the deeper into the table it is asked,
+down to ten objects a second. It also answers a GET for an index outside
+the table (program 999) with a value instead of noSuchInstance. Everything
+else on the device, about 53 000 objects, walks in half an hour.
+`walk --slot 0` reads those filled tables through their count: 4 456 objects.
+
+If that walk turns slow on a device and `compliance` shows
+`snmp_count_not_trusted`, a count did not hold up on that device and its table
+was walked in full, on purpose: no row is lost, it only costs the time.
+
+A request the agent has not answered is repeated, each time waiting twice
+as long as before (2 s, 4 s, 8 s): the agent answered late 8 079 times in
+that walk and none of them stopped it. With three equal waits the walk
+died at object 100 750.
 
 ## Write something
 
@@ -179,7 +228,18 @@ ansible-playbook -i inventory/hosts.ini playbooks/snmp-integration.yml  # change
 ```
 
 The play cross-compiles where there is a Go toolchain and ships the
-binaries (`DHS_BIN`), because the control node has none. Direct:
+binaries (`DHS_BIN`), because the control node has none.
+
+The verbs themselves, with the released binary, against the DR5000 —
+info, health, get, walk, a captured walk and its `validate`, and a `set`
+of the unit name with the write community, read back and put back:
+
+```
+ansible-playbook -i inventory/hosts.ini playbooks/snmp-dr5000-verify.yml
+ansible-playbook -i inventory/hosts.ini playbooks/snmp-dr5000-verify.yml -e snmp_full_walk=true   # the twelve hours
+```
+
+The Go suite, direct:
 
 ```
 SNMP_TEST_HOST=10.6.255.114 SNMP_WRITE_COMMUNITY=private \
@@ -197,6 +257,17 @@ SNMP_TEST_HOST=10.6.255.114 SNMP_WRITE_COMMUNITY=private \
 
 ## Look at the wire
 
+Every datagram of a session, as the manager sent and received it, and
+the same file read back offline (what the agent refused, and any answer
+no request in the file asked for):
+
+```
+dhs consumer snmp walk 10.6.255.114 --oid system --capture frames.jsonl
+dhs consumer snmp validate frames.jsonl
+```
+
+Or from outside, with a packet capture:
+
 ```
 tshark -i any -Y snmp -O snmp
 ```
@@ -212,10 +283,8 @@ are under [../testdata/](../testdata).
 Offline, reviewed in a PR — never at runtime.
 
 ```
-go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-    <by-protocol/mib>/ird <by-protocol/mib>/standard \
-    internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
-    internal/snmp/mib
+go run ./tools/mibc -library <by-protocol/mib> -out internal/snmp/mib/tables \
+    -set standard=internal/snmp/mib,snell=internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
 ```
 
 `-v` lists duplicate modules and which copy won, and names that did not

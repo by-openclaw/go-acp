@@ -60,18 +60,30 @@ func TestMain(m *testing.M) {
 		bin += ".exe"
 	}
 
-	// Build the CLI once. CGO not needed; the caller is expected to set
-	// CGO_ENABLED=0 but we don't rely on it — pure-Go build either way.
-	buildCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	build := exec.CommandContext(buildCtx, "go", "build", "-o", bin, "dhs/cmd/dhs")
-	build.Stderr = os.Stderr
-	build.Stdout = os.Stdout
-	if err := build.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "build dhs: %v\n", err)
-		os.Exit(1)
+	// The CLI under test. DHS_BIN names one that already exists — on the
+	// fleet that is the RELEASED binary the hosts run, and a result on a
+	// binary built for the occasion says nothing about it. Without
+	// DHS_BIN the CLI is built once from this tree (a developer's run).
+	if given := os.Getenv("DHS_BIN"); given != "" {
+		if _, err := os.Stat(given); err != nil {
+			fmt.Fprintf(os.Stderr, "DHS_BIN %s: %v\n", given, err)
+			os.Exit(1)
+		}
+		dhsBin = given
+	} else {
+		// CGO not needed; the caller is expected to set CGO_ENABLED=0
+		// but we don't rely on it — pure-Go build either way.
+		buildCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		build := exec.CommandContext(buildCtx, "go", "build", "-o", bin, "dhs/cmd/dhs")
+		build.Stderr = os.Stderr
+		build.Stdout = os.Stdout
+		if err := build.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "build dhs: %v\n", err)
+			os.Exit(1)
+		}
+		dhsBin = bin
 	}
-	dhsBin = bin
 
 	// Resolve the committed manifest + cache dir relative to this source file:
 	//   internal/acp2/integration/  ->  ../testdata/integration-test/
@@ -82,7 +94,10 @@ func TestMain(m *testing.M) {
 	}
 	cacheDir = filepath.Join(filepath.Dir(thisFile), "..", "testdata", "integration-test")
 	manifestPath = filepath.Join(cacheDir, "manifest", "neuron-test.json")
-	if _, err := os.Stat(manifestPath); err != nil {
+	// The fixture is what the LOCAL provider serves. Against a real
+	// device (ACP2_TEST_HOST) nothing is served from here, and the suite
+	// runs where the repository is not — the control node.
+	if _, err := os.Stat(manifestPath); err != nil && os.Getenv("ACP2_TEST_HOST") == "" {
 		fmt.Fprintf(os.Stderr, "manifest not found at %s: %v\n", manifestPath, err)
 		os.Exit(1)
 	}

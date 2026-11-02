@@ -1,0 +1,90 @@
+---
+# tsl consumer oracle: our TSL UMD v5.0 receiver (`dhs consumer tsl-v50
+# listen`, the resident dhs-tsl service deployed by
+# tsl-receiver-service.yml) as a third party drives it. The third party is
+# the lab's Cerebrum, whose TSL-UMD-V5 device pushes tallies to this host —
+# ADR-0025 #3 / ADR-0034: a consumer is proven against a sender we did not
+# write.
+#
+# What is asserted, from the receiver's own output:
+#   - the controller holds a session on the receiver's port;
+#   - it keeps sending and we keep decoding — v5.0 messages from its
+#     address arrive during the observation window;
+#   - nothing it sent was reported as an error in the last hour.
+#
+# What is NOT asserted here: a given tally state or label. That needs an
+# operator action in Cerebrum (a tally raised, a UMD text set).
+#
+# Read-only: nothing on the host or in Cerebrum changes; run-twice = 0
+# changes.
+#
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/tsl-receiver-verify.yml
+
+- name: tsl — the receiver as a third-party controller drives it
+  hosts: "{{ tsl_hosts | default('dhs-rocky') }}"
+  gather_facts: false
+  vars:
+    tlv_port: 2000
+    # The controller: the lab's Cerebrum (docs/testbed.md).
+    tlv_controller: 10.6.250.5
+    tlv_window_secs: 30
+  tasks:
+    - name: The receiver service is active
+      ansible.builtin.command: systemctl is-active dhs-tsl.service
+      register: tlv_active
+      changed_when: false
+
+    - name: Released binary the service runs
+      ansible.builtin.command: /usr/local/bin/dhs version
+      register: tlv_version
+      changed_when: false
+
+    - name: Sessions established on the receiver's port
+      ansible.builtin.command: "ss -Htn state established sport = :{{ tlv_port }}"
+      register: tlv_sessions
+      changed_when: false
+
+    - name: The controller holds a session
+      ansible.builtin.assert:
+        that: tlv_sessions.stdout is search((tlv_controller | regex_escape) ~ '\]?:')
+        fail_msg: >-
+          no established session from {{ tlv_controller }} on port {{ tlv_port }}
+          — sessions: {{ tlv_sessions.stdout_lines }}
+        quiet: true
+
+    - name: "Observe for {{ tlv_window_secs }} s"
+      ansible.builtin.pause:
+        seconds: "{{ tlv_window_secs }}"
+
+    - name: Messages decoded during the window
+      ansible.builtin.shell: >-
+        journalctl -u dhs-tsl --since "-{{ tlv_window_secs }}s" --no-pager -o cat
+        | grep -c "^v5.0  remote={{ tlv_controller }}:" || true
+      register: tlv_window
+      changed_when: false
+
+    - name: Messages decoded and errors reported in the last hour
+      ansible.builtin.shell: >-
+        journalctl -u dhs-tsl --since "-1h" --no-pager -o cat > /tmp/dhs-tsl-hour.txt;
+        echo "$(grep -c '^v5.0  remote={{ tlv_controller }}:' /tmp/dhs-tsl-hour.txt)
+        $(grep -ciE 'error|decode|malformed|checksum' /tmp/dhs-tsl-hour.txt)";
+        rm -f /tmp/dhs-tsl-hour.txt
+      register: tlv_hour
+      changed_when: false
+
+    - name: The controller sent, we decoded, nothing was reported as an error
+      ansible.builtin.assert:
+        that:
+          - (tlv_window.stdout | trim | int) > 0
+          - (tlv_hour.stdout.split()[1] | int) == 0
+        fail_msg: >-
+          {{ tlv_window.stdout | trim }} message(s) in the last {{ tlv_window_secs }} s,
+          last hour: {{ tlv_hour.stdout.split()[0] }} decoded, {{ tlv_hour.stdout.split()[1] }} error line(s)
+        quiet: true
+
+    - name: Verdict
+      ansible.builtin.debug:
+        msg: >-
+          tsl receiver green — {{ tlv_version.stdout_lines[0] }}; controller {{ tlv_controller }}
+          connected on port {{ tlv_port }}; {{ tlv_window.stdout | trim }} v5.0 message(s) decoded in
+          {{ tlv_window_secs }} s, {{ tlv_hour.stdout.split()[0] }} in the last hour, 0 errors

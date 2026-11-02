@@ -1,0 +1,34 @@
+{
+  "data": {
+    "dev": {
+      "product_info": {
+        "devname": "TEST-MI-01",
+        "inventory_id": "",
+        "location": "lab rack 0",
+        "contact": "nobody",
+        "uuid": "00000000-0000-0000-0000-000000000001",
+        "model": 40,
+        "prodname": "Virtuoso MI",
+        "serial": 1,
+        "serialfull": "TST0000.0001",
+        "swbuildtime": "2000.01.01 00:00:00",
+        "swver": "0.0.1",
+        "board_serial": 7
+      },
+      "system": {"uptime": 3600},
+      "temperature": 41.5
+    },
+    "network": {
+      "routev4_static_coll": {
+        "0.0.0.0:0:10": {"gw": "192.0.2.1", "label": "office network"}
+      },
+      "ipinterface_coll": {
+        "0": {"gid": 10001, "enable": true, "mtu": 1500, "type": "eth", "stats": {"rx_rate": 1250.5}},
+        "1": {"gid": 10002, "enable": false, "mtu": 9000, "type": "vlan", "stats": {"rx_rate": 0}}
+      },
+      "snmp": {"trap_type": 2, "port_id": -1}
+    },
+    "alarms": {"toplevel": 1, "count": 3}
+  },
+  "info": {"status": "ok", "errors": [], "warnings": [], "notes": []}
+}

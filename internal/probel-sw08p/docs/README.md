@@ -6,6 +6,7 @@ default port 2008).
 
 | Role | Doc | Status |
 |---|---|---|
+| **Status against ADR-0025** | [status.md](status.md) | the six deliverables, what was run on the real Neuron, what is open |
 | **Verbs & config reference** | [verbs.md](verbs.md) | every consumer verb + transport / controllers / logging / connect / interrogate / tally-dump / protect / names / salvo / discover / bench / wireshark / ansible, with real captured frames |
 | Consumer | [consumer.md](consumer.md) | ✓ shipping — SW-P-08 Issue 30 compliant; level-scoped `<matrix, level, dst, src>`; general + extended wire forms; wire-tested against the loopback emulator on 127.0.0.1:12008 |
 | Provider | [provider.md](provider.md) | ✓ shipping — strict-spec matrix emulator over DLE/STX/TCP; crosspoint + protect + names + salvo + tally-dump; serves a canonical `tree.json` |

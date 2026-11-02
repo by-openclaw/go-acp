@@ -173,7 +173,7 @@
         producer nmos serve
         --bind 0.0.0.0:{{ dhs_amwa_validate_node_port }}
         --advertise-host dhs-validate-node:{{ dhs_amwa_validate_node_port }}
-        --api-ver {{ suite.rows[0].ver | default('v1.3') }}
+        --api-ver {{ suite.is04_ver | default('v1.3') }}
         --config /dv/{{ dhs_amwa_validate_plant_config | basename }}
         --no-mdns
         --unicast

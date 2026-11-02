@@ -247,8 +247,10 @@ func TestCrosspointTallyDumpByteEmitError(t *testing.T) {
 }
 
 // TestAllSourceNamesDeclaredLabelsAndCap drives the rx 100 handler on a
-// labelled 40-source matrix with NameLen8 (max 16). Asserts the count is
-// capped at 16, declared labels surface where present, and positional
+// labelled 40-source matrix with NameLen8 (max 16 per message). Asserts the
+// first message carries 16 (the rest follow in further messages — see
+// TestAllNamesAreSentOverAsManyMessagesAsItTakes),
+// declared labels surface where present, and positional
 // defaults fill the gaps.
 func TestAllSourceNamesDeclaredLabelsAndCap(t *testing.T) {
 	srv := labelledServer(t)
@@ -258,12 +260,12 @@ func TestAllSourceNamesDeclaredLabelsAndCap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	dec, err := codec.DecodeSourceNamesResponse(*res.reply)
+	dec, err := codec.DecodeSourceNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(dec.Names) != 16 {
-		t.Fatalf("names = %d; want 16 (capped by NameLen8 max)", len(dec.Names))
+		t.Fatalf("names = %d; want 16 in the first message (NameLen8 max)", len(dec.Names))
 	}
 	if dec.Names[0] != "CAM01" {
 		t.Errorf("Names[0] = %q; want declared CAM01", dec.Names[0])
@@ -285,7 +287,7 @@ func TestAllSourceNamesUnknownMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	dec, err := codec.DecodeSourceNamesResponse(*res.reply)
+	dec, err := codec.DecodeSourceNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -304,7 +306,7 @@ func TestSingleSourceNameUnknownSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	dec, err := codec.DecodeSourceNamesResponse(*res.reply)
+	dec, err := codec.DecodeSourceNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -323,7 +325,7 @@ func TestAllDestAssocNames(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle: %v", err)
 		}
-		dec, err := codec.DecodeDestAssocNamesResponse(*res.reply)
+		dec, err := codec.DecodeDestAssocNamesResponse(firstMessage(t, res))
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}
@@ -339,7 +341,7 @@ func TestAllDestAssocNames(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle: %v", err)
 		}
-		dec, err := codec.DecodeDestAssocNamesResponse(*res.reply)
+		dec, err := codec.DecodeDestAssocNamesResponse(firstMessage(t, res))
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}
@@ -361,7 +363,7 @@ func TestSingleDestAssocNameUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	dec, err := codec.DecodeDestAssocNamesResponse(*res.reply)
+	dec, err := codec.DecodeDestAssocNamesResponse(firstMessage(t, res))
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -381,7 +383,7 @@ func TestAllSourceAssocNames(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle: %v", err)
 		}
-		dec, err := codec.DecodeSourceAssocNamesResponse(*res.reply)
+		dec, err := codec.DecodeSourceAssocNamesResponse(firstMessage(t, res))
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}
@@ -397,7 +399,7 @@ func TestAllSourceAssocNames(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle: %v", err)
 		}
-		dec, err := codec.DecodeSourceAssocNamesResponse(*res.reply)
+		dec, err := codec.DecodeSourceAssocNamesResponse(firstMessage(t, res))
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}
@@ -421,7 +423,7 @@ func TestSingleSourceAssocName(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle: %v", err)
 		}
-		dec, err := codec.DecodeSourceAssocNamesResponse(*res.reply)
+		dec, err := codec.DecodeSourceAssocNamesResponse(firstMessage(t, res))
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}
@@ -437,7 +439,7 @@ func TestSingleSourceAssocName(t *testing.T) {
 		if err != nil {
 			t.Fatalf("handle: %v", err)
 		}
-		dec, err := codec.DecodeSourceAssocNamesResponse(*res.reply)
+		dec, err := codec.DecodeSourceAssocNamesResponse(firstMessage(t, res))
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}

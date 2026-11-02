@@ -1,0 +1,14 @@
+---
+# No value lives in this role: the device and the layout come from the
+# inventory (group_vars/plant.yml, `neuronview`). This is only the shape
+# of what the role reads.
+#
+# neuronview:
+#   api: https://<address>/api/v1        REST base of the multiviewer
+#   validate_certs: false                the lab device is self-signed
+#   groups: 36                           IP GROUP 1..N
+#   group_name: "IP GROUP %d"
+#   audio_stream_name: "AUDIO STREAM %d"
+#   audio_streams_per_group: 2           group n takes streams 2n-1 and 2n
+#   audio_channels_per_stream: 8         8 + 8 = the 16 channels of a group
+neuronview: {}

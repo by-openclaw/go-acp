@@ -43,14 +43,18 @@ import (
 	_ "dhs/internal/acp1/consumer"
 	_ "dhs/internal/acp2/consumer"
 	_ "dhs/internal/ccm/consumer"
+	_ "dhs/internal/ccp/consumer"
 	_ "dhs/internal/cerebrum-nb/consumer"
 	_ "dhs/internal/emberplus/consumer"
+	_ "dhs/internal/kratos/consumer"
 	_ "dhs/internal/osc/consumer"
+	_ "dhs/internal/prism/consumer"
 	_ "dhs/internal/probel-sw02p/consumer"
 	_ "dhs/internal/probel-sw08p/consumer"
 	_ "dhs/internal/snell-rollcall/consumer"
 	_ "dhs/internal/snmp/consumer"
 	_ "dhs/internal/tsl/consumer"
+	_ "dhs/internal/virtuoso/consumer"
 
 	// Provider plugins — blank imports register with internal/provider.
 	_ "dhs/internal/acp1/provider"
@@ -324,6 +328,9 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		// A verb rrcs does not own is a neutral one, answered by the
 		// registered plugin through the generic table below (ADR-0037 P1).
 	}
+	if proto == "rcp" {
+		return runRCP(ctx, rest)
+	}
 	if proto == "ccm" {
 		handled, remaining, err := runCCM(ctx, rest)
 		if handled {
@@ -333,6 +340,33 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 		// connector below — with CCM's own flags taken out of the
 		// arguments, since the neutral verbs do not define them.
 		rest = remaining
+	}
+	if proto == "ccp" {
+		handled, remaining, err := runCCP(ctx, rest)
+		if handled {
+			return err
+		}
+		rest = remaining
+	}
+	if proto == "kratos" {
+		handled, remaining, err := runKratos(ctx, rest)
+		if handled {
+			return err
+		}
+		rest = remaining
+	}
+	if proto == "prism" {
+		handled, remaining := runPrism(rest)
+		if handled {
+			return nil
+		}
+		rest = remaining
+	}
+	if proto == "virtuoso" {
+		if len(rest) == 0 || isHelpToken(rest[0]) {
+			fmt.Print(virtuosoHelp)
+			return nil
+		}
 	}
 	if proto == "osc-v10" || proto == "osc-v11" {
 		return runOSCConsumer(ctx, proto, rest)
@@ -590,7 +624,15 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p | rrcs
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
+  Verbs (ccp):                 info, walk, get, set, watch + panel, colours
+                               (Axon control panels; run 'dhs consumer ccp -h')
+  Verbs (kratos):              info, walk, get, set, watch, export + command, table
+                               (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (prism):               info, walk, get, set, watch, export
+                               (waveform monitor; run 'dhs consumer prism -h')
+  Verbs (virtuoso):            info, walk, get, set, watch, export
+                               (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -604,6 +646,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                and every generic verb (get, set, walk, export,
                                health, status, alarm, …; ADR-0037)
                                (Riedel RRCS, XML-RPC over HTTP; default port 8193)
+  Verbs (rcp):                 info, list, get, export, create, set, delete
+                               (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113

@@ -15,10 +15,7 @@ func (s *server) handleExtendedInterrogate(f codec.Frame) (handlerResult, error)
 	if err != nil {
 		return handlerResult{}, err
 	}
-	src, ok := s.tree.lookupSource(0, 0, p.Destination)
-	if !ok {
-		src = codec.DestOutOfRangeSource
-	}
+	src := s.tree.tallySource(0, 0, p.Destination)
 	reply := codec.EncodeExtendedTally(codec.ExtendedTallyParams{
 		Destination: p.Destination,
 		Source:      src,

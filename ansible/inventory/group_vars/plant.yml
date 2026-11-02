@@ -1,0 +1,204 @@
+---
+# Devices the plant host configures. Roles and plays carry no address and
+# no layout of their own: they read them from here.
+
+# EVS Cerebrum (staging). RCP is the HTTP port of its "Enable RCP"
+# setting; northbound is its own port. The account is NOT here: plays take
+# it from DHS_CEREBRUM_USER / DHS_CEREBRUM_PASS in the environment.
+cerebrum:
+  host: 10.6.250.5
+  rcp_port: 9080
+  nb_port: 40009
+  # Name of the Network Media Server in Cerebrum's System View (1.0.0.1).
+  nmos_device: NMOS
+  # SubID play: a node is moved to its slot before the next one is touched.
+  # Each condition is read every nmos_wait_delay seconds, nmos_wait_retries
+  # times at most; then nothing is asked for nmos_settle seconds and the
+  # slot is read once more.
+  nmos_wait_delay: 3
+  nmos_wait_retries: 20
+  nmos_settle: 10
+  # A northbound read may take this long while Cerebrum moves a large node.
+  nmos_read_timeout: 20s
+  # Cerebrum's registry answers 10 resources a page unless asked.
+  nmos_page_limit: 100
+
+# SubID of each NMOS node on the Network Media Server, by IS-04 node label
+# (playbooks/cerebrum-nmos-node.yml). Plant data: NetBox will own these.
+cerebrum_nmos_subids:
+  # The order of the signal chain (operator, 2026-10-10); the RouteMaster
+  # links follow the same order.
+  - {label: lab-convert-01, subid: 1}
+  # With a SubID the Shuffler (3 088 streams) made Cerebrum drop and
+  # re-register every node about every 20 s, twice on 2026-10-10, with
+  # Cerebrum's registry and with ours. Set on the operator's decision.
+  - {label: lab-shuffle-01, subid: 2}
+  - {label: lab-view-01, subid: 3}
+  - {label: "emsfp-a2-10-0c st2110 node", subid: 4}
+
+# RouteMaster content (playbooks/rcp-routemaster-provision.yml). Empty
+# until the levels and the IP routing are in place:
+#   levels:      [{id: 1, name: Video}, …]            created over northbound
+#   plan:        sources / destinations / virtuals / routes, by mnemonic
+#                (start from: dhs consumer rcp export <host> --plan)
+#   categories:  [{name, kind: source|destination, members: [mnemonic…]}]
+#   prune: true  the plan is the WHOLE RouteMaster
+cerebrum_routemaster:
+  federation_optional: true
+  prune: false
+  # The levels of the RouteMaster (operator, 2026-10-09): one per essence.
+  levels:
+    - {id: 1, name: Video}
+    - {id: 2, name: StrAudio1}
+    - {id: 3, name: StrAudio2}
+    - {id: 4, name: ANC}
+  # Local sources and destinations of the first chain (operator, 2026-10-11):
+  # SAT -> CONVERT -> Shuffler -> Neuron VIEW and FusioN. Each level is bound to
+  # the NMOS sender (source) or receiver (destination) of that name; level_1
+  # Video, level_2 StrAudio1, level_3 StrAudio2, level_4 ANC. The Shuffler
+  # carries audio only, the Neuron VIEW sends video only.
+  plan:
+    sources:
+      - {mnemonic: "CONVERT 1", levels: {level_1: {device: {senderReceiver: "VTX-01"}}, level_2: {device: {senderReceiver: "ATX-01"}}, level_3: {device: {senderReceiver: "ATX-02"}}, level_4: {device: {senderReceiver: "DTX-01"}}}}
+      - {mnemonic: "CONVERT 2", levels: {level_1: {device: {senderReceiver: "VTX-02"}}, level_2: {device: {senderReceiver: "ATX-03"}}, level_3: {device: {senderReceiver: "ATX-04"}}, level_4: {device: {senderReceiver: "DTX-02"}}}}
+      - {mnemonic: "SHUFFLER 1", levels: {level_2: {device: {senderReceiver: "ATX-0001"}}, level_3: {device: {senderReceiver: "ATX-0002"}}}}
+      - {mnemonic: "SHUFFLER 2", levels: {level_2: {device: {senderReceiver: "ATX-0003"}}, level_3: {device: {senderReceiver: "ATX-0004"}}}}
+      - {mnemonic: "VIEW OUT 1", levels: {level_1: {device: {senderReceiver: "IP Output 1"}}}}
+      - {mnemonic: "VIEW OUT 2", levels: {level_1: {device: {senderReceiver: "IP Output 2"}}}}
+      - {mnemonic: "VIEW OUT 3", levels: {level_1: {device: {senderReceiver: "IP Output 3"}}}}
+      - {mnemonic: "VIEW OUT 4", levels: {level_1: {device: {senderReceiver: "IP Output 4"}}}}
+      - {mnemonic: "VIEW OUT 5", levels: {level_1: {device: {senderReceiver: "IP Output 5"}}}}
+      - {mnemonic: "VIEW OUT 6", levels: {level_1: {device: {senderReceiver: "IP Output 6"}}}}
+      - {mnemonic: "VIEW OUT 7", levels: {level_1: {device: {senderReceiver: "IP Output 7"}}}}
+      - {mnemonic: "VIEW OUT 8", levels: {level_1: {device: {senderReceiver: "IP Output 8"}}}}
+    # Virtuals (operator, 2026-10-14): a source and a destination of the same
+    # name, made together by Cerebrum, with no device of their own.
+    virtuals:
+      - {mnemonic: "Proc Video"}
+      - {mnemonic: "Proc Audio"}
+      - {mnemonic: "Proc ANC"}
+    destinations:
+      - {mnemonic: "CONVERT 1", levels: {level_1: {device: {senderReceiver: "VRX-01"}}, level_2: {device: {senderReceiver: "ARX-01"}}, level_3: {device: {senderReceiver: "ARX-02"}}, level_4: {device: {senderReceiver: "DRX-01"}}}}
+      - {mnemonic: "CONVERT 2", levels: {level_1: {device: {senderReceiver: "VRX-02"}}, level_2: {device: {senderReceiver: "ARX-03"}}, level_3: {device: {senderReceiver: "ARX-04"}}, level_4: {device: {senderReceiver: "DRX-02"}}}}
+      - {mnemonic: "SHUFFLER 1", levels: {level_2: {device: {senderReceiver: "ARX-0001"}}, level_3: {device: {senderReceiver: "ARX-0002"}}}}
+      - {mnemonic: "SHUFFLER 2", levels: {level_2: {device: {senderReceiver: "ARX-0003"}}, level_3: {device: {senderReceiver: "ARX-0004"}}}}
+      - {mnemonic: "VIEW 1", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 1"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 1"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 2"}}, level_4: {device: {senderReceiver: "DATA STREAM 1"}}}}
+      - {mnemonic: "VIEW 2", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 2"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 3"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 4"}}, level_4: {device: {senderReceiver: "DATA STREAM 2"}}}}
+      - {mnemonic: "VIEW 3", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 3"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 5"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 6"}}, level_4: {device: {senderReceiver: "DATA STREAM 3"}}}}
+      - {mnemonic: "VIEW 4", levels: {level_1: {device: {senderReceiver: "VIDEO STREAM 4"}}, level_2: {device: {senderReceiver: "AUDIO STREAM 7"}}, level_3: {device: {senderReceiver: "AUDIO STREAM 8"}}, level_4: {device: {senderReceiver: "DATA STREAM 4"}}}}
+      - {mnemonic: "FUSION CH2", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 100"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 110"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 120"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 150"}}}}
+      - {mnemonic: "FUSION CH4", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 300"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 310"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 320"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 350"}}}}
+      - {mnemonic: "FUSION CH6", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 500"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 510"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 520"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 550"}}}}
+      - {mnemonic: "FUSION CH8", levels: {level_1: {device: {senderReceiver: "emsfp-a2-10-0c VidRx 700"}}, level_2: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 710"}}, level_3: {device: {senderReceiver: "emsfp-a2-10-0c AudRx 720"}}, level_4: {device: {senderReceiver: "emsfp-a2-10-0c AncRx 750"}}}}
+  # Alternate mnemonics, generated 2026-10-14: one line per resource, the
+  # fields of the plant. Applied only for the fields named in
+  # `alternate_fields` (they are created in Cerebrum: Tally and Router Config
+  # View > Alternate Mnemonics; neither API creates them). Ordinary is left
+  # blank: Cerebrum then shows the mnemonic itself.
+  alternate_fields: []
+  alternates:
+    sources:
+      "CONVERT 1": {Eng: "CONVERT OUT 1", Tech: "CONV-SRC-1", Operational: "CNV1", Intercom: "CNV1"}
+      "CONVERT 2": {Eng: "CONVERT OUT 2", Tech: "CONV-SRC-2", Operational: "CNV2", Intercom: "CNV2"}
+      "SHUFFLER 1": {Eng: "Shuffler OUT 1", Tech: "SHUF-SRC-1", Operational: "SHF1", Intercom: "SHF1"}
+      "SHUFFLER 2": {Eng: "Shuffler OUT 2", Tech: "SHUF-SRC-2", Operational: "SHF2", Intercom: "SHF2"}
+      "VIEW OUT 1": {Eng: "Neuron VIEW OUT 1", Tech: "VIEW-SRC-1", Operational: "VWO1", Intercom: "VWO1"}
+      "VIEW OUT 2": {Eng: "Neuron VIEW OUT 2", Tech: "VIEW-SRC-2", Operational: "VWO2", Intercom: "VWO2"}
+      "VIEW OUT 3": {Eng: "Neuron VIEW OUT 3", Tech: "VIEW-SRC-3", Operational: "VWO3", Intercom: "VWO3"}
+      "VIEW OUT 4": {Eng: "Neuron VIEW OUT 4", Tech: "VIEW-SRC-4", Operational: "VWO4", Intercom: "VWO4"}
+      "VIEW OUT 5": {Eng: "Neuron VIEW OUT 5", Tech: "VIEW-SRC-5", Operational: "VWO5", Intercom: "VWO5"}
+      "VIEW OUT 6": {Eng: "Neuron VIEW OUT 6", Tech: "VIEW-SRC-6", Operational: "VWO6", Intercom: "VWO6"}
+      "VIEW OUT 7": {Eng: "Neuron VIEW OUT 7", Tech: "VIEW-SRC-7", Operational: "VWO7", Intercom: "VWO7"}
+      "VIEW OUT 8": {Eng: "Neuron VIEW OUT 8", Tech: "VIEW-SRC-8", Operational: "VWO8", Intercom: "VWO8"}
+    destinations:
+      "CONVERT 1": {Eng: "CONVERT IN 1", Tech: "CONV-DST-1", Operational: "CNV1", Intercom: "CNV1"}
+      "CONVERT 2": {Eng: "CONVERT IN 2", Tech: "CONV-DST-2", Operational: "CNV2", Intercom: "CNV2"}
+      "SHUFFLER 1": {Eng: "Shuffler IN 1", Tech: "SHUF-DST-1", Operational: "SHF1", Intercom: "SHF1"}
+      "SHUFFLER 2": {Eng: "Shuffler IN 2", Tech: "SHUF-DST-2", Operational: "SHF2", Intercom: "SHF2"}
+      "VIEW 1": {Eng: "Neuron VIEW IN 1", Tech: "VIEW-DST-1", Operational: "VIEW1", Intercom: "VIEW1"}
+      "VIEW 2": {Eng: "Neuron VIEW IN 2", Tech: "VIEW-DST-2", Operational: "VIEW2", Intercom: "VIEW2"}
+      "VIEW 3": {Eng: "Neuron VIEW IN 3", Tech: "VIEW-DST-3", Operational: "VIEW3", Intercom: "VIEW3"}
+      "VIEW 4": {Eng: "Neuron VIEW IN 4", Tech: "VIEW-DST-4", Operational: "VIEW4", Intercom: "VIEW4"}
+      "FUSION CH2": {Eng: "FusioN IN CH2", Tech: "FUSI-DST-2", Operational: "FUS2", Intercom: "FUS2"}
+      "FUSION CH4": {Eng: "FusioN IN CH4", Tech: "FUSI-DST-4", Operational: "FUS4", Intercom: "FUS4"}
+      "FUSION CH6": {Eng: "FusioN IN CH6", Tech: "FUSI-DST-6", Operational: "FUS6", Intercom: "FUS6"}
+      "FUSION CH8": {Eng: "FusioN IN CH8", Tech: "FUSI-DST-8", Operational: "FUS8", Intercom: "FUS8"}
+    virtuals:
+      "Proc Video": {Eng: "Proc Video (virtual)", Tech: "VIRT-VIDEO", Operational: "P-Video", Intercom: "PVideo"}
+      "Proc Audio": {Eng: "Proc Audio (virtual)", Tech: "VIRT-AUDIO", Operational: "P-Audio", Intercom: "PAudio"}
+      "Proc ANC": {Eng: "Proc ANC (virtual)", Tech: "VIRT-ANC", Operational: "P-ANC", Intercom: "PANC"}
+  # Categories (operator, 2026-10-14), written over northbound. `kind` is
+  # source or destination; `members` are resources by mnemonic; `items`
+  # are the other slot kinds northbound knows: text, category (a
+  # sub-category, listed before its parent), blank. Slot order = list order.
+  categories:
+    - {name: CONVERT, kind: source, members: ["CONVERT 1", "CONVERT 2"]}
+    - {name: SHUFFLER, kind: source, members: ["SHUFFLER 1", "SHUFFLER 2"]}
+    - {name: "VIEW OUT", kind: source, members: ["VIEW OUT 1", "VIEW OUT 2", "VIEW OUT 3", "VIEW OUT 4", "VIEW OUT 5", "VIEW OUT 6", "VIEW OUT 7", "VIEW OUT 8"]}
+    - {name: FUSION, kind: destination, members: ["FUSION CH2", "FUSION CH4", "FUSION CH6", "FUSION CH8"]}
+    - {name: "SHUFFLER IN", kind: destination, members: ["SHUFFLER 1", "SHUFFLER 2"]}
+    - {name: "VIEW Video", kind: destination, members: ["VIEW 1", "VIEW 2", "VIEW 3", "VIEW 4"]}
+    - name: VIEW
+      kind: destination
+      items:
+        - {type: text, value: "Neuron VIEW"}
+        - {type: category, value: "VIEW Video"}
+        - {type: blank}
+
+# EVS Neuron VIEW (lab-view-01) — REST on the management address.
+neuronview:
+  api: https://10.6.255.104/api/v1
+  # The API document the device serves: its version picks the driver.
+  spec: https://10.6.255.104/swagger/api.yml
+  validate_certs: false
+  groups: 36
+  group_name: "IP GROUP %d"
+  audio_stream_name: "AUDIO STREAM %d"
+  # IP GROUP n = AUDIO STREAM 2n-1 + AUDIO STREAM 2n, 8 channels each.
+  audio_streams_per_group: 2
+  audio_channels_per_stream: 8
+
+# Sender addresses set over IS-05 (playbooks/nmos-senders.yml) — only for
+# a device the provisioning CSVs cannot reach. The Neuron VIEW holds video
+# block 1 of the plan (sites/lab/provisioning/devices.csv): 239.20.1.n,
+# BLUE = RED + 64. It has no BLUE link today; the leg is addressed all the
+# same. Video senders only: the device has no audio or data output.
+nmos_senders:
+  - node: http://10.6.255.104:3000
+    node_version: v1.3
+    connection_version: v1.1
+    label: "IP Output %d"
+    count: 8
+    legs:
+      - {ip: "239.20.1.%d", port: 20000}
+      - {ip: "239.84.1.%d", port: 20000}
+
+# IS-05 connections, by label (playbooks/nmos-connect.yml).
+#
+# FusioN lab-fusion-01: the four channels our hardware has — CH2, CH4,
+# CH6, CH8 — each take the first output of the CONVERT: VTX-01 (video),
+# ATX-01 + ATX-02 (audio), DTX-01 (ANC). The FusioN labels its receivers
+# "<hostname> <Kind>Rx <c><n>0": c is the channel counted from 0 (CH2 is
+# 1), n the stream within the channel (0 video, 1-4 audio, 5 ANC).
+nmos_connections:
+  - receiver_node: http://10.6.40.54
+    receiver_version: v1.2
+    sender_node: http://10.6.255.102:3000
+    sender_version: v1.3
+    pairs:
+      - {receiver: "emsfp-a2-10-0c VidRx 100", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 110", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 120", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 150", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 300", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 310", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 320", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 350", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 500", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 510", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 520", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 550", sender: "DTX-01"}
+      - {receiver: "emsfp-a2-10-0c VidRx 700", sender: "VTX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 710", sender: "ATX-01"}
+      - {receiver: "emsfp-a2-10-0c AudRx 720", sender: "ATX-02"}
+      - {receiver: "emsfp-a2-10-0c AncRx 750", sender: "DTX-01"}

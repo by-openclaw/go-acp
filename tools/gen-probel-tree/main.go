@@ -10,7 +10,7 @@
 //
 // The output matches the schema consumed by internal/probel-sw08p/provider/tree.go
 // (canonical.Export → canonical.Matrix[]). All source + destination names
-// get labelled positionally ("SRC_NNNNN" / "TGT_NNNNN"), so the tree
+// get labelled positionally ("SRCnnnnn" / "DSTnnnnn", counted from 1), so the tree
 // doubles as an exerciser of the name/label RX command paths.
 //
 // # Contract
@@ -161,8 +161,12 @@ func buildMatrix(matrixIdx, size, nLevels int) *canonical.Matrix {
 		src := make(map[string]string, size)
 		for i := 0; i < size; i++ {
 			k := strconv.Itoa(i)
-			tgt[k] = fmt.Sprintf("TGT_M%d_L%d_%05d", matrixIdx, l, i)
-			src[k] = fmt.Sprintf("SRC_M%d_L%d_%05d", matrixIdx, l, i)
+			// Eight characters, the width a controller asks for by default,
+			// and distinct in those eight: "SRC_M0_L0_00012" was cut to
+			// "SRC_M0_L" for every source of the matrix. The matrix and the
+			// level are the scope of a name request, not part of the name.
+			tgt[k] = fmt.Sprintf("DST%05d", i+1)
+			src[k] = fmt.Sprintf("SRC%05d", i+1)
 		}
 		targetLabels[lvlKey] = tgt
 		sourceLabels[lvlKey] = src

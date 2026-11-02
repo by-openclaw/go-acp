@@ -96,13 +96,18 @@ with the `gh` CLI from the desk — a plain `git clone` from the fleet has
 no credentials). Layout:
 
 ```
-ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
+ateme/ird/DR5000/          ATEME-DR5000-MIB + changelog
+dev-systemtechnik/rf-switch/1986/ · 7113/   DEV-SWITCH-MIB, two branches
+novelsat/modem/            root · common · demodulator · modulator
+arista/switch/EOS/         the ARISTA-* set: one table, every EOS model
+ericsson/ird/TT1260/   AccessControl · AlarmTrap · Base · CFG · G703 · IPstreamer
               RX-DUAL-GIGE-EX · TRAP · TT1260-MIB · Types · ip · rxDualGigE
-ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
+ericsson/ird/RX1290/   AlarmTrap · Base · CFG · RX-DUAL-GIGE-EX · RX1290-8VSB-MIB
               RX1290-MIB · Types · ip-RX1290 · rxDualGigE
-ird/RX8200/   ~20 files, one per functional area
+ericsson/ird/RX8200/   ~20 files, one per functional area
 standard/     RFC-1212 · RFC-1215 · RFC1155-SMI · RFC1213-MIB
-              SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC
+              SNMPv2-CONF · SNMPv2-SMI · SNMPv2-TC, and the standard modules a
+              managed switch serves: ENTITY-*, RMON, BRIDGE, MAU, PTP, IP-MIB…
 ```
 
 `Base.mib` is the root every product MIB imports:
@@ -121,9 +126,9 @@ So the compiler has to take **two** source roots, not one: a checkout of
 frames. Whether the Snell set should later move to `by-protocol/mib` for
 ADR-0015's single-source rule is the codeowner's call; it is not a
 blocker, and moving 232 tracked files is a separate change from
-compiling them. Per
-device under `ird/` (TT1260, RX1290, RX8200), plus `standard/` carrying the
-six IETF base modules every vendor MIB imports and no vendor ships.
+compiling them. The library is `<manufacturer>/<device-type>/<model>/`, plus
+`standard/` carrying the IETF base modules every vendor MIB imports and no
+vendor ships.
 
 There are **TWO** vendor trees in this plant, not one — code that assumed a
 single vendor root would work against the IRDs and quietly mis-address the
@@ -144,7 +149,7 @@ branch the testbed devices answer on.
 
 The import graph is shallow and shared:
 
-    ird/<device>/*.mib
+    ericsson/ird/<device>/*.mib
       ├── ETV-Base-MIB   (Base.mib)    enterprises 1773
       ├── ETV-Types-TC   (Types.mib)   Uint8 / Uint16 / Uint32 / PIDNumber
       └── standard/      RFC1155-SMI · RFC-1212 · RFC-1215
@@ -162,31 +167,44 @@ lexer, grammar, IMPORTS resolution across files — and dragging that into the
 shipped binary is how a connector acquires a dependency tail.
 
 Instead: `tools/mibc` (front end in `internal/snmp/smi`) compiles the MIBs
-into one committed table, `internal/snmp/mib/tables.tsv.gz`, and the
-connector reads that. The compile is a development step whose output is
-reviewed in a PR; the runtime knows only numbers, names and types. The roots
-are a checkout of `by-protocol/mib` (the IRDs and the IETF standard modules)
-and the Snell set already in this repo:
+into committed tables under `internal/snmp/mib/tables/`, **one per device
+model, never merged**: one device is one connection, and that connection loads
+its own table only. A connection picks it from `--mib` or `SNMP_MIB`, else from
+its `sysObjectID`; with neither, vendor objects stay numbers and
+`snmp_no_device_mib` fires. The TT1260 and RX1290 report the same sysObjectID
+and the DEV switches share one tree, so those need `--mib`.
 
-    go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-        <by-protocol/mib>/ird <by-protocol/mib>/standard \
-        internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
-        internal/snmp/mib
+The compile is a development step whose output is reviewed in a PR; the
+runtime knows only numbers, names and types. The sources are a checkout of
+`by-protocol/mib` and the Snell set already in this repo:
+
+    go run ./tools/mibc -library <by-protocol/mib> -out internal/snmp/mib/tables \
+        -set standard=internal/snmp/mib,snell=internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
 
 (the last root is our own DHS-MIB, so the agent's names resolve too)
+
+mibc refuses a run that leaves any table in `-out` uncompiled, and says which:
+dropping a table is deleting its file.
 
 Findings (duplicate modules and which copy won, names that did not resolve)
 are expected and listed with `-v`; they are not failures. Two rules decide
 between copies: the newest LAST-UPDATED wins, and `-pin` overrides it where
-the codeowner chose (IP-MIB is the RX1290's, the newest product). A vendor
+the codeowner chose (`IP-MIB` is Ericsson's own where an IRD ships one: that
+module of that name is a vendor branch, not RFC 4293's). A vendor
 defect only the vendor's own files can prove is corrected in
 `tools/mibc/patches.txt`, each line with its evidence. Symbols no MIB anywhere
 defines (the Snell QUASAR/IQDLY21 registrations) stay unresolved and
 reported, never invented.
 
+`internal/snmp/mib/enterprises.tsv.gz` is the IANA registry, names only,
+compiled the same offline way; regenerate it when a device's constructor is
+missing:
+
+    go run ./tools/genpen -in enterprise-numbers.txt -out internal/snmp/mib/enterprises.tsv.gz
+
 One OID can carry two names: the TT1260 and RX1290 report the same
-sysObjectID and differ at 34 OIDs. Both rows are kept; `--mib MODULE` on the
-consumer verbs (or `prefer` in `mib.Describe`) picks the device's.
+sysObjectID and differ at 34 OIDs. Each has its own table; `--mib ericsson-tt1260` on the
+consumer verbs picks the device's.
 
 Measured for the fork set the codeowner already made under
 `github.com/by-protocol` (per ADR-0005's build-graph rule — what enters OUR
@@ -246,6 +264,29 @@ What the neutral face decides, and why:
   dropped, and a table row's index last. The MIB's own name works as
   an alias, so `sysLocation`, `system.Location` and the number all
   resolve.
+- **A table a parent counts reads through its count** (`WalkBounded`), for
+  a device that pads a table to full size. `Table.Bounded` derives this from
+  the compiled table alone, with no device name: T's INDEX is its parent's
+  plus one, and the parent has an integer column named `<T's stem>Count` or
+  `<parent's stem>N<the rest of T>`. That is a reading of names, so each table
+  proves it on the device first (`provenCount`): the largest count's last row
+  holds data, the row past every count holds none, and non-index columns
+  decide, because a device answers any index with made-up index values. A
+  count that fails, or a count over the index's stated range (or `mib.MaxRows`
+  when none is stated), fires `snmp_count_not_trusted` and that table gets the
+  plain walk: a wrong rule may cost time, it may not hide a row. Only the
+  model walk uses it; a raw `--oid` walk reads everything.
+- **Identity works with no MIB** (`deviceIdentity`): the vendor's objects by
+  name, then the ENTITY-MIB row of class chassis, then sysDescr and
+  sysObjectID. The constructor comes from the enterprise number through the
+  IANA registry, so a device nobody has a table for still names whose MIB is
+  missing, and `info` says where to look. The DM's key is Model@SwRev and it
+  carries only what every unit of that model shares; what one box says of
+  itself (serial, boot firmware, sysDescr) goes in `unit` in its manifest,
+  `.cache/manifest/snmp/<ip>.json`, ADR-0022. `info` prints both.
+- **An address reads as an address**: the object's textual convention
+  decides (`Object.Address`), never its name, in the walk, `get` and the
+  monitor, and a SET takes the same text.
 - **No walk to resolve a name** (`PathNative`): the compiled table is
   the map, so `get --path` on a cold connection is one GET.
 - **Values carry their enumeration's word** — `rf1`, `hdsdi`, `true` —

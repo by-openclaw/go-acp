@@ -88,7 +88,15 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | cerebrum-nb | emberplus | probel-sw08p
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
+  Verbs (ccp):                 info, walk, get, set, watch + panel, colours
+                               (Axon control panels; run 'dhs consumer ccp -h')
+  Verbs (kratos):              info, walk, get, set, watch, export + command, table
+                               (antenna controller; run 'dhs consumer kratos -h')
+  Verbs (prism):               info, walk, get, set, watch, export
+                               (waveform monitor; run 'dhs consumer prism -h')
+  Verbs (virtuoso):            info, walk, get, set, watch, export
+                               (Nevion Virtuoso MI; run 'dhs consumer virtuoso -h')
   Verbs (acp1/acp2/emberplus): info, walk, get, set, watch, export, import,
                                extract, diff, convert, discover,
                                matrix, invoke, stream (Ember+ only),
@@ -97,6 +105,8 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rcp):                 info, list, get, export, create, set, delete
+                               (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
   Examples:
     dhs consumer acp1        walk        10.6.239.113
@@ -166,11 +176,14 @@ PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
   ccm           EVS Neuron CCM (REST/JSON over TLS)
+  ccp           Axon Cortex Control Panel Protocol (CCP-1601 …)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  kratos        Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 75…)
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
+  prism         Telestream PRISM waveform monitor (REST/JSON, the instrument…)
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
@@ -178,6 +191,7 @@ PROTOCOLS
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
+  virtuoso      Nevion Virtuoso MI chassis and cards (REST/JSON)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -1082,6 +1096,9 @@ EXAMPLES
   # what a device says it is
   dhs consumer snmp get 10.6.255.113
 
+  # one object, by name or number, after the host as with snmpget
+  dhs consumer snmp get 10.6.255.113 sysName.0
+
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113
 
@@ -1122,14 +1139,16 @@ Usage of get:
     	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
   -auth-pass string
     	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
+  -capture validate
+    	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
-    	read community (write community for set) (default "public")
+    	read community (write community for set); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public
   -context string
     	v3 context name; empty is the agent's default context
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
-    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+    	the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model
   -oid string
     	comma-separated objects, by standard name or dotted number (e.g. sysDescr.0,1.3.6.1.4.1.7995.1)
   -priv string
@@ -1156,8 +1175,10 @@ Usage of walk:
     	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
   -auth-pass string
     	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
+  -capture validate
+    	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
-    	read community (write community for set) (default "public")
+    	read community (write community for set); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public
   -context string
     	v3 context name; empty is the agent's default context
   -limit int
@@ -1165,9 +1186,9 @@ Usage of walk:
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
-    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+    	the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model
   -oid string
-    	subtree root, by standard name or dotted number (default "1.3.6.1.2.1")
+    	subtree root, by standard name or dotted number; the default is the whole tree, standard MIBs and the vendor's own (default "1.3.6.1")
   -priv string
     	v3 privacy: des or aes
   -priv-pass string
@@ -1189,8 +1210,8 @@ Usage of walk:
 ```text
 dhs consumer snmp set — write one object
 
-A SET needs the WRITE community in --community, which is NOT the read
-one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+A SET needs the WRITE community in SNMP_WRITE_COMMUNITY, or --community,
+which is NOT the read one. Get that wrong on a Tandberg IRD and you get no answer at all — the
 agent drops a request it will not serve (RFC 1157 §4.1) rather than
 explaining, so it looks exactly like a device that is switched off.
 Theirs is "private".
@@ -1217,14 +1238,16 @@ FLAGS
     	v3 authentication: md5, sha, sha224, sha256, sha384 or sha512
   -auth-pass string
     	v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)
+  -capture validate
+    	record every datagram sent and received as JSONL to this file (read it back with validate)
   -community set
-    	read community (write community for set) (default "public")
+    	read community (write community for set); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public
   -context string
     	v3 context name; empty is the agent's default context
   -max-repetitions walk
     	GETBULK window for walk (v2c only) (default 25)
   -mib string
-    	comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)
+    	the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model
   -oid string
     	the object to write, by standard name or dotted number
   -priv string
@@ -1236,7 +1259,7 @@ FLAGS
   -timeout duration
     	per-request timeout (default 2s)
   -type string
-    	value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
+    	value type: i(nteger) s(tring) x (hex octets) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters (default "s")
   -user string
     	v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user
   -value string
@@ -1263,6 +1286,8 @@ Usage of trap-listen:
     	the sender's engine boot count (default 1)
   -engine-id string
     	name in the SENDER's engine ID; a v3 notification is authenticated as the sender's engine, so this must match what it uses (default "dhs-agent")
+  -mib string
+    	the sender's MIB table, ateme-dr5000 for example; without it vendor objects stay numbers
   -priv string
     	v3 privacy: des or aes
   -priv-pass string
@@ -1954,17 +1979,19 @@ VERBS
   Verb                     Wire
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
-  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0]
-  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE
-  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE]
-  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE]
+  listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
+  list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
+  list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
+  get-route                one-shot OBTAIN of one destination, every level: --dest ID|NAME [--level L] [--router IP] [--output json]
   list-levels              one-shot OBTAIN LEVEL_MNE → every level ID + name  [--id N] [--out FILE]
-  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N = fan-out | --dest N = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L] [--router IP]
+  list-tags                one-shot OBTAIN RM_SRCE_TAGS | RM_DEST_TAGS (v0.17 §5.1.7-§5.1.8) → the tags of a source / destination, one row per level: --kind source|destination [--id N] [--level L] [--output json]
+  usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N|NAME = fan-out | --dest N|NAME = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L[,L…] IDs or mnemonics] [--router IP]
   replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
   import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
-  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP --device-type DEVICE
+  device-details           OBTAIN <device_change type='DETAILS'/>  --device IP|NAME [--by-name] [--device-type DEVICE|ROUTER — omitted: DEVICE first, ROUTER if the server refuses (§5.4.2 needs the class; 2.9.3 NACKs 10 without it)]
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
   list-categories          OBTAIN <category_change type='CATEGORY_LIST'/>
   category-details         OBTAIN <category_change type='CATEGORY_DETAILS'/>  --category NAME
@@ -1973,6 +2000,7 @@ VERBS
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
+  extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<ip>/<sub>": ["FOLDER"]})
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
@@ -1984,8 +2012,11 @@ VERBS
   lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
   device-config            <DEVICE_CONFIGURATION TYPE='ADD|MODIFY|REMOVE'/>  add|modify|remove --device-type generic|panel|router|snmp --ip IP [per-type flags]
-  set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT]
-  set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --tags a,b,c
+  set-mnemonic             ACTION <ROUTING TYPE='*_MNE'/>     --kind LEVEL_MNE|SRCE_MNE|DEST_MNE [--srce|--dest ID] --level ID --mnemonic TXT [--alt SLOT] [--allow-clear: send an empty MNEMONIC, the undocumented clear form]
+  set-tags                 ACTION <ROUTING TYPE='RM_*_TAGS'/> --kind RM_SRCE_TAGS|RM_DEST_TAGS [--srce|--dest ID] --level ID --tags a,b,c [--federation: the federation IO instead of the local one, v0.17]
+  assoc                    ACTION <ROUTING TYPE='*_ASSOC[_IP]'/> bind a RouteMaster source/destination on one level to a device IO: --kind SRCE_ASSOC|DEST_ASSOC --srce|--dest ID --level ID --target-device NAME [--target-level ID] --target-io N; or an IP sender/receiver: --kind SRCE_ASSOC_IP|DEST_ASSOC_IP … --target-device NAME --target-name SENDER|RECEIVER [--sub-device N]; [--federation: the federation IO instead of the local one, v0.17] [--bare: the document's attributes only, no IP_ADDRESS / DEVICE_TYPE]
+  rm-add                   ACTION <ROUTING TYPE='RM_SRCE_ADD|RM_DEST_ADD'/> (v0.17 §4.2.3) append sources or destinations to the RouteMaster: --kind source|destination [--count N (1-1000)] [--virtual] [--federation] [--output json]. The RESULT reply (ACCEPTED|FAILED) means validated and queued, not applied: read the collection back.
+  rm-delete                ACTION <ROUTING TYPE='RM_SRCE_DELETE|RM_DEST_DELETE'/> (v0.17 §4.2.4) --kind source|destination --id 21,22,23 [--federation] [--output json]
   salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
                            ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
   category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|modify-all|modify-desc|delete|delete-item --category C [--index N] [--item-type T] [--value V] [--name N] [--label L] [--inherits P] [--description D]
@@ -2036,11 +2067,14 @@ PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
   ccm           EVS Neuron CCM (REST/JSON over TLS)
+  ccp           Axon Cortex Control Panel Protocol (CCP-1601 …)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  kratos        Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 75…)
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
+  prism         Telestream PRISM waveform monitor (REST/JSON, the instrument…)
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
@@ -2048,6 +2082,7 @@ PROTOCOLS
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
+  virtuoso      Nevion Virtuoso MI chassis and cards (REST/JSON)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)
@@ -2117,11 +2152,14 @@ PROTOCOLS
   acp1          Axon Control Protocol v1.4 (UDP direct)
   acp2          Axon Control Protocol v2 (AN2/TCP)
   ccm           EVS Neuron CCM (REST/JSON over TLS)
+  ccp           Axon Cortex Control Panel Protocol (CCP-1601 …)
   cerebrum-nb   EVS Cerebrum Northbound API (XML over WebSocket)
   emberplus     Ember+ (Glow/S101/TCP) consumer
+  kratos        Kratos NGC2 IDU antenna controller (REST/JSON + MQTT, API 75…)
   mnset         Riedel MuoN eMSFP / FusioN
   osc-v10       Open Sound Control 1.0
   osc-v11       Open Sound Control 1.1
+  prism         Telestream PRISM waveform monitor (REST/JSON, the instrument…)
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
@@ -2129,6 +2167,7 @@ PROTOCOLS
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
   tsl-v50       TSL UMD v5.0
+  virtuoso      Nevion Virtuoso MI chassis and cards (REST/JSON)
 
 GENERIC VERBS (acp1 / acp2 / emberplus)
   info       read device info (slot count, per-slot status)

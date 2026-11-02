@@ -2,6 +2,7 @@
 
 | Role | Doc | Status |
 |---|---|---|
+| **Where it stands (ADR-0025)** | [status.md](status.md) | the six deliverables, with evidence |
 | Operator runbook | [runbook.md](runbook.md) | ✓ shipping |
 | Consumer (the manager) | [consumer.md](consumer.md) | ✓ shipping — v1/v2c polling, traps in every version |
 | Provider (the agent) | [provider.md](provider.md) | ✓ shipping — serves DHS-MIB, answers GET/GETNEXT/GETBULK/SET, emits traps |
@@ -26,7 +27,7 @@ Two halves of one protocol, the same split every connector here has:
 |---|---|
 | [`codec/`](../codec) | the wire: v1/v2c/v3 envelopes, every PDU, the v1 Trap-PDU, the USM parameters blob. stdlib-only (ADR-0006) |
 | [`usm/`](../usm) | RFC 3414 + 7860 + 3826 — key derivation against the published vectors, digests, DES and AES |
-| [`mib/`](../mib) | the OID vocabulary, compiled offline into `tables.tsv.gz`; never parsed at runtime |
+| [`mib/`](../mib) | the OID vocabulary, compiled offline into `tables/*.tsv.gz`; never parsed at runtime |
 | [`smi/`](../smi) + [`tools/mibc`](../../../tools/mibc) | the offline MIB compiler that produces that table |
 | [`consumer/`](../consumer) | the manager session, and `plugin.go` — the same session as a neutral `consumer.Protocol` |
 | [`provider/`](../provider) | the agent: a served MIB, the request rules, traps in any version |
@@ -45,10 +46,8 @@ firmware in front of you. See [`docs/testbed.md`](../../../docs/testbed.md).
 Compiling is a development step, reviewed in a PR:
 
 ```
-go run ./tools/mibc -out internal/snmp/mib/tables.tsv.gz \
-    <by-protocol/mib>/ird <by-protocol/mib>/standard \
-    internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs \
-    internal/snmp/mib
+go run ./tools/mibc -library <by-protocol/mib> -out internal/snmp/mib/tables \
+    -set standard=internal/snmp/mib,snell=internal/snell-rollcall/assets/Protocol/SNMP/SNMP_MIBs
 ```
 
 ## v3 is the default

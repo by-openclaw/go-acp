@@ -111,7 +111,7 @@ http://10.6.255.114/ATEME-DR5000-MIB.smi
 http://10.6.255.114/ATEME-DR5000-MIB-Changelog.txt
 ```
 
-Both are committed to `by-protocol/mib` under `ird/DR5000/`. The paths
+Both are committed to `by-protocol/mib` under `ateme/ird/DR5000/`. The paths
 are not linked from the Flex UI's HTML — they are inside the
 `DR5000-*.swf` (zlib-compressed; decompress and grep for `.smi`).
 
@@ -199,7 +199,7 @@ Verified live with `snmpget`/`snmpwalk` from `dhs-tools`:
 
 ### controlMode — the OID that decides who may drive an IRD
 
-`1.3.6.1.4.1.1773.1.3.200.1.11.0`, from `ird/TT1260/TT1260-MIB.mib` in
+`1.3.6.1.4.1.1773.1.3.200.1.11.0`, from `ericsson/ird/TT1260/TT1260-MIB.mib` in
 `github.com/by-protocol/mib`:
 
 ```

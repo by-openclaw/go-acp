@@ -9,6 +9,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"dhs/internal/snmp/codec"
 	snmpcons "dhs/internal/snmp/consumer"
 	"dhs/internal/snmp/mib"
+	"dhs/internal/transport"
 )
 
 // runSNMPConsumer dispatches `dhs consumer snmp <verb> [args]`.
@@ -102,10 +104,12 @@ func runSNMPProducer(ctx context.Context, args []string) error {
 type snmpFlags struct {
 	version   string
 	community string
-	timeout   time.Duration
-	retries   int
-	bulk      int
-	prefer    string
+	// write makes this a SET, which takes the write community.
+	write    bool
+	timeout  time.Duration
+	retries  int
+	bulk     int
+	mibTable string
 
 	// v3 credentials. A user with no passwords is noAuthNoPriv, which
 	// identifies the manager without protecting the exchange; adding
@@ -116,21 +120,39 @@ type snmpFlags struct {
 	privProto string
 	privPass  string
 	context   string
+
+	// capture is the file every datagram of the session is recorded to
+	// (JSONL, the format `validate` reads and every other connector's
+	// --capture writes).
+	capture string
 }
 
 func (f *snmpFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&f.version, "version", "2c", "SNMP version: 1 or 2c. The Tandberg IRDs in this lab answer v1 ONLY; v2c gets no reply at all from them. The ATEME DR5000 answers both — prefer 2c there, it has GETBULK.")
-	fs.StringVar(&f.community, "community", "public", "read community (write community for `set`)")
+	fs.StringVar(&f.community, "community", "", "read community (write community for `set`); prefer SNMP_COMMUNITY and SNMP_WRITE_COMMUNITY — a password on a command line is in shell history and ps; else public")
 	fs.DurationVar(&f.timeout, "timeout", snmpcons.DefaultTimeout, "per-request timeout")
+	fs.StringVar(&f.capture, "capture", "", "record every datagram sent and received as JSONL to this file (read it back with `validate`)")
 	fs.IntVar(&f.retries, "retries", snmpcons.DefaultRetries, "how many times to repeat an unanswered request; UDP loses datagrams")
 	fs.IntVar(&f.bulk, "max-repetitions", snmpcons.DefaultMaxRepetitions, "GETBULK window for `walk` (v2c only)")
-	fs.StringVar(&f.prefer, "mib", "", "comma-separated MIB modules to name objects from first, where two devices name one OID differently — the TT1260 and RX1290 report the same sysObjectID (e.g. ETV-TT1260-MIB)")
+	fs.StringVar(&f.mibTable, "mib", "", "the device's MIB table, ericsson-tt1260 for example, where its sysObjectID does not identify the model")
 	fs.StringVar(&f.user, "user", "", "v3 USM user name (or SNMP_V3_USER). v3 has no community: it authenticates as a user")
 	fs.StringVar(&f.authProto, "auth", "", "v3 authentication: md5, sha, sha224, sha256, sha384 or sha512")
 	fs.StringVar(&f.authPass, "auth-pass", "", "v3 authentication password (prefer SNMP_V3_AUTH_PASS — a password on a command line is in the shell history and in ps)")
 	fs.StringVar(&f.privProto, "priv", "", "v3 privacy: des or aes")
 	fs.StringVar(&f.privPass, "priv-pass", "", "v3 privacy password (prefer SNMP_V3_PRIV_PASS)")
 	fs.StringVar(&f.context, "context", "", "v3 context name; empty is the agent's default context")
+}
+
+// communityEnv is the --community flag, else the environment. Empty leaves
+// the session's default, public.
+func (f *snmpFlags) communityEnv() string {
+	if f.community != "" {
+		return f.community
+	}
+	if f.write {
+		return strings.TrimSpace(os.Getenv("SNMP_WRITE_COMMUNITY"))
+	}
+	return strings.TrimSpace(os.Getenv("SNMP_COMMUNITY"))
 }
 
 // v3Env fills anything the flags left empty from the environment, the
@@ -174,15 +196,22 @@ func (f *snmpFlags) credentials() (*snmpcons.V3, error) {
 	}, nil
 }
 
-// modules is --mib as a list.
-func (f *snmpFlags) modules() []string {
-	var out []string
-	for _, m := range strings.Split(f.prefer, ",") {
-		if m = strings.TrimSpace(m); m != "" {
-			out = append(out, m)
+// table picks the one table this connection names objects from: --mib,
+// else the one the device's sysObjectID selects, else the base table with a
+// compliance note, so vendor objects stay numbers rather than borrow another
+// device's names.
+func (f *snmpFlags) table(ctx context.Context, s *snmpcons.Session, prof compliance.Recorder) (*mib.Table, error) {
+	if f.mibTable != "" {
+		return mib.Load(f.mibTable)
+	}
+	binds, err := s.Get(ctx, mib.SysObjectID)
+	if err == nil && len(binds) > 0 && binds[0].Value.Type == codec.TypeOID {
+		if name, ok := mib.ForObjectID(binds[0].Value.OID); ok {
+			return mib.Load(name)
 		}
 	}
-	return out
+	prof.Note(snmpcons.NoDeviceMIB)
+	return mib.Base(), nil
 }
 
 // options builds the session options, refusing a version this manager
@@ -200,7 +229,7 @@ func (f *snmpFlags) options(addr string, prof compliance.Recorder) (snmpcons.Opt
 		return snmpcons.Options{}, fmt.Errorf("snmp: unknown version %q (expected 1, 2c or 3)", f.version)
 	}
 	opts := snmpcons.Options{
-		Addr: addr, Version: v, Community: f.community,
+		Addr: addr, Version: v, Community: f.communityEnv(),
 		Timeout: f.timeout, Retries: f.retries, MaxRepetitions: f.bulk,
 		Compliance: prof,
 	}
@@ -210,6 +239,13 @@ func (f *snmpFlags) options(addr string, prof compliance.Recorder) (snmpcons.Opt
 			return snmpcons.Options{}, err
 		}
 		opts.V3 = cred
+	}
+	if f.capture != "" {
+		rec, err := transport.NewRecorder(f.capture)
+		if err != nil {
+			return snmpcons.Options{}, fmt.Errorf("--capture: %w", err)
+		}
+		opts.Tap = func(dir string, datagram []byte) { rec.Record("snmp", dir, datagram) }
 	}
 	return opts, nil
 }
@@ -235,7 +271,20 @@ func runSNMPGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	names, err := resolveOIDs(*oids)
+
+	prof := &compliance.Profile{}
+	s, err := dialSNMP(ctx, &f, host, prof)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = s.Close() }()
+	table, err := f.table(ctx, s, prof)
+	if err != nil {
+		return err
+	}
+	// A name after the host is a name asked for, the way snmpget takes it:
+	// dropping it would print the system group as if that were the answer.
+	names, err := resolveOIDs(table, strings.Join(append([]string{*oids}, fs.Args()[1:]...), ","))
 	if err != nil {
 		return err
 	}
@@ -246,18 +295,11 @@ func runSNMPGet(ctx context.Context, args []string) error {
 			mib.SysContact, mib.SysName, mib.SysLocation}
 	}
 
-	prof := &compliance.Profile{}
-	s, err := dialSNMP(ctx, &f, host, prof)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = s.Close() }()
-
 	binds, err := s.Get(ctx, names...)
 	if err != nil {
 		return err
 	}
-	printBinds(binds, f.modules())
+	printBinds(binds, table)
 	printSNMPCompliance(prof)
 	return nil
 }
@@ -267,16 +309,12 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("walk", flag.ContinueOnError)
 	var f snmpFlags
 	f.register(fs)
-	root := fs.String("oid", "1.3.6.1.2.1", "subtree root, by standard name or dotted number")
+	root := fs.String("oid", "1.3.6.1", "subtree root, by standard name or dotted number; the default is the whole tree, standard MIBs and the vendor's own")
 	limit := fs.Int("limit", 0, "stop after this many objects (0 = no limit: the whole subtree is walked)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
 	host, err := hostArg(fs, "walk")
-	if err != nil {
-		return err
-	}
-	start, err := mib.Resolve(*root)
 	if err != nil {
 		return err
 	}
@@ -287,8 +325,19 @@ func runSNMPWalk(ctx context.Context, args []string) error {
 		return err
 	}
 	defer func() { _ = s.Close() }()
+	table, err := f.table(ctx, s, prof)
+	if err != nil {
+		return err
+	}
+	if fs.NArg() > 1 {
+		*root = fs.Arg(1)
+	}
+	start, err := table.ResolveInput(*root)
+	if err != nil {
+		return err
+	}
 
-	n, walkErr := printWalk(os.Stdout, os.Stderr, *limit, f.modules(), func(fn func(codec.VarBind) error) error {
+	n, walkErr := printWalk(os.Stdout, os.Stderr, *limit, table, func(fn func(codec.VarBind) error) error {
 		return s.Walk(ctx, start, fn)
 	})
 	fmt.Fprintf(os.Stderr, "%d object(s)\n", n)
@@ -312,12 +361,12 @@ const (
 // seconds; with no limit, a device whose tree takes a quarter of an hour
 // to read — an IRD's programme tables — printed nothing for a quarter
 // of an hour and looked dead.
-func printWalk(out, errOut io.Writer, limit int, prefer []string, walk func(func(codec.VarBind) error) error) (int, error) {
+func printWalk(out, errOut io.Writer, limit int, table *mib.Table, walk func(func(codec.VarBind) error) error) (int, error) {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	n := 0
 	err := walk(func(vb codec.VarBind) error {
 		n++
-		writeBind(w, vb, prefer)
+		writeBind(w, vb, table)
 		if n%walkFlushEvery == 0 {
 			_ = w.Flush()
 		}
@@ -344,16 +393,16 @@ func printWalk(out, errOut io.Writer, limit int, prefer []string, walk func(func
 // text can tell them.
 func runSNMPSet(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("set", flag.ContinueOnError)
-	var f snmpFlags
+	f := snmpFlags{write: true}
 	f.register(fs)
 	oid := fs.String("oid", "", "the object to write, by standard name or dotted number")
-	typ := fs.String("type", "s", "value type: i(nteger) s(tring) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters")
+	typ := fs.String("type", "s", "value type: i(nteger) s(tring) x (hex octets) o(id) a(ddress) u(nsigned) t(imeticks) — the net-snmp letters")
 	value := fs.String("value", "", "the value to write")
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(fs.Output(), `dhs consumer snmp set — write one object
 
-A SET needs the WRITE community in --community, which is NOT the read
-one. Get that wrong on a Tandberg IRD and you get no answer at all — the
+A SET needs the WRITE community in SNMP_WRITE_COMMUNITY, or --community,
+which is NOT the read one. Get that wrong on a Tandberg IRD and you get no answer at all — the
 agent drops a request it will not serve (RFC 1157 §4.1) rather than
 explaining, so it looks exactly like a device that is switched off.
 Theirs is "private".
@@ -388,10 +437,6 @@ FLAGS`)
 	if *oid == "" {
 		return fmt.Errorf("snmp set: --oid names what to write")
 	}
-	name, err := mib.Resolve(*oid)
-	if err != nil {
-		return err
-	}
 	v, err := parseSNMPValue(*typ, *value)
 	if err != nil {
 		return err
@@ -403,6 +448,14 @@ FLAGS`)
 		return err
 	}
 	defer func() { _ = s.Close() }()
+	table, err := f.table(ctx, s, prof)
+	if err != nil {
+		return err
+	}
+	name, err := table.ResolveInput(*oid)
+	if err != nil {
+		return err
+	}
 
 	binds, err := s.Set(ctx, codec.VarBind{Name: name, Value: v})
 	if err != nil {
@@ -410,7 +463,7 @@ FLAGS`)
 	}
 	// The echo is what the device actually took, which is not always
 	// what was asked for.
-	printBinds(binds, f.modules())
+	printBinds(binds, table)
 	printSNMPCompliance(prof)
 	return nil
 }
@@ -428,7 +481,7 @@ func dialSNMP(ctx context.Context, f *snmpFlags, host string,
 }
 
 // resolveOIDs turns a comma-separated list into OIDs.
-func resolveOIDs(list string) ([]codec.OID, error) {
+func resolveOIDs(table *mib.Table, list string) ([]codec.OID, error) {
 	if strings.TrimSpace(list) == "" {
 		return nil, nil
 	}
@@ -438,7 +491,7 @@ func resolveOIDs(list string) ([]codec.OID, error) {
 		if s == "" {
 			continue
 		}
-		o, err := mib.Resolve(s)
+		o, err := table.ResolveInput(s)
 		if err != nil {
 			return nil, err
 		}
@@ -477,6 +530,16 @@ func parseSNMPValue(typ, raw string) (codec.Value, error) {
 			return codec.Value{}, err
 		}
 		return codec.ObjectID(o), nil
+	case "x", "hex":
+		// Octets given as hex, net-snmp's x: what an OCTET STRING that is
+		// not text needs. The ATEME DR5000 keeps a trap destination as
+		// four raw bytes (0A06FA65), which no text value can write.
+		clean := strings.NewReplacer(" ", "", ":", "", "-", "").Replace(raw)
+		b, err := hex.DecodeString(clean)
+		if err != nil || len(b) == 0 {
+			return codec.Value{}, fmt.Errorf("snmp: %q is not hex octets (e.g. 0A06FA65 or 0a:06:fa:65)", raw)
+		}
+		return codec.Value{Type: codec.TypeOctetString, Bytes: b}, nil
 	case "a", "address", "ipaddress":
 		ip := parseIPArg(raw)
 		if ip == nil {
@@ -485,30 +548,33 @@ func parseSNMPValue(typ, raw string) (codec.Value, error) {
 		return codec.IPAddress(ip), nil
 	}
 	return codec.Value{}, fmt.Errorf(
-		"snmp: unknown type %q (expected i, s, o, a, u or t)", typ)
+		"snmp: unknown type %q (expected i, s, x, o, a, u or t)", typ)
 }
 
 // printBinds renders a result the way snmpget does: one object a line,
 // name, type, value.
-func printBinds(binds []codec.VarBind, prefer []string) {
+func printBinds(binds []codec.VarBind, table *mib.Table) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for _, vb := range binds {
-		writeBind(w, vb, prefer)
+		writeBind(w, vb, table)
 	}
 	_ = w.Flush()
 }
 
 // writeBind is one line of printBinds or walk.
-func writeBind(w io.Writer, vb codec.VarBind, prefer []string) {
-	name, obj := mib.Describe(vb.Name, prefer...)
-	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, displayValue(vb.Value, obj, prefer))
+func writeBind(w io.Writer, vb codec.VarBind, table *mib.Table) {
+	if table == nil {
+		table = mib.Base()
+	}
+	name, obj := table.Describe(vb.Name)
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", name, vb.Value.Type, displayValue(vb.Value, obj, table))
 }
 
 // displayValue renders a value the way net-snmp does: an enumerated
 // INTEGER as its MIB label with the number, snmp(4), and an OBJECT
 // IDENTIFIER by name, sysObjectID.0 = dhsAgent. The bare number is what an
 // operator would otherwise have to look up.
-func displayValue(v codec.Value, obj *mib.Object, prefer []string) string {
+func displayValue(v codec.Value, obj *mib.Object, table *mib.Table) string {
 	switch v.Type {
 	case codec.TypeInteger:
 		if obj != nil {
@@ -517,8 +583,14 @@ func displayValue(v codec.Value, obj *mib.Object, prefer []string) string {
 			}
 		}
 	case codec.TypeOID:
-		name, _ := mib.Describe(v.OID, prefer...)
+		name, _ := table.Describe(v.OID)
 		return name
+	case codec.TypeOctetString:
+		if obj != nil {
+			if text, ok := obj.Address(v.Bytes); ok {
+				return text
+			}
+		}
 	}
 	return v.String()
 }
@@ -560,6 +632,9 @@ VERSIONS
 EXAMPLES
   # what a device says it is
   dhs consumer snmp get 10.6.255.113
+
+  # one object, by name or number, after the host as with snmpget
+  dhs consumer snmp get 10.6.255.113 sysName.0
 
   # the Snell frame's own tree (enterprise 7995)
   dhs consumer snmp walk --oid 1.3.6.1.4.1.7995 10.6.255.113

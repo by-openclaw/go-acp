@@ -64,6 +64,13 @@ func TestAtomicWriters_FailureLeavesNoTmp(t *testing.T) {
 				return s.WriteDM("acp1", "RRS18@1601", DM{Objects: objs})
 			},
 		},
+		{
+			"ReplaceDM",
+			func(s *TreeStore) string { return s.IdentityPath("acp1", "RRS18@1601") },
+			func(s *TreeStore, objs []consumer.Object) error {
+				return s.ReplaceDM("acp1", "RRS18@1601", DM{Objects: objs})
+			},
+		},
 	}
 	failures := []struct {
 		name    string
@@ -93,6 +100,11 @@ func TestAtomicWriters_FailureLeavesNoTmp(t *testing.T) {
 	for _, w := range writers {
 		for _, f := range failures {
 			t.Run(w.name+"/"+f.name, func(t *testing.T) {
+				// Anything at a DM's name is a DM that exists, and the two
+				// writers that never replace one stop before the rename.
+				if f.name == "rename" && (w.name == "SaveByIdentity" || w.name == "WriteDM") {
+					t.Skip("see TestADMIsNeverOverwritten")
+				}
 				s := NewTreeStore(t.TempDir())
 				dst := w.dst(s)
 				f.arrange(t, dst)

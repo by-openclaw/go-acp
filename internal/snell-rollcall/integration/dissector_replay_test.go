@@ -55,6 +55,19 @@ func findTshark(t *testing.T) string {
 	return ""
 }
 
+// tsharkCommand is tshark reading pcap with the dissector loaded. Wireshark
+// runs no Lua for root, silently: as root the protocol does not exist, and
+// every filter on it fails. See dropRoot.
+func tsharkCommand(t *testing.T, pcap, dissector string, extra ...string) *exec.Cmd {
+	t.Helper()
+	tshark := findTshark(t)
+	pcap, dissector, configure := dropRoot(t, pcap, dissector)
+	args := append([]string{"-r", pcap, "-X", "lua_script:" + dissector}, extra...)
+	cmd := exec.Command(tshark, args...)
+	configure(cmd)
+	return cmd
+}
+
 func mustAbs(t *testing.T, rel string) string {
 	t.Helper()
 	abs, err := filepath.Abs(rel)
@@ -71,18 +84,11 @@ func mustAbs(t *testing.T, rel string) string {
 func runTshark(t *testing.T, extra ...string) string {
 	t.Helper()
 
-	tshark := findTshark(t)
-	args := []string{
-		"-r", mustAbs(t, fixtureRel),
-		"-X", "lua_script:" + mustAbs(t, dissectorRel),
-	}
-	args = append(args, extra...)
-
-	cmd := exec.Command(tshark, args...)
+	cmd := tsharkCommand(t, mustAbs(t, fixtureRel), mustAbs(t, dissectorRel), extra...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("tshark %v: %v\nstderr: %s", args, err, stderr.String())
+		t.Fatalf("tshark %v: %v\nstderr: %s", cmd.Args, err, stderr.String())
 	}
 	// A Lua error does not fail tshark; it appears in the dissection.
 	if strings.Contains(stdout.String(), "Lua Error") {

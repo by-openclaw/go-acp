@@ -1,0 +1,43 @@
+{
+  "data": {
+    "dev": {
+      "product_info": {
+        "devname": "TEST-CARD-01",
+        "uuid": "00000000-0000-0000-0000-0000000000a1",
+        "model": 156,
+        "prodname": "UDC-IP-H25",
+        "serial": 11,
+        "serialfull": "TST0000.0011",
+        "swbuildtime": "2000.01.01 00:00:00",
+        "swver": "0.0.2",
+        "board_serial": 77
+      }
+    },
+    "elements": {
+      "sdiinput_coll": {
+        "90000": {
+          "gid": 90000,
+          "flabel": "SDI In 1",
+          "sync": true,
+          "alarms": {
+            "subid3_coll": {
+              "0": {"state": 0, "severity": 3}
+            }
+          }
+        }
+      },
+      "ipoutputts_coll": {
+        "500000": {
+          "dst_coll": {
+            "0": {
+              "enable": true,
+              "gain": 1.5,
+              "ip": {"dstudpp": 12000, "destipv4": "198.51.100.1", "destipv6": ""}
+            }
+          }
+        }
+      }
+    }
+  },
+  "info": {"status": "ok", "errors": [], "warnings": [], "notes": []}
+}

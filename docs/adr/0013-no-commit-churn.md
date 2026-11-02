@@ -1,6 +1,7 @@
 # ADR-0013 — One approved unit of work = one commit
 
 Status: accepted
+Date: 2026-10-18
 
 ## Context
 
@@ -42,6 +43,9 @@ Every commit follows `<type>(<scope>): <description>`:
 | `test` | tests only |
 | `chore` | tooling / build / config |
 | `perf` | performance improvement |
+| `ci` | CI pipeline and workflow files only |
+| `build` | build system: Makefile, cross-compile, packaging |
+| `revert` | reverts an earlier commit |
 
 If you find yourself writing the same `feat(probel-sw02p): cmd 03
 connect` twice, you are circling — the first commit was incomplete.

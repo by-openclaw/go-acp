@@ -26,8 +26,8 @@ func TestInterrogateRepliesWithTally(t *testing.T) {
 		wantSrc uint16
 	}{
 		{"routed dst", 2, 3},
-		{"unrouted dst returns §3.2.5 sentinel", 1, codec.DestOutOfRangeSource},
-		{"unknown dst returns §3.2.5 sentinel", 999, codec.DestOutOfRangeSource},
+		{"a destination of the matrix nothing was routed to reads source 0, not \"out of range\"", 1, 0},
+		{"a destination outside the matrix reads the §3.2.5 sentinel", 999, codec.DestOutOfRangeSource},
 	}
 
 	for _, tc := range cases {

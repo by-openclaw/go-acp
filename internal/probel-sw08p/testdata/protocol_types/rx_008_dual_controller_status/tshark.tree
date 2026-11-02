@@ -1,0 +1,25 @@
+Frame 1: 61 bytes on wire (488 bits), 61 bytes captured (488 bits) on interface Fake IF, text2pcap, id 0 (outbound)
+Ethernet II, Src: Receive_00 (20:52:45:43:56:00), Dst: Send_00 (20:53:45:4e:44:00)
+Internet Protocol Version 4, Src: 10.2.2.2, Dst: 10.1.1.1
+Transmission Control Protocol, Src Port: 50000, Dst Port: 2008, Seq: 1, Ack: 1, Len: 7
+Probel SW-P-08 frame
+    Raw frame (on-wire, escaped): 10020801f71003
+    Start-of-Message (DLE STX): 1002
+    DATA (unescaped): 0801f7
+    Command: rx 008 Dual Controller Status Request (0x08) — rx 008 Dual Controller Status Request
+    Command (dec): 8
+    Extended command: False
+    Byte Count: 1
+    [BTC OK: True]
+    Checksum: 0xf7
+    [Checksum (calc): 0xf7]
+    [Checksum OK: True]
+    End-of-Message (DLE ETX): 1003
+
+Frame 2: 60 bytes on wire (480 bits), 60 bytes captured (480 bits) on interface Fake IF, text2pcap, id 0 (inbound)
+Ethernet II, Src: Send_00 (20:53:45:4e:44:00), Dst: Receive_00 (20:52:45:43:56:00)
+Internet Protocol Version 4, Src: 10.1.1.1, Dst: 10.2.2.2
+Transmission Control Protocol, Src Port: 2008, Dst Port: 50000, Seq: 1, Ack: 8, Len: 2
+Probel DLE ACK
+    [DLE ACK: True]
+
