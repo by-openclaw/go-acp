@@ -195,4 +195,20 @@ models are shared by model and version, as ADR-0022 keys them.
 
 | Date | Decision | Commit | Note |
 |---|---|---|---|
-| 2026-11-02 | contract, P3 | (this commit) | ADR written; plugin.go, mapping.md, adr-audit.md state what is built |
+| 2026-11-02 | contract, P3 | 50219c4f | ADR written; plugin.go, mapping.md, adr-audit.md state what is built |
+| 2026-11-02 | P1 | 06101c8f | rrcs falls through to the generic table; health and status frozen in the golden |
+| 2026-11-02 | P5 | e8cdd859 | --dry-run and --write-to on set, import, ensure; consumer.WriteGuard; rrcs declares it. The default of a plugin without the guard is unchanged |
+| 2026-11-02 | P6 | 1e2e82af | rrcs ValueValidator: offline typing, range, named values, writability |
+| 2026-11-02 | P2 | 8bb26bad | generic get, set, walk, export through the plugin (PathNative, recorder, object as JSON, --id, --group names); private walk is `snapshot`; `list values` carries the rows import reads; watch, import, ensure stay rrcs-own as the table says |
+| 2026-11-02 | P4 | ba4cf290 | consumer.Describer and DMRef; meta and dm in the JSON of get and set, text for --path; manifest completes model and template |
+| 2026-11-02 | P9 | 39317800 | --node on the common flags; the rrcs plugin counts the bays of the named node, refuses and lists the nodes otherwise |
+| 2026-11-02 | P7 | 6c5f354c | consumer.SiteLimits; snapshots/<proto>/<host>/site-limits.csv, --site-limits FILE|off; generic and rrcs-own writers; ADR-0036 accepted |
+| 2026-11-02 | P8 | — | design only, in this ADR; no code |
+
+Shadowed generic verbs that remain on rrcs, as P1 requires them named:
+
+| Verb | Reason | Lifted when |
+|---|---|---|
+| `watch` | owns the callback endpoint RRCS calls back on, answers GetAlive, re-reads after ConfigurationChange | the plugin picks its callback endpoint by itself |
+| `import` | carries creates with names, round trips and the two-member link of an output | P8 |
+| `ensure` | the same, from a desired-state file or the manifest | P8 |

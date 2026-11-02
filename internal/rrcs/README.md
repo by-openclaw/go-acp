@@ -194,7 +194,7 @@ not rows: `list xp` and `xp` carry them.
 ### extract — the device models and the inventory
 
 ```
-dhs consumer rrcs extract 10.12.0.12
+dhs consumer rrcs extract HOST
 dhs consumer rrcs extract --from rrcs-walk-20261013.json
 ```
 
