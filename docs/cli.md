@@ -88,7 +88,7 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
@@ -105,6 +105,11 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rrcs):                info, discover, snapshot, tree, list, extract,
+                               import, ensure, xp, call, coverage, watch,
+                               and every generic verb (get, set, walk, export,
+                               health, status, alarm, …; ADR-0037)
+                               (Riedel RRCS, XML-RPC over HTTP; default port 8193)
   Verbs (rcp):                 info, list, get, export, create, set, delete
                                (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
@@ -187,6 +192,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  rrcs          Riedel RRCS (XML-RPC over HTTP)
   snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
@@ -246,79 +252,6 @@ SNMP VERBS
 
 Use 'dhs consumer <protocol> <verb> -h' for per-verb flags.
 ```
-
-### Write guard (ADR-0037 P5)
-
-`set`, `import` and `ensure` take the same two switches on every
-connector:
-
-| Flag | Meaning |
-|---|---|
-| `--dry-run` (`--check` on ensure, both on set and import) | read, report what would be written, send nothing |
-| `--write-to HOST` | name the target a second time, exactly as the host argument was given |
-
-Every connector that can write declares the guard (`consumer.WriteGuard`;
-rrcs first, after the incident of ADR-0035, all writing connectors since
-2026-11-02) and refuses to write without `--write-to`, as a validation
-error (exit 2) naming the host and the way to confirm it. A `--write-to`
-that differs from the host is refused. `ensure` asks for the flag only
-when the object differs: a converged object is read, not written. A
-connector whose plugin cannot write through the generic verbs (osc, tsl,
-probel-sw02p, probel-sw08p) has nothing to guard.
-
-### Device model of an answer (ADR-0037 P4)
-
-`get` and `set` name, beside the value, the schema of the point and the
-device model it belongs to. In text mode they print the `kind`, `access`,
-`range`, `default`, `unit` and named values, then one line
-`dm = Model@SwRev  template = T  path = P`. With `--output json` the
-record carries them as `meta` and `dm`:
-
-```json
-{"slot": 6, "path": "net.1.node.65.port.1097.in.PortAes67Input.Channels", "value": "8",
- "meta": {"kind": "int", "access": "RW-", "min": 1, "max": 16},
- "dm": {"model": "AES67", "sw_rev": "9.0.RR1-11", "template": "FOUR_WIRE_SPLIT",
-        "path": "in.PortAes67Input.Channels"}}
-```
-
-`dm` is a pointer into the model file of ADR-0022,
-`.cache/dm/<proto>/<Model@SwRev>.json`, never a copy of it. A plugin that
-knows its schema without a walk answers it (`consumer.Describer`; rrcs
-does); the others give the object of the walked tree and the identity
-probe. The manifest `extract` wrote completes model and template; without
-it the line says so.
-
-### Several devices behind one controller (ADR-0037 P9)
-
-A target may be a controller that fronts several devices: an RRCS
-gateway fronts an Artist ring of several nodes. The common flag
-`--node N` names the device whose slots the verb is about; with several
-nodes and no `--node` the plugin refuses and lists them, with one node
-the flag is optional. A protocol with one device per target refuses the
-flag. The manifest holds one frame per node; the device models are
-shared by model and version (ADR-0022).
-
-### Site limits (ADR-0036, ADR-0037 P7)
-
-A plant may narrow the factory limits of a device family, never widen
-them. The rules are a CSV with the header `path,min,max,allowed`:
-
-```text
-path,min,max,allowed
-.PortAes67Input.Channels,1,8,
-.PortAes67Output.Channels,1,8,
-.PortAes67Output.Protocol,,,2|5
-```
-
-`path` is a full property path or a suffix that starts with a dot and
-applies to every object; the exact path wins over a suffix, a longer
-suffix over a shorter one. `set`, `import` and `ensure` read
-`snapshots/<proto>/<host>/site-limits.csv` when it exists; `--site-limits
-FILE` names another file, `--site-limits off` applies none. A value the
-site refuses is a validation error that names both ranges, `refused by
-the site limit (site 1..8, factory 1..16)`, and nothing is sent; a rule
-wider than the factory limit is refused as such. The rrcs-own `import`
-and `ensure` apply the same file.
 
 ## Producer verbs
 
@@ -1565,6 +1498,12 @@ DESCRIPTION
     • --label L --group G  disambiguate a label that exists in
                            multiple groups
 
+  Beside the value, get names the schema of the point and the device
+  model it belongs to (ADR-0037 P4): kind, access, range, default, unit,
+  named values, and dm = Model@SwRev with the template and the path of
+  the point in it, from the plugin, the walked tree and the manifest
+  extract wrote. --output json carries them as "meta" and "dm".
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred — stable across firmware)
@@ -1613,6 +1552,10 @@ DESCRIPTION
   hasn't seen the object (no prior walk) or when debugging a quirky
   device.
 
+  --dry-run resolves and validates the value and sends nothing.
+  --write-to HOST names the target a second time: every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred)
@@ -1620,6 +1563,8 @@ FLAGS
   --id I             object id within a group
   --value V          typed value string
   --raw HEX          raw wire bytes (mutually exclusive with --value)
+  --dry-run          report what would be written, send nothing (--check is the same)
+  --write-to HOST    confirm the target, exactly as the host argument was given
 
 EXAMPLES
   acp set 10.6.239.113 --slot 1 --label GainA --value 50.0
@@ -1742,13 +1687,16 @@ OUT  would apply 21, skipped 38, failed 0
          …
 
 USAGE
-  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [flags]
+  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [--write-to HOST] [flags]
 
 DESCRIPTION
   Reads a snapshot produced by 'acp export' (json / yaml / csv — format
   auto-detected from extension) and writes every writable object's
   value back to the device. Read-only objects are skipped; alarm
   priorities and frame status are also skipped.
+
+  --write-to HOST names the target a second time. Every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
 
   --dry-run lists what WOULD be written without touching the device,
   followed by a grouped-by-reason table of every row the importer
@@ -2078,6 +2026,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  rrcs          Riedel RRCS (XML-RPC over HTTP)
   snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
@@ -2163,6 +2112,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  rrcs          Riedel RRCS (XML-RPC over HTTP)
   snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
