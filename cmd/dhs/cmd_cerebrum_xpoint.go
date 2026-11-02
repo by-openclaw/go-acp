@@ -515,11 +515,7 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 
 	fails := 0
 	for _, c := range routeChanges {
-		body := &codec.RoutingAction{
-			Type: "ROUTE", IPAddress: *router, DeviceName: *deviceName,
-			DeviceType: codec.DeviceType("ROUTER"),
-			DestID:     c.Dest, SrceID: c.To, LevelID: c.Level,
-		}
+		body := cerebrumRouteCell(*router, *deviceName, c.Dest, c.To, c.Level)
 		if err := sess.Action(context.Background(), body); err != nil {
 			_, _ = fmt.Fprintf(logw, "[route] NACK dst=%s src=%s lvl=%s reason=%s\n", c.Dest, c.To, c.Level, err)
 			fails++

@@ -42,6 +42,13 @@ type Session struct {
 
 	mtidNext atomic.Uint32
 
+	// resume is signalled by §1.4 CONTINUE, which ends a BUSY.
+	resume chan struct{}
+
+	// unmatched holds the last <RESULT> reply, which Cerebrum sends with no
+	// MTID just before the ACK of its action. Guarded by mu.
+	unmatched *codec.Frame
+
 	// met counts every XML document in and out — the ws text payload, the
 	// same wire truth --capture records, not the RFC 6455 framing around
 	// it. Nil until SetMetrics.
@@ -178,6 +185,7 @@ func newSession(ctx context.Context, logger *slog.Logger, urlStr string, tlsOpts
 		met:        met,
 		clk:        clk,
 		done:       make(chan struct{}),
+		resume:     make(chan struct{}, 1),
 	}
 	s.mtidNext.Store(1)
 	// Liveness is ON by default. A watcher that runs for months must not
@@ -342,20 +350,35 @@ func (s *Session) Poll(ctx context.Context) (*codec.PollReply, error) {
 	return f.PollReply, nil
 }
 
+// sendPatiently round-trips a command and honours §1.4: on BUSY the client
+// holds off until the server sends CONTINUE, then sends it again, with a new
+// MTID. The caller's context bounds the wait; a server that never continues
+// is an error naming that.
+func (s *Session) sendPatiently(ctx context.Context, encode func(mtid uint32) []byte) (*codec.Frame, uint32, error) {
+	for {
+		mtid := s.nextMTID()
+		f, err := s.roundTrip(ctx, mtid, encode(mtid))
+		if err != nil || f.Kind != codec.KindBusy {
+			return f, mtid, err
+		}
+		select {
+		case <-s.resume:
+		case <-ctx.Done():
+			return nil, mtid, fmt.Errorf("cerebrum-nb: server busy, no CONTINUE (mtid %d): %w", mtid, ctx.Err())
+		}
+	}
+}
+
 // Action sends <action><body/></action> and returns nil on ack, the
 // NACK error on nack, or wraps a transport error.
 func (s *Session) Action(ctx context.Context, body codec.ActionBody) error {
-	mtid := s.nextMTID()
-	payload := codec.EncodeAction(mtid, body)
-	f, err := s.roundTrip(ctx, mtid, payload)
+	f, _, err := s.sendPatiently(ctx, func(mtid uint32) []byte { return codec.EncodeAction(mtid, body) })
 	if err != nil {
 		return err
 	}
 	switch f.Kind {
 	case codec.KindAck:
 		return nil
-	case codec.KindBusy:
-		return fmt.Errorf("cerebrum-nb: action: server busy (mtid %d)", mtid)
 	default:
 		return fmt.Errorf("cerebrum-nb: action: unexpected reply %s", f.Kind)
 	}
@@ -487,9 +510,26 @@ func (s *Session) readLoop() {
 	}
 }
 
+// actionResult is the <RESULT> that came with the ACK just received, if one
+// did. The server sends it first, with no MTID, so it is here already. Actions
+// that carry a result run one at a time.
+func (s *Session) actionResult() *codec.Frame {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f := s.unmatched
+	s.unmatched = nil
+	return f
+}
+
 // dispatch routes f to either a pending mtid waiter or every matching
 // OnEvent callback.
 func (s *Session) dispatch(f *codec.Frame) {
+	if f.MTID == "" && (f.Kind == codec.KindDeviceConfigResult || f.Kind == codec.KindRoutingResult) {
+		s.compliance.Note("cerebrum_result_without_mtid")
+		s.mu.Lock()
+		s.unmatched = f
+		s.mu.Unlock()
+	}
 	// 1. Try to match an in-flight request by mtid.
 	if f.MTID != "" {
 		// Only Ack / Nack / Busy / LoginReply / PollReply /
@@ -530,10 +570,14 @@ func (s *Session) dispatch(f *codec.Frame) {
 	switch f.Kind {
 	case codec.KindContinue:
 		// Server signals it has drained its BUSY backlog and the client
-		// may resume sending. Log + continue (no client-side throttle is
-		// modelled today); subscribers may react.
+		// may resume sending: this wakes sendPatiently; subscribers may
+		// react too.
 		s.logger.Debug("flow-control: CONTINUE (resume after BUSY)", slog.String("mtid", f.MTID))
 		s.compliance.Note("cerebrum_continue_received")
+		select {
+		case s.resume <- struct{}{}:
+		default:
+		}
 	case codec.KindWildcardComplete:
 		// End of an OBTAIN/SUBSCRIBE wildcard snapshot — every matching
 		// row has been sent. Subscribers use this as the "snapshot

@@ -202,7 +202,7 @@ func TestCerebrumDeviceConfigRequireHost(t *testing.T) {
 		{"device-config", "add", "--ip", "1.2.3.4", "--device-type", "panel", "--cpf", "x", "--panel-type", "T"},
 		{"device-config", "add", "--ip", "1.2.3.4", "--device-type", "router", "--baud", "9600", "--max-level", "4"},
 		{"device-config", "add", "--ip", "1.2.3.4", "--device-type", "snmp", "--name", "S1", "--snmp-port", "161"},
-		{"device-config", "remove", "--ip", "1.2.3.4"},
+		{"device-config", "remove", "--ip", "1.2.3.4", "--device-type", "snmp"},
 	}
 	for _, args := range cases {
 		t.Run(args[2], func(t *testing.T) {
@@ -706,5 +706,19 @@ func TestOnlyIsAppliedDuringTheWalk(t *testing.T) {
 	// "match nothing".
 	if !wantLeaf(nil, "anything") || parseOnly("") != nil || parseOnly(" , ") != nil {
 		t.Error("an empty --label must be a no-op, not an empty result")
+	}
+}
+
+func TestCerebrumTagsWire(t *testing.T) {
+	for in, want := range map[string]string{
+		"a,b":      "a|b",
+		"b|a":      "a|b",
+		"X,,,,":    "X",
+		" a , b ,": "a|b",
+		"":         "",
+	} {
+		if got := cerebrumTagsWire(in); got != want {
+			t.Errorf("cerebrumTagsWire(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

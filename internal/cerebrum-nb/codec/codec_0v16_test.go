@@ -166,11 +166,11 @@ func TestEncodeDeviceConfiguration_GenericAdd(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(7, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.10.1" DEVICE_TYPE="GENERIC" MTID="7">` +
+	want := `<ACTION MTID="7"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.10.1" DEVICE_TYPE="GENERIC">` +
 		`<CONFIGURATION DEVICE="Shotoku STAR Protocol" VERSION="Latest" NAME="Shotoku STAR Protocol">` +
 		`<PROTOCOL_CONFIGURATION CONNECTION_TYPE="TCP" PORT_NUMBER="8000" TIMEOUT="5000" POLL_PERIOD="3000"/>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -196,11 +196,11 @@ func TestEncodeDeviceConfiguration_GenericModify(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(8, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="MODIFY" IP_ADDRESS="10.10.10.1" DEVICE_NAME="Shotoku STAR Protocol" DEVICE_TYPE="GENERIC" MTID="8">` +
+	want := `<ACTION MTID="8"><DEVICE_CONFIGURATION TYPE="MODIFY" IP_ADDRESS="10.10.10.1" DEVICE_NAME="Shotoku STAR Protocol" DEVICE_TYPE="GENERIC">` +
 		`<CONFIGURATION DEVICE="Shotoku STAR Protocol" VERSION="Latest" NAME="Shotoku STAR Protocol New">` +
 		`<PROTOCOL_CONFIGURATION CONNECTION_TYPE="TCP" PORT_NUMBER="8000" TIMEOUT="5000" POLL_PERIOD="3000"/>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -222,12 +222,12 @@ func TestEncodeDeviceConfiguration_GenericWithProtocolSpecific(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(1, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.10.1" DEVICE_TYPE="GENERIC" MTID="1">` +
+	want := `<ACTION MTID="1"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.10.1" DEVICE_TYPE="GENERIC">` +
 		`<CONFIGURATION DEVICE="X">` +
 		`<PROTOCOL_CONFIGURATION CONNECTION_TYPE="UDP" PORT_NUMBER="9000"/>` +
 		`<PROTOCOL_SPECIFIC></PROTOCOL_SPECIFIC>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -252,14 +252,14 @@ func TestEncodeDeviceConfiguration_PanelAdd(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(3, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.40.1" DEVICE_TYPE="PANEL" MTID="3">` +
+	want := `<ACTION MTID="3"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.40.1" DEVICE_TYPE="PANEL">` +
 		`<CONFIGURATION DEVICE="CCP-1601" VERSION="Latest" NAME="Panel">` +
 		`<PROTOCOL_CONFIGURATION CONNECTION_TYPE="TCP" PORT_NUMBER="8000"/>` +
 		`<PROTOCOL_SPECIFIC CPF="DEFAULT.cpf" PANEL_TYPE="CCP-1601">` +
 		`<PANEL_CONFIG></PANEL_CONFIG>` +
 		`</PROTOCOL_SPECIFIC>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -285,12 +285,12 @@ func TestEncodeDeviceConfiguration_RouterAdd(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(4, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.20.1" DEVICE_NAME="Blackmagic Videohub TCP" DEVICE_TYPE="ROUTER" MTID="4">` +
+	want := `<ACTION MTID="4"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.20.1" DEVICE_NAME="Blackmagic Videohub TCP" DEVICE_TYPE="ROUTER">` +
 		`<CONFIGURATION DEVICE="Blackmagic Videohub TCP" NAME="Blackmagic Videohub TCP" TYPE="20">` +
 		`<SERIAL/>` +
 		`<ROUTER MAX_LEVEL="8" MAX_SOURCE="128" MAX_DEST="128"/>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -305,9 +305,9 @@ func TestEncodeDeviceConfiguration_SNMPAdd(t *testing.T) {
 		SNMP:       &SNMPConfig{Name: "SNMP Device", Port: "161"},
 	}
 	got := string(EncodeDeviceConfiguration(5, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.30.1" DEVICE_TYPE="SNMP" MTID="5">` +
+	want := `<ACTION MTID="5"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.30.1" DEVICE_TYPE="SNMP">` +
 		`<CONFIGURATION NAME="SNMP Device" PORT="161"/>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -342,7 +342,7 @@ func TestEncodeDeviceConfiguration_Remove(t *testing.T) {
 		DeviceType: ConfigDeviceSNMP,
 	}
 	got := string(EncodeDeviceConfiguration(6, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="REMOVE" IP_ADDRESS="10.10.30.1" DEVICE_TYPE="SNMP" MTID="6"/>`
+	want := `<ACTION MTID="6"><DEVICE_CONFIGURATION TYPE="REMOVE" IP_ADDRESS="10.10.30.1" DEVICE_TYPE="SNMP"/></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -357,7 +357,7 @@ func TestEncodeDeviceConfiguration_AddNoBodyStruct(t *testing.T) {
 		DeviceType: ConfigDeviceGeneric,
 	}
 	got := string(EncodeDeviceConfiguration(2, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.9" DEVICE_TYPE="GENERIC" MTID="2"/>`
+	want := `<ACTION MTID="2"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.9" DEVICE_TYPE="GENERIC"/></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -373,9 +373,9 @@ func TestEncodeDeviceConfiguration_RouterNoChildren(t *testing.T) {
 		Router:     &RouterConfig{Name: "R"},
 	}
 	got := string(EncodeDeviceConfiguration(1, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.1" DEVICE_TYPE="ROUTER" MTID="1">` +
+	want := `<ACTION MTID="1"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.1" DEVICE_TYPE="ROUTER">` +
 		`<CONFIGURATION NAME="R"></CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -391,9 +391,9 @@ func TestEncodeDeviceConfiguration_GenericNoProtocol(t *testing.T) {
 		Generic:    &GenericConfig{Name: "G"},
 	}
 	got := string(EncodeDeviceConfiguration(1, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.2" DEVICE_TYPE="GENERIC" MTID="1">` +
+	want := `<ACTION MTID="1"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.2" DEVICE_TYPE="GENERIC">` +
 		`<CONFIGURATION NAME="G"></CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -422,12 +422,12 @@ func TestEncodeDeviceConfiguration_RouterFullSerial(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(9, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="MODIFY" IP_ADDRESS="10.10.20.1" DEVICE_NAME="R" DEVICE_TYPE="ROUTER" MTID="9">` +
+	want := `<ACTION MTID="9"><DEVICE_CONFIGURATION TYPE="MODIFY" IP_ADDRESS="10.10.20.1" DEVICE_NAME="R" DEVICE_TYPE="ROUTER">` +
 		`<CONFIGURATION DEVICE="Dev" NAME="R New" TYPE="13" SECONDARY_IP="10.10.20.2">` +
 		`<SERIAL BAUD="9600" PARITY="NONE" DATA_BITS="8" STOP_BITS_IP="1" ENABLE_DSOM="1"/>` +
 		`<ROUTER MAX_LEVEL="4" MAX_SOURCE="64" MAX_DEST="64" IP_PORT="9990" MASTER_SERVER="1"/>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}
@@ -472,13 +472,13 @@ func TestEncodeDeviceConfiguration_PanelWithIDAndInner(t *testing.T) {
 		},
 	}
 	got := string(EncodeDeviceConfiguration(1, dc))
-	want := `<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.40.1" DEVICE_TYPE="PANEL" MTID="1">` +
+	want := `<ACTION MTID="1"><DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.10.40.1" DEVICE_TYPE="PANEL">` +
 		`<CONFIGURATION DEVICE="CCP">` +
 		`<PROTOCOL_SPECIFIC CPF="X.cpf" PANEL_ID="12" PANEL_TYPE="CCP-1601">` +
 		`<PANEL_CONFIG><KEY ID="1"/></PANEL_CONFIG>` +
 		`</PROTOCOL_SPECIFIC>` +
 		`</CONFIGURATION>` +
-		`</DEVICE_CONFIGURATION>`
+		`</DEVICE_CONFIGURATION></ACTION>`
 	if got != want {
 		t.Fatalf("\n got %s\nwant %s", got, want)
 	}

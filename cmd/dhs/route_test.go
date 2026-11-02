@@ -13,15 +13,7 @@ import (
 // matches Ember+ Cerebrum NB §4.1.1 — the exact byte shape the
 // authoritative DOCX shows for a ROUTE action.
 func TestRouteActionEncoding(t *testing.T) {
-	body := &codec.RoutingAction{
-		Type:       "ROUTE",
-		IPAddress:  "0.0.0.0",
-		DeviceType: codec.DeviceType("ROUTER"),
-		DestID:     "60",
-		SrceID:     "60",
-		LevelID:    "1",
-	}
-	got := string(codec.EncodeAction(42, body))
+	got := string(codec.EncodeAction(42, cerebrumRouteCell("0.0.0.0", "", "60", "60", "1")))
 
 	for _, want := range []string{
 		`<ACTION MTID="42">`,
@@ -30,12 +22,16 @@ func TestRouteActionEncoding(t *testing.T) {
 		`IP_ADDRESS="0.0.0.0"`,
 		`SRCE_ID="60"`,
 		`DEST_ID="60"`,
-		`LEVEL_ID="1"`,
+		` DEST_LEVEL_ID="1"`,
 		`</ACTION>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("encoded action missing %q\n  got: %s", want, got)
 		}
+	}
+	// §4.1.1: LEVEL_ID does not scope a ROUTE, it only made it "all level".
+	if strings.Contains(got, ` LEVEL_ID=`) {
+		t.Errorf("a ROUTE must not carry LEVEL_ID\n  got: %s", got)
 	}
 }
 

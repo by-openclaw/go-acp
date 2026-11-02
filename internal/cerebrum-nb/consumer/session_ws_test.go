@@ -261,6 +261,29 @@ func TestAction_Nack_UnknownCode(t *testing.T) {
 	}
 }
 
+func TestAction_BusyWaitsForContinueThenResends(t *testing.T) {
+	sent := 0
+	fs := newFakeCerebrum(t, func(fc *fakeConn) {
+		drainClient(fc, func(frame []byte) ([]byte, bool) {
+			sent++
+			if sent == 1 {
+				_ = fc.writeText([]byte(`<BUSY MTID="` + mtidOf(frame) + `"/>`))
+				return []byte(`<CONTINUE/>`), true
+			}
+			return ackFor(frame), true
+		})
+	})
+	_, sess := dialFake(t, fs)
+	ctx, cancel := ctx2s(t)
+	defer cancel()
+	if err := sess.SetDeviceValue(ctx, "DEV", "SUB", "OBJ", "1"); err != nil {
+		t.Fatalf("SetDeviceValue: %v", err)
+	}
+	if sent != 2 {
+		t.Fatalf("sent %d times, want 2", sent)
+	}
+}
+
 func TestAction_Busy(t *testing.T) {
 	fs := newFakeCerebrum(t, actionFakeReplying(func(f []byte) []byte {
 		return []byte(`<BUSY MTID="` + mtidOf(f) + `"/>`)

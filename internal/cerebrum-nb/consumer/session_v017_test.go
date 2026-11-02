@@ -1,9 +1,11 @@
 package cerebrumnb
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 )
@@ -42,6 +44,57 @@ func TestRMAdd_Result(t *testing.T) {
 	}
 	if !strings.Contains(string(sent), `VIRTUAL="1"`) || !strings.Contains(string(sent), `FEDERATION="1"`) {
 		t.Fatalf("sent frame: %s", sent)
+	}
+}
+
+// Measured on 2.9.3: the RESULT comes first with no MTID, then the ACK.
+func TestDeviceConfig_ResultWithoutMTIDBeforeTheAck(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		ok    bool
+	}{{"ACCEPTED", true}, {"FAILED", false}} {
+		fs := newFakeCerebrum(t, func(fc *fakeConn) {
+			drainClient(fc, func(frame []byte) ([]byte, bool) {
+				_ = fc.writeText([]byte(`<DEVICE_CONFIGURATION TYPE="ADD" IP_ADDRESS="10.0.0.9" DEVICE_TYPE="SNMP"><RESULT VALUE="` + tc.value + `"/></DEVICE_CONFIGURATION>`))
+				return ackFor(frame), true
+			})
+		})
+		p, sess := dialFake(t, fs)
+		ctx, cancel := ctx2s(t)
+		res, err := sess.DeviceConfig(ctx, &codec.DeviceConfiguration{Type: codec.DeviceConfigAdd, IPAddress: "10.0.0.9", DeviceType: codec.ConfigDeviceSNMP})
+		cancel()
+		if err != nil || res.Accepted != tc.ok {
+			t.Fatalf("%s: %+v, %v", tc.value, res, err)
+		}
+		if p.Compliance().Snapshot()["cerebrum_result_without_mtid"] != 1 {
+			t.Errorf("%s: the deviation was not counted", tc.value)
+		}
+	}
+}
+
+func TestDeviceConfig_AckWithNoResultIsAnError(t *testing.T) {
+	fs := newFakeCerebrum(t, actionFakeReplying(func(f []byte) []byte { return ackFor(f) }))
+	_, sess := dialFake(t, fs)
+	ctx, cancel := ctx2s(t)
+	defer cancel()
+	if _, err := sess.DeviceConfig(ctx, &codec.DeviceConfiguration{Type: codec.DeviceConfigRemove, IPAddress: "10.0.0.9", DeviceType: codec.ConfigDeviceSNMP}); err == nil {
+		t.Fatal("an ACK with no RESULT passed as a success")
+	}
+}
+
+func TestRMAdd_FailedResultWithoutMTID(t *testing.T) {
+	fs := newFakeCerebrum(t, func(fc *fakeConn) {
+		drainClient(fc, func(frame []byte) ([]byte, bool) {
+			_ = fc.writeText([]byte(`<ROUTING TYPE="RM_SRCE_ADD" FEDERATION="0"><RESULT VALUE="FAILED"/></ROUTING>`))
+			return ackFor(frame), true
+		})
+	})
+	_, sess := dialFake(t, fs)
+	ctx, cancel := ctx2s(t)
+	defer cancel()
+	res, err := sess.RMAdd(ctx, RMSources, 1, false, false)
+	if err != nil || res.Accepted {
+		t.Fatalf("a FAILED result read as accepted: %+v, %v", res, err)
 	}
 }
 
@@ -120,7 +173,10 @@ func TestRM_Nack_Busy_Unexpected(t *testing.T) {
 
 	fs = newFakeCerebrum(t, actionFakeReplying(func(f []byte) []byte { return []byte(`<BUSY MTID="` + mtidOf(f) + `"/>`) }))
 	_, sess = dialFake(t, fs)
-	if _, err := sess.RMDelete(ctx, RMSources, []string{"1"}, false); err == nil || !strings.Contains(err.Error(), "busy") {
+	// A BUSY with no CONTINUE waits as long as the caller lets it.
+	busyCtx, busyCancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer busyCancel()
+	if _, err := sess.RMDelete(busyCtx, RMSources, []string{"1"}, false); err == nil || !strings.Contains(err.Error(), "busy") {
 		t.Fatalf("want busy error, got %v", err)
 	}
 

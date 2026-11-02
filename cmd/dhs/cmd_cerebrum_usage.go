@@ -26,8 +26,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"dhs/internal/cerebrum-nb/codec"
 )
 
 // cerebrumUsageRow is one LITERAL assignment (srce feeds dest on
@@ -481,14 +479,7 @@ func cerebrumReplace(_ context.Context, args []string) error {
 
 	fails := 0
 	for _, c := range cells {
-		body := &codec.RoutingAction{
-			Type:       "ROUTE",
-			IPAddress:  *router,
-			DeviceType: codec.DeviceType("ROUTER"),
-			DestID:     c.Dest,
-			SrceID:     *with,
-			LevelID:    c.Level,
-		}
+		body := cerebrumRouteCell(*router, "", c.Dest, *with, c.Level)
 		if err := sess.Action(context.Background(), body); err != nil {
 			_, _ = fmt.Fprintf(logw, "[replace] NACK dst=%s lvl=%s reason=%s\n", c.Dest, c.Level, err)
 			fails++
