@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -417,6 +418,7 @@ func TestRRCSWatchVolume(t *testing.T) {
 	defer cancel()
 	var mu sync.Mutex
 	var seen []codec.Call
+	var regAdds atomic.Int32
 	base := ""
 	post := func(path string, doc []byte) {
 		if resp, err := http.Post(base+path, "text/xml", bytes.NewReader(doc)); err == nil {
@@ -442,12 +444,16 @@ func TestRRCSWatchVolume(t *testing.T) {
 			addr := func(n, p int32, in bool) codec.Value {
 				return st(mem("IsInput", b(in)), mem("Net", i(1)), mem("Node", i(n)), mem("Port", i(p)))
 			}
-			go func() {
-				// No path: the older registration names address and port only.
-				post("/", must(codec.EncodeCall("XpVolumeChange", codec.String("R0000000002"), codec.Array(
-					st(mem("Source", addr(61, 7, true)), mem("Destination", addr(61, 1026, false)), mem("SingleVolume", i(218)))))))
-				cancel()
-			}()
+			// The watch registers the crosspoint, then its reverse; the event
+			// goes out after the second, or a fast cancel loses that one.
+			if regAdds.Add(1) == 2 {
+				go func() {
+					// No path: the older registration names address and port only.
+					post("/", must(codec.EncodeCall("XpVolumeChange", codec.String("R0000000002"), codec.Array(
+						st(mem("Source", addr(61, 7, true)), mem("Destination", addr(61, 1026, false)), mem("SingleVolume", i(218)))))))
+					cancel()
+				}()
+			}
 			return codec.Array(k, i(0)), true
 		case "UnregisterForAllEvents", "UnregisterForEventsEx":
 			return codec.Array(k, i(0)), true
