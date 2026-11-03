@@ -20,7 +20,7 @@ H=<idu-ip>            # port 3000 (HTTP); <idu-ip>:4000 = HTTPS + MQTT/TLS
 | `info` | login, `GET consumer/boundaries` | `dhs consumer kratos info $H` |
 | `walk` | `svtList` + `cvtList` + `enumerations` + `dependencies` | `dhs consumer kratos walk $H` |
 | `get` | `GET consumer/cvtItem/<path>` | `dhs consumer kratos get $H --path antenna/motor/status/targetPlatAz` |
-| `set` | `POST consumer/postMessage {"MCII":1,"NumArgs":2,"Message":"<UID>,<v>"}`, then `cvtItem` | `dhs consumer kratos set $H --path move/command/targetAz --value 120000` |
+| `set` | `POST consumer/postMessage {"MCII":1,"NumArgs":2,"Message":"<UID>,<v>"}`, then `cvtItem` | `dhs consumer kratos set $H --path move/command/targetAz --value 120000 --write-to $H` |
 | `watch` | MQTT SUBSCRIBE `<UID>` or `<UID>/#` | `dhs consumer kratos watch $H --path antenna/motor` |
 | `export` | the walk, to a file | `dhs consumer kratos export $H --format json --out ngc2.json` |
 | `command` | `POST consumer/postMessage {"MCII":2,"NumArgs":1,"Message":"VERB args"}` | `dhs consumer kratos command $H --verb STOW` |
@@ -50,7 +50,7 @@ $ dhs consumer kratos walk $H
 [cpiasd.tracking.general.status]
             2  trackState            enum    RW-  "2"     [uninitialized, not present, not tracking]
 
-$ dhs consumer kratos set $H --path move.command.targetAz --value 120000
+$ dhs consumer kratos set $H --path move.command.targetAz --value 120000 --write-to $H
 confirmed value = "120000"
 
 $ dhs consumer kratos watch $H --path antenna/motor

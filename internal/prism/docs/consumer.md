@@ -20,7 +20,7 @@ H=<prism-ip>                      # port 9000; <prism-ip>:80 if 9000 does not an
 | `walk` | one GET per GET-able call and scope, 1 460 URLs in all | `dhs consumer prism walk $H` |
 | `walk --path` | the same, for one call | `dhs consumer prism walk $H --path waveform_gain.tile1` |
 | `get` | one GET | `dhs consumer prism get $H --path waveform_mode/tile1` |
-| `set` | one POST, one GET | `dhs consumer prism set $H --path waveform_mode/tile1 --value WAVEFORM_MODE_RGB` |
+| `set` | one POST, one GET | `dhs consumer prism set $H --path waveform_mode/tile1 --value WAVEFORM_MODE_RGB --write-to $H` |
 | `watch` | the GETs again, every 2 s or `--interval` | `dhs consumer prism watch $H --path waveform_gain` |
 | `export` | the walk, to a file | `dhs consumer prism export $H --format json --out prism.json` |
 
@@ -90,7 +90,7 @@ it, as the shared monitor logs it there.
 $ dhs consumer prism get 127.0.0.1:18000 --path waveform_gain/tile1
 value = 4
 
-$ dhs consumer prism set 127.0.0.1:18000 --path waveform_gain/tile1 --value 7
+$ dhs consumer prism set 127.0.0.1:18000 --path waveform_gain/tile1 --value 7 --write-to 127.0.0.1:18000
 confirmed value = 7
 ```
 

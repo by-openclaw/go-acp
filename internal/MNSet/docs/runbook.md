@@ -44,12 +44,12 @@ A receiver has two flows: `receivers.N.flow_id.0` = primary (RED) and `receivers
 ```
 RED=$(dhs consumer mnset get 10.6.40.54 --path receivers.N.flow_id.0 | sed 's/.*= "\(.*\)"//')
 BLUE=$(dhs consumer mnset get 10.6.40.54 --path receivers.N.flow_id.1 | sed 's/.*= "\(.*\)"//')
-dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.dst_ip_addr   --value 239.131.3.134
-dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.dst_udp_port  --value 20000
-dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.enable        --value 1
-dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.dst_ip_addr  --value 239.132.3.134
-dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.dst_udp_port --value 20000
-dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.enable       --value 1
+dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.dst_ip_addr   --value 239.131.3.134 --write-to 10.6.40.54
+dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.dst_udp_port  --value 20000 --write-to 10.6.40.54
+dhs consumer mnset set 10.6.40.54 --path flows.$RED.network.enable        --value 1 --write-to 10.6.40.54
+dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.dst_ip_addr  --value 239.132.3.134 --write-to 10.6.40.54
+dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.dst_udp_port --value 20000 --write-to 10.6.40.54
+dhs consumer mnset set 10.6.40.54 --path flows.$BLUE.network.enable       --value 1 --write-to 10.6.40.54
 ```
 
 Alternative, when the plant has an NMOS registry: IS-05 PATCH through
@@ -97,11 +97,11 @@ the querier interval; `pkt_cnt` stops climbing. That transition is the
 The module reports events itself; nothing goes through MN SET.
 
 ```
-dhs consumer mnset set 10.6.40.54 --path self.syslog.config.server --value 10.6.250.101
-dhs consumer mnset set 10.6.40.54 --path self.syslog.config.port   --value 1514        # promtail syslog receiver (UDP, RFC 5424 — what the module sends)
-dhs consumer mnset set 10.6.40.54 --path self.syslog.config.enable --value true
+dhs consumer mnset set 10.6.40.54 --path self.syslog.config.server --value 10.6.250.101 --write-to 10.6.40.54
+dhs consumer mnset set 10.6.40.54 --path self.syslog.config.port   --value 1514 --write-to 10.6.40.54        # promtail syslog receiver (UDP, RFC 5424 — what the module sends)
+dhs consumer mnset set 10.6.40.54 --path self.syslog.config.enable --value true --write-to 10.6.40.54
 for e in common.ptp_event common.temp_event common.fan_speed decap.flow_impairment decap.frame_skipped decap.frame_repeat encap.no_signal; do
-  dhs consumer mnset set 10.6.40.54 --path self.syslog.monitoring.$e --value true
+  dhs consumer mnset set 10.6.40.54 --path self.syslog.monitoring.$e --value true --write-to 10.6.40.54
 done
 ```
 

@@ -72,3 +72,8 @@ func (p *TemplateProtocol) Subscribe(req consumer.ValueRequest, fn consumer.Even
 func (p *TemplateProtocol) Unsubscribe(req consumer.ValueRequest) error {
 	return nil
 }
+
+// WriteGuardReason declares that every write through this plugin must be
+// confirmed with --write-to HOST (consumer.WriteGuard, ADR-0037 P5). Keep
+// it: a connector that can write names its target twice.
+func (p *TemplateProtocol) WriteGuardReason() string { return consumer.WriteGuardEveryConnector }

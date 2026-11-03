@@ -75,7 +75,7 @@ $ dhs consumer acp2 get 127.0.0.1 --port 12072 --slot 0 --id 15208
 value = "PSU - NPU0500-B"
 raw  = 505355202d204e5055303530302d4200
 
-$ dhs consumer acp2 set 127.0.0.1 --port 12072 --slot 0 --id 2996 --value "1.2.3"
+$ dhs consumer acp2 set 127.0.0.1 --port 12072 --slot 0 --id 2996 --value "1.2.3" --write-to 127.0.0.1
 confirmed value = "1.2.3"
 raw       = 312e322e3300
 ```
@@ -84,7 +84,7 @@ raw       = 312e322e3300
 options). An out-of-range value is rejected by the device, surfaced verbatim:
 
 ```
-$ dhs consumer acp2 set ... --id 17382 --value 198        # enum idx not in options
+$ dhs consumer acp2 set ... --id 17382 --value 198 --write-to <host>        # enum idx not in options
 error: acp2 error (obj-id 17382): invalid value
 ```
 
@@ -141,9 +141,9 @@ dhs consumer acp2 watch 10.41.40.195 --port 2072 --capture run.jsonl
 a no-op once converged.
 
 ```
-$ dhs consumer acp2 ensure 127.0.0.1 --port 12072 --slot 0 --id 2996 --value "1.2.3"
+$ dhs consumer acp2 ensure 127.0.0.1 --port 12072 --slot 0 --id 2996 --value "1.2.3" --write-to 127.0.0.1
 changed=true   current="1.2.3"          # first run from a different value
-$ dhs consumer acp2 ensure ... --id 2996 --value "1.2.3"
+$ dhs consumer acp2 ensure ... --id 2996 --value "1.2.3" --write-to <host>
 changed=false  current="1.2.3" (already converged)     # idempotent
 ```
 

@@ -1,0 +1,626 @@
+package main
+
+import (
+	"context"
+	"encoding/csv"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+
+	"dhs/internal/consumer"
+	"dhs/internal/rrcs/codec"
+)
+
+func TestRRCSSplitPath(t *testing.T) {
+	tests := []struct{ in, object, block, field string }{
+		{"net.1.node.61.port.7.out.PortAes67Output.Multicast", "net.1.node.61.port.7.out", "PortAes67Output", "Multicast"},
+		{"net.1.node.60.card.1.Ptp.PTP", "net.1.node.60.card.1", "Ptp", "PTP"},
+		{"net.1.node.61.port.1026.LongName", "net.1.node.61.port.1026", "", "LongName"},
+	}
+	for _, tc := range tests {
+		object, block, field, ok := rrcsSplitPath(tc.in)
+		if !ok || object != tc.object || block != tc.block || field != tc.field {
+			t.Errorf("%s: %q %q %q %v", tc.in, object, block, field, ok)
+		}
+	}
+	for _, bad := range []string{"net.1.node.61.port.7", "Ptp.PTP", "net.1.node.60.card.1.A.B.C", ""} {
+		if _, _, _, ok := rrcsSplitPath(bad); ok {
+			t.Errorf("%q split", bad)
+		}
+	}
+}
+
+// readCSV returns the rows of an export keyed by path.
+func rrcsReadExport(t *testing.T, file string) (header []string, rows map[string][]string) {
+	t.Helper()
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	all, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows = map[string][]string{}
+	for _, r := range all[1:] {
+		rows[r[4]] = r
+	}
+	return all[0], rows
+}
+
+// rrcsValuesTo writes the value table (list values --output csv) to a
+// file, as the former rrcs export did; import reads it back.
+func rrcsValuesTo(t *testing.T, file string, args ...string) {
+	t.Helper()
+	out := rrcsRun(t, append(append([]string{"list", "values"}, args...), "--output", "csv")...)
+	if err := os.WriteFile(file, []byte(out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRRCSListValues(t *testing.T) {
+	f := newRRCSFake(t, rrcsTreeAnswer)
+	dir := t.TempDir()
+	file := filepath.Join(dir, "x.csv")
+	rrcsValuesTo(t, file, f.addr())
+	header, rows := rrcsReadExport(t, file)
+	// The header of the acp connectors, column for column.
+	if strings.Join(header, ",") != "ip,protocol,slot,oid,path,id,label,kind,access,value,value_name,unit,min,max,step,default,enum_items,max_len,alarm_priority,alarm_tag,alarm_on,alarm_off,slot_status" {
+		t.Errorf("header %v", header)
+	}
+	mc := rows["net.1.node.61.port.7.out.PortAes67Output.Multicast"]
+	if mc == nil || mc[0] != "127.0.0.1" || mc[1] != "rrcs" || mc[5] != "101" || mc[6] != "Multicast" || mc[7] != "string" || mc[8] != "RW-" || mc[9] != "239.1.2.3" {
+		t.Errorf("multicast row %v", mc)
+	}
+	proto := rows["net.1.node.61.port.7.out.PortAes67Output.Protocol"]
+	if proto == nil || proto[7] != "enum" || proto[9] != "2" || proto[10] != "Manual" || proto[16] != "2=Manual|3=RTSP|5=NMOS" {
+		t.Errorf("protocol row %v", proto)
+	}
+	if long := rows["net.1.node.61.port.1026.LongName"]; long == nil || long[8] != "R--" || long[9] != "PANEL-02" {
+		t.Errorf("long name row %v", long)
+	}
+	if src := rows["net.1.node.61.port.1041.PortAes67Input.SourceIp"]; src == nil || src[8] != "RW-" {
+		t.Errorf("receiver source row %v", src)
+	}
+	if card := rows["net.1.node.60.card.1.LongName"]; card == nil || card[9] != "CARD 1" {
+		t.Errorf("card row %v", card)
+	}
+	// The slot column: 0 for the node and the system objects, the bay for
+	// a card and its ports (the ports' node 61 is the first card's).
+	if mc[2] != "1" || rows["net.1.node.60.card.1.LongName"][2] != "1" || rows["net.1.node.60.LongName"][2] != "0" || rows["conference.300.Label"][2] != "0" {
+		t.Errorf("slot column: port %q card %q node %q conference %q", mc[2], rows["net.1.node.60.card.1.LongName"][2], rows["net.1.node.60.LongName"][2], rows["conference.300.Label"][2])
+	}
+	// --match narrows; json is the same rows.
+	out := rrcsRun(t, "list", "values", f.addr(), "--match", "PortAes67Output", "--output", "json")
+	var list []rrcsRow
+	if err := json.Unmarshal([]byte(out), &list); err != nil || len(list) == 0 {
+		t.Fatalf("json rows: %v, %d rows", err, len(list))
+	}
+	for _, r := range list {
+		if !strings.Contains(r.Path, "PortAes67Output") {
+			t.Errorf("row outside --match: %s", r.Path)
+		}
+	}
+	if out := rrcsRun(t, "list", "values", f.addr(), "--match", "nothing-matches", "--output", "csv"); strings.Count(out, "\n") != 1 {
+		t.Errorf("empty csv:\n%s", out)
+	}
+	// From a snapshot too.
+	snap := filepath.Join(dir, "walk.json")
+	rrcsRun(t, "snapshot", f.addr(), "--out", snap, "--skip", "both")
+	if out := rrcsRun(t, "list", "values", "--from", snap, "--match", "port.7.out.PortAes67Output.Multicast", "--output", "csv"); !strings.Contains(out, "239.1.2.3") {
+		t.Errorf("values from a snapshot:\n%s", out)
+	}
+}
+
+// edit rewrites one value of an exported CSV.
+func rrcsEditCSV(t *testing.T, file, path, value string, sep rune) {
+	t.Helper()
+	raw, _ := os.ReadFile(file)
+	r := csv.NewReader(strings.NewReader(string(raw)))
+	if first, _, _ := strings.Cut(string(raw), "\n"); strings.Count(first, ";") > strings.Count(first, ",") {
+		r.Comma = ';'
+	}
+	all, err := r.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, r := range all[1:] {
+		if r[4] == path {
+			r[9], found = value, true
+		}
+	}
+	if !found {
+		t.Fatalf("no row %s", path)
+	}
+	out, _ := os.Create(file)
+	w := csv.NewWriter(out)
+	w.Comma = sep
+	_ = w.WriteAll(all)
+	w.Flush()
+	_ = out.Close()
+}
+
+// The whole loop: export, edit one cell, dry run, apply, and a second
+// import that finds nothing left to do.
+func TestRRCSImportRoundTrip(t *testing.T) {
+	f, changes := rrcsSetFake(t, true)
+	file := filepath.Join(t.TempDir(), "x.csv")
+	rrcsValuesTo(t, file, f.addr())
+
+	// Unedited: nothing to apply, read-only rows counted.
+	out := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
+	rrcsWant(t, out, "would apply 0, unchanged", "read_only (")
+	if strings.Contains(out, "net.1.node.61.port.1026.LongName") {
+		t.Errorf("read-only rows were listed one by one:\n%s", out)
+	}
+
+	rrcsEditCSV(t, file, "net.1.node.61.port.7.out.PortAes67Output.Multicast", "239.9.9.9", ';')
+	rrcsEditCSV(t, file, "net.1.node.61.port.1026.LongName", "RENAMED", ';') // read-only: ignored
+
+	dry := rrcsRun(t, "import", "--dry-run", f.addr(), "--file", file)
+	rrcsWant(t, dry, "would_apply net.1.node.61.port.7.out.PortAes67Output.Multicast", "239.1.2.3 -> 239.9.9.9", "would apply 1,")
+	if len(*changes) != 0 {
+		t.Fatalf("--dry-run sent %d changes", len(*changes))
+	}
+
+	done := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, done, "applied     net.1.node.61.port.7.out.PortAes67Output.Multicast", "applied 1,", "failed 0")
+	if len(*changes) != 1 {
+		t.Fatalf("%d changes sent, want 1", len(*changes))
+	}
+	again := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, again, "applied 0,")
+	if len(*changes) != 1 {
+		t.Errorf("a second import sent a change again")
+	}
+}
+
+// RRCS accepts and the value does not move: failed, not applied.
+func TestRRCSImportNotTaken(t *testing.T) {
+	f, _ := rrcsSetFake(t, false)
+	file := filepath.Join(t.TempDir(), "x.csv")
+	rrcsValuesTo(t, file, f.addr(), "--match", "port.7.out")
+	rrcsEditCSV(t, file, "net.1.node.61.port.7.out.PortAes67Output.Multicast", "239.9.9.9", ',')
+	out, err := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--output", "json", "--write-to", f.addr()})
+	})
+	if err == nil || !strings.Contains(out, `"result":"not_taken"`) || !strings.Contains(out, `"failed":1`) {
+		t.Errorf("%v\n%s", err, out)
+	}
+}
+
+func TestRRCSImportSkipsAndRefusals(t *testing.T) {
+	f, changes := rrcsSetFake(t, true)
+	dir := t.TempDir()
+	file := filepath.Join(dir, "hand.csv")
+	hand := "path,value,value_name\n" +
+		"net.1.node.61.port.7.out.PortAes67Output.Protocol,,RTSP\n" + // the word alone
+		"net.1.node.61.port.7.out.PortAes67Output.MulticastPort,abc,\n" + // not a number
+		"net.1.node.61.port.999.PortAes67Output.Multicast,239.1.1.1,\n" + // no such port
+		"net.1.node.61.port.7.out.PortAes67Output.Channels,1,\n" + // unchanged
+		"net.1.node.61.port.7.out.PortAes67Output.Channels,2,\n" + // changed
+		"net.1.node.61.port.7.out.PortAes67Output.Channels,3,\n" + // given twice
+		"net.1.node.61.port.1041.PortAes67Input.Protocol,,Telepathy\n" + // not a value
+		"just-text,1,\n"
+	_ = os.WriteFile(file, []byte(hand), 0o644)
+	out := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
+	rrcsWant(t, out,
+		"would_apply net.1.node.61.port.7.out.PortAes67Output.Protocol", "2 -> 3",
+		"would_apply net.1.node.61.port.7.out.PortAes67Output.Channels", "1 -> 2",
+		"would apply 2, unchanged 1, skipped 5, failed 0",
+		"bad_path (1)", "bad_value (2)", "duplicate (1)", "not_on_device (1)")
+	// --path narrows the apply set.
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run", "--path", "Protocol"), "would apply 1,")
+	if len(*changes) != 0 {
+		t.Errorf("dry runs sent %d changes", len(*changes))
+	}
+
+	ctx := context.Background()
+	var val *consumer.ValidationError
+	for name, args := range map[string][]string{
+		"no host":       {"import", "--file", file},
+		"no file":       {"import", "h"},
+	} {
+		if err := runRRCS(ctx, args); !errors.As(err, &val) {
+			t.Errorf("%s: got %v, want a validation error", name, err)
+		}
+	}
+	noPath := filepath.Join(dir, "nopath.csv")
+	_ = os.WriteFile(noPath, []byte("label,value\nx,1\n"), 0o644)
+	noValue := filepath.Join(dir, "novalue.csv")
+	_ = os.WriteFile(noValue, []byte("path,label\nx,1\n"), 0o644)
+	empty := filepath.Join(dir, "empty.csv")
+	_ = os.WriteFile(empty, nil, 0o644)
+	badJSON := filepath.Join(dir, "bad.json")
+	_ = os.WriteFile(badJSON, []byte("{"), 0o644)
+	for name, args := range map[string][]string{
+		"missing file": {"import", f.addr(), "--file", filepath.Join(dir, "none.csv")},
+		"no path col":  {"import", f.addr(), "--file", noPath},
+		"no value col": {"import", f.addr(), "--file", noValue},
+		"empty file":   {"import", f.addr(), "--file", empty},
+		"bad json":     {"import", f.addr(), "--file", badJSON},
+		"dead gateway": {"import", "127.0.0.1:1", "--file", file, "--timeout", "300ms"},
+	} {
+		if args[0] == "import" {
+			args = append(args, "--dry-run")
+		}
+		if err := runRRCS(ctx, args); err == nil || errors.As(err, &val) {
+			t.Errorf("%s: got %v, want a runtime error", name, err)
+		}
+	}
+}
+
+// A JSON export imports the same way.
+func TestRRCSImportJSON(t *testing.T) {
+	f, changes := rrcsSetFake(t, true)
+	file := filepath.Join(t.TempDir(), "x.json")
+	rows := []rrcsRow{{Path: "net.1.node.61.port.7.out.PortAes67Output.Multicast", Value: "239.9.9.9"}}
+	raw, _ := json.Marshal(rows)
+	_ = os.WriteFile(file, raw, 0o644)
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr()), "applied 1,")
+	if len(*changes) != 1 {
+		t.Errorf("%d changes", len(*changes))
+	}
+}
+
+// The export carries, under each panel, every key and the command on it,
+// each with its own object ID.
+func TestRRCSExportKeysAndCommands(t *testing.T) {
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		if call.Method == "GetAllKeyConfiguration" {
+			key := func(n int32, id int32, label string) codec.Value {
+				return codec.Struct(
+					rrcsMember("KeyPosition", codec.Struct(rrcsMember("ExpansionPanel", codec.Int(0)), rrcsMember("KeyNumber", codec.Int(n)),
+						rrcsMember("Page", codec.Int(1)), rrcsMember("PositionType", codec.String("key")))),
+					rrcsMember("KeyProperties", codec.Struct(rrcsMember("KeyMode", codec.Int(2)), rrcsMember("LabelValue", codec.String(label)),
+						rrcsMember("ObjectID", codec.Int(id)))))
+			}
+			return codec.Struct(rrcsMember("TransKey", call.Params[0]), rrcsMember("KeyList", codec.Array(key(5, 901, "GRP ALF"), key(6, 902, "")))), true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "x.csv")
+	rrcsValuesTo(t, file, f.addr(), "--match", "node.61.port.1026")
+	header, rows := rrcsReadExport(t, file)
+	col := map[string]int{}
+	for i, h := range header {
+		col[h] = i
+	}
+	// The key itself, assigned or not.
+	label := rows["net.1.node.61.port.1026.key.0.1.5.LabelValue"]
+	if label == nil || label[col["oid"]] != "901" || label[col["value"]] != "GRP ALF" || label[col["access"]] != "R--" {
+		t.Errorf("key label row %v", label)
+	}
+	if empty := rows["net.1.node.61.port.1026.key.0.1.6.KeyMode"]; empty == nil || empty[col["oid"]] != "902" {
+		t.Errorf("an unassigned key is missing: %v", empty)
+	}
+	// The command on it, with the object ID of the command and its target.
+	typ := rows["net.1.node.61.port.1026.key.0.1.5.cmd.CommandType"]
+	if typ == nil || typ[col["oid"]] != "601" || typ[col["value"]] != "call-to-group" {
+		t.Errorf("command row %v", typ)
+	}
+	if target := rows["net.1.node.61.port.1026.key.0.1.5.cmd.Target"]; target == nil || target[col["value"]] != "group.200" {
+		t.Errorf("target row %v", target)
+	}
+	if target := rows["net.1.node.61.port.1026.key.0.1.1.cmd.Target"]; target == nil || target[col["value"]] != "net.1.node.61.port.7.out" {
+		t.Errorf("port target row %v", target)
+	}
+	// An import of that file changes nothing: none of it is writable.
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run"), "would apply 0,")
+}
+
+// The named values, ranges, defaults and text lengths of the export come
+// from the specification's own tables.
+func TestRRCSSpecMeta(t *testing.T) {
+	// Complete lists make an enum, with the name of the value.
+	if p := rrcsSpecFor("client-card", "Nmos", "RegistrationMode"); p.Enum != "0=Automatic|1=Peer2Peer|2=Manual" {
+		t.Errorf("RegistrationMode: %+v", p)
+	}
+	if p := rrcsSpecFor("client-card", "Ptp", "PTP"); p.Min != "0" || p.Max != "127" {
+		t.Errorf("PTP domain: %+v", p)
+	}
+	if p := rrcsSpecFor("portex", "PortAes67Input", "PayloadType"); p.Min != "96" || p.Max != "127" {
+		t.Errorf("PayloadType: %+v", p)
+	}
+	// As RRCS reports it, KeyMode is one more than the value an edit takes.
+	if p := rrcsSpecFor("panel-key", "", "KeyMode"); p.Enum != "1=Auto|2=Momentary(PTT)|3=Latching" {
+		t.Errorf("KeyMode: %+v", p)
+	}
+	// Names are matched without regard to case.
+	if p := rrcsSpecFor("panel-key", "", "LatchingTimeOut"); p.Default != "0" {
+		t.Errorf("LatchingTimeOut: %+v", p)
+	}
+	if p := rrcsSpecFor("panel-key", "", "LabelValue"); p.MaxLen != "8" {
+		t.Errorf("LabelValue: %+v", p)
+	}
+	// The media blocks are left to the hand-kept table; unknown things
+	// have nothing.
+	for _, q := range [][3]string{{"client-card", "Media_1", "DefaultGateway"}, {"portex", "", "NoSuchProperty"}, {"no-such-object", "", "Label"}} {
+		if p := rrcsSpecFor(q[0], q[1], q[2]); p != (rrcsSpecProp{}) {
+			t.Errorf("%v: %+v", q, p)
+		}
+	}
+
+	rows := rrcsRowsOf("h", "panel-key", "net.1.node.61.port.1026.key.0.1.5", 644, map[string]any{
+		"KeyMode": float64(2), "GroupColor": float64(7), "LabelValue": "HYP GEN", "Dim": true})
+	byLabel := map[string]rrcsRow{}
+	for _, r := range rows {
+		byLabel[r.Label] = r
+	}
+	if r := byLabel["KeyMode"]; r.Kind != "enum" || r.ValueName != "Momentary(PTT)" || r.Default != "2" {
+		t.Errorf("KeyMode row: %+v", r)
+	}
+	// A range with one named point outside it stays a number, and the
+	// point widens the range.
+	if r := byLabel["GroupColor"]; r.Kind != "int" || r.Min != "0" || r.Max != "16" || r.EnumItems != "16=<none>" {
+		t.Errorf("GroupColor row: %+v", r)
+	}
+	if r := byLabel["LabelValue"]; r.MaxLen != "8" {
+		t.Errorf("LabelValue row: %+v", r)
+	}
+	// A scale the specification abbreviates stays a number between its ends.
+	vox := rrcsRowsOf("h", "portex", "net.1.node.61.port.1026", 1, map[string]any{"VoxOnTh": float64(12)})[0]
+	if vox.Kind != "int" || vox.Min != "0" || vox.Max != "25" || vox.ValueName != "" {
+		t.Errorf("VoxOnTh row: %+v", vox)
+	}
+	cmd := rrcsRowsOf("h", "call-to-port-cmd", "x.cmd", 2, map[string]any{"Monitoring": float64(2)})[0]
+	if cmd.Kind != "enum" || cmd.ValueName != "Always Off" {
+		t.Errorf("Monitoring row: %+v", cmd)
+	}
+}
+
+// Stream rows through import follow the proven order of 2026-10-13: an
+// input links in two requests, an output in one, a channel count on an
+// NMOS stream by the manual round trip; Mode is accepted although RRCS
+// never reports it, and a Mode row whose Selection is already right
+// sends nothing.
+func TestRRCSImportStreams(t *testing.T) {
+	type state struct{ proto, ch, sel int32 }
+	var mu sync.Mutex
+	ports := map[string]*state{}
+	var sent []codec.Value
+	at := func(port int32, in bool) *state {
+		k := strconv.Itoa(int(port)) + "/out"
+		if in {
+			k = strconv.Itoa(int(port)) + "/in"
+		}
+		if ports[k] == nil {
+			ports[k] = &state{proto: 5, ch: 1, sel: 1}
+		}
+		return ports[k]
+	}
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		k := call.Params[0]
+		switch call.Method {
+		case "GetPort":
+			s := at(call.Params[3].Int, call.Params[4].Bool)
+			block := "PortAes67Output"
+			if call.Params[4].Bool {
+				block = "PortAes67Input"
+			}
+			return codec.Array(k, codec.Int(0), codec.Struct(rrcsMember("LongName", codec.String("P")),
+				rrcsMember(block, codec.Struct(rrcsMember("Protocol", codec.Int(s.proto)),
+					rrcsMember("Channels", codec.Int(s.ch)), rrcsMember("Selection", codec.Int(s.sel)))))), true
+		case "ConfigurationChange":
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			sent = append(sent, sp)
+			addr, _ := sp.Field("PortAddress")
+			in := rrcsFieldBool(addr, "IsInput")
+			block := "PortAes67Output"
+			if in {
+				block = "PortAes67Input"
+			}
+			b, _ := sp.Field(block)
+			if v, ok := b.Field("Mode"); ok && v.Kind != codec.KindInt {
+				// The real RRCS 9.0 of 2026-10-13: fault 99.
+				return codec.Value{}, false
+			}
+			s := at(int32(rrcsMemberInt(addr, "Port")), in)
+			if v, ok := b.Field("Protocol"); ok {
+				s.proto = v.Int
+			}
+			if v, ok := b.Field("Channels"); ok {
+				s.ch = v.Int
+			}
+			if v, ok := b.Field("Selection"); ok {
+				s.sel = v.Int
+			}
+			return k, true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "streams.csv")
+	_ = os.WriteFile(file, []byte("path,value\n"+
+		"net.1.node.63.port.1072.in.PortAes67Input.Channels,8\n"+
+		"net.1.node.63.port.1073.in.PortAes67Input.Mode,1072\n"+
+		"net.1.node.63.port.1073.in.PortAes67Input.Selection,2\n"+
+		"net.1.node.63.port.1073.out.PortAes67Output.Mode,1072\n"+
+		"net.1.node.63.port.1073.out.PortAes67Output.Selection,2\n"), 0o600)
+
+	// Dry run: five rows planned, nothing sent.
+	dry := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
+	rrcsWant(t, dry, "would_apply net.1.node.63.port.1072.in.PortAes67Input.Channels",
+		"would_apply net.1.node.63.port.1073.in.PortAes67Input.Mode",
+		"(not reported) -> 1072", "would apply 5,")
+	mu.Lock()
+	if len(sent) != 0 {
+		t.Fatalf("--dry-run sent %d requests", len(sent))
+	}
+	mu.Unlock()
+
+	// The write: round trip on the main, split input, combined output.
+	done := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, done, "applied 5,", "failed 0")
+	mu.Lock()
+	names := func(sp codec.Value) string {
+		addr, _ := sp.Field("PortAddress")
+		block := "PortAes67Output"
+		if rrcsFieldBool(addr, "IsInput") {
+			block = "PortAes67Input"
+		}
+		b, _ := sp.Field(block)
+		var out []string
+		for _, m := range b.Members {
+			out = append(out, m.Name)
+		}
+		return strconv.Itoa(rrcsMemberInt(addr, "Port")) + "/" + strings.Join(out, "+")
+	}
+	want := []string{"1072/Protocol+Channels", "1072/Protocol", "1073/Mode", "1073/Selection", "1073/Mode+Selection"}
+	if len(sent) != len(want) {
+		t.Fatalf("%d requests, want %d", len(sent), len(want))
+	}
+	for i, w := range want {
+		if got := names(sent[i]); got != w {
+			t.Errorf("request %d: %s, want %s", i, got, w)
+		}
+	}
+	if s := at(1072, true); s.proto != 5 || s.ch != 8 {
+		t.Errorf("main after the run: protocol %d channels %d", s.proto, s.ch)
+	}
+	mu.Unlock()
+
+	// A second run: the Selection rows read back right, the Mode rows
+	// alone send nothing.
+	again := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, again, "applied 0,", "failed 0")
+	mu.Lock()
+	if len(sent) != len(want) {
+		t.Errorf("a second import sent %d more request(s)", len(sent)-len(want))
+	}
+	mu.Unlock()
+
+	// A link row beside another stream field on the same port: refused.
+	_ = os.WriteFile(file, []byte("path,value\n"+
+		"net.1.node.63.port.1074.out.PortAes67Output.Mode,1072\n"+
+		"net.1.node.63.port.1074.out.PortAes67Output.Selection,3\n"+
+		"net.1.node.63.port.1074.out.PortAes67Output.Channels,2\n"), 0o600)
+	out, err := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	if err == nil || !strings.Contains(out, "no further property than Selection") {
+		t.Errorf("link beside another field: %v\n%s", err, out)
+	}
+}
+
+// The dry run catches what the write would otherwise learn from RRCS:
+// out of range, not one of the values, a bad address, a label too long.
+func TestRRCSImportValidation(t *testing.T) {
+	f, changes := rrcsSetFake(t, true)
+	file := filepath.Join(t.TempDir(), "bad.csv")
+	_ = os.WriteFile(file, []byte("path,value\n"+
+		"net.1.node.61.port.7.out.PortAes67Output.Channels,20\n"+ // 1..16
+		"net.1.node.61.port.7.out.PortAes67Output.Protocol,4\n"+ // 2|3|5
+		"net.1.node.61.port.7.out.PortAes67Output.Multicast,not-an-ip\n"), 0o600)
+	out, _ := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	rrcsWant(t, out, "above the specification's maximum 16", "not one of its values",
+		"not an IP address", "would apply 0,")
+	if len(*changes) != 0 {
+		t.Fatalf("validation sent %d changes", len(*changes))
+	}
+}
+
+// A PortType row on an absent port creates it (proven 2026-10-14 on
+// -7.33) and names it by the Director pattern; on an existing port the
+// row changes nothing, and a bad type never leaves the dry run.
+func TestRRCSImportCreatesPort(t *testing.T) {
+	var mu sync.Mutex
+	created := false
+	var sent []codec.Value
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		k := call.Params[0]
+		switch call.Method {
+		case "GetAllPorts":
+			v, ok := rrcsTreeAnswer(call)
+			if created {
+				st := codec.Struct
+				mem := rrcsMember
+				extra := st(mem("Net", codec.Int(1)), mem("Node", codec.Int(61)), mem("Port", codec.Int(1056)),
+					mem("Input", codec.Bool(true)), mem("Output", codec.Bool(true)),
+					mem("PortType", codec.String("4-Wire Split")), mem("Label", codec.String("I.-7.33")),
+					mem("LongName", codec.String("In. -7.33")), mem("ObjectID", codec.Int(777)))
+				v.Items[1].Items = append(v.Items[1].Items, extra)
+			}
+			return v, ok
+		case "ConfigurationChange":
+			sp, _ := call.Params[1].Items[0].Field("SpecificParams")
+			change, _ := call.Params[1].Items[0].Field("ChangeType")
+			sent = append(sent, call.Params[1].Items[0])
+			if change.Str == "create" {
+				if _, hasType := sp.Field("PortType"); hasType {
+					created = true
+				}
+			}
+			return k, true
+		}
+		return rrcsTreeAnswer(call)
+	})
+	file := filepath.Join(t.TempDir(), "new-port.csv")
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.1056.PortType,3\n"), 0o600)
+
+	// Dry run: the create is planned, nothing sent.
+	dry := rrcsRun(t, "import", f.addr(), "--file", file, "--dry-run")
+	rrcsWant(t, dry, "would_apply net.1.node.61.port.1056.PortType", "(absent) -> 3", "would apply 1,")
+	mu.Lock()
+	if len(sent) != 0 {
+		t.Fatalf("--dry-run sent %d requests", len(sent))
+	}
+	mu.Unlock()
+
+	// The write: the create, then the two name edits.
+	done := rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr())
+	rrcsWant(t, done, "applied 1,", "failed 0")
+	mu.Lock()
+	if len(sent) != 3 {
+		t.Fatalf("%d requests, want create + two name edits", len(sent))
+	}
+	kind := func(i int) string {
+		c, _ := sent[i].Field("ChangeType")
+		return c.Str
+	}
+	sp0, _ := sent[0].Field("SpecificParams")
+	portType, _ := sp0.Field("PortType")
+	if kind(0) != "create" || portType.Int != 3 {
+		t.Errorf("first request: %s", rrcsCompact(sent[0]))
+	}
+	for i, wantLong := range map[int]string{1: "In. -7.33 - Bay 1 - FRAME A", 2: "Out. -7.33 - Bay 1 - FRAME A"} {
+		sp, _ := sent[i].Field("SpecificParams")
+		long, _ := sp.Field("LongName")
+		if kind(i) != "edit" || long.Str != wantLong {
+			t.Errorf("name edit %d: %s", i, rrcsCompact(sent[i]))
+		}
+	}
+	mu.Unlock()
+
+	// A second run: the port exists, nothing to do.
+	rrcsWant(t, rrcsRun(t, "import", f.addr(), "--file", file, "--write-to", f.addr()), "applied 0,", "unchanged 1")
+
+	// A type outside the specification's values never leaves the dry run.
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.1057.PortType,99\n"), 0o600)
+	out, _ := rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	if !strings.Contains(out, "bad_value") {
+		t.Errorf("PortType 99 accepted:\n%s", out)
+	}
+	// A PortType row with a direction is refused.
+	_ = os.WriteFile(file, []byte("path,value\nnet.1.node.61.port.1057.in.PortType,3\n"), 0o600)
+	out, _ = rrcsStdout(t, func() error {
+		return runRRCS(context.Background(), []string{"import", f.addr(), "--file", file, "--dry-run"})
+	})
+	if !strings.Contains(out, "bad_path") {
+		t.Errorf("directed PortType row accepted:\n%s", out)
+	}
+}

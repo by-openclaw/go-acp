@@ -24,7 +24,7 @@ they reach neither the log nor a `--capture` file.
 | `walk` | `GET .../schema.json`, then `GET .../data` | `dhs consumer virtuoso walk $H --slot 1` |
 | `walk --all` | the same for every module that answers | `dhs consumer virtuoso walk $H --all` |
 | `get` | `GET .../data/<path>` | `dhs consumer virtuoso get $H --path dev/product_info/swver` |
-| `set` | `GET .../schema.json` once, `PATCH .../data/<object>?<field>=<value>`, `GET` the field | `dhs consumer virtuoso set $H --path dev/product_info/location --value "rack 4"` |
+| `set` | `GET .../schema.json` once, `PATCH .../data/<object>?<field>=<value>`, `GET` the field | `dhs consumer virtuoso set $H --path dev/product_info/location --value "rack 4" --write-to $H` |
 | `watch` | `GET` per field, at most 5 a second | `dhs consumer virtuoso watch $H --slot 1 --path alarms --interval 60s` |
 | `export` | the walk of every present slot, to a file | `dhs consumer virtuoso export $H --format json --out chassis.json` |
 
@@ -88,7 +88,7 @@ label or its number and sends the number.
 $ dhs consumer virtuoso get 127.0.0.1:18080 --path dev/product_info/swver
 value = "0.0.1"
 
-$ dhs consumer virtuoso set 127.0.0.1:18080 --path dev/product_info/location --value "rack 4"
+$ dhs consumer virtuoso set 127.0.0.1:18080 --path dev/product_info/location --value "rack 4" --write-to 127.0.0.1:18080
 confirmed value = "rack 4"
 ```
 

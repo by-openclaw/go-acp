@@ -92,12 +92,10 @@ func runGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Look up the object metadata (range, step, unit) before formatting
-	// so we can apply unit suffixes and step-based float precision.
-	var meta *consumer.Object
-	if *label != "" {
-		meta = findObjectByLabel(plug, *slot, *group, *label)
-	}
+	// The schema of the point (range, step, unit, named values) formats
+	// the value, and the device model it belongs to is named beside it
+	// (ADR-0037 P4): from the plugin's Describe, or the walked tree.
+	meta, dm := describePoint(ctx, plug, cf.protocol, host, req)
 	if jsonOut, oerr := resolveEnsureOutput(*output, false); oerr != nil {
 		return oerr
 	} else if jsonOut {
@@ -114,6 +112,7 @@ func runGet(ctx context.Context, args []string) error {
 		if meta != nil {
 			out.Label = meta.Label
 		}
+		out.Meta, out.DM = metaOf(meta), dm
 		return emitReadJSON(out)
 	}
 	fmt.Println(formatValue(val, meta))
@@ -123,6 +122,7 @@ func runGet(ctx context.Context, args []string) error {
 	if meta != nil {
 		printObjectMeta(*meta)
 	}
+	printDMRef(dm)
 	return nil
 }
 
@@ -130,11 +130,15 @@ func runGet(ctx context.Context, args []string) error {
 // Value carries the same human formatting as text mode (units, enum
 // names); Raw is the wire hex when the protocol exposes it.
 type getValueJSON struct {
-	Slot  int    `json:"slot"`
-	Path  string `json:"path,omitempty"`
-	Group string `json:"group,omitempty"`
-	Label string `json:"label,omitempty"`
-	ID    *int   `json:"id,omitempty"`
-	Value string `json:"value"`
-	Raw   string `json:"raw,omitempty"`
+	Slot  int             `json:"slot"`
+	Path  string          `json:"path,omitempty"`
+	Group string          `json:"group,omitempty"`
+	Label string          `json:"label,omitempty"`
+	ID    *int            `json:"id,omitempty"`
+	Value string          `json:"value"`
+	Raw   string          `json:"raw,omitempty"`
+	// Meta is the schema of the point and DM the device model it
+	// belongs to (ADR-0037 P4), each absent when unknown.
+	Meta *pointMetaJSON       `json:"meta,omitempty"`
+	DM   *consumer.DMRef `json:"dm,omitempty"`
 }

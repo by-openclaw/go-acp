@@ -217,7 +217,7 @@ repeated on every crosspoint row.
 An export nobody can put back is a report, not a backup:
 
 ```text
-dhs consumer ccm import <ip> --xpoint ./mx/<matrix>/bridge-xpoint.csv \
+dhs consumer ccm import <ip> --xpoint ./mx/<matrix>/bridge-xpoint.csv --write-to <ip> \
     --matrix ./mx/<matrix>/bridge-matrix.csv [--check] [--output json]
 ```
 

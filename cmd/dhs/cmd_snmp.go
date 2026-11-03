@@ -418,7 +418,7 @@ and its MIB says it "may always be written to using SNMP" — so a
 receiver left on the front panel can be taken back over the network,
 without a trip to the rack:
 
-  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host>
+  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host> --write-to <host>
 
 The Snell frames have per-slot "SNMP Control" checkboxes on the RollCall
 page instead. Either way a readOnly, notWritable or noSuchName from a
@@ -646,7 +646,7 @@ EXAMPLES
   dhs consumer snmp walk 10.6.250.5:1161
 
   # name the device from the NMS
-  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113
+  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113 --write-to 10.6.255.113
 
   # listen for alarms from anything, then narrow it
   dhs consumer snmp trap-listen --bind :1162

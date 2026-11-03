@@ -78,13 +78,13 @@ The canonical generic set (dispatched in `cmd/dhs/main.go`):
 | `walk` | enumerate every object on a slot | full DFS of one slot | ✅ |
 | `tree` | render object tree as ASCII or PlantUML mindmap | view only | ✅ nests sub-group sections (DOWN CONV/…) as parents |
 | `get` | read one object value by slot/group/label (or path) | single object | ✅ walks on cache-miss to resolve `--label`/`--path` |
-| `set` | write one object value | single object; validates type/range/enum | ✅ |
+| `set` | write one object value (`--dry-run`; `--write-to HOST` names the target twice before a write, ADR-0037 P5) | single object; validates type/range/enum | ✅ |
 | `inc` | step an object up by its step (ACP1 setIncValue) | single RW numeric/enum | ✅ |
 | `dec` | step an object down by its step (ACP1 setDecValue) | single RW numeric/enum | ✅ |
 | `reset` | reset an object to its default (ACP1 setDefValue) | single object with setDef access | ✅ |
 | `watch` | subscribe to live announcements | until Ctrl-C | ✅ UDP bcast same-VLAN; TCP/AN2 session-announce cross-VLAN |
 | `export` | dump a walked slot/device → json / yaml / csv | snapshot out | ✅ |
-| `import` | apply values from a snapshot (`--check` dry-run first) | RW objects only; mismatches skipped non-blocking | ○ |
+| `import` | apply values from a snapshot (`--check` dry-run first; `--write-to HOST` to write) | RW objects only; mismatches skipped non-blocking | ○ |
 | `extract` | capture a per-product DM triple (meta+wire+tree) | fixture-layout capture | ○ |
 | `diff` | compare two canonical `tree.json` (text or CHANGELOG) | offline | ○ |
 | `convert` | translate a snapshot json↔yaml↔csv | offline | ○ |
@@ -92,7 +92,7 @@ The canonical generic set (dispatched in `cmd/dhs/main.go`):
 | `profile` | classify provider compliance strict / partial | read-only | ✅ STRICT |
 | `validate` | replay a captured `frames.jsonl` offline; `--out-tree`/`--out-params` write the snapshot (ADR-0021) | offline | ✅ |
 | `health` | 3-layer session health: reachable / connected / live | read-only | ○ |
-| **`ensure`** | declarative converge: read→compare→set-if-diff (`--check` dry-run) | **idempotent — the Ansible primitive (ADR-0007)** | ✅ |
+| **`ensure`** | declarative converge: read→compare→set-if-diff (`--check` dry-run; `--write-to HOST` when it writes) | **idempotent — the Ansible primitive (ADR-0007)** | ✅ |
 | `status` | session/service state | — | ❌ not in CLI |
 | `replay` | re-emit a captured `frames.jsonl` on the wire | — | (deferred, ADR-0021) |
 
@@ -103,6 +103,85 @@ ADR-0007; behavior-aware — 1to1/1toN absolute take, NtoM connect+disconnect);
 **acp2** adds `diag` (AN2 diagnostic probes).
 
 ---
+
+## 2a. Contracts every connector shares (ADR-0037)
+
+The generic `get`, `set`, `import` and `ensure` answer through the
+registered plugin on every connector; the contract is
+[ADR-0037](../adr/0037-connector-parity.md). What a caller sees:
+
+### Write guard (ADR-0037 P5)
+
+`set`, `import` and `ensure` take the same two switches on every
+connector:
+
+| Flag | Meaning |
+|---|---|
+| `--dry-run` (`--check` on ensure, both on set and import) | read, report what would be written, send nothing |
+| `--write-to HOST` | name the target a second time, exactly as the host argument was given |
+
+Every connector that can write declares the guard (`consumer.WriteGuard`;
+rrcs first, after the incident of ADR-0035, all writing connectors since
+2026-11-02) and refuses to write without `--write-to`, as a validation
+error (exit 2) naming the host and the way to confirm it. A `--write-to`
+that differs from the host is refused. `ensure` asks for the flag only
+when the object differs: a converged object is read, not written. A
+connector whose plugin cannot write through the generic verbs (osc, tsl,
+probel-sw02p, probel-sw08p) has nothing to guard.
+
+### Device model of an answer (ADR-0037 P4)
+
+`get` and `set` name, beside the value, the schema of the point and the
+device model it belongs to. In text mode they print the `kind`, `access`,
+`range`, `default`, `unit` and named values, then one line
+`dm = Model@SwRev  template = T  path = P`. With `--output json` the
+record carries them as `meta` and `dm`:
+
+```json
+{"slot": 6, "path": "net.1.node.65.port.1097.in.PortAes67Input.Channels", "value": "8",
+ "meta": {"kind": "int", "access": "RW-", "min": 1, "max": 16},
+ "dm": {"model": "AES67", "sw_rev": "9.0.RR1-11", "template": "FOUR_WIRE_SPLIT",
+        "path": "in.PortAes67Input.Channels"}}
+```
+
+`dm` is a pointer into the model file of ADR-0022,
+`.cache/dm/<proto>/<Model@SwRev>.json`, never a copy of it. A plugin that
+knows its schema without a walk answers it (`consumer.Describer`; rrcs
+does); the others give the object of the walked tree and the identity
+probe. The manifest `extract` wrote completes model and template; without
+it the line says so.
+
+### Several devices behind one controller (ADR-0037 P9)
+
+A target may be a controller that fronts several devices: an RRCS
+gateway fronts an Artist ring of several nodes. The common flag
+`--node N` names the device whose slots the verb is about; with several
+nodes and no `--node` the plugin refuses and lists them, with one node
+the flag is optional. A protocol with one device per target refuses the
+flag. The manifest holds one frame per node; the device models are
+shared by model and version (ADR-0022).
+
+### Site limits (ADR-0036, ADR-0037 P7)
+
+A plant may narrow the factory limits of a device family, never widen
+them. The rules are a CSV with the header `path,min,max,allowed`:
+
+```text
+path,min,max,allowed
+.PortAes67Input.Channels,1,8,
+.PortAes67Output.Channels,1,8,
+.PortAes67Output.Protocol,,,2|5
+```
+
+`path` is a full property path or a suffix that starts with a dot and
+applies to every object; the exact path wins over a suffix, a longer
+suffix over a shorter one. `set`, `import` and `ensure` read
+`snapshots/<proto>/<host>/site-limits.csv` when it exists; `--site-limits
+FILE` names another file, `--site-limits off` applies none. A value the
+site refuses is a validation error that names both ranges, `refused by
+the site limit (site 1..8, factory 1..16)`, and nothing is sent; a rule
+wider than the factory limit is refused as such. The rrcs-own `import`
+and `ensure` apply the same file.
 
 ## 3. Consumer verbs — Matrix model
 
@@ -265,7 +344,7 @@ adds `matrix`/`invoke`/`stream`/`bench` (emberplus-only — see §2).
 | `walk` | enumerate every object on a slot | `dhs consumer acp1 walk 10.6.250.102 --port 2071 --transport tcp --slot 1` |
 | `tree` | render the tree (sub-groups nest as parents) | `dhs consumer acp1 tree 10.6.250.102 --port 2071 --transport tcp --slot 1 --path "control.DOWN CONV"` (or `--oid 1.2.29`) |
 | `get` | read one value | name → `… get 10.6.250.102 --slot 1 --group control --label Out-Mode` · OID → `… get 10.6.250.102 --slot 1 --group control --id 10` |
-| `set` | write one value | name → `… set 10.6.250.102 --slot 1 --group control --label Out-Mode --value Crossed` · OID → `… set … --group control --id 10 --value Crossed` |
+| `set` | write one value | name → `… set 10.6.250.102 --slot 1 --group control --label Out-Mode --value Crossed --write-to 10.6.250.102` · OID → `… set … --group control --id 10 --value Crossed --write-to <host>` |
 | `inc` / `dec` | step ±1 step (setInc/DecValue; acp1) | OID → `dhs consumer acp1 inc 10.6.250.102 --slot 1 --group control --id 9` · name → `… inc … --group control --label H_delay` |
 | `reset` | restore default (setDefValue; acp1) | `dhs consumer acp1 reset 10.6.250.102 --slot 1 --group control --id 9` (or `--label H_delay`) |
 | `watch` | live announcements | `dhs consumer acp1 watch 10.6.250.102 --port 2071 --transport tcp --slot 1` — **`--transport udp` sees announcements on the same VLAN only (subnet broadcast); across VLANs use `--transport tcp` or `an2` (announce is unicast over the session).** |

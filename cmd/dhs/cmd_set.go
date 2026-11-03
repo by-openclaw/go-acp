@@ -36,9 +36,13 @@ func runSet(ctx context.Context, args []string) error {
 	noWalk := fs.Bool("no-walk", false, "fail fast on cache miss instead of walking the slot to resolve --path/--label")
 	round := fs.Bool("round", false, "R16 #483: snap an off-step numeric --value to the nearest legal step instead of erroring with validation:step-misaligned (Ember+ only — non-numeric Parameters return validation:round-not-applicable)")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2"). When set, the tree is seeded from .cache/dm/emberplus/<identity>.json and the walk is skipped — refs #438, ADR-0022.`)
+	dryRun := fs.Bool("dry-run", false, dryRunHelp)
+	check := fs.Bool("check", false, "same as --dry-run")
+	writeTo := fs.String("write-to", "", writeToHelp)
+	output := fs.String("output", "text", "output format: text | json (the record of get: value, meta, dm; ADR-0037 P4)")
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>)")
+		return fmt.Errorf("usage: dhs consumer <proto> set <host> --slot N (--path P | --label L | --id I) (--value <v> | --raw <hex>) [--dry-run] [--write-to HOST]")
 	}
 	_ = parseVerbFlags(fs, rest)
 	// Detect whether --value / --raw were explicitly passed (even if
@@ -162,10 +166,17 @@ func runSet(ctx context.Context, args []string) error {
 	// matching `ensure`. Out-of-range numerics are intentionally NOT rejected
 	// (the device clamps them). --raw bypasses this; the caller owns the bytes.
 	meta := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id)
-	if *valueHex == "" && meta != nil {
-		want, cerr := coerceDesired(meta.Kind, *valueStr)
-		if cerr != nil {
-			return cerr
+	if *valueHex == "" && (meta != nil || pathNative(plug, *pathFlag, *label)) {
+		// A path-native plugin (rrcs, ccm) carries no walked meta: the
+		// value goes to its validator as text, typed by the plugin's own
+		// tables (ADR-0037 P6).
+		want := val
+		if meta != nil {
+			typed, cerr := coerceDesired(meta.Kind, *valueStr)
+			if cerr != nil {
+				return cerr
+			}
+			want = typed
 		}
 		if v, ok := plug.(consumer.ValueValidator); ok {
 			if verr := v.ValidateValue(opCtx, req, want); verr != nil {
@@ -175,13 +186,64 @@ func runSet(ctx context.Context, args []string) error {
 		val = want
 	}
 
+	// The plant's own limits, narrower than the factory's (ADR-0036,
+	// ADR-0037 P7). A raw write bypasses typing and is not judged.
+	if *valueHex == "" {
+		limits, lerr := siteLimitsFor(cf.protocol, host, cf.siteLimits)
+		if lerr != nil {
+			return lerr
+		}
+		if serr := limits.Check(pointName(req), valueText(val), factoryMetaFor(opCtx, plug, req, meta)); serr != nil {
+			return serr
+		}
+	}
+
+	// ADR-0037 P5: a dry run reports and sends nothing; a guarded plugin
+	// writes only when --write-to names the host a second time.
+	if *dryRun || *check {
+		target := orFirst(*pathFlag, *label)
+		if target == "" {
+			target = fmt.Sprintf("id %d", *id)
+		}
+		fmt.Printf("would set %s = %s (dry run, nothing sent)\n", target, formatValue(val, meta))
+		return nil
+	}
+	if err := writeGuard("set", host, *writeTo, plug); err != nil {
+		return err
+	}
+
 	confirmed, err := plug.SetValue(opCtx, req, val)
 	if err != nil {
 		return err
+	}
+	// The schema and the device model of the point, beside the value
+	// read back (ADR-0037 P4).
+	described, dm := describePoint(ctx, plug, cf.protocol, host, req)
+	if meta == nil {
+		meta = described
+	}
+	if jsonOut, oerr := resolveEnsureOutput(*output, false); oerr != nil {
+		return oerr
+	} else if jsonOut {
+		out := getValueJSON{Slot: *slot, Path: *pathFlag, Group: *group, Label: *label, Value: formatValue(confirmed, meta), Meta: metaOf(meta), DM: dm}
+		if *id >= 0 {
+			out.ID = id
+		}
+		if len(confirmed.Raw) > 0 {
+			out.Raw = hex.EncodeToString(confirmed.Raw)
+		}
+		if meta != nil {
+			out.Label = meta.Label
+		}
+		return emitReadJSON(out)
 	}
 	fmt.Println("confirmed " + formatValue(confirmed, meta))
 	if len(confirmed.Raw) > 0 {
 		fmt.Printf("raw       = %s\n", hex.EncodeToString(confirmed.Raw))
 	}
+	if meta != nil {
+		printObjectMeta(*meta)
+	}
+	printDMRef(dm)
 	return nil
 }

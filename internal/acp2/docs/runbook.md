@@ -23,7 +23,7 @@ The consumer always uses AN2/TCP; no `--transport` selection. Default `--port 20
 | `dhs consumer acp2 info <ip>` | Read AN2 + ACP2 versions, slot count | `--port`, `--timeout` | none |
 | `dhs consumer acp2 walk <ip>` | Discover one slot's full DM | `--slot N` or `--all`, `--path BOARD.Stream`, `--filter foo`, `--capture out.jsonl` | writes `.cache/dm/<CardName>@<HardwareVersion>.json` (multi-slot, identity-keyed) |
 | `dhs consumer acp2 get <ip>` | Read one property | `--slot N --id 70232`, `--capture out.jsonl` | reads identity-keyed cache for label resolution |
-| `dhs consumer acp2 set <ip>` | Write one property | same as `get` plus `--value …` | none |
+| `dhs consumer acp2 set <ip>` | Write one property | same as `get` plus `--value …` and `--write-to <ip>` | none |
 | `dhs consumer acp2 watch <ip>` | Subscribe to announces | `--slot N`, `--id I`, `--no-walk` | hot-loads `.cache/dm/<identity>.json` before Subscribe → labels from frame 1 |
 
 ### Provider
@@ -38,7 +38,7 @@ Multi-client is inherent: each AN2 session is independent. Announces are fanned 
 
 | Layer | Where it lives | How to toggle |
 |---|---|---|
-| **1. Provider broadcasts gate** | tree-level on/off (mirrored from ACP1 §p.20) | flip via `dhs consumer acp2 set <ip> --slot 0 --label Broadcasts --value 1` |
+| **1. Provider broadcasts gate** | tree-level on/off (mirrored from ACP1 §p.20) | flip via `dhs consumer acp2 set <ip> --slot 0 --label Broadcasts --value 1 --write-to <ip>` |
 | **2. Per-AN2-session opt-in** | per consumer connection | sent automatically by the consumer plugin on `watch`: `AN2 EnableProtocolEvents([2])` |
 
 Both layers must be true for a consumer to see announces. The provider drops announces silently when the gate is OFF.

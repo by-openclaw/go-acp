@@ -90,9 +90,9 @@ Write, read, restore, and restore means the exact previous value:
 ```bash
 P=dev/product_info/location
 dhs consumer virtuoso get $H --path $P           # 1. read it, write the value down
-dhs consumer virtuoso set $H --path $P --value "new value"   # 2. write: prints the value read back
+dhs consumer virtuoso set $H --path $P --value "new value" --write-to $H   # 2. write: prints the value read back
 dhs consumer virtuoso get $H --path $P           # 3. read it again
-dhs consumer virtuoso set $H --path $P --value "<the value from step 1>"   # 4. restore
+dhs consumer virtuoso set $H --path $P --value "<the value from step 1>" --write-to $H   # 4. restore
 dhs consumer virtuoso get $H --path $P           # 5. prove it is back
 ```
 

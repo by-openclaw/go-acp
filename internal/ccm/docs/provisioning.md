@@ -34,8 +34,8 @@ runs 100G with Reed-Solomon FEC, so the links stay **down** and nothing
 else works until FEC matches. ✅
 
 ```bash
-dhs consumer ccm set 10.6.255.102 --path misc.macs.<mac1-uuid>.fec --value ReedSolomon   # RED  (Control Port Mac 1, QSFP0)
-dhs consumer ccm set 10.6.255.102 --path misc.macs.<mac2-uuid>.fec --value ReedSolomon   # BLUE (Control Port Mac 2, QSFP1)
+dhs consumer ccm set 10.6.255.102 --path misc.macs.<mac1-uuid>.fec --value ReedSolomon --write-to 10.6.255.102   # RED  (Control Port Mac 1, QSFP0)
+dhs consumer ccm set 10.6.255.102 --path misc.macs.<mac2-uuid>.fec --value ReedSolomon --write-to 10.6.255.102   # BLUE (Control Port Mac 2, QSFP1)
 ```
 
 Then the switch DHCP leases **10.6.40.50** (RED) and **10.7.40.50** (BLUE).
@@ -55,11 +55,11 @@ RED (source 10.6.40.50), leg 1 is BLUE (10.7.40.50).
 
 ```bash
 S=io.ip.senders.video.<uuid of "Output Video Stream 1">
-dhs consumer ccm set 10.6.255.102 --path $S.legs.0.ip   --value 239.1.0.1
-dhs consumer ccm set 10.6.255.102 --path $S.legs.0.port --value 20000
-dhs consumer ccm set 10.6.255.102 --path $S.legs.1.ip   --value 239.65.0.1
-dhs consumer ccm set 10.6.255.102 --path $S.legs.1.port --value 20000
-dhs consumer ccm set 10.6.255.102 --path $S.enable      --value true
+dhs consumer ccm set 10.6.255.102 --path $S.legs.0.ip   --value 239.1.0.1 --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path $S.legs.0.port --value 20000 --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path $S.legs.1.ip   --value 239.65.0.1 --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path $S.legs.1.port --value 20000 --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path $S.enable      --value true --write-to 10.6.255.102
 ```
 
 A write applies at once — the GUI's **Take** is not needed over REST. ✅
@@ -79,8 +79,8 @@ generator** (PAT00).
 | Channel → IP output | `matrix.video.output.current.IP<nn>` | `--value CH01` |
 
 ```bash
-dhs consumer ccm set 10.6.255.102 --path matrix.video.path.main.CH01     --value SDI02
-dhs consumer ccm set 10.6.255.102 --path matrix.video.output.current.IP01 --value CH01
+dhs consumer ccm set 10.6.255.102 --path matrix.video.path.main.CH01     --value SDI02 --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path matrix.video.output.current.IP01 --value CH01 --write-to 10.6.255.102
 ```
 
 For many crosspoints use the matrix file-set (one GET + one PUT per
@@ -94,9 +94,9 @@ on channels 1–2 of each path only) ✅:
 
 ```bash
 C=processing.video.channels.<channel uuid>
-dhs consumer ccm set 10.6.255.102 --path $C.hqDeinterlacer        --value true
-dhs consumer ccm set 10.6.255.102 --path $C.scaling.conversionMode --value "Up/Down/Cross"
-dhs consumer ccm set 10.6.255.102 --path $C.videoFormatOutput      --value 1080p50
+dhs consumer ccm set 10.6.255.102 --path $C.hqDeinterlacer        --value true --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path $C.scaling.conversionMode --value "Up/Down/Cross" --write-to 10.6.255.102
+dhs consumer ccm set 10.6.255.102 --path $C.videoFormatOutput      --value 1080p50 --write-to 10.6.255.102
 ```
 
 `hqDeinterlacer` alone leaves the picture interlaced. Colour follows the

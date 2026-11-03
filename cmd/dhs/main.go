@@ -321,6 +321,13 @@ func dispatchConsumer(ctx context.Context, args []string) error {
 	if proto == "cerebrum-nb" {
 		return runCerebrum(ctx, rest)
 	}
+	if proto == rrcsProto {
+		if len(rest) == 0 || isHelpToken(rest[0]) || rrcsHandles(rest[0]) {
+			return runRRCS(ctx, rest)
+		}
+		// A verb rrcs does not own is a neutral one, answered by the
+		// registered plugin through the generic table below (ADR-0037 P1).
+	}
 	if proto == "rcp" {
 		return runRCP(ctx, rest)
 	}
@@ -617,7 +624,7 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
@@ -634,6 +641,11 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rrcs):                info, discover, snapshot, tree, list, extract,
+                               import, ensure, xp, call, coverage, watch,
+                               and every generic verb (get, set, walk, export,
+                               health, status, alarm, …; ADR-0037)
+                               (Riedel RRCS, XML-RPC over HTTP; default port 8193)
   Verbs (rcp):                 info, list, get, export, create, set, delete
                                (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 

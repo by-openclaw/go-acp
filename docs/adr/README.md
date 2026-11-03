@@ -63,6 +63,9 @@ when an ADR is rewritten.
 | [0032](0032-transport-hardening.md) | Transport hardening — fuzzed decoders, gateway as protective proxy | proposed | partial — fuzz targets in 7 codecs |
 | [0033](0033-alarm-template.md) | Alarm template — thresholds as per-model data, severity ladder, hysteresis, evaluated at the edge | proposed | yes |
 | [0034](0034-oracle-testing.md) | Oracles — an independent implementation, run as a process, in both roles | proposed | partial — loopback oracle tests not in CI |
+| [0035](0035-rrcs-stream-ownership.md) | RRCS — how a stream block is edited safely | accepted | yes — the proven forms are the rrcs plugin's SetValue |
+| [0036](0036-site-limits-narrow-factory-limits.md) | Site limits may narrow factory limits, never widen them | accepted | yes — built by ADR-0037 P7 |
+| [0037](0037-connector-parity.md) | Connector parity: the generic verbs answer through the plugin, extensions beside them | accepted | partial — P8 (a role as one object) is design only |
 
 ## ADR-0017 parking note
 

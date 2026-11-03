@@ -42,6 +42,10 @@ Matrix is a separate entity — see ADR-0023.
 - Same card walked at any slot at any IP yields the **same DM file**.
 - Two slots holding the same card reference the same DM by string; no
   on-disk duplication.
+- A card whose ports differ by type (rrcs: the port types of an AES67
+  card) holds one template per port type in `templates[]`; the manifest
+  slot names its template. The shape comes from the specification and
+  one walk confirms it.
 
 ### Storage layout (locked)
 

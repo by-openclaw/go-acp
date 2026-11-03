@@ -108,20 +108,20 @@ curl -s --max-time 5 http://$H/api/waveform_gain/tile1 | tee before-raw.txt
 Write a different legal value, 1 to 10, here 2 (use 3 if `before` is 2):
 
 ```bash
-dhs consumer prism set $H --path waveform_gain/tile1 --value 2 --timeout 3s 2>&1 | tee write.txt
+dhs consumer prism set $H --path waveform_gain/tile1 --value 2 --write-to $H --timeout 3s 2>&1 | tee write.txt
 ```
 
 Expected: `confirmed value = 2`, and the trace changes. If the set fails
 or the value did not move, run it again with the other form, once:
 
 ```bash
-DHS_PRISM_SCALAR=bare dhs consumer prism set $H --path waveform_gain/tile1 --value 2 --timeout 3s 2>&1 | tee write-bare.txt
+DHS_PRISM_SCALAR=bare dhs consumer prism set $H --path waveform_gain/tile1 --value 2 --write-to $H --timeout 3s 2>&1 | tee write-bare.txt
 ```
 
 Restore the exact previous value, in the form that worked:
 
 ```bash
-dhs consumer prism set $H --path waveform_gain/tile1 --value <value from before.txt> --timeout 3s 2>&1 | tee restore.txt
+dhs consumer prism set $H --path waveform_gain/tile1 --value <value from before.txt> --write-to $H --timeout 3s 2>&1 | tee restore.txt
 curl -s --max-time 5 http://$H/api/waveform_gain/tile1 | tee after-raw.txt
 ```
 

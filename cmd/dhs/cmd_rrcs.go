@@ -1,0 +1,1036 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/csv"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"dhs/internal/clock"
+	"dhs/internal/consumer"
+	"dhs/internal/consumer/alarm"
+	"dhs/internal/logging"
+	"dhs/internal/manifest"
+	"dhs/internal/rrcs/codec"
+	rrcs "dhs/internal/rrcs/consumer"
+	"dhs/internal/transport"
+	"dhs/internal/wiretrace"
+)
+
+const rrcsProto = "rrcs"
+
+func rrcsValErr(verb, reason string) error {
+	return &consumer.ValidationError{Field: "rrcs " + verb, Reason: reason}
+}
+
+// runRRCS is the dispatcher for `dhs consumer rrcs <verb>`.
+// rrcsOwnVerbs are the verbs this dispatcher answers itself. A verb that
+// is neither here nor a method of the specification is a neutral one,
+// answered through the registered plugin by the generic table (ADR-0037
+// P1), so health, status, alarm, diff and validate work on rrcs as on
+// every connector.
+//
+// get, set, walk and export are not here: they are the generic verbs,
+// answered through the plugin (ADR-0037 P2). snapshot is the former
+// private walk — everything readable in one document.
+var rrcsOwnVerbs = map[string]bool{
+	"info": true, "discover": true, "watch": true, "snapshot": true,
+	"list": true, "extract": true, "call": true,
+	"ensure": true, "coverage": true, "xp": true, "import": true, "tree": true,
+}
+
+// rrcsHandles says whether runRRCS answers a verb itself.
+func rrcsHandles(verb string) bool {
+	return rrcsOwnVerbs[verb] || rrcsFindOp(verb) != nil
+}
+
+func runRRCS(ctx context.Context, args []string) error {
+	if len(args) == 0 || isHelpToken(args[0]) {
+		printRRCSHelp()
+		return nil
+	}
+	switch args[0] {
+	case "info":
+		return rrcsQuery(ctx, "info", rrcsInfoMethods, args[1:])
+	case "discover":
+		return rrcsQuery(ctx, "discover", rrcsDiscoverMethods, args[1:])
+	case "watch":
+		return rrcsWatch(ctx, args[1:])
+	case "snapshot":
+		return rrcsWalk(ctx, args[1:])
+	case "list":
+		return rrcsList(ctx, args[1:])
+	case "extract":
+		return rrcsExtract(ctx, args[1:])
+	case "call":
+		return rrcsCall(ctx, args[1:])
+	case "ensure":
+		return rrcsEnsure(ctx, args[1:])
+	case "coverage":
+		return rrcsCoverage(ctx, args[1:])
+	case "xp":
+		return rrcsXpVerb(ctx, args[1:])
+	case "import":
+		return rrcsImport(ctx, args[1:])
+	case "tree":
+		return rrcsTree(ctx, args[1:])
+	}
+	if op := rrcsFindOp(args[0]); op != nil {
+		return rrcsRunOp(ctx, op, args[1:])
+	}
+	return rrcsValErr(args[0], "unknown verb (run 'dhs consumer rrcs --help')")
+}
+
+func printRRCSHelp() {
+	fmt.Println(`dhs consumer rrcs — Riedel RRCS gateway (XML-RPC over HTTP, default port 8193)
+
+USAGE
+  dhs consumer rrcs <verb> <host>[:port] [flags]
+
+VERBS
+
+  Verb      Wire
+  --------  ---------------------------------------------------------------
+  info      GetVersion, GetState, IsConnectedToArtist, GetConfigurationID
+  discover  GetAllNodes, GetAllClientCards, GetAllDevices, GetAllPorts,
+            GetAllConferences, GetAllGroups, GetAllIFBs, GetAllLogicSources_v2,
+            GetAllGpIns, GetAllGpOuts, GetAllActiveXps — read only
+  snapshot  everything readable, into one JSON document: info + discover +
+            type lists, GetLicenseInfo per node, GetObjectList per object
+            type, GetObjectProperty of every object, GetPortsCommandLists
+            of every port (what is on its keys) — read only. tree, list
+            and extract read it with --from FILE
+  tree      the system as a tree: node, client cards, ports, what is on
+            each key; conferences, groups, IFBs with members, logic sources
+  list      one table: nodes | cards | ports | panels | keys | streams |
+            sources | dests | xp | conferences | groups | ifbs | logic |
+            users | patches | logicdests (those three from a snapshot) |
+            values (every value as one row: the table import reads back,
+            --output csv); --node, --type, --match select rows. streams = the AES67
+            receivers and senders; sources and dests = the two axes of the
+            crosspoint matrix; xp = the crosspoints active now
+  extract   the device models and the inventory (ADR-0022): one model for
+            the node type and one per client card type, every type of the
+            system as a template — port types, keys, commands, conferences
+            — into .cache/dm/rrcs/<Type@version>.json, and the manifest
+            of node, cards and ports with their type and role into
+            .cache/manifest/rrcs/<host>.json. Eight list requests plus the
+            keys and commands of one port per type; --refresh rewrites a
+            model that exists
+  import    WRITES: every writable value of an export file that differs
+            from the live system (ConfigurationChange): --file, --path,
+            --dry-run to compare and send nothing
+
+  ensure    converge to a desired-state file (values, crosspoints): --file,
+            --check to report and send nothing; the contract of every dhs
+            ensure, for Ansible. Without --check it WRITES.
+            --manifest FILE instead: the desired inventory (the manifest
+            extract wrote, edited) — the type and the role of each port,
+            brought to the system in the proven order: an absent port is
+            created from its type, a main gets its channel count, a linked
+            port its link; a port of another type is a retype (delete and
+            create), refused without --allow-retype
+  coverage  every method and notification of the specification: the dhs
+            verb that uses it, and whether it has been seen working on a
+            real RRCS. Talks to no gateway
+  xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
+            --state on|off (SetXp, KillXp): --src PATH --dst PATH
+  call      any method of the specification, parameters as JSON (--arg);
+            a method that is not Get… or Is… WRITES and needs --write-to
+
+  tree, list and extract also read a document written by snapshot: --from FILE
+  watch     RegisterForAllEvents, then every event RRCS sends; answers
+            GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
+            pressed and released on the panels (ChangePanelSpyRegistry)
+
+Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
+
+GENERIC VERBS — the same as on every connector, through the registered
+plugin (ADR-0037 P2):
+  get       one property: --path net.1.node.61.port.1024.in.PortAes67Input.Channels;
+            an object path alone (…port.1024.in) answers every property as
+            JSON; --id OID asks GetObjectProperty (--group names: the names)
+  set       WRITES one property: --path … --value V. --dry-run sends nothing;
+            --write-to HOST confirms the target (refused without it, P5).
+            Two members in one request (an output's link) stay with import
+  walk      the objects of one slot (0 = the node and what belongs to no
+            card, N = bay N) with kind, access, range, unit, named values
+  export    the same for every present slot, to json / yaml / csv
+  health, status, alarm, diff, validate, …
+Run 'dhs consumer rrcs <verb> --help' for each of them as well.
+
+ONE VERB PER METHOD — every other method of the specification, with named
+flags; the ones that are not get-… or line-status WRITE and need --write-to:`)
+	line := " "
+	for _, op := range rrcsOps {
+		v := rrcsOpVerb(op.Method)
+		if len(line)+len(v)+1 > 78 {
+			fmt.Println(line)
+			line = " "
+		}
+		line += " " + v
+	}
+	fmt.Println(line)
+}
+
+// rrcsFlags is the flag set common to the rrcs verbs.
+type rrcsFlags struct {
+	timeout time.Duration
+	output  string
+	capture string
+	// siteLimits names the plant's limits file for the writing verbs
+	// (ADR-0037 P7): "" = the default home when it exists, "off" = none.
+	siteLimits string
+
+	// The uniform logging contract (docs/logging.md): a local file in
+	// syslog format by default, optionally a remote syslog server.
+	logPath      string
+	logFormat    string
+	logLevel     string
+	verbose      bool
+	syslogAddr   string
+	logRetention int
+	// sink receives the operational lines and the event stream; nil
+	// when every sink is off.
+	sink *slog.Logger
+
+	// note writes one line of the verb's own account of the run into
+	// the capture, so the file explains itself without the console.
+	note func(text string)
+}
+
+// say prints a diagnostic on stderr and keeps it in the capture.
+func (c *rrcsFlags) say(format string, args ...any) {
+	text := fmt.Sprintf(format, args...)
+	fmt.Fprintln(os.Stderr, text)
+	if c.note != nil {
+		c.note(text)
+	}
+	if c.sink != nil {
+		c.sink.Info(text, slog.String("proto", rrcsProto))
+	}
+}
+
+// logValue writes one decoded event to the sinks, with the fields of the
+// generic watch (docs/logging.md, msg=value_change).
+func (c *rrcsFlags) logValue(l rrcsChangeLine) {
+	if c.sink == nil {
+		return
+	}
+	attrs := []any{
+		slog.String("proto", rrcsProto), slog.String("event", l.Event),
+		slog.String("path", l.Path), slog.String("label", l.Label), slog.String("value", l.Value),
+	}
+	if l.OID != 0 {
+		attrs = append(attrs, slog.Int("oid", l.OID))
+	}
+	if l.Unit != "" {
+		attrs = append(attrs, slog.String("unit", l.Unit))
+	}
+	if l.Name != "" {
+		attrs = append(attrs, slog.String("name", l.Name))
+	}
+	c.sink.Info("value_change", attrs...)
+}
+
+func newRRCSFlags(fs *flag.FlagSet) *rrcsFlags {
+	c := &rrcsFlags{}
+	fs.DurationVar(&c.timeout, "timeout", rrcs.DefaultTimeout, "per-request timeout")
+	fs.StringVar(&c.output, "output", "text", "output: text | json | csv (watch only: one record per value, in the columns of export)")
+	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format. Default \"auto\" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; \"off\" disables the local file")
+	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is")
+	fs.StringVar(&c.logLevel, "log-level", "info", "log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical")
+	fs.BoolVar(&c.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
+	fs.StringVar(&c.syslogAddr, "syslog-addr", "", "also forward the logs as RFC 5424 UDP datagrams to host:port")
+	fs.IntVar(&c.logRetention, "log-retention", 0, "days of daily log files to keep; 0 = keep every day")
+	fs.StringVar(&c.capture, "capture", "", "record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal \"auto\" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)")
+	fs.StringVar(&c.siteLimits, "site-limits", "", siteLimitsHelp)
+	return c
+}
+
+// open builds the client and, with --capture, the recorder behind its tap.
+func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), error) {
+	switch {
+	case c.output == "text" || c.output == "json":
+	case c.output == "csv" && (verb == "list" || verb == "watch"):
+		// The two verbs whose tables exist as CSV, live as from a file.
+	default:
+		return nil, nil, nil, rrcsValErr(verb, "--output must be text or json (list and watch also take csv)")
+	}
+	// --verbose is the shortcut every dhs connector has for debug.
+	if c.verbose && c.logLevel == "info" {
+		c.logLevel = "debug"
+	}
+	var tap rrcs.Tap
+	_, sink, logClose, _, lerr := buildConsumerLoggers(parseLogLevel(c.logLevel), c.logFormat, c.logPath, c.syslogAddr,
+		defaultLogPath(rrcsProto, hostOnly(addr), verb), c.logRetention)
+	if lerr != nil {
+		return nil, nil, nil, rrcsValErr(verb, lerr.Error())
+	}
+	c.sink = sink
+	closeFn := logClose
+	if c.capture == "auto" {
+		c.capture = defaultCapturePath(rrcsProto, hostOnly(addr), verb, "", time.Now())
+		fmt.Fprintf(os.Stderr, "rrcs %s: --capture auto → %s (ADR-0028)\n", verb, c.capture)
+	}
+	if c.capture != "" {
+		if err := os.MkdirAll(filepath.Dir(c.capture), 0o755); err != nil {
+			logClose()
+			return nil, nil, nil, fmt.Errorf("capture dir: %w", err)
+		}
+		rec, err := transport.NewRecorder(c.capture)
+		if err != nil {
+			logClose()
+			return nil, nil, nil, fmt.Errorf("capture: %w", err)
+		}
+		rec.WriteMeta(captureMeta(rrcsProto, addr, verb))
+		tap = func(dir wiretrace.Direction, _ string, doc []byte) { rec.Record(rrcsProto, string(dir), doc) }
+		c.note = func(text string) {
+			rec.WriteMeta(struct {
+				Note string `json:"note"`
+			}{text})
+		}
+		closeFn = func() {
+			_ = rec.Close()
+			logClose()
+		}
+	}
+	// The levels are those of every dhs connector (internal/logging):
+	// debug adds one record per XML-RPC document, sent and received —
+	// its method, direction and size; trace adds the XML itself, the raw
+	// wire data. Both go to the log file and to syslog. A long answer
+	// (the port list is megabytes) is cut in the log; --capture holds it
+	// whole.
+	if level := parseLogLevel(c.logLevel); c.sink != nil && level <= slog.LevelDebug {
+		inner, sink := tap, c.sink
+		tap = func(dir wiretrace.Direction, peer string, doc []byte) {
+			if inner != nil {
+				inner(dir, peer, doc)
+			}
+			attrs := []any{slog.String("proto", rrcsProto), slog.String("dir", string(dir)), slog.String("peer", peer),
+				slog.String("method", rrcsMethodOf(doc)), slog.Int("bytes", len(doc))}
+			if level > logging.LevelTrace {
+				sink.Debug("xmlrpc", attrs...)
+				return
+			}
+			text, cut := string(doc), false
+			if len(text) > rrcsLogXMLMax {
+				text, cut = text[:rrcsLogXMLMax], true
+			}
+			sink.Log(context.Background(), logging.LevelTrace, "xmlrpc", append(attrs, slog.Bool("cut", cut), slog.String("xml", text))...)
+		}
+	}
+	client, err := rrcs.NewClient(rrcs.Config{Addr: addr, Timeout: c.timeout, Tap: tap})
+	if err != nil {
+		closeFn()
+		return nil, nil, nil, rrcsValErr(verb, err.Error())
+	}
+	return client, tap, closeFn, nil
+}
+
+// rrcsLogXMLMax is how much of one XML-RPC document a debug log record
+// holds: enough for any request and any ordinary answer, and small enough
+// for a syslog datagram.
+const rrcsLogXMLMax = 1200
+
+// rrcsMethodOf reads the method name of an XML-RPC request; an answer has
+// none and is named "(response)".
+func rrcsMethodOf(doc []byte) string {
+	const open, shut = "<methodName>", "</methodName>"
+	i := bytes.Index(doc, []byte(open))
+	if i < 0 {
+		return "(response)"
+	}
+	rest := doc[i+len(open):]
+	j := bytes.Index(rest, []byte(shut))
+	if j < 0 {
+		return "(response)"
+	}
+	return string(rest[:j])
+}
+
+// rrcsSize says how much an answer holds: the entries of the list it
+// wraps, or its own elements.
+func rrcsSize(payload codec.Value) string {
+	switch payload.Kind {
+	case codec.KindArray:
+		if len(payload.Items) == 1 && payload.Items[0].Kind == codec.KindArray {
+			return strconv.Itoa(len(payload.Items[0].Items)) + " entries"
+		}
+		return strconv.Itoa(len(payload.Items)) + " elements"
+	case codec.KindStruct:
+		return strconv.Itoa(len(payload.Members)) + " members"
+	}
+	return "1 value"
+}
+
+// rrcsQueryResult is one request of info / discover.
+type rrcsQueryResult struct {
+	Method  string `json:"method"`
+	OK      bool   `json:"ok"`
+	Error   string `json:"error,omitempty"`
+	Millis  int64  `json:"ms"`
+	Payload any    `json:"payload,omitempty"`
+}
+
+// rrcsQuery runs a fixed list of read-only requests, each alone: one that
+// fails does not stop the next.
+func rrcsQuery(ctx context.Context, verb string, methods []string, args []string) error {
+	fs := flag.NewFlagSet("rrcs "+verb, flag.ContinueOnError)
+	cf := newRRCSFlags(fs)
+	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return rrcsValErr(verb, "want exactly one host[:port] argument")
+	}
+	client, _, closeFn, err := cf.open(verb, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	defer closeFn()
+
+	results := make([]rrcsQueryResult, 0, len(methods))
+	failed := 0
+	for _, method := range methods {
+		start := time.Now()
+		reply, err := client.Call(ctx, method)
+		res := rrcsQueryResult{Method: method, OK: err == nil, Millis: time.Since(start).Milliseconds()}
+		if err != nil {
+			res.Error = err.Error()
+			failed++
+		} else {
+			res.Payload = rrcsJSON(reply.Payload())
+		}
+		results = append(results, res)
+		if cf.output == "text" {
+			switch {
+			case err != nil:
+				fmt.Printf("%-22s FAILED  %5d ms  %v\n", method, res.Millis, err)
+			case verb == "info":
+				fmt.Printf("%-22s ok      %5d ms  %s\n", method, res.Millis, rrcsCompact(reply.Payload()))
+			default:
+				fmt.Printf("%-22s ok      %5d ms  %s\n", method, res.Millis, rrcsSize(reply.Payload()))
+			}
+		}
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	if cf.output == "json" {
+		doc := struct {
+			Target  string            `json:"target"`
+			Verb    string            `json:"verb"`
+			Results []rrcsQueryResult `json:"results"`
+		}{client.Peer(), verb, results}
+		b, err := json.Marshal(doc)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(b))
+	}
+	if failed == len(results) {
+		return fmt.Errorf("rrcs %s: no request was answered by %s", verb, client.Peer())
+	}
+	return nil
+}
+
+// rrcsWatch registers for every event and prints what RRCS sends until
+// the context ends.
+func rrcsWatch(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("rrcs watch", flag.ContinueOnError)
+	cf := newRRCSFlags(fs)
+	listen := fs.String("listen", ":8195", "local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1)")
+	path := fs.String("path", rrcs.DefaultPath, "URL path RRCS posts its events to")
+	check := fs.Duration("check", 30*time.Second, "ask RRCS this often whether we are still registered, and register again if not; 0 = never")
+	spy := fs.String("spy", "none", "panel spy — key pressed and released, rotary encoders (RRCS sends these only for panels registered one by one, and only on a system licensed for panel spy: without the licence every panel answers \"No client card acknowledge received\"): none (default) | all (every port that has keys and is on line) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit")
+	events := fs.String("events", "values", "values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received")
+	volume := fs.String("volume", "yes", "crosspoint levels (RRCS sends these only for crosspoints registered one by one): yes (default: follow every crosspoint that is made while watching, in both directions; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB) | no. Adds registrations on RRCS, removed on exit")
+	spyEvents := fs.String("spy-events", "key,rotate", "with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys)")
+	alarmFile := fs.String("alarm", "", "judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes")
+	alive := fs.String("alive", "count", "GetAlive pings: count (summary only) | show (one line each)")
+	changes := fs.String("changes", "yes", "what to do when RRCS says the configuration changed (it never says what): yes (default: read the lists again — eight requests — and print what differs in the ports, the client cards, the conferences, groups and IFBs; the inventory manifest is rewritten) | keys (also the keys of the panels: one request per panel at start and at each change) | no (print only that it changed)")
+	match := fs.String("match", "", "keep the lines whose path contains this text, case ignored; the full path of one port or client card makes a configuration change re-read that object alone (one request)")
+	oid := fs.Int("oid", 0, "keep the lines of this object ID (the oid column of export)")
+	kind := fs.String("kind", "", "keep the lines of one kind of object: node | card | stream | panel | port | key | conference | group | ifb | logic | xp")
+	if err := parseVerbFlags(fs, reorderFlagsFirst(args)); err != nil {
+		return err
+	}
+	if *kind != "" && !rrcsWatchKinds[*kind] {
+		return rrcsValErr("watch", "--kind takes node, card, stream, panel, port, key, conference, group, ifb, logic or xp")
+	}
+	if fs.NArg() != 1 {
+		return rrcsValErr("watch", "want exactly one host[:port] argument")
+	}
+	spyAll, spyPanels, err := rrcsParseSpy(*spy)
+	if err != nil {
+		return rrcsValErr("watch", err.Error())
+	}
+	var spyKinds []string
+	for _, k := range strings.Split(*spyEvents, ",") {
+		name := map[string]string{"key": "Key", "rotate": "Rotate", "func": "FuncKey", "num": "NumKey"}[strings.TrimSpace(k)]
+		if name == "" {
+			return rrcsValErr("watch", "--spy-events takes key, rotate, func, num")
+		}
+		spyKinds = append(spyKinds, name)
+	}
+	if *volume != "yes" && *volume != "no" {
+		return rrcsValErr("watch", "--volume must be yes or no")
+	}
+	if *events != "values" && *events != "raw" {
+		return rrcsValErr("watch", "--events must be values or raw")
+	}
+	if cf.output == "csv" && *events != "values" {
+		return rrcsValErr("watch", "--output csv needs --events values")
+	}
+	if *changes != "yes" && *changes != "keys" && *changes != "no" {
+		return rrcsValErr("watch", "--changes must be yes, keys or no")
+	}
+	if *alive != "count" && *alive != "show" {
+		return rrcsValErr("watch", "--alive must be count or show")
+	}
+	if !rrcs.ValidPath(*path) {
+		return rrcsValErr("watch", "--path: ASCII without control characters or spaces only")
+	}
+	ln, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return fmt.Errorf("rrcs watch: listen %s: %w", *listen, err)
+	}
+	reg := rrcs.Registration{Port: ln.Addr().(*net.TCPAddr).Port, Path: *path}
+
+	client, tap, closeFn, err := cf.open("watch", fs.Arg(0))
+	if err != nil {
+		_ = ln.Close()
+		return err
+	}
+	defer closeFn()
+
+	var judge *alarm.Evaluator
+	if *alarmFile != "" {
+		tpl, err := alarm.LoadFile(*alarmFile)
+		if err != nil {
+			return rrcsValErr("watch", "--alarm: "+err.Error())
+		}
+		judge = alarm.New(tpl, clock.System())
+	}
+	// raise prints and logs one change of verdict.
+	raise := func(tr alarm.Transition) {
+		fmt.Printf("%s  ALARM %s\n", tr.At.UTC().Format("15:04:05.000"), tr.String())
+		if cf.sink != nil {
+			level := slog.LevelWarn
+			if tr.Severity == alarm.Normal {
+				level = slog.LevelInfo
+			}
+			cf.sink.Log(ctx, level, "alarm", slog.String("proto", rrcsProto), slog.String("severity", tr.Severity.String()),
+				slog.String("prior", tr.Prior.String()), slog.String("path", tr.Path), slog.String("value", tr.Value),
+				slog.String("band", tr.Band), slog.String("text", tr.Text))
+		}
+	}
+
+	// The names behind the numbers of the events: read once, before the
+	// registration, so no event meets a half-built tree — the eight lists
+	// extract reads. With --changes keys, or a panel spy, the keys of the
+	// panels are read too: they are what the reading after a
+	// configuration change is compared with.
+	var model *rrcsModel
+	var exTypes map[int]string
+	readModel := func() (*rrcsModel, map[int]string, error) {
+		opts := rrcsCollectOpts{Only: rrcs.ExtractLists}
+		if spyAll || len(spyPanels) > 0 || *changes == "keys" {
+			opts = rrcsCollectOpts{Commands: true, PanelCommands: true}
+		}
+		snap, _, err := rrcsCollect(ctx, client, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		m, err := rrcsModelOf(snap)
+		if err != nil {
+			return nil, nil, err
+		}
+		doc, _ := json.Marshal(snap)
+		var raw map[string]any
+		_ = json.Unmarshal(doc, &raw)
+		return m, rrcs.ExTypeNames(raw), nil
+	}
+	version := ""
+	if *events == "values" {
+		var err error
+		if model, exTypes, err = readModel(); err != nil {
+			cf.say("rrcs watch: the system could not be read, events are printed with numbers only: %v", err)
+		}
+		if reply, err := client.Call(ctx, "GetVersion"); err == nil {
+			version = rrcs.Version(rrcsFirstString(reply.Payload()))
+		}
+	}
+	// keep applies --match, --oid and --kind to a line; what the watch
+	// says about itself (gateway) always passes.
+	keep := func(l rrcsChangeLine) bool {
+		if l.Path == "gateway" {
+			return true
+		}
+		if *match != "" && !strings.Contains(strings.ToLower(l.Path+"."+l.Label), strings.ToLower(*match)) {
+			return false
+		}
+		if *oid != 0 && l.OID != *oid {
+			return false
+		}
+		if *kind != "" && rrcsKindOf(model, l.Path) != *kind {
+			return false
+		}
+		return true
+	}
+	// rewriteInventory keeps the actual manifest current after a change
+	// (ADR-0028): what extract would write now.
+	rewriteInventory := func(m *rrcsModel) {
+		if treeStore == nil || version == "" || m == nil {
+			return
+		}
+		set, err := rrcs.BuildDMs(m, version, exTypes)
+		if err != nil {
+			return
+		}
+		port := rrcs.DefaultPort
+		if _, p, err := splitHostPort(client.Peer(), rrcs.DefaultPort); err == nil {
+			port = p
+		}
+		if path, err := manifest.Write(treeStore.BaseDir(), rrcs.Manifest(m, hostOnly(client.Peer()), port, set)); err == nil {
+			cf.say("rrcs watch: inventory rewritten: %s", path)
+		}
+	}
+	// changed says that RRCS announced a configuration change.
+	changed := make(chan struct{}, 1)
+
+	var mu sync.Mutex // one line at a time on stdout; also guards online
+	// online is what the port notifications say: RRCS opens a registration
+	// with one PortActive per port that is on line.
+	online := map[[2]int]bool{}
+	spyErrors := map[string]int{} // distinct panel spy error → how many panels gave it
+	jsonOut := cf.output == "json"
+	// levels holds the last level shown per crosspoint and member: RRCS
+	// sends both members each time, so the one that did not move is not
+	// repeated on the terminal (the log and the capture keep everything).
+	levels := map[string]string{}
+	// csv: the columns of export, with the time and the event in front
+	// and a description at the end.
+	var csvOut *csv.Writer
+	if cf.output == "csv" {
+		csvOut = csv.NewWriter(os.Stdout)
+		_ = csvOut.Write(rrcsWatchCSVHeader())
+		csvOut.Flush()
+	}
+	// follow carries the crosspoints whose level is to be followed, from
+	// the event handler to the loop that talks to RRCS.
+	follow := make(chan rrcs.Crosspoint, 256)
+	listener := &rrcs.Listener{
+		Path:    *path,
+		AnyPath: *volume == "yes",
+		Tap:     tap,
+		OnReject: func(remote string, err error) {
+			cf.say("rrcs watch: unreadable request from %s: %v", remote, err)
+		},
+		OnEvent: func(e rrcs.Event) {
+			if e.Method == rrcs.MethodGetAlive && *alive != "show" {
+				return
+			}
+			params := e.Params
+			if e.TransKey != "" {
+				params = params[1:]
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if *volume == "yes" && e.Method == "CrosspointChange" && len(params) >= 2 {
+				for _, xp := range params[1].Members {
+					if it := xp.Value.Items; len(it) >= 7 && it[6].Kind == codec.KindBool && it[6].Bool {
+						select {
+						case follow <- rrcs.Crosspoint{SrcNode: rrcsParamInt(it, 1), SrcPort: rrcsParamInt(it, 2),
+							DstNode: rrcsParamInt(it, 4), DstPort: rrcsParamInt(it, 5)}:
+						default: // the loop is behind; the next change of this crosspoint asks again
+						}
+					}
+				}
+			}
+			if e.Method == "ConfigurationChange" && *changes != "no" {
+				select {
+				case changed <- struct{}{}:
+				default: // a reading is already due
+				}
+			}
+			if (e.Method == "PortActive" || e.Method == "PortInactive") && len(params) >= 3 {
+				online[[2]int{rrcsParamInt(params, 1), rrcsParamInt(params, 2)}] = e.Method == "PortActive"
+			}
+			stamp := e.Time.UTC().Format("2006-01-02T15:04:05.000Z")
+			if *events == "raw" {
+				if jsonOut {
+					b, _ := json.Marshal(struct {
+						Time     string `json:"ts"`
+						Remote   string `json:"remote"`
+						Method   string `json:"method"`
+						TransKey string `json:"trans_key,omitempty"`
+						Params   any    `json:"params"`
+					}{stamp, e.Remote, e.Method, e.TransKey, rrcsJSON(codec.Array(params...))})
+					fmt.Println(string(b))
+					return
+				}
+				fmt.Printf("%s  %-24s %s\n", stamp, e.Method, rrcsCompact(codec.Array(params...)))
+				return
+			}
+			for _, l := range rrcsDecode(model, e) {
+				if !keep(l) {
+					continue
+				}
+				cf.logValue(l)
+				if judge != nil {
+					if tr := judge.Eval(client.Peer(), consumer.Event{Path: l.Path + "." + l.Label, Label: l.Label, Unit: l.Unit,
+						Value: consumer.Value{Kind: consumer.KindString, Str: l.Value}}); tr != nil {
+						raise(*tr)
+					}
+				}
+				// The state of the panel spy of each panel is said once per
+				// distinct answer: with 24 panels giving the same error,
+				// the terminal would hold nothing else. Every state still
+				// goes to the log and the capture.
+				if strings.HasSuffix(l.Path, ".spy") {
+					if l.Value != "error" {
+						continue
+					}
+					key := l.Label + "|" + l.Detail
+					spyErrors[key]++
+					if spyErrors[key] > 1 {
+						continue
+					}
+					l.Detail += "  (said once; other panels with the same answer are counted at the end)"
+				}
+				if e.Method == rrcs.MethodXpVolumeChange {
+					key := l.Path + "." + l.Label
+					last, seen := levels[key]
+					levels[key] = l.Value
+					if (seen && last == l.Value) || (!seen && l.Label == "ConferenceVolume" && l.Value == "mute") {
+						continue
+					}
+				}
+				if csvOut != nil {
+					l.Time = stamp
+					_ = csvOut.Write(l.Record(fs.Arg(0)))
+					csvOut.Flush()
+					continue
+				}
+				if jsonOut {
+					l.Time = stamp
+					b, _ := json.Marshal(l)
+					fmt.Println(string(b))
+					continue
+				}
+				fmt.Println(l.Text())
+			}
+		},
+	}
+	srv := &http.Server{Handler: listener, ReadHeaderTimeout: rrcsListenerWait}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(ln) }()
+	defer func() {
+		shut, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shut)
+	}()
+
+	if _, err := client.Register(ctx, reg); err != nil {
+		return fmt.Errorf("rrcs watch: %w", err)
+	}
+	cf.say("rrcs watch: registered at %s — events go to port %d path %s; Ctrl+C to stop",
+		client.Peer(), reg.Port, rrcs.NormalizePath(reg.Path))
+	// own reports a value of the watch itself, the way an event's value
+	// is: logged, judged by the alarm template, printed. The registration
+	// is the one that matters: without it RRCS sends nothing, and nothing
+	// else on the screen says so.
+	// emit reports one line that does not come from a notification.
+	emit := func(l rrcsChangeLine) {
+		if !keep(l) {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		now := time.Now().UTC()
+		l.Time = now.Format("15:04:05.000")
+		cf.logValue(l)
+		if judge != nil {
+			if tr := judge.Eval(client.Peer(), consumer.Event{Path: l.Path + "." + l.Label, Label: l.Label,
+				Value: consumer.Value{Kind: consumer.KindString, Str: l.Value}}); tr != nil {
+				raise(*tr)
+			}
+		}
+		switch {
+		case csvOut != nil:
+			l.Time = now.Format("2006-01-02T15:04:05.000Z")
+			_ = csvOut.Write(l.Record(fs.Arg(0)))
+			csvOut.Flush()
+		case jsonOut:
+			l.Time = now.Format("2006-01-02T15:04:05.000Z")
+			b, _ := json.Marshal(l)
+			fmt.Println(string(b))
+		case *events == "values":
+			fmt.Println(l.Text())
+		}
+	}
+	own := func(label, value, detail string) {
+		emit(rrcsChangeLine{Event: "watch", Path: "gateway", Label: label, Value: value, Detail: detail})
+	}
+	own("Registration", "registered", "")
+
+	// Panel spy is a second registration, per panel, on top of the first
+	// (§9.9.1). It is made again after every new registration.
+	//
+	// "all" means every port that has keys and is on line: on a real
+	// RRCS 9.0 a panel that is off line answers the registration with an
+	// error state per kind, and 59 of 83 were off line. The port
+	// notifications that open the registration say which are on.
+	var keyed [][2]int
+	if spyAll {
+		reply, err := client.Call(ctx, "GetAllPorts")
+		if err != nil {
+			cf.say("rrcs watch: panel spy: %v", err)
+		}
+		for _, p := range rrcsListOf(reply) {
+			if n, _ := rrcsFieldInt(p, "KeyCount"); n > 0 {
+				node, _ := rrcsFieldInt(p, "Node")
+				port, _ := rrcsFieldInt(p, "Port")
+				keyed = append(keyed, [2]int{int(node), int(port)})
+			}
+		}
+		select {
+		case <-time.After(2 * time.Second): // the opening port notifications
+		case <-ctx.Done():
+		}
+		mu.Lock()
+		for _, panel := range keyed {
+			if online[panel] {
+				spyPanels = append(spyPanels, panel)
+			}
+		}
+		mu.Unlock()
+		cf.say("rrcs watch: panel spy: %d ports have keys, %d are on line", len(keyed), len(spyPanels))
+	}
+	setSpy := func(c context.Context, on bool) {
+		failed := 0
+		for _, panel := range spyPanels {
+			if _, err := client.PanelSpy(c, reg, panel[0], panel[1], on, spyKinds...); err != nil {
+				failed++
+				cf.say("rrcs watch: panel spy node %d port %d: %v", panel[0], panel[1], err)
+			}
+		}
+		if len(spyPanels) > 0 {
+			cf.say("rrcs watch: panel spy on=%v for %d panel(s), %d refused", on, len(spyPanels), failed)
+		}
+	}
+	setSpy(ctx, true)
+
+	// Crosspoint levels: a registration of its own, by address and port.
+	volumeIP := ""
+	followed := map[rrcs.Crosspoint]bool{}
+	setVolume := func(c context.Context) {
+		if *volume != "yes" {
+			return
+		}
+		if volumeIP == "" {
+			volumeIP = rrcsLocalIP(*listen, client.Peer())
+		}
+		if _, err := client.RegisterVolumeEvents(c, volumeIP, reg.Port); err != nil {
+			cf.say("rrcs watch: crosspoint levels: %v", err)
+			return
+		}
+		cf.say("rrcs watch: crosspoint levels: registered for %s:%d; each crosspoint made from now on is followed", volumeIP, reg.Port)
+		for x := range followed { // a new registration starts empty
+			delete(followed, x)
+		}
+	}
+	setVolume(ctx)
+
+	var tick <-chan time.Time
+	if *check > 0 {
+		t := time.NewTicker(*check)
+		defer t.Stop()
+		tick = t.C
+	}
+	// A verdict that waits out a hold becomes true with time alone.
+	var sweep <-chan time.Time
+	if judge != nil {
+		st := time.NewTicker(time.Second)
+		defer st.Stop()
+		sweep = st.C
+	}
+	registrations := 1
+	var runErr error
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		case <-changed:
+			// RRCS sends one notification per change: a moment is left
+			// for a burst to end, then the system is read once.
+			select {
+			case <-ctx.Done():
+				break loop
+			case <-time.After(500 * time.Millisecond):
+			}
+			select {
+			case <-changed:
+			default:
+			}
+			mu.Lock()
+			old := model
+			mu.Unlock()
+			if old == nil {
+				continue
+			}
+			// --match naming one port or client card: that object alone
+			// is read again, one request; otherwise the lists.
+			if _, isObject := old.Lookup(*match); isObject && *match != "" {
+				props, ok := rrcsCurrentOne(ctx, client, *match)
+				if !ok {
+					cf.say("rrcs watch: the configuration changed and %s could not be read again", *match)
+					continue
+				}
+				was, _ := old.Lookup(*match)
+				lines := rrcsModelDiff(rrcsOneObject(*match, was), rrcsOneObject(*match, props))
+				mu.Lock()
+				rrcsReplaceRaw(model, *match, props)
+				mu.Unlock()
+				for _, l := range lines {
+					emit(l)
+				}
+				if len(lines) == 0 {
+					cf.say("rrcs watch: the configuration changed; nothing differs on %s", *match)
+				}
+				continue
+			}
+			fresh, types, err := readModel()
+			if err != nil {
+				cf.say("rrcs watch: the configuration changed and could not be read again: %v", err)
+				continue
+			}
+			lines := rrcsModelDiff(old, fresh)
+			mu.Lock()
+			model, exTypes = fresh, types
+			mu.Unlock()
+			for _, l := range lines {
+				emit(l)
+			}
+			if len(lines) == 0 {
+				cf.say("rrcs watch: the configuration changed; nothing differs in keys, conferences, groups, IFBs, ports or client cards")
+			} else {
+				rewriteInventory(fresh)
+			}
+		case x := <-follow:
+			// Both directions, one request each so that a refusal of one
+			// does not cost the other: the level a panel sets for a key
+			// is how loud it hears that key's port, which is the
+			// crosspoint the other way round.
+			back := rrcs.Crosspoint{SrcNode: x.DstNode, SrcPort: x.DstPort, DstNode: x.SrcNode, DstPort: x.SrcPort}
+			for _, y := range []rrcs.Crosspoint{x, back} {
+				if followed[y] {
+					continue
+				}
+				followed[y] = true
+				if _, err := client.FollowVolumes(ctx, volumeIP, reg.Port, y); err != nil {
+					cf.say("rrcs watch: crosspoint level %d.%d>%d.%d: %v", y.SrcNode, y.SrcPort, y.DstNode, y.DstPort, err)
+				}
+			}
+		case <-sweep:
+			mu.Lock()
+			for _, tr := range judge.Sweep() {
+				raise(tr)
+			}
+			mu.Unlock()
+		case err := <-serveErr:
+			if !errors.Is(err, http.ErrServerClosed) {
+				runErr = fmt.Errorf("rrcs watch: listener: %w", err)
+			}
+			break loop
+		case <-tick:
+			ok, err := client.IsRegistered(ctx, reg)
+			switch {
+			case ctx.Err() != nil:
+			case err != nil:
+				cf.say("rrcs watch: registration check: %v", err)
+			case !ok:
+				cf.say("rrcs watch: RRCS dropped the registration — registering again")
+				own("Registration", "lost", "RRCS no longer knows this receiver; events since the last check may be missing")
+				if _, err := client.Register(ctx, reg); err != nil {
+					cf.say("rrcs watch: %v", err)
+				} else {
+					own("Registration", "registered", "")
+					registrations++
+					setSpy(ctx, true)
+					setVolume(ctx)
+				}
+			}
+		}
+	}
+
+	// The context is over; the goodbye needs one of its own.
+	//
+	// The order matters. Three runs on Windows, stopped with Ctrl+C from a
+	// shell that redirects the output, ended one request into this
+	// sequence: the shell ends the process almost at once. So the counts
+	// are said first. The level and panel spy registrations are removed
+	// before the unregistration: RRCS refuses a panel spy change once the
+	// receiver is gone (fault 99 "No notification receiver found. Call
+	// 'RegisterForAllEvents' first"). RRCS drops what is left by itself
+	// when its keep-alive finds nobody (seen in its log).
+	cf.say("rrcs watch: %d events, %d GetAlive answered, %d registration(s)",
+		listener.Events(), listener.Alives(), registrations)
+	mu.Lock()
+	for key, n := range spyErrors {
+		kind, text, _ := strings.Cut(key, "|")
+		cf.say("rrcs watch: panel spy %s not active on %d panel(s): %s", kind, n, text)
+	}
+	mu.Unlock()
+	cf.say("rrcs watch: stopping — unregistering (up to %s)", cf.timeout)
+	bye, cancel := context.WithTimeout(context.Background(), cf.timeout)
+	defer cancel()
+	if *volume == "yes" && volumeIP != "" {
+		if _, err := client.UnregisterVolumeEvents(bye, volumeIP); err != nil {
+			cf.say("rrcs watch: crosspoint levels: unregister: %v", err)
+		}
+	}
+	setSpy(bye, false)
+	start := time.Now()
+	if _, err := client.Unregister(bye, reg); err != nil {
+		cf.say("rrcs watch: unregister failed after %s: %v", time.Since(start).Round(time.Millisecond), err)
+	} else {
+		cf.say("rrcs watch: unregistered in %s", time.Since(start).Round(time.Millisecond))
+	}
+	return runErr
+}
+
+// rrcsParseSpy reads the --spy value: none, all, or a list of NODE.PORT.
+func rrcsParseSpy(v string) (all bool, panels [][2]int, err error) {
+	switch v {
+	case "", "none":
+		return false, nil, nil
+	case "all":
+		return true, nil, nil
+	}
+	for _, item := range strings.Split(v, ",") {
+		node, port, ok := strings.Cut(strings.TrimSpace(item), ".")
+		n, err1 := strconv.Atoi(node)
+		p, err2 := strconv.Atoi(port)
+		if !ok || err1 != nil || err2 != nil || n < 0 || p < 0 {
+			return false, nil, fmt.Errorf("--spy: %q is not NODE.PORT", item)
+		}
+		panels = append(panels, [2]int{n, p})
+	}
+	return false, panels, nil
+}

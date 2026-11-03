@@ -49,5 +49,5 @@ the wire — the provider accepts it and emits an announce, not stat=5.
 ## CLI equivalent
 
 ```bash
-./bin/dhs consumer acp2 set 127.0.0.1 --port 2072 --slot 1 --label Mode --raw 00000063
+./bin/dhs consumer acp2 set 127.0.0.1 --port 2072 --slot 1 --label Mode --raw 00000063 --write-to 127.0.0.1
 ```

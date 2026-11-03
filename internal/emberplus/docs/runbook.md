@@ -172,7 +172,7 @@ switch -Regex ($out) {
 ```yaml
 # Ansible task example
 - name: gain set
-  command: dhs consumer emberplus set --path ... --value -25
+  command: dhs consumer emberplus set --path ... --value -25 --write-to <host>
   register: r
   failed_when:
     - r.rc != 0

@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: dhs_rrcs
+  author: by-rune
+  description: Converge a Riedel RRCS gateway to a desired state through dhs consumer rrcs ensure
+  license: see repository
+  min_ansible_version: "2.15"
+dependencies: []

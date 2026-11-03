@@ -88,7 +88,7 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
@@ -105,6 +105,11 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rrcs):                info, discover, snapshot, tree, list, extract,
+                               import, ensure, xp, call, coverage, watch,
+                               and every generic verb (get, set, walk, export,
+                               health, status, alarm, …; ADR-0037)
+                               (Riedel RRCS, XML-RPC over HTTP; default port 8193)
   Verbs (rcp):                 info, list, get, export, create, set, delete
                                (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
@@ -187,6 +192,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  rrcs          Riedel RRCS (XML-RPC over HTTP)
   snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
@@ -1036,7 +1042,7 @@ EXAMPLES
   dhs consumer snmp walk 10.6.250.5:1161
 
   # name the device from the NMS
-  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113
+  dhs consumer snmp set --community private --oid sysLocation.0       --type s --value "TEC RACK 23" 10.6.255.113 --write-to 10.6.255.113
 
   # listen for alarms from anything, then narrow it
   dhs consumer snmp trap-listen --bind :1162
@@ -1154,7 +1160,7 @@ and its MIB says it "may always be written to using SNMP" — so a
 receiver left on the front panel can be taken back over the network,
 without a trip to the rack:
 
-  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host>
+  dhs consumer snmp set --version 1 --community private       --oid 1.3.6.1.4.1.1773.1.3.200.1.11.0 --type i --value 4 <host> --write-to <host>
 
 The Snell frames have per-slot "SNMP Control" checkboxes on the RollCall
 page instead. Either way a readOnly, notWritable or noSuchName from a
@@ -1492,6 +1498,12 @@ DESCRIPTION
     • --label L --group G  disambiguate a label that exists in
                            multiple groups
 
+  Beside the value, get names the schema of the point and the device
+  model it belongs to (ADR-0037 P4): kind, access, range, default, unit,
+  named values, and dm = Model@SwRev with the template and the path of
+  the point in it, from the plugin, the walked tree and the manifest
+  extract wrote. --output json carries them as "meta" and "dm".
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred — stable across firmware)
@@ -1540,6 +1552,10 @@ DESCRIPTION
   hasn't seen the object (no prior walk) or when debugging a quirky
   device.
 
+  --dry-run resolves and validates the value and sends nothing.
+  --write-to HOST names the target a second time: every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred)
@@ -1547,6 +1563,8 @@ FLAGS
   --id I             object id within a group
   --value V          typed value string
   --raw HEX          raw wire bytes (mutually exclusive with --value)
+  --dry-run          report what would be written, send nothing (--check is the same)
+  --write-to HOST    confirm the target, exactly as the host argument was given
 
 EXAMPLES
   acp set 10.6.239.113 --slot 1 --label GainA --value 50.0
@@ -1669,13 +1687,16 @@ OUT  would apply 21, skipped 38, failed 0
          …
 
 USAGE
-  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [flags]
+  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [--write-to HOST] [flags]
 
 DESCRIPTION
   Reads a snapshot produced by 'acp export' (json / yaml / csv — format
   auto-detected from extension) and writes every writable object's
   value back to the device. Read-only objects are skipped; alarm
   priorities and frame status are also skipped.
+
+  --write-to HOST names the target a second time. Every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
 
   --dry-run lists what WOULD be written without touching the device,
   followed by a grouped-by-reason table of every row the importer
@@ -2005,6 +2026,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  rrcs          Riedel RRCS (XML-RPC over HTTP)
   snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0
@@ -2090,6 +2112,7 @@ PROTOCOLS
   probel-sw02p  Probel SW-P-02 matrix controller (TCP)
   probel-sw08p  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
   rollcall      Snell RollCall over IPShare, 16-bit and 32-bit generations
+  rrcs          Riedel RRCS (XML-RPC over HTTP)
   snmp          SNMP v1 / v2c manager
   tsl-v31       TSL UMD v3.1
   tsl-v40       TSL UMD v4.0

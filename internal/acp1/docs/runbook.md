@@ -25,7 +25,7 @@ The consumer auto-detects the transport with `--transport tcp` / `--transport ud
 | `dhs consumer acp1 info <ip>` | Read identity + slot count | `--transport`, `--port`, `--timeout` | none |
 | `dhs consumer acp1 walk <ip>` | Discover one slot's full DM | `--slot N` or `--all`, `--path BOARD`, `--filter foo` | writes `.cache/devices/<ip>/slot_<n>.json` (IP-keyed; ACP1 has no identity probe) |
 | `dhs consumer acp1 get <ip>` | Read one property | `--slot N --group control --id 4` (or `--label`) | reads cached labels for resolution |
-| `dhs consumer acp1 set <ip>` | Write one property | same as `get` plus `--value …` | none (live device only) |
+| `dhs consumer acp1 set <ip>` | Write one property | same as `get` plus `--value …` and `--write-to <ip>` | none (live device only) |
 | `dhs consumer acp1 inc <ip>` | Increment by step (setIncValue) | same as `get` (no `--value`) | none (live device only) |
 | `dhs consumer acp1 dec <ip>` | Decrement by step (setDecValue) | same as `get` (no `--value`) | none (live device only) |
 | `dhs consumer acp1 reset <ip>` | Reset to default (setDefValue) | same as `get` (no `--value`) | none (live device only) |
@@ -47,7 +47,7 @@ Two layers; both must be true for a consumer to receive an announce.
 
 | Layer | Where it lives | How to toggle |
 |---|---|---|
-| **1. Provider broadcasts gate** | `Identity.Broadcasts` object on the device's tree (per spec p.20) | the customer flips it via `dhs consumer acp1 set <ip> --slot 0 --group identity --label Broadcasts --value 1` |
+| **1. Provider broadcasts gate** | `Identity.Broadcasts` object on the device's tree (per spec p.20) | the customer flips it via `dhs consumer acp1 set <ip> --slot 0 --group identity --label Broadcasts --value 1 --write-to <ip>` |
 | **2. Per-AN2-session opt-in** | Per consumer connection | the consumer plugin sends `AN2 EnableProtocolEvents([1])` after connect; happens automatically on `watch` |
 
 If the gate (layer 1) is OFF, the provider emits no announces to anyone. If layer 2 is missing, that one consumer sees nothing while others may still receive. UDP/TCP-direct consumers never receive announces by design — only AN2 sessions do.

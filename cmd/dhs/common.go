@@ -77,6 +77,8 @@ type commonFlags struct {
 	keepaliveTimeout time.Duration
 	userLevel        string
 	clientName       string
+	node             int
+	siteLimits       string
 	verbose          bool
 	logLevel         string
 	logFormat        string
@@ -152,6 +154,10 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 		"snell-rollcall only: how this client is named in the unit's connection list and "+
 			"in its announcements (default 'dhs rollcall'). Twenty bytes; an operator reads it "+
 			"before disconnecting clients for a firmware upgrade.")
+	fs.IntVar(&cf.node, "node", 0,
+		"a controller that fronts several devices (rrcs: an Artist ring of several nodes behind one gateway): "+
+			"the node whose bays are the slots. Required when there are several; 0 = the only one (ADR-0037 P9)")
+	fs.StringVar(&cf.siteLimits, "site-limits", "", siteLimitsHelp)
 	fs.BoolVar(&cf.verbose, "verbose", false, "debug log output (shortcut for --log-level debug)")
 	fs.StringVar(&cf.logLevel, "log-level", "info", "log level: trace, debug, info, warn, error, critical")
 	fs.StringVar(&cf.logFormat, "log-format", DefaultLogFormat, "SINK log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text — the terminal stays human; this is the --log/--syslog-addr format (epic #987)")
@@ -376,6 +382,15 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	// mistake worth refusing rather than ignoring.
 	if err := applyRollCallIdentity(plug, cf.userLevel, cf.clientName); err != nil {
 		return nil, nil, err
+	}
+	// --node names the device behind a controller that fronts several
+	// (ADR-0037 P9); a protocol with one device per target refuses it.
+	if cf.node != 0 {
+		sel, ok := plug.(interface{ SelectNode(int) })
+		if !ok {
+			return nil, nil, &consumer.ValidationError{Field: "node", Reason: cf.protocol + " fronts one device per target: --node does not apply"}
+		}
+		sel.SelectNode(cf.node)
 	}
 
 	// Keep-alive selection is also plugin-specific via the optional

@@ -25,5 +25,5 @@ Key properties on the wire:
 
 ```bash
 ./bin/dhs consumer acp2 get 127.0.0.1 --port 2072 --slot 1 --label UserLabel
-./bin/dhs consumer acp2 set 127.0.0.1 --port 2072 --slot 1 --id 3 --value Updated
+./bin/dhs consumer acp2 set 127.0.0.1 --port 2072 --slot 1 --id 3 --value Updated --write-to 127.0.0.1
 ```

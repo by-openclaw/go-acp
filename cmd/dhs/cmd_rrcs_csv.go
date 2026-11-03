@@ -1,0 +1,607 @@
+package main
+
+import (
+	"context"
+	"encoding/csv"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+
+	"dhs/internal/consumer"
+	"dhs/internal/plugin"
+	rrcs "dhs/internal/rrcs/consumer"
+)
+
+// rrcsPathFilter reads --path: comma-separated texts, a row is kept when
+// its path contains one of them. Empty keeps everything.
+func rrcsPathFilter(spec []string) func(path string) bool {
+	var parts []string
+	for _, s := range spec {
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				parts = append(parts, strings.ToLower(p))
+			}
+		}
+	}
+	return func(path string) bool {
+		if len(parts) == 0 {
+			return true
+		}
+		low := strings.ToLower(path)
+		for _, p := range parts {
+			if strings.Contains(low, p) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// rrcsReadRows reads a file export wrote, json or csv by its extension.
+func rrcsReadRows(file string) ([]rrcsRow, error) {
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	if strings.EqualFold(filepath.Ext(file), ".json") {
+		var rows []rrcsRow
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return nil, fmt.Errorf("%s: %w", file, err)
+		}
+		return rows, nil
+	}
+	r := csv.NewReader(strings.NewReader(strings.TrimPrefix(string(raw), "\xef\xbb\xbf")))
+	r.FieldsPerRecord = -1
+	// A spreadsheet saved in a locale that uses the comma for decimals
+	// writes semicolons.
+	if first, _, _ := strings.Cut(string(raw), "\n"); strings.Count(first, ";") > strings.Count(first, ",") {
+		r.Comma = ';'
+	}
+	header, err := r.Read()
+	if err != nil {
+		return nil, fmt.Errorf("%s: no header: %w", file, err)
+	}
+	col := map[string]int{}
+	for i, h := range header {
+		col[strings.TrimSpace(h)] = i
+	}
+	if _, ok := col["path"]; !ok {
+		return nil, fmt.Errorf("%s: no path column", file)
+	}
+	if _, ok := col["value"]; !ok {
+		return nil, fmt.Errorf("%s: no value column", file)
+	}
+	var rows []rrcsRow
+	for {
+		rec, err := r.Read()
+		if errors.Is(err, io.EOF) {
+			return rows, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", file, err)
+		}
+		get := func(name string) string {
+			if i, ok := col[name]; ok && i < len(rec) {
+				return strings.TrimSpace(rec[i])
+			}
+			return ""
+		}
+		rows = append(rows, rrcsRow{Path: get("path"), Label: get("label"), Kind: get("kind"), Access: get("access"),
+			Value: get("value"), ValueName: get("value_name")})
+	}
+}
+
+// rrcsSkip is one row import did not attempt.
+type rrcsSkip struct {
+	Reason string `json:"reason"`
+	Path   string `json:"path"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// rrcsApplied is one value import sends.
+type rrcsApplied struct {
+	Path   string `json:"path"`
+	Live   string `json:"live"`
+	Wanted string `json:"wanted"`
+	Result string `json:"result"` // would_apply | applied | failed | not_taken
+	Error  string `json:"error,omitempty"`
+}
+
+// rrcsSiteLimits are the plant's limits the writing verbs load before
+// they converge (ADR-0037 P7); nil = none. Each verb sets it from its
+// flags, so a run never inherits another's.
+var rrcsSiteLimits *consumer.SiteLimits
+
+// rrcsDescriber describes a point from the tables, no gateway needed:
+// the factory limits a site rule is checked against.
+var rrcsDescriber, _ = (&rrcs.Factory{}).New(plugin.Deps{}).(consumer.Describer)
+
+// rrcsFactoryMeta is the factory schema of a row's point, or nil.
+func rrcsFactoryMeta(path string) *consumer.Object {
+	if rrcsDescriber == nil {
+		return nil
+	}
+	o, _, err := rrcsDescriber.Describe(context.Background(), consumer.ValueRequest{Path: path})
+	if err != nil {
+		return nil
+	}
+	return &o
+}
+
+// rrcsConverge compares rows with the live system and, unless dryRun,
+// writes what differs — one ConfigurationChange per port or client card
+// — then reads everything back. It is the core of import and of ensure.
+func rrcsConverge(ctx context.Context, client *rrcs.Client, rows []rrcsRow, keep func(string) bool, dryRun bool) (applied []*rrcsApplied, skips []rrcsSkip, unchanged, failed int, err error) {
+	// The objects the rows name. A handful of them is read one request
+	// each (GetPort, GetClientCard) where the lists of the whole system
+	// cost sixteen; more than that, or an object RRCS does not answer
+	// that way, and the lists are read.
+	var objects []string
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if !keep(row.Path) {
+			continue
+		}
+		if object, _, _, ok := rrcsSplitPath(row.Path); ok && !seen[object] {
+			seen[object] = true
+			objects = append(objects, object)
+		}
+	}
+	// The gateway's own list of port types, read once when a row creates
+	// a port: a 9.0 names 49 types where the specification prints 30.
+	var typeList map[int]string
+	typeListRead := false
+	liveTypes := func() map[int]string {
+		if !typeListRead {
+			typeListRead = true
+			typeList = rrcsExTypeList(ctx, client)
+		}
+		return typeList
+	}
+	read := func() (*rrcsModel, error) {
+		if len(objects) > 0 && len(objects) < 16 {
+			m := &rrcsModel{Objects: map[string][]*rrcsObject{}}
+			for _, object := range objects {
+				props, ok := rrcsCurrentOne(ctx, client, object)
+				if !ok {
+					m = nil
+					break
+				}
+				if strings.Contains(object, ".card.") {
+					m.Cards = append(m.Cards, &rrcsCard{Path: object, Raw: props})
+				} else {
+					m.Ports = append(m.Ports, &rrcsPort{Path: object, Raw: props})
+				}
+			}
+			if m != nil {
+				return m, nil
+			}
+		}
+		snap, _, err := rrcsCollect(ctx, client, rrcsCollectOpts{})
+		if err != nil {
+			return nil, err
+		}
+		return rrcsModelOf(snap)
+	}
+	live, err := read()
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+
+	type plan struct {
+		change *rrcsChange
+		items  []*rrcsApplied
+		object string
+		// steps are the requests actually sent, in order: the stream
+		// rules split or join an object's rows (rrcsStreamSteps).
+		steps []*rrcsChange
+		// refused is why the change is not sent at all.
+		refused string
+	}
+	plans := map[string]*plan{}
+	var order []*plan
+	current := func(m *rrcsModel, object, block, field string) (string, bool) {
+		props, ok := m.Lookup(object)
+		if !ok {
+			return "", false
+		}
+		holder := props
+		if block != "" {
+			holder = jMap(props[block])
+		}
+		v, _, _, _, ok := rrcsScalar(field, holder[field])
+		return v, ok
+	}
+	for _, row := range rows {
+		if !keep(row.Path) {
+			continue
+		}
+		object, block, field, ok := rrcsSplitPath(row.Path)
+		if !ok {
+			skips = append(skips, rrcsSkip{"bad_path", row.Path, "not OBJECT.Property or OBJECT.Block.Property"})
+			continue
+		}
+		if !rrcsWritable[block][field] {
+			skips = append(skips, rrcsSkip{"read_only", row.Path, ""})
+			continue
+		}
+		// A PortType row is the one row that may name an absent object:
+		// the port is then CREATED with that type (proven 2026-10-14 on
+		// -7.33) and named by the Director pattern. On a port that
+		// exists the row changes nothing: a type is not edited.
+		creating := false
+		if field == "PortType" && block == "" {
+			if !strings.Contains(object, ".port.") || strings.HasSuffix(object, ".in") || strings.HasSuffix(object, ".out") {
+				skips = append(skips, rrcsSkip{"bad_path", row.Path, "a PortType row names the port without direction: net.N.node.N.port.P.PortType"})
+				continue
+			}
+			if rrcsPortExists(live, object) {
+				unchanged++
+				continue
+			}
+			creating = true
+		}
+		now := "(absent)"
+		if !creating {
+			var ok bool
+			now, ok = current(live, object, block, field)
+			if !ok {
+				if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+					// The link: RRCS accepts it and never reports it. The
+					// Selection beside it is the read-back.
+					now = "(not reported)"
+				} else {
+					skips = append(skips, rrcsSkip{"not_on_device", row.Path, "the live system reports no such value"})
+					continue
+				}
+			}
+		}
+		// An enum row may carry the word alone.
+		wanted := row.Value
+		if wanted == "" && row.ValueName != "" {
+			for n, word := range rrcsEnums[field] {
+				if strings.EqualFold(word, row.ValueName) {
+					wanted = strconv.Itoa(n)
+				}
+			}
+			if wanted == "" {
+				skips = append(skips, rrcsSkip{"bad_value", row.Path, "value_name " + row.ValueName + " is not one of its values"})
+				continue
+			}
+		}
+		if wanted == now {
+			unchanged++
+			continue
+		}
+		// The plant's own limits, narrower than the factory's (ADR-0036,
+		// ADR-0037 P7): a row they refuse is a failure, nothing is sent for it.
+		if serr := rrcsSiteLimits.Check(row.Path, wanted, rrcsFactoryMeta(row.Path)); serr != nil {
+			failed++
+			applied = append(applied, &rrcsApplied{Path: row.Path, Live: now, Wanted: wanted, Result: "failed", Error: serr.Error()})
+			continue
+		}
+		// The type comes from the specification's property table first
+		// (it also types what RRCS never reports, like the link), the
+		// reported value's wire type as the fallback.
+		specObject := "portex"
+		if strings.Contains(object, ".card.") {
+			specObject = "client-card"
+		}
+		var types map[int]string
+		if creating {
+			types = liveTypes()
+		}
+		value, reason := rrcs.TypedValue(specObject, block, field, wanted, live.MustRaw(object, block, field), creating, types)
+		if reason != "" {
+			skips = append(skips, rrcsSkip{"bad_value", row.Path, reason})
+			continue
+		}
+		p := plans[object]
+		if p == nil {
+			change, err := rrcsChangeFor(object)
+			if err != nil {
+				skips = append(skips, rrcsSkip{"bad_path", row.Path, err.Error()})
+				continue
+			}
+			p = &plan{change: change, object: object}
+			plans[object] = p
+			order = append(order, p)
+		}
+		if err := p.change.Add(block+"."+field, value); err != nil {
+			skips = append(skips, rrcsSkip{"duplicate", row.Path, "the file gives this value twice"})
+			continue
+		}
+		if creating {
+			p.change.ChangeType = "create"
+		}
+		item := &rrcsApplied{Path: row.Path, Live: now, Wanted: wanted, Result: "would_apply"}
+		p.items = append(p.items, item)
+		applied = append(applied, item)
+	}
+
+	// The stream rules shape each object's rows into the requests the
+	// hardware takes (split, joined, or the channel-count round trip);
+	// an edit that would stop RRCS is refused in the dry run as well.
+	kept := order[:0]
+	for _, p := range order {
+		props, _ := live.Lookup(p.object)
+		var steps []*rrcsChange
+		var drop bool
+		var refusal string
+		if p.change.ChangeType == "create" {
+			// The create, then the two name edits by the Director
+			// pattern — RRCS auto-names nothing. A name the file also
+			// carries applies on the next run, once the port exists.
+			steps = append([]*rrcsChange{p.change}, rrcsPortNameEdits(live, p.object)...)
+		} else {
+			steps, drop, refusal = rrcsStreamSteps(p.object, p.change, props)
+		}
+		if drop {
+			// A link row whose Selection is already right: the link is
+			// taken as in place (RRCS never reports it); nothing to send.
+			for _, it := range p.items {
+				it.Result = "unchanged"
+			}
+			unchanged += len(p.items)
+			applied = rrcsWithout(applied, p.items)
+			continue
+		}
+		kept = append(kept, p)
+		p.steps = steps
+		if refusal == "" {
+			for _, s := range steps {
+				if block := s.NMOSStream(props); block != "" {
+					refusal = block + ": " + rrcsNMOSRefusal
+				}
+			}
+		}
+		if refusal != "" {
+			p.refused = refusal
+			for _, it := range p.items {
+				it.Result, it.Error = "refused", p.refused
+			}
+			if dryRun {
+				failed += len(p.items)
+			}
+		}
+	}
+	order = kept
+
+	if !dryRun && len(order) > 0 {
+		for _, p := range order {
+			if ctx.Err() != nil {
+				break
+			}
+			result, text := "applied", ""
+			if p.refused != "" {
+				result, text = "refused", p.refused
+			} else {
+				for _, step := range p.steps {
+					if _, err := client.Call(ctx, rrcsChangeMethod, step.Request()); err != nil {
+						result, text = "failed", err.Error()
+						break
+					}
+				}
+			}
+			for _, it := range p.items {
+				it.Result, it.Error = result, text
+			}
+		}
+		// Applied means it reads back.
+		after, err := read()
+		if err != nil {
+			return nil, nil, 0, 0, fmt.Errorf("sent, but the read back failed: %w", err)
+		}
+		for _, it := range applied {
+			if it.Result != "applied" {
+				failed++
+				continue
+			}
+			object, block, field, _ := rrcsSplitPath(it.Path)
+			if field == "Mode" && strings.HasPrefix(block, "PortAes67") {
+				// Accepted and never reported back: the Selection row of
+				// the same port is the read-back of the link.
+				continue
+			}
+			if field == "PortType" && block == "" {
+				// A create reads back as the port existing.
+				if !rrcsPortExists(after, object) {
+					it.Result, it.Error = "not_taken", "RRCS accepted the create and the port is not listed"
+					failed++
+				}
+				continue
+			}
+			if now, _ := current(after, object, block, field); now != it.Wanted {
+				it.Result, it.Error = "not_taken", "RRCS accepted the request and still reports "+now
+				failed++
+			}
+		}
+	}
+
+	return applied, skips, unchanged, failed, nil
+}
+
+// rrcsImport writes the values of a snapshot file back to the gateway.
+func rrcsImport(ctx context.Context, args []string) error {
+	// --dry-run is a flag without a value, as on the acp connectors; it
+	// is taken out before the flags are reordered around the host.
+	dryRun := false
+	rest := make([]string, 0, len(args))
+	for _, a := range args {
+		switch a {
+		case "--dry-run", "-dry-run", "--dry-run=true", "-dry-run=true":
+			dryRun = true
+		default:
+			rest = append(rest, a)
+		}
+	}
+	fs := flag.NewFlagSet("rrcs import", flag.ContinueOnError)
+	fs.Usage = func() {
+		_, _ = fmt.Fprint(fs.Output(), `Usage: dhs consumer rrcs import <host>[:port] --file SNAPSHOT [--path P ...] [--dry-run] [flags]
+
+Reads a file written by export (json or csv, by its extension) and WRITES
+every writable value that differs from the live system, one
+ConfigurationChange per port or client card, then reads everything back.
+Rows whose value equals the live one are left alone; read-only rows are
+skipped and listed.
+
+  --dry-run   compare and report, send nothing
+`)
+		fs.PrintDefaults()
+	}
+	cf := newRRCSFlags(fs)
+	file := fs.String("file", "", "snapshot file written by export, json or csv (required)")
+	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
+	var paths rrcsProps
+	fs.Var(&paths, "path", "apply only the rows whose path contains this text; comma-separated or repeated")
+	if err := parseVerbFlags(fs, reorderFlagsFirst(rest)); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return rrcsValErr("import", "want exactly one host[:port] argument")
+	}
+	if *file == "" {
+		return rrcsValErr("import", "want --file SNAPSHOT")
+	}
+	if !dryRun {
+		if err := rrcsWriteGuard("import", fs.Arg(0), *writeTo); err != nil {
+			return err
+		}
+	}
+	rows, err := rrcsReadRows(*file)
+	if err != nil {
+		return fmt.Errorf("rrcs import: %w", err)
+	}
+	if rrcsSiteLimits, err = siteLimitsFor(rrcsProto, fs.Arg(0), cf.siteLimits); err != nil {
+		return err
+	}
+	client, _, closeFn, err := cf.open("import", fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	defer closeFn()
+	// The key rows go through the key path of ensure; the rest through
+	// the convergence of ports and client cards.
+	keys, keySkips, rows := rrcsSplitKeyRows(rows, rrcsPathFilter(paths))
+	applied, skips, unchanged, failed, err := rrcsConverge(ctx, client, rows, rrcsPathFilter(paths), dryRun)
+	if err != nil {
+		return fmt.Errorf("rrcs import: %w", err)
+	}
+	keyApplied, keyUnchanged, keyFailed, err := rrcsImportKeys(ctx, cf, client, keys, dryRun)
+	if err != nil {
+		return fmt.Errorf("rrcs import: %w", err)
+	}
+	applied = append(applied, keyApplied...)
+	skips = append(skips, keySkips...)
+	unchanged += keyUnchanged
+	failed += keyFailed
+	if cf.output == "json" {
+		doc := struct {
+			Target    string         `json:"target"`
+			DryRun    bool           `json:"dry_run"`
+			Unchanged int            `json:"unchanged"`
+			Failed    int            `json:"failed"`
+			Diff      []*rrcsApplied `json:"diff"`
+			Skipped   []rrcsSkip     `json:"skipped"`
+		}{client.Peer(), dryRun, unchanged, failed, applied, skips}
+		if doc.Diff == nil {
+			doc.Diff = []*rrcsApplied{}
+		}
+		if doc.Skipped == nil {
+			doc.Skipped = []rrcsSkip{}
+		}
+		b, err := json.Marshal(doc)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(b))
+	} else {
+		verb := "applied"
+		if dryRun {
+			verb = "would apply"
+		}
+		for _, it := range applied {
+			fmt.Printf("%-11s %-62s %s -> %s  %s\n", it.Result, it.Path, it.Live, it.Wanted, it.Error)
+		}
+		fmt.Printf("%s %d, unchanged %d, skipped %d, failed %d\n", verb, len(applied)-failed, unchanged, len(skips), failed)
+		reasons := map[string]int{}
+		for _, s := range skips {
+			reasons[s.Reason]++
+		}
+		names := make([]string, 0, len(reasons))
+		for r := range reasons {
+			names = append(names, r)
+		}
+		sort.Strings(names)
+		for _, reason := range names {
+			fmt.Printf("  %s (%d)\n", reason, reasons[reason])
+			if reason == "read_only" {
+				continue // thousands on a full export; the count says it
+			}
+			for _, s := range skips {
+				if s.Reason == reason {
+					fmt.Printf("    %s  %s\n", s.Path, s.Detail)
+				}
+			}
+		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("rrcs import: %d value(s) failed", failed)
+	}
+	return nil
+}
+
+// rrcsWithout removes the given items from the applied list.
+func rrcsWithout(applied []*rrcsApplied, drop []*rrcsApplied) []*rrcsApplied {
+	skip := map[*rrcsApplied]bool{}
+	for _, it := range drop {
+		skip[it] = true
+	}
+	kept := applied[:0]
+	for _, it := range applied {
+		if !skip[it] {
+			kept = append(kept, it)
+		}
+	}
+	return kept
+}
+
+// rrcsExTypeList reads the port types the gateway names (§8.9
+// GetPortExTypeList): number and name. Empty when the gateway does not
+// answer it.
+func rrcsExTypeList(ctx context.Context, client *rrcs.Client) map[int]string {
+	reply, err := client.Call(ctx, "GetPortExTypeList")
+	if err != nil {
+		return nil
+	}
+	types := map[int]string{}
+	for _, it := range rrcsListOf(reply) {
+		n, ok := rrcsFieldInt(it, "PortExType")
+		if !ok {
+			continue
+		}
+		if name, ok := it.Field("PortExTypeString"); ok && name.Str != "" {
+			types[int(n)] = name.Str
+		}
+	}
+	return types
+}
+
+// rrcsPortExists says whether the system lists a port named without its
+// direction: as one object, or — a 4-Wire Split, read from the lists —
+// as its two halves.
+func rrcsPortExists(m *rrcsModel, object string) bool {
+	if _, ok := m.Lookup(object); ok {
+		return true
+	}
+	_, in := m.Lookup(object + ".in")
+	_, out := m.Lookup(object + ".out")
+	return in || out
+}

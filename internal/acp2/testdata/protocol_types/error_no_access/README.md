@@ -24,7 +24,7 @@ Wire layout:
 ## CLI equivalent
 
 ```bash
-./bin/dhs consumer acp2 set 127.0.0.1 --port 2072 --slot 1 --label Gateway --value 10.0.0.1
+./bin/dhs consumer acp2 set 127.0.0.1 --port 2072 --slot 1 --label Gateway --value 10.0.0.1 --write-to 127.0.0.1
 ```
 
 The CLI prints `error: acp2: stat=4` and does not update its local

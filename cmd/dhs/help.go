@@ -105,6 +105,12 @@ DESCRIPTION
     • --label L --group G  disambiguate a label that exists in
                            multiple groups
 
+  Beside the value, get names the schema of the point and the device
+  model it belongs to (ADR-0037 P4): kind, access, range, default, unit,
+  named values, and dm = Model@SwRev with the template and the path of
+  the point in it, from the plugin, the walked tree and the manifest
+  extract wrote. --output json carries them as "meta" and "dm".
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred — stable across firmware)
@@ -149,6 +155,10 @@ DESCRIPTION
   hasn't seen the object (no prior walk) or when debugging a quirky
   device.
 
+  --dry-run resolves and validates the value and sends nothing.
+  --write-to HOST names the target a second time: every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred)
@@ -156,6 +166,8 @@ FLAGS
   --id I             object id within a group
   --value V          typed value string
   --raw HEX          raw wire bytes (mutually exclusive with --value)
+  --dry-run          report what would be written, send nothing (--check is the same)
+  --write-to HOST    confirm the target, exactly as the host argument was given
 
 EXAMPLES
   acp set 10.6.239.113 --slot 1 --label GainA --value 50.0
@@ -384,13 +396,16 @@ OUT  would apply 21, skipped 38, failed 0
          …
 
 USAGE
-  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [flags]
+  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [--write-to HOST] [flags]
 
 DESCRIPTION
   Reads a snapshot produced by 'acp export' (json / yaml / csv — format
   auto-detected from extension) and writes every writable object's
   value back to the device. Read-only objects are skipped; alarm
   priorities and frame status are also skipped.
+
+  --write-to HOST names the target a second time. Every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
 
   --dry-run lists what WOULD be written without touching the device,
   followed by a grouped-by-reason table of every row the importer

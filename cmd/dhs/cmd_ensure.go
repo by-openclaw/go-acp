@@ -41,15 +41,20 @@ func runEnsure(ctx context.Context, args []string) error {
 	valueStr := fs.String("value", "", "desired value to converge to")
 	state := fs.String("state", "present", "present (converge --value) | absent (producer/registry only)")
 	check := fs.Bool("check", false, "dry-run: report would_change, write nothing")
+	dryRun := fs.Bool("dry-run", false, "same as --check (ADR-0037 P5 words, the same on set and import)")
+	writeTo := fs.String("write-to", "", writeToHelp)
 	asJSON := fs.Bool("json", false, "deprecated alias for --output json")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; yaml reserved, not yet supported)")
 	noWalk := fs.Bool("no-walk", false, "fail on cache miss instead of walking the slot to resolve --path/--label")
 	dmIdentity := fs.String("dm", "", `Ember+ only: identity-keyed DM hot-load (e.g. "Tiny Ember+ Router@1.6.2").`)
 	host, rest, err := popHost(args)
 	if err != nil {
-		return fmt.Errorf("usage: dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check] [--json]")
+		return fmt.Errorf("usage: dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check|--dry-run] [--write-to HOST] [--json]")
 	}
 	_ = parseVerbFlags(fs, rest)
+	if *dryRun {
+		*check = true
+	}
 
 	jsonOut, oerr := resolveEnsureOutput(*output, *asJSON)
 	if oerr != nil {
@@ -153,8 +158,18 @@ func runEnsure(ctx context.Context, args []string) error {
 	// object's range client-side keeps the idempotency decision — and the
 	// --check dry-run — consistent with what the device will do.
 	target := desired
-	if meta := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id); meta != nil {
-		target = predictStored(meta, current.Kind, desired)
+	factory := findObjectMetaFor(plug, *pathFlag, *slot, *group, *label, *id)
+	if factory != nil {
+		target = predictStored(factory, current.Kind, desired)
+	}
+	// The plant's own limits (ADR-0036, ADR-0037 P7), checked before the
+	// report, so a dry run refuses what a write would.
+	limits, lerr := siteLimitsFor(cf.protocol, host, cf.siteLimits)
+	if lerr != nil {
+		return lerr
+	}
+	if serr := limits.Check(pointName(req), valueText(want), factoryMetaFor(opCtx, plug, req, factory)); serr != nil {
+		return serr
 	}
 
 	curStr := canonicalValueStr(current)
@@ -165,6 +180,11 @@ func runEnsure(ctx context.Context, args []string) error {
 	}
 	if !changed {
 		return emitEnsure(jsonOut, ensureResult{Changed: &changed, Previous: curStr, Current: curStr, Diff: ensureValueDiff(changed, curStr, curStr)})
+	}
+	// ADR-0037 P5: a guarded plugin writes only when --write-to names the
+	// host a second time.
+	if gerr := writeGuard("ensure", host, *writeTo, plug); gerr != nil {
+		return gerr
 	}
 	confirmed, err := plug.SetValue(opCtx, req, want)
 	if err != nil {
@@ -424,12 +444,15 @@ func anyToFloat(v any) (float64, bool) {
 }
 
 func helpEnsure() {
-	fmt.Println(`dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check] [--json]
+	fmt.Println(`dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check|--dry-run] [--write-to HOST] [--json]
 
 Idempotent value convergence (ADR-0007). Reads the object, sets it ONLY if it
 differs from --value, and reports whether it changed. A second run is a no-op
-(changed=false). Use --check for a dry-run (writes nothing). --json emits an
-Ansible-friendly {changed|would_change, previous, current} result.
+(changed=false). Use --check (or --dry-run) for a dry-run (writes nothing).
+--json emits an Ansible-friendly {changed|would_change, previous, current}
+result. Every connector needs --write-to HOST, the host named a second time,
+before it writes; a converged object is read, not written, and needs no flag
+(ADR-0037 P5).
 
 Exit codes (docs/protocols/error-codes.md): 0 ok · 1 runtime/wire · 2 validation.
 Change is signalled by the field, never the exit code.

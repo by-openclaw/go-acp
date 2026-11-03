@@ -71,7 +71,7 @@ value = 0
 $ dhs consumer emberplus get 127.0.0.1 --port 19000 --path 1.1.4.3.1     # same element, by OID
 value = 0
 
-$ dhs consumer emberplus set 127.0.0.1 --port 19000 --path ...gain --value 5
+$ dhs consumer emberplus set 127.0.0.1 --port 19000 --path ...gain --value 5 --write-to 127.0.0.1
 confirmed value = 5
 ```
 
@@ -137,9 +137,9 @@ dhs consumer emberplus watch 10.6.239.113 --port 9000 --capture run.jsonl
 ## 9. ensure() — idempotent converge (ADR-0007)
 
 ```
-$ dhs consumer emberplus ensure 127.0.0.1 --port 19000 --path ...gain --value 5
+$ dhs consumer emberplus ensure 127.0.0.1 --port 19000 --path ...gain --value 5 --write-to 127.0.0.1
 changed=true   current="5"                 # first run from a different value
-$ dhs consumer emberplus ensure ... --path ...gain --value 5
+$ dhs consumer emberplus ensure ... --path ...gain --value 5 --write-to <host>
 changed=false  current="5" (already converged)     # idempotent
 ```
 

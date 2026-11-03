@@ -17,7 +17,8 @@
     import_paths: "{{ (values_rows.list | map(attribute='path') | select('search', match) | unique | list) if match is defined else [] }}"
     import_argv: >-
       {{ [dhs, 'consumer', proto_of[entry.item.type], 'import', entry.item.mgmt_ip,
-          '--file', site_dir ~ '/values/' ~ entry.item.name ~ '.csv']
+          '--file', site_dir ~ '/values/' ~ entry.item.name ~ '.csv',
+          '--write-to', entry.item.mgmt_ip]
          + ((values_rows.list | map(attribute='path') | select('search', match) | unique | list
              | map('regex_replace', '^', '--path=') | list) if match is defined else []) }}
 

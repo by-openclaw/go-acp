@@ -98,7 +98,7 @@ value = "On"  (enum idx 1)
 raw  = 01
 kind = enum  access = RW-   items = [Off, On]  (default idx 1)
 
-$ dhs consumer acp1 set  ... --slot 0 --group control --label ErrorThreshold --value 20
+$ dhs consumer acp1 set  ... --slot 0 --group control --label ErrorThreshold --value 20 --write-to <host>
 confirmed value = 20      raw = 14
 $ dhs consumer acp1 inc  ... --label ErrorThreshold
 confirmed value = 21      raw = 15
@@ -180,9 +180,9 @@ dhs consumer acp1 watch 10.6.239.113 --transport udp --port 2071 --capture run.j
 is a dry-run. Run twice ⇒ second run is a no-op (idempotent).
 
 ```
-$ dhs consumer acp1 ensure ... --label ErrorThreshold --value 20
+$ dhs consumer acp1 ensure ... --label ErrorThreshold --value 20 --write-to <host>
 changed=true   previous="10"  current="20"
-$ dhs consumer acp1 ensure ... --label ErrorThreshold --value 20      # again
+$ dhs consumer acp1 ensure ... --label ErrorThreshold --value 20 --write-to <host>      # again
 changed=false  current="20" (already converged)
 $ dhs consumer acp1 ensure ... --label ErrorThreshold --value 99 --check
 would_change=true  current="20"  target="99"

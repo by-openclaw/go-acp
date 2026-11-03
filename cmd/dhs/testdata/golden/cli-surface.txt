@@ -20,7 +20,7 @@ GLOBAL FLAGS (every verb)
                            docs/cli.md
 
 CONSUMER (outbound — connect to a device, query / control it)
-  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | virtuoso
+  Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
   Verbs (ccp):                 info, walk, get, set, watch + panel, colours
                                (Axon control panels; run 'dhs consumer ccp -h')
   Verbs (kratos):              info, walk, get, set, watch, export + command, table
@@ -37,6 +37,11 @@ CONSUMER (outbound — connect to a device, query / control it)
                                (run 'dhs consumer probel-sw08p --help' for list)
   Verbs (cerebrum-nb):         connect, listen, list-devices, etc.
                                (XML over WebSocket; default port 40007)
+  Verbs (rrcs):                info, discover, snapshot, tree, list, extract,
+                               import, ensure, xp, call, coverage, watch,
+                               and every generic verb (get, set, walk, export,
+                               health, status, alarm, …; ADR-0037)
+                               (Riedel RRCS, XML-RPC over HTTP; default port 8193)
   Verbs (rcp):                 info, list, get, export, create, set, delete
                                (Cerebrum RCP — RouteMaster sources/destinations; run 'dhs consumer rcp -h')
 
@@ -109,6 +114,7 @@ prism    port=9000  Telestream PRISM waveform monitor (REST/JSON, the instrument
 probel-sw02p port=2002  Probel SW-P-02 matrix controller (TCP)
 probel-sw08p port=2008  Probel SW-P-08 / SW-P-88 matrix controller (TCP)
 rollcall port=2050  Snell RollCall over IPShare, 16-bit and 32-bit generations
+rrcs     port=8193  Riedel RRCS (XML-RPC over HTTP) — Artist intercom: ports, panels, keys, crosspoints
 snmp     port=161   SNMP v1 / v2c manager — the device model is the agent's own MIB tree
 tsl-v31  port=4000  TSL UMD v3.1 — 18-byte UDP frame (binary tallies, no colour)
 tsl-v40  port=4000  TSL UMD v4.0 — v3.1 extended with XDATA + CHKSUM (2-bit colour per LH/Text/RH per display)
@@ -246,6 +252,12 @@ DESCRIPTION
     • --label L --group G  disambiguate a label that exists in
                            multiple groups
 
+  Beside the value, get names the schema of the point and the device
+  model it belongs to (ADR-0037 P4): kind, access, range, default, unit,
+  named values, and dm = Model@SwRev with the template and the path of
+  the point in it, from the plugin, the walked tree and the manifest
+  extract wrote. --output json carries them as "meta" and "dm".
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred — stable across firmware)
@@ -290,6 +302,10 @@ DESCRIPTION
   hasn't seen the object (no prior walk) or when debugging a quirky
   device.
 
+  --dry-run resolves and validates the value and sends nothing.
+  --write-to HOST names the target a second time: every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
+
 FLAGS
   --slot N           slot number (required)
   --label L          object label (preferred)
@@ -297,6 +313,8 @@ FLAGS
   --id I             object id within a group
   --value V          typed value string
   --raw HEX          raw wire bytes (mutually exclusive with --value)
+  --dry-run          report what would be written, send nothing (--check is the same)
+  --write-to HOST    confirm the target, exactly as the host argument was given
 
 EXAMPLES
   acp set 10.6.239.113 --slot 1 --label GainA --value 50.0
@@ -337,12 +355,15 @@ Example:
 
 ========== consumer/acp1/ensure ==========
 $ dhs consumer acp1 ensure --help
-dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check] [--json]
+dhs consumer <proto> ensure <host> --slot N (--path P | --label L | --id I) --value <v> [--state present] [--check|--dry-run] [--write-to HOST] [--json]
 
 Idempotent value convergence (ADR-0007). Reads the object, sets it ONLY if it
 differs from --value, and reports whether it changed. A second run is a no-op
-(changed=false). Use --check for a dry-run (writes nothing). --json emits an
-Ansible-friendly {changed|would_change, previous, current} result.
+(changed=false). Use --check (or --dry-run) for a dry-run (writes nothing).
+--json emits an Ansible-friendly {changed|would_change, previous, current}
+result. Every connector needs --write-to HOST, the host named a second time,
+before it writes; a converged object is read, not written, and needs no flag
+(ADR-0037 P5).
 
 Exit codes (docs/protocols/error-codes.md): 0 ok · 1 runtime/wire · 2 validation.
 Change is signalled by the field, never the exit code.
@@ -453,13 +474,16 @@ OUT  would apply 21, skipped 38, failed 0
          …
 
 USAGE
-  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [flags]
+  acp import <host> --file SNAPSHOT [--slot N] [--id N ...| --path P ...] [--dry-run] [--write-to HOST] [flags]
 
 DESCRIPTION
   Reads a snapshot produced by 'acp export' (json / yaml / csv — format
   auto-detected from extension) and writes every writable object's
   value back to the device. Read-only objects are skipped; alarm
   priorities and frame status are also skipped.
+
+  --write-to HOST names the target a second time. Every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
 
   --dry-run lists what WOULD be written without touching the device,
   followed by a grouped-by-reason table of every row the importer
@@ -3619,6 +3643,2455 @@ $ dhs consumer probel-sw08p replace --help
 error: missing <host:port>
 
 [exit status 1]
+
+========== consumer/rrcs/<dispatcher-help> ==========
+$ dhs consumer rrcs --help
+dhs consumer rrcs — Riedel RRCS gateway (XML-RPC over HTTP, default port 8193)
+
+USAGE
+  dhs consumer rrcs <verb> <host>[:port] [flags]
+
+VERBS
+
+  Verb      Wire
+  --------  ---------------------------------------------------------------
+  info      GetVersion, GetState, IsConnectedToArtist, GetConfigurationID
+  discover  GetAllNodes, GetAllClientCards, GetAllDevices, GetAllPorts,
+            GetAllConferences, GetAllGroups, GetAllIFBs, GetAllLogicSources_v2,
+            GetAllGpIns, GetAllGpOuts, GetAllActiveXps — read only
+  snapshot  everything readable, into one JSON document: info + discover +
+            type lists, GetLicenseInfo per node, GetObjectList per object
+            type, GetObjectProperty of every object, GetPortsCommandLists
+            of every port (what is on its keys) — read only. tree, list
+            and extract read it with --from FILE
+  tree      the system as a tree: node, client cards, ports, what is on
+            each key; conferences, groups, IFBs with members, logic sources
+  list      one table: nodes | cards | ports | panels | keys | streams |
+            sources | dests | xp | conferences | groups | ifbs | logic |
+            users | patches | logicdests (those three from a snapshot) |
+            values (every value as one row: the table import reads back,
+            --output csv); --node, --type, --match select rows. streams = the AES67
+            receivers and senders; sources and dests = the two axes of the
+            crosspoint matrix; xp = the crosspoints active now
+  extract   the device models and the inventory (ADR-0022): one model for
+            the node type and one per client card type, every type of the
+            system as a template — port types, keys, commands, conferences
+            — into .cache/dm/rrcs/<Type@version>.json, and the manifest
+            of node, cards and ports with their type and role into
+            .cache/manifest/rrcs/<host>.json. Eight list requests plus the
+            keys and commands of one port per type; --refresh rewrites a
+            model that exists
+  import    WRITES: every writable value of an export file that differs
+            from the live system (ConfigurationChange): --file, --path,
+            --dry-run to compare and send nothing
+
+  ensure    converge to a desired-state file (values, crosspoints): --file,
+            --check to report and send nothing; the contract of every dhs
+            ensure, for Ansible. Without --check it WRITES.
+            --manifest FILE instead: the desired inventory (the manifest
+            extract wrote, edited) — the type and the role of each port,
+            brought to the system in the proven order: an absent port is
+            created from its type, a main gets its channel count, a linked
+            port its link; a port of another type is a retype (delete and
+            create), refused without --allow-retype
+  coverage  every method and notification of the specification: the dhs
+            verb that uses it, and whether it has been seen working on a
+            real RRCS. Talks to no gateway
+  xp        one crosspoint: read its state (GetXpStatus), or WRITE it with
+            --state on|off (SetXp, KillXp): --src PATH --dst PATH
+  call      any method of the specification, parameters as JSON (--arg);
+            a method that is not Get… or Is… WRITES and needs --write-to
+
+  tree, list and extract also read a document written by snapshot: --from FILE
+  watch     RegisterForAllEvents, then every event RRCS sends; answers
+            GetAlive; UnregisterForAllEvents on Ctrl+C; --spy adds the keys
+            pressed and released on the panels (ChangePanelSpyRegistry)
+
+Run 'dhs consumer rrcs <verb> --help' for the flags of a verb.
+
+GENERIC VERBS — the same as on every connector, through the registered
+plugin (ADR-0037 P2):
+  get       one property: --path net.1.node.61.port.1024.in.PortAes67Input.Channels;
+            an object path alone (…port.1024.in) answers every property as
+            JSON; --id OID asks GetObjectProperty (--group names: the names)
+  set       WRITES one property: --path … --value V. --dry-run sends nothing;
+            --write-to HOST confirms the target (refused without it, P5).
+            Two members in one request (an output's link) stay with import
+  walk      the objects of one slot (0 = the node and what belongs to no
+            card, N = bay N) with kind, access, range, unit, named values
+  export    the same for every present slot, to json / yaml / csv
+  health, status, alarm, diff, validate, …
+Run 'dhs consumer rrcs <verb> --help' for each of them as well.
+
+ONE VERB PER METHOD — every other method of the specification, with named
+flags; the ones that are not get-… or line-status WRITE and need --write-to:
+  set-xp-prio set-xp-destructive set-xp-volume set-port-alias set-port-label
+  set-input-gain set-output-gain set-gp-output get-gp-input-state
+  get-gp-output-state set-logic-source-state set-state-working
+  set-state-standby set-net-name configuration-change configuration-change-ex
+  buffer-configuration-change buffer-configuration-change-ex
+  apply-configuration-change apply-configuration-change-ex clear-key-label
+  clear-key-label-and-marker clear-key-marker lock-key press-key press-key-ex
+  set-key-label set-key-label-and-marker set-key-marker start-port-cloning
+  stop-port-cloning set-ifb-volume-mix-minus remove-ifb-volume-mix-minus
+  xp-volume-change-registry-reset xp-volume-change-registry-remove
+  register-for-events unregister-for-events register-for-gp-input-change
+  unregister-for-gp-input-change register-for-gp-output-change
+  unregister-for-gp-output-change set-trunking-net-addr set-ltc dial-number
+  hang-up-call line-status set-system-time-on-all-nodes connect-to-artist
+  disconnect-from-artist reset-all-nodes delete-port-commands
+  set-stage-net-addr set-stage-registry-url
+
+========== consumer/rrcs/info ==========
+$ dhs consumer rrcs info --help
+Usage of rrcs info:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/discover ==========
+$ dhs consumer rrcs discover --help
+Usage of rrcs discover:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/watch ==========
+$ dhs consumer rrcs watch --help
+Usage of rrcs watch:
+  -alarm string
+    	judge the values with this alarm template (ADR-0033), e.g. internal/rrcs/alarm/RRCS@9.0.json: a line is printed, and logged with its severity, each time a verdict changes
+  -alive string
+    	GetAlive pings: count (summary only) | show (one line each) (default "count")
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -changes string
+    	what to do when RRCS says the configuration changed (it never says what): yes (default: read the lists again — eight requests — and print what differs in the ports, the client cards, the conferences, groups and IFBs; the inventory manifest is rewritten) | keys (also the keys of the panels: one request per panel at start and at each change) | no (print only that it changed) (default "yes")
+  -check duration
+    	ask RRCS this often whether we are still registered, and register again if not; 0 = never (default 30s)
+  -events string
+    	values = one line per value an event carries: time, object ID, path, member = value, with unit and range where the protocol has them (the system is read once at start to name things) | raw = the method and its parameters as received (default "values")
+  -kind string
+    	keep the lines of one kind of object: node | card | stream | panel | port | key | conference | group | ifb | logic | xp
+  -listen string
+    	local [ip]:port RRCS sends its events to. RRCS uses the source address of our registration and this port (§8.15.1) (default ":8195")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -match string
+    	keep the lines whose path contains this text, case ignored; the full path of one port or client card makes a configuration change re-read that object alone (one request)
+  -oid int
+    	keep the lines of this object ID (the oid column of export)
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -path string
+    	URL path RRCS posts its events to (default "/RPC2")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -spy string
+    	panel spy — key pressed and released, rotary encoders (RRCS sends these only for panels registered one by one, and only on a system licensed for panel spy: without the licence every panel answers "No client card acknowledge received"): none (default) | all (every port that has keys and is on line) | NODE.PORT[,NODE.PORT...]. Adds one registration per panel on RRCS, removed on exit (default "none")
+  -spy-events string
+    	with --spy: the kinds of event to ask for, comma-separated: key | rotate | func | num. A panel type that lacks a kind answers an error for it (a smart panel has no function or numeric keys) (default "key,rotate")
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -volume string
+    	crosspoint levels (RRCS sends these only for crosspoints registered one by one): yes (default: follow every crosspoint that is made while watching, in both directions; a level changed on a panel arrives as SingleVolume / ConferenceVolume in dB) | no. Adds registrations on RRCS, removed on exit (default "yes")
+
+========== consumer/rrcs/snapshot ==========
+$ dhs consumer rrcs snapshot --help
+Usage of rrcs snapshot:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -listen string
+    	with --online yes: local [ip]:port RRCS sends the port states to. Not the port of watch, so a walk can run beside it (default ":8196")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -online string
+    	yes = first learn which ports are on line, by a registration of a second or two that is removed at once, and do not ask the others for gain and level (RRCS refuses those and logs a warning each time) | no = ask every port (default "yes")
+  -out string
+    	snapshot FILE the walk is written to. Literal "auto" = snapshots/rrcs/<host>/snapshot-<utcstamp>.json (ADR-0028) (default "auto")
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -skip string
+    	leave out parts, comma-separated: properties (one request per object) | commands (one request per port) | values (label, alias and gains: up to four requests per port) | singles (the reads that address one node, card, port, key or crosspoint)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/walk ==========
+$ dhs consumer rrcs walk --help
+acp walk — enumerate every object on a slot
+
+IN   acp walk 10.6.239.113 --slot 0
+OUT  slot 0:
+        0  Card name       string   R--  "RRS18"
+        1  User label      string   RW-  "Synapse Simulator"
+        2  Card description string  R--  "Virtual Rack Controller"
+        …
+     (with --capture <dir> also writes raw.<transport>.jsonl +
+      tree.json — raw.acp1.jsonl / raw.an2.jsonl / raw.s101.jsonl
+      per protocol — plus glow.json for Ember+)
+
+USAGE
+  acp walk <host> --slot N [flags]
+
+DESCRIPTION
+  Reads the root object on the target slot to learn the number of
+  objects per group, then issues one getObject per object, producing
+  a typed inventory: identity, control, status, alarm. Section
+  markers (device-specific grouping hints) are rendered as "── NAME ──".
+
+  The walker caches the result per slot for the lifetime of the CLI
+  process so subsequent get/set calls can resolve --label without
+  re-walking.
+
+FLAGS
+  --slot N           slot number (required)
+  --all              walk every present slot
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
+  --filter TEXT      case-insensitive filter on output lines (like findstr /i or grep -i)
+
+EXAMPLES
+  acp walk 10.6.239.113 --slot 0                                       # rack controller
+  acp walk 10.6.239.113 --slot 1                                       # first card
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path BOARD          # only BOARD subtree
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU.1          # only PSU unit 1
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --path PSU --filter Temperature  # combine
+  acp walk 10.41.40.195 --protocol acp2 --slot 0 --filter QSFP         # text search all
+
+========== consumer/rrcs/get ==========
+$ dhs consumer rrcs get --help
+acp get — read one object value
+
+IN   acp get 10.6.239.113 --slot 1 --label "Card name"
+OUT  value = "CDV08v06   "
+     raw  = 434456303876303620202000
+     kind = string  access = R--
+     max length = 11 chars
+
+USAGE
+  acp get <host> --slot N (--label L | --group G --id I) [flags]
+
+DESCRIPTION
+  Reads one object value and decodes it into a typed form:
+  integer, float, enum, string, ipaddr, alarm priority, or frame
+  status. The corresponding metadata (range, step, default, unit,
+  enum items, max string length, alarm messages) is printed below
+  the value.
+
+  Addressing:
+    • --label L            search the walked tree for the label
+                           (walks the slot automatically if needed)
+    • --group G --id I     explicit addressing, no walk required
+    • --label L --group G  disambiguate a label that exists in
+                           multiple groups
+
+  Beside the value, get names the schema of the point and the device
+  model it belongs to (ADR-0037 P4): kind, access, range, default, unit,
+  named values, and dm = Model@SwRev with the template and the path of
+  the point in it, from the plugin, the walked tree and the manifest
+  extract wrote. --output json carries them as "meta" and "dm".
+
+FLAGS
+  --slot N           slot number (required)
+  --label L          object label (preferred — stable across firmware)
+  --group G          object group: identity | control | status | alarm | frame
+  --id I             object id within a group
+
+EXAMPLES
+  acp get 10.6.239.113 --slot 1 --label "Card name"
+  acp get 10.6.239.113 --slot 1 --label GainA
+  acp get 10.6.239.113 --slot 1 --group control --id 91
+  acp get 10.6.239.113 --slot 0 --group frame --id 0
+
+========== consumer/rrcs/list ==========
+$ dhs consumer rrcs list --help
+Usage: dhs consumer rrcs list <nodes|cards|ports|panels|keys|streams|sources|dests|xp|conferences|groups|ifbs|logic|users|patches|logicdests|values> <host>[:port] | --from FILE [flags]
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -keys string
+    	for list keys: panels (default: the ports that have keys, one request each) | all (every port, to see the virtual functions of the others too: one request per port) (default "panels")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -match string
+    	keep the rows where a name, a label or the path contains this text, case ignored
+  -node int
+    	keep what sits on this node number; 0 = every node
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -type string
+    	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/tree ==========
+$ dhs consumer rrcs tree --help
+Usage of rrcs tree:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -keys string
+    	panels (default) = show what is on the keys of each panel: one request per port that has keys | all = also the virtual functions of the other ports: one request per port | no = ports only (default "panels")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -match string
+    	keep the rows where a name, a label or the path contains this text, case ignored
+  -node int
+    	keep what sits on this node number; 0 = every node
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -type string
+    	keep the ports whose type contains this text, case ignored (e.g. RSP, Bolero, 4-Wire)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/set ==========
+$ dhs consumer rrcs set --help
+acp set — write one object value
+
+IN   acp set 10.41.40.195 --protocol acp2 --slot 1 --id 3 --value "ACP2-OK"
+OUT  confirmed value = "ACP2-OK"
+     raw       = 414350322d4f4b00
+     (non-zero exit on access / value / timeout errors)
+
+USAGE
+  acp set <host> --slot N (--label L | --group G --id I) --value V [flags]
+  acp set <host> --slot N ...                                --raw HEX [flags]
+
+DESCRIPTION
+  Writes one object value. The device enforces range, step, and
+  access constraints — out-of-range writes are silently clamped by
+  the device and the echoed reply shows the stored value.
+
+  Typed --value forms, picked automatically by object kind:
+    integer / long     "42", "-7"
+    float              "-6.3", "50.0"
+    byte               "100"
+    enum               "On"  (item name, case-sensitive)
+                       "1"   (numeric index)
+    string             "CH1"
+    ipaddr             "192.168.1.5"
+
+  --raw is an escape hatch for advanced users: pass the exact wire
+  bytes in hex, bypassing type coercion. Useful when the walker
+  hasn't seen the object (no prior walk) or when debugging a quirky
+  device.
+
+  --dry-run resolves and validates the value and sends nothing.
+  --write-to HOST names the target a second time: every connector
+  refuses to write without it and stays with the dry run (ADR-0037 P5).
+
+FLAGS
+  --slot N           slot number (required)
+  --label L          object label (preferred)
+  --group G          object group
+  --id I             object id within a group
+  --value V          typed value string
+  --raw HEX          raw wire bytes (mutually exclusive with --value)
+  --dry-run          report what would be written, send nothing (--check is the same)
+  --write-to HOST    confirm the target, exactly as the host argument was given
+
+EXAMPLES
+  acp set 10.6.239.113 --slot 1 --label GainA --value 50.0
+  acp set 10.6.239.113 --slot 0 --label Broadcasts --value On
+  acp set 10.6.239.113 --slot 1 --label mIP0 --value 192.168.1.250
+  acp set 10.6.239.113 --slot 1 --label "#CVBS-Frmt" --value "PAL-N"
+  acp set 10.6.239.113 --slot 1 --label GainA --raw 42c80000
+
+========== consumer/rrcs/export ==========
+$ dhs consumer rrcs export --help
+acp export — dump a walked device to json / yaml / csv
+
+IN   acp export 10.6.239.113 --format json --out device.json
+OUT  exported 1 slots to device.json (json)
+     (json/yaml lossless; csv flat one-row-per-object)
+
+USAGE
+  acp export <host> [--format F] [--out FILE] [flags]
+
+DESCRIPTION
+  Walks every present slot on the device (same as 'acp walk --all')
+  and writes the result to a snapshot file. Three formats:
+
+    json  lossless, stdlib encoding, pretty-printed
+    yaml  lossless, hand-rolled emitter, 2-space indent
+    csv   lossy, one row per object, header row, '|' for nested fields
+
+  Format is picked from --format first, then the --out extension,
+  defaulting to json. With no --out the snapshot streams to stdout.
+
+FLAGS
+  --format F         json | yaml | csv   (default: json or from extension)
+  --out FILE         output file path    (default: stdout)
+  --slot N           export only this slot (-1 = all present)
+  --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
+                     system,ateme.dr5000.Status.Input). A connector that can
+                     scope a walk reads only those branches; one that cannot
+                     walks the slot and this filters the output.
+
+EXAMPLES
+  acp export 10.6.239.113 --format json --out device.json
+  acp export 10.6.239.113 --format yaml --out device.yaml
+  acp export 10.6.239.113 --format csv  --out device.csv
+  acp export 10.41.40.195 --protocol acp2 --slot 0 --path BOARD --format yaml   # subtree only
+  acp export 10.41.40.195 --protocol acp2 --slot 0 --path PSU.1 --format csv    # single PSU unit
+  acp export 10.6.239.113 > device.json
+
+========== consumer/rrcs/extract ==========
+$ dhs consumer rrcs extract --help
+Usage of rrcs extract:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -refresh
+    	rewrite a device model that exists (default: a model that exists is kept, the inventory is rewritten)
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+
+========== consumer/rrcs/import ==========
+$ dhs consumer rrcs import --help
+Usage: dhs consumer rrcs import <host>[:port] --file SNAPSHOT [--path P ...] [--dry-run] [flags]
+
+Reads a file written by export (json or csv, by its extension) and WRITES
+every writable value that differs from the live system, one
+ConfigurationChange per port or client card, then reads everything back.
+Rows whose value equals the live one are left alone; read-only rows are
+skipped and listed.
+
+  --dry-run   compare and report, send nothing
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	snapshot file written by export, json or csv (required)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -path value
+    	apply only the rows whose path contains this text; comma-separated or repeated
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/call ==========
+$ dhs consumer rrcs call --help
+Usage: dhs consumer rrcs call <host>[:port] METHOD [--arg JSON ...] [flags]
+
+Sends one request of the RRCS specification and prints the answer as
+received. The transaction key is added in front. Each --arg is one
+parameter, written as JSON, in the order of the specification:
+  --arg 1  --arg true  --arg '"text"'  --arg '{"Node":66,"Port":1045}'  --arg '[1,2]'
+
+On Windows PowerShell write the parameters in a file and use --args-file:
+the shell removes the double quotes of JSON given on the command line.
+
+A method whose name starts with Get or Is only reads. Any other method
+changes something and is refused without --write-to HOST.
+
+  -arg value
+    	one parameter as JSON; repeat in the order of the specification
+  -args-file string
+    	read the parameters from this file instead of --arg: one JSON array, each element one parameter. Spares the quoting of JSON on a command line (Windows PowerShell removes the double quotes)
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	yes = put the transaction key in front, as every method but GetAlive has it | no (default "yes")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/xp ==========
+$ dhs consumer rrcs xp --help
+Usage of rrcs xp:
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -dst string
+    	destination: the path of a port that has an output, as list dests prints it
+  -level string
+    	yes = also read the level of the crosspoint. GetXpVolume does not work on an Artist-1024 (§8.2; a real RRCS 9.0 answers "Node address invalid"), so the level is read the way watch gets it: a registration for this crosspoint, whose first notification is its current level, removed at once. It needs --listen free: not while a watch runs on this machine (default "no")
+  -listen string
+    	with --level yes: local [ip]:port RRCS sends the level to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so this read ends the level events of a watch on the same machine until it is started again (default ":8196")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -src string
+    	source: the path of a port that has an input, as list sources prints it
+  -state string
+    	on = SetXp | off = KillXp | empty = only read the state (GetXpStatus)
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/ensure ==========
+$ dhs consumer rrcs ensure --help
+Usage: dhs consumer rrcs ensure <host>[:port] --file DESIRED.json [--check] [flags]
+
+Brings the gateway to the state a file describes and reports what changed,
+in the contract of every dhs ensure (ADR-0007): run it twice and the second
+run changes nothing.
+
+  --check   dry-run: compare and report would_change, send nothing
+  --diff    accepted; the diff is always part of the output
+
+The file names values by the path export prints, and crosspoints by their
+two ports:
+  {"values": {"net.1.node.60.card.1.Ptp.PTP": 100},
+   "crosspoints": [{"source": "…port.7.in", "destination": "…port.1026", "state": "present"}]}
+and it may also hold keys, conferences, groups and crosspoint levels:
+  "keys": [{"panel": "net.1.node.61.port.1024", "key": "0.1.14",
+            "function": "call-to-port", "target": "net.1.node.63.port.1043",
+            "label": "HYP1", "mode": "latching"},
+           {"panel": "net.1.node.61.port.1024", "key": "0.1.15", "state": "absent"}],
+  "conferences": [{"name": "Conference 040", "label": "CONF 40"}],
+  "groups": [{"name": "Group NOC", "label": "NOC", "members": ["net.1.node.61.port.1024"]}],
+  "levels": [{"source": "net.1.node.61.port.1026", "destination": "net.1.node.61.port.1024", "single": "-14.5"}],
+  "ifbs": [{"number": 7, "label": "SPORT", "input": "net.1.node.61.port.1040", "mix_minus": "", "dim_level": 4}],
+  "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
+             "input_gain": "0", "output_gain": "-3.5"}],
+  "streams": [{"main": "net.1.node.63.port.1072", "block": 8}]
+An IFB is named by its number and cannot be created; a leg is a port path or
+"" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
+A stream names its main port; "block": 8 links the seven ports after it,
+channel 2 to 8, inputs and outputs ("linked" names them instead,
+"directions" keeps one side, "channels" forces the main's channel count).
+The proven order is used: the main's count by one edit towards manual with
+the count and one back to NMOS with the mode alone, inputs linked in two
+requests, outputs in one. RRCS does not report a link: a port counts as
+done when it uses the wanted channel. The same links, and the creation of
+a port, also go through export, edit, import: see import.
+A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
+call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
+momentary or latching. A conference or a group is named by "id" or, to
+create it, by "name". With --check the exact requests are printed.
+
+Only what the file names is touched. Without --check this WRITES and needs
+--write-to HOST.
+
+  -allow-retype
+    	with --manifest: a port present with another type is deleted and created (RRCS has no edit of a type); its rows are saved to snapshots/rrcs/<host>/ first. Refused without this flag
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	desired-state file, JSON (required, or --manifest)
+  -listen string
+    	for the levels of crosspoints: local [ip]:port RRCS sends them to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so a file with levels ends the level events of a watch on the same machine until it is started again (default ":8196")
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -manifest string
+    	the desired inventory (the manifest extract wrote, edited): the type and the role of each port, brought to the system in the proven order — a PortType create for an absent port, the channel count of a main, the links; values stay with import
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/coverage ==========
+$ dhs consumer rrcs coverage --help
+Usage of rrcs coverage:
+  -only string
+    	keep one group: call (no verb of its own yet) | unproven (never seen working on a real RRCS) | read | write | register | notify
+  -output string
+    	output: text | json (default "text")
+
+========== consumer/rrcs/health ==========
+$ dhs consumer rrcs health --help
+usage: dhs consumer <proto> health <host> [flags]
+
+Print the 3-layer session health snapshot:
+  reachable  network path to the device exists
+  connected  active session is open
+  live       device responded within the per-protocol staleness window
+
+flags:
+  --json              emit JSON instead of text
+  --watch             poll until ctrl-C; print a row only when a bit flips
+  --interval <d>      poll interval (default 5s, --watch only)
+
+Common flags from --help apply (--protocol, --transport, --port, ...).
+
+========== consumer/rrcs/status ==========
+$ dhs consumer rrcs status --help
+usage: dhs consumer <proto> status <host> [flags]
+
+One-shot device status — session health + device identity:
+  reachable / connected / live   (3-layer session health)
+  device                          identity from GetDeviceInfo
+
+flags:
+  --output text|json   output format (json is monitoring/Ansible-friendly)
+  --json               deprecated alias for --output json
+
+Common flags from --help apply (--protocol, --transport, --port, --timeout).
+
+========== consumer/rrcs/set-xp-prio ==========
+$ dhs consumer rrcs set-xp-prio --help
+Usage: dhs consumer rrcs set-xp-prio <host>[:port] [flags]
+
+SetXpPrio: make a crosspoint with a priority. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -dst string
+    	destination: the path of a port that has an output
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -priority string
+    	priority
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -src string
+    	source: the path of a port that has an input
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-xp-destructive ==========
+$ dhs consumer rrcs set-xp-destructive --help
+Usage: dhs consumer rrcs set-xp-destructive <host>[:port] [flags]
+
+SetXpDestructive: make a crosspoint and remove the routes it displaces. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -dst string
+    	destination: the path of a port that has an output
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -priority string
+    	audio priority
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -src string
+    	source: the path of a port that has an input
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-xp-volume ==========
+$ dhs consumer rrcs set-xp-volume --help
+Usage: dhs consumer rrcs set-xp-volume <host>[:port] [flags]
+
+SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -conference string
+    	set the conference volume
+  -dst string
+    	destination: the path of a port that has an output
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -single string
+    	set the single volume
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -src string
+    	source: the path of a port that has an input
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -volume string
+    	0 mute, 1..255 = (volume - 230) / 2 dB
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-port-alias ==========
+$ dhs consumer rrcs set-port-alias --help
+Usage: dhs consumer rrcs set-port-alias <host>[:port] [flags]
+
+SetPortAlias: set the alias of a port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -alias string
+    	alias
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-port-label ==========
+$ dhs consumer rrcs set-port-label --help
+Usage: dhs consumer rrcs set-port-label <host>[:port] [flags]
+
+SetPortLabel: set the 8-character label of a port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -label string
+    	label, 8 characters at most
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-input-gain ==========
+$ dhs consumer rrcs set-input-gain --help
+Usage: dhs consumer rrcs set-input-gain <host>[:port] [flags]
+
+SetInputGain: set the input gain of a port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -gain string
+    	-36..36 in half dB, -128 mute
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-output-gain ==========
+$ dhs consumer rrcs set-output-gain --help
+Usage: dhs consumer rrcs set-output-gain <host>[:port] [flags]
+
+SetOutputGain: set the output gain of a port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -gain string
+    	-36..36 in half dB, -128 mute
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-gp-output ==========
+$ dhs consumer rrcs set-gp-output --help
+Usage: dhs consumer rrcs set-gp-output <host>[:port] [flags]
+
+SetGpOutput: switch a GP output. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -gpio string
+    	GPIO number
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -slot string
+    	slot
+  -state string
+    	on or off
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/get-gp-input-state ==========
+$ dhs consumer rrcs get-gp-input-state --help
+Usage: dhs consumer rrcs get-gp-input-state <host>[:port] [flags]
+
+GetGpInputState: read a GP input. It only reads.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -gpio string
+    	GPIO number
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -slot string
+    	slot
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/get-gp-output-state ==========
+$ dhs consumer rrcs get-gp-output-state --help
+Usage: dhs consumer rrcs get-gp-output-state <host>[:port] [flags]
+
+GetGpOutputState: read a GP output. It only reads.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -gpio string
+    	GPIO number
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -slot string
+    	slot
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-logic-source-state ==========
+$ dhs consumer rrcs set-logic-source-state --help
+Usage: dhs consumer rrcs set-logic-source-state <host>[:port] [flags]
+
+SetLogicSourceState: switch a logic source. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -id string
+    	object ID of the logic source, as list logic prints it
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -state string
+    	on or off
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-state-working ==========
+$ dhs consumer rrcs set-state-working --help
+Usage: dhs consumer rrcs set-state-working <host>[:port] [flags]
+
+SetStateWorking: make this gateway the working one. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-state-standby ==========
+$ dhs consumer rrcs set-state-standby --help
+Usage: dhs consumer rrcs set-state-standby <host>[:port] [flags]
+
+SetStateStandby: make this gateway the standby one. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-net-name ==========
+$ dhs consumer rrcs set-net-name --help
+Usage: dhs consumer rrcs set-net-name <host>[:port] [flags]
+
+SetNetName: set the long name of the net. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -name string
+    	long name
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/configuration-change ==========
+$ dhs consumer rrcs configuration-change --help
+Usage: dhs consumer rrcs configuration-change <host>[:port] [flags]
+
+ConfigurationChange: apply configuration changes, all or nothing. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	JSON file: the array of changes
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/buffer-configuration-change ==========
+$ dhs consumer rrcs buffer-configuration-change --help
+Usage: dhs consumer rrcs buffer-configuration-change <host>[:port] [flags]
+
+BufferConfigurationChange: buffer configuration changes for a later apply. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	JSON file: the array of changes
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/buffer-configuration-change-ex ==========
+$ dhs consumer rrcs buffer-configuration-change-ex --help
+Usage: dhs consumer rrcs buffer-configuration-change-ex <host>[:port] [flags]
+
+BufferConfigurationChangeEx: buffer configuration changes, each handled on its own. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -file string
+    	JSON file: the array of changes
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/apply-configuration-change ==========
+$ dhs consumer rrcs apply-configuration-change --help
+Usage: dhs consumer rrcs apply-configuration-change <host>[:port] [flags]
+
+ApplyConfigurationChange: send the buffered changes, all or nothing. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/apply-configuration-change-ex ==========
+$ dhs consumer rrcs apply-configuration-change-ex --help
+Usage: dhs consumer rrcs apply-configuration-change-ex <host>[:port] [flags]
+
+ApplyConfigurationChangeEx: send the buffered changes, each handled on its own. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/clear-key-label ==========
+$ dhs consumer rrcs clear-key-label --help
+Usage: dhs consumer rrcs clear-key-label <host>[:port] [flags]
+
+ClearKeyLabel: clear a key label set through RRCS. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/clear-key-label-and-marker ==========
+$ dhs consumer rrcs clear-key-label-and-marker --help
+Usage: dhs consumer rrcs clear-key-label-and-marker <host>[:port] [flags]
+
+ClearKeyLabelAndMarker: clear a key label and marker set through RRCS. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/clear-key-marker ==========
+$ dhs consumer rrcs clear-key-marker --help
+Usage: dhs consumer rrcs clear-key-marker <host>[:port] [flags]
+
+ClearKeyMarker: clear a key marker set through RRCS. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/lock-key ==========
+$ dhs consumer rrcs lock-key --help
+Usage: dhs consumer rrcs lock-key <host>[:port] [flags]
+
+LockKey: lock or unlock a key. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -lock string
+    	lock or unlock
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -pool-port string
+    	pool port; -1 for a port without pool ports
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/press-key ==========
+$ dhs consumer rrcs press-key --help
+Usage: dhs consumer rrcs press-key <host>[:port] [flags]
+
+PressKey: press or release a key. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -pool-port string
+    	pool port; -1 for a port without pool ports
+  -press string
+    	press or release
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/press-key-ex ==========
+$ dhs consumer rrcs press-key-ex --help
+Usage: dhs consumer rrcs press-key-ex <host>[:port] [flags]
+
+PressKeyEx: press or release a key with a trigger. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -pool-port string
+    	pool port; -1 for a port without pool ports
+  -press string
+    	press or release
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -trigger string
+    	1 primary, 2 secondary
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-key-label ==========
+$ dhs consumer rrcs set-key-label --help
+Usage: dhs consumer rrcs set-key-label <host>[:port] [flags]
+
+SetKeyLabel: set a key label. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -label string
+    	label, 8 characters
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-key-label-and-marker ==========
+$ dhs consumer rrcs set-key-label-and-marker --help
+Usage: dhs consumer rrcs set-key-label-and-marker <host>[:port] [flags]
+
+SetKeyLabelAndMarker: set a key label and marker. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -label string
+    	label, 8 characters
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -marker string
+    	index of the marker in the configuration
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-key-marker ==========
+$ dhs consumer rrcs set-key-marker --help
+Usage: dhs consumer rrcs set-key-marker <host>[:port] [flags]
+
+SetKeyMarker: set a key marker. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -key string
+    	key path, as list keys prints it: …port.P.key.EXPANSION.PAGE.KEY
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -marker string
+    	index of the marker in the configuration
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -virtual string
+    	the key is a virtual key
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/start-port-cloning ==========
+$ dhs consumer rrcs start-port-cloning --help
+Usage: dhs consumer rrcs start-port-cloning <host>[:port] [flags]
+
+StartPortCloning: clone the output of a port to a monitoring port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -clone string
+    	port that receives the clone
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -monitor string
+    	port to monitor
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/stop-port-cloning ==========
+$ dhs consumer rrcs stop-port-cloning --help
+Usage: dhs consumer rrcs stop-port-cloning <host>[:port] [flags]
+
+StopPortCloning: stop a port clone. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -clone string
+    	port that receives the clone
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -monitor string
+    	port to monitor
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-ifb-volume-mix-minus ==========
+$ dhs consumer rrcs set-ifb-volume-mix-minus --help
+Usage: dhs consumer rrcs set-ifb-volume-mix-minus <host>[:port] [flags]
+
+SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ifb string
+    	IFB number
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -volume string
+    	0 mute, 1..255 = (volume - 230) / 2 dB
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/remove-ifb-volume-mix-minus ==========
+$ dhs consumer rrcs remove-ifb-volume-mix-minus --help
+Usage: dhs consumer rrcs remove-ifb-volume-mix-minus <host>[:port] [flags]
+
+RemoveIFBVolumeMixMinus: return the mix-minus level of an IFB to unity. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ifb string
+    	IFB number
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/xp-volume-change-registry-reset ==========
+$ dhs consumer rrcs xp-volume-change-registry-reset --help
+Usage: dhs consumer rrcs xp-volume-change-registry-reset <host>[:port] [flags]
+
+XpVolumeChangeRegistryReset: replace the crosspoints whose level is followed. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+  -xp value
+    	SRC>DST as two port paths; repeat
+
+========== consumer/rrcs/xp-volume-change-registry-remove ==========
+$ dhs consumer rrcs xp-volume-change-registry-remove --help
+Usage: dhs consumer rrcs xp-volume-change-registry-remove <host>[:port] [flags]
+
+XpVolumeChangeRegistryRemove: stop following the level of crosspoints. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+  -xp value
+    	SRC>DST as two port paths; repeat
+
+========== consumer/rrcs/register-for-events ==========
+$ dhs consumer rrcs register-for-events --help
+Usage: dhs consumer rrcs register-for-events <host>[:port] [flags]
+
+RegisterForEvents: register a receiver for the general events. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/unregister-for-events ==========
+$ dhs consumer rrcs unregister-for-events --help
+Usage: dhs consumer rrcs unregister-for-events <host>[:port] [flags]
+
+UnregisterForEvents: remove a receiver of the general events. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/register-for-gp-input-change ==========
+$ dhs consumer rrcs register-for-gp-input-change --help
+Usage: dhs consumer rrcs register-for-gp-input-change <host>[:port] [flags]
+
+RegisterForGpInputChange: register a receiver for GP input changes. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/unregister-for-gp-input-change ==========
+$ dhs consumer rrcs unregister-for-gp-input-change --help
+Usage: dhs consumer rrcs unregister-for-gp-input-change <host>[:port] [flags]
+
+UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/register-for-gp-output-change ==========
+$ dhs consumer rrcs register-for-gp-output-change --help
+Usage: dhs consumer rrcs register-for-gp-output-change <host>[:port] [flags]
+
+RegisterForGpOutputChange: register a receiver for GP output changes. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/unregister-for-gp-output-change ==========
+$ dhs consumer rrcs unregister-for-gp-output-change --help
+Usage: dhs consumer rrcs unregister-for-gp-output-change <host>[:port] [flags]
+
+UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the receiver of the notifications
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -tcp-port string
+    	TCP port of the receiver
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-trunking-net-addr ==========
+$ dhs consumer rrcs set-trunking-net-addr --help
+Usage: dhs consumer rrcs set-trunking-net-addr <host>[:port] [flags]
+
+SetTrunkingNetAddr: set the trunking net address of the ring. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -addr string
+    	trunking net address
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-ltc ==========
+$ dhs consumer rrcs set-ltc --help
+Usage: dhs consumer rrcs set-ltc <host>[:port] [flags]
+
+SetLTC: move the local trunk controller to a node. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -node string
+    	node
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/dial-number ==========
+$ dhs consumer rrcs dial-number --help
+Usage: dhs consumer rrcs dial-number <host>[:port] [flags]
+
+DialNumber: dial a number on a pool port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -number string
+    	number to dial
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/hang-up-call ==========
+$ dhs consumer rrcs hang-up-call --help
+Usage: dhs consumer rrcs hang-up-call <host>[:port] [flags]
+
+HangUpCall: hang up the call of a port. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/line-status ==========
+$ dhs consumer rrcs line-status --help
+Usage: dhs consumer rrcs line-status <host>[:port] [flags]
+
+LineStatus: read the line status of a port. It only reads.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -port-path string
+    	port path, as list ports prints it
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-system-time-on-all-nodes ==========
+$ dhs consumer rrcs set-system-time-on-all-nodes --help
+Usage: dhs consumer rrcs set-system-time-on-all-nodes <host>[:port] [flags]
+
+SetSystemTimeOnAllNodes: set the time of the gateway PC on every node. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/connect-to-artist ==========
+$ dhs consumer rrcs connect-to-artist --help
+Usage: dhs consumer rrcs connect-to-artist <host>[:port] [flags]
+
+ConnectToArtist: connect the gateway to an Artist system. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -ip string
+    	address of the Artist node
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -redundant string
+    	the connection is redundant
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/disconnect-from-artist ==========
+$ dhs consumer rrcs disconnect-from-artist --help
+Usage: dhs consumer rrcs disconnect-from-artist <host>[:port] [flags]
+
+DisconnectFromArtist: disconnect the gateway from the Artist system. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/reset-all-nodes ==========
+$ dhs consumer rrcs reset-all-nodes --help
+Usage: dhs consumer rrcs reset-all-nodes <host>[:port] [flags]
+
+ResetAllNodes: RESET every node that is on line. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/delete-port-commands ==========
+$ dhs consumer rrcs delete-port-commands --help
+Usage: dhs consumer rrcs delete-port-commands <host>[:port] [flags]
+
+DeletePortCommands: delete the commands of a command position. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -position string
+    	a key path, a virtual function path, or a port path for every position of the port
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-stage-net-addr ==========
+$ dhs consumer rrcs set-stage-net-addr --help
+Usage: dhs consumer rrcs set-stage-net-addr <host>[:port] [flags]
+
+SetStageNetAddr: set the stage net address. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -addr string
+    	stage net address
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
+
+========== consumer/rrcs/set-stage-registry-url ==========
+$ dhs consumer rrcs set-stage-registry-url --help
+Usage: dhs consumer rrcs set-stage-registry-url <host>[:port] [flags]
+
+SetStageRegistryUrl: set the stage registry URL. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -url string
+    	URL
+  -verbose
+    	debug log output (shortcut for --log-level debug)
+  -write-to string
+    	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
 ========== consumer/tsl-v31/<dispatcher-help> ==========
 $ dhs consumer tsl-v31 --help

@@ -32,20 +32,20 @@ $r = & $dhs consumer acp1 ensure $target @sel --value On --check --json 2>$null
 Check 'check On is a no-op (would_change=false)' ($r -match '"would_change":false') $r
 
 # 2. apply On while already On -> changed=false (idempotent no-op)
-$r = & $dhs consumer acp1 ensure $target @sel --value On --json 2>$null
+$r = & $dhs consumer acp1 ensure $target @sel --value On --write-to $target --json 2>$null
 Check 'apply On already converged (changed=false)' ($r -match '"changed":false') $r
 
 # 3. apply Off -> changed=true
-$r = & $dhs consumer acp1 ensure $target @sel --value Off --json 2>$null
+$r = & $dhs consumer acp1 ensure $target @sel --value Off --write-to $target --json 2>$null
 Check 'apply Off changes the value (changed=true)' ($r -match '"changed":true') $r
 
 # 4. apply Off again -> changed=false  (the idempotency proof: run-twice = 0 changes)
-$r = & $dhs consumer acp1 ensure $target @sel --value Off --json 2>$null
+$r = & $dhs consumer acp1 ensure $target @sel --value Off --write-to $target --json 2>$null
 Check 'apply Off twice is idempotent (changed=false)' ($r -match '"changed":false') $r
 
 # 5. bad enum value -> client-side validation rejects it with exit 2 (NOT a wire
 #    write, NOT exit 1). This is what Ansible's failed_when keys on.
-& $dhs consumer acp1 ensure $target @sel --value Bogus 2>$null | Out-Null
+& $dhs consumer acp1 ensure $target @sel --value Bogus --write-to $target 2>$null | Out-Null
 Check 'bad enum value rejected with exit 2' ($LASTEXITCODE -eq 2) "exit=$LASTEXITCODE"
 
 # 6. --check with a bad value also rejects (validation runs before the dry-run
@@ -58,24 +58,24 @@ Check 'bad value rejected even under --check (exit 2)' ($LASTEXITCODE -eq 2) "ex
 # of rejecting it. ensure predicts that clamp client-side so it stays
 # idempotent and --check stays accurate.
 $nsel = @('--slot', '0', '--group', 'control', '--label', 'NetwPrefix')
-& $dhs consumer acp1 ensure $target @nsel --value 0 2>$null | Out-Null   # baseline
+& $dhs consumer acp1 ensure $target @nsel --value 0 --write-to $target 2>$null | Out-Null   # baseline
 
 # 7. out-of-range value converges to the clamped max (0 -> 32)
-$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --json 2>$null
+$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --write-to $target --json 2>$null
 Check 'out-of-range converges to clamped max (changed=true)' ($r -match '"changed":true') $r
 
 # 8. same out-of-range value again is a no-op: device already sits at clamp 32
-$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --json 2>$null
+$r = & $dhs consumer acp1 ensure $target @nsel --value 100 --write-to $target --json 2>$null
 Check 'out-of-range is idempotent at clamp (changed=false)' ($r -match '"changed":false') $r
 
 # 9. --check predicts the clamp: would_change=false while sitting at 32
 $r = & $dhs consumer acp1 ensure $target @nsel --value 100 --check --json 2>$null
 Check 'check predicts clamp (would_change=false)' ($r -match '"would_change":false') $r
 
-& $dhs consumer acp1 ensure $target @nsel --value 0 2>$null | Out-Null   # restore
+& $dhs consumer acp1 ensure $target @nsel --value 0 --write-to $target 2>$null | Out-Null   # restore
 
 # restore to On (leave the device as we found it)
-& $dhs consumer acp1 ensure $target @sel --value On 2>$null | Out-Null
+& $dhs consumer acp1 ensure $target @sel --value On --write-to $target 2>$null | Out-Null
 
 if ($fail -eq 0) { Write-Host "`nensure: ALL PASS"; exit 0 }
 Write-Host "`nensure: $fail FAILED"; exit 1
