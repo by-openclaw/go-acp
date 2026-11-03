@@ -107,7 +107,7 @@ func TestCerebrumResolveRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []routeSpec{{"7", "1", "1"}, {"7", "1", "2"}, {"11", "2", "1"}}
+	want := []routeSpec{{Dest: "7", Srce: "1", Level: "1"}, {Dest: "7", Srce: "1", Level: "2"}, {Dest: "11", Srce: "2", Level: "1"}}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Errorf("route %d = %+v, want %+v", i, got[i], want[i])

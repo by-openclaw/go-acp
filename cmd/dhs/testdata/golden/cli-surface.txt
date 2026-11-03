@@ -1349,7 +1349,7 @@ VERBS
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
-  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl[:srclvl]), or --csv FILE (dest,srce,level[,srce_level]); --srce-level L = cross-level route (§4.1.1), the source's level; --use-tags = USE_TAGS="1"; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
   get-route                one-shot OBTAIN of one destination, every level: --dest ID|NAME [--level L] [--router IP] [--output json]
@@ -1369,7 +1369,7 @@ VERBS
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
-  extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<ip>/<sub>": ["FOLDER"]})
+  extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<device name>/<sub or *>": ["FOLDER"]})
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
@@ -1398,6 +1398,7 @@ FLAGS (order doesn't matter — flags can come before OR after the host)
   --pass P                  NB password (or $DHS_CEREBRUM_PASS)
   --tls                     use wss:// instead of ws://
   --insecure-skip-verify    with --tls, skip cert validation
+  --ca-file FILE            with --tls, PEM bundle of the CA to trust
   --debug                   verbose RX/TX XML logging (stderr)
   --log FILE                full debug log incl. RX/TX XML to FILE (clean UTF-8; stderr stays quiet)
   --capture FILE            record every TX/RX XML document to a JSONL wire-trace — same contract as
@@ -1424,12 +1425,18 @@ EXAMPLES
 ========== consumer/cerebrum-nb/connect ==========
 $ dhs consumer cerebrum-nb connect --help
 Usage of cerebrum-nb connect:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1460,12 +1467,18 @@ error: usage: dhs consumer <proto> validate <frames.jsonl> [flags]
 ========== consumer/cerebrum-nb/listen ==========
 $ dhs consumer cerebrum-nb listen --help
 Usage of cerebrum-nb listen:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1490,12 +1503,18 @@ Usage of cerebrum-nb listen:
 ========== consumer/cerebrum-nb/list-devices ==========
 $ dhs consumer cerebrum-nb list-devices --help
 Usage of cerebrum-nb list-devices:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1532,12 +1551,18 @@ error: validation: cerebrum-nb device-value: --device NAME is required (use --by
 ========== consumer/cerebrum-nb/list-categories ==========
 $ dhs consumer cerebrum-nb list-categories --help
 Usage of cerebrum-nb list-categories:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1568,12 +1593,18 @@ error: validation: cerebrum-nb category-details: --category NAME is required
 ========== consumer/cerebrum-nb/list-salvo-groups ==========
 $ dhs consumer cerebrum-nb list-salvo-groups --help
 Usage of cerebrum-nb list-salvo-groups:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1610,6 +1641,8 @@ error: validation: cerebrum-nb salvo-instance-details: --group and --instance ar
 ========== consumer/cerebrum-nb/keepalive-probe ==========
 $ dhs consumer cerebrum-nb keepalive-probe --help
 Usage of cerebrum-nb keepalive-probe:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -1618,6 +1651,10 @@ Usage of cerebrum-nb keepalive-probe:
     	hold the connection idle for this long, then exit (default 2m0s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1648,6 +1685,8 @@ Usage of cerebrum-nb tree:
     	label set for SOURCE/DEST item annotation: 0 = primary mnemonic, N = alternate set N (ALT_MNE, e.g. 1 = Panels on the NOC)
   -by-name
     	--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -1664,6 +1703,10 @@ Usage of cerebrum-nb tree:
     	output format: "ascii" (default), "plantuml" or "json" (structured object rows for playbooks) (default "ascii")
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1698,12 +1741,18 @@ Usage of cerebrum-nb tree:
 ========== consumer/cerebrum-nb/get ==========
 $ dhs consumer cerebrum-nb get --help
 Usage of cerebrum-nb get:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1732,14 +1781,22 @@ $ dhs consumer cerebrum-nb extract --help
 Usage of cerebrum-nb extract:
   -by-name
     	--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -device string
     	device to extract: NAME with --by-name (exact string incl. whitespace!) or IP
+  -fallback-product string
+    	DM Model of a device that publishes no identity object (default: --device)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -1784,6 +1841,8 @@ $ dhs consumer cerebrum-nb route --help
 Usage of cerebrum-nb route:
   -all-levels
     	single-route mode without LEVEL_ID: the document's "all level" request (§4.1.1), what a panel take on every level sends — ONE action, no read-before, no diff
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -1798,6 +1857,10 @@ Usage of cerebrum-nb route:
     	alternative to --router: address by DEVICE_NAME
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	level ID or mnemonic (single-route mode); a comma-separated list routes several levels, one ROUTE per level
   -log string
@@ -1820,18 +1883,24 @@ Usage of cerebrum-nb route:
     	router target — IP_ADDRESS for the route-master sentinel (0.0.0.0) or a physical Router IP (default "0.0.0.0")
   -srce string
     	source ID or mnemonic (single-route mode)
+  -srce-level string
+    	cross-level route (§4.1.1): the source's level, ID or mnemonic; --level stays the destination's
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)
   -timeout duration
     	per-request timeout (default 5s)
   -tls
     	use wss:// instead of ws://
+  -use-tags
+    	USE_TAGS="1" on every ROUTE (§4.1.1): the server routes by the tags of the source and destination
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
 
 ========== consumer/cerebrum-nb/usage ==========
 $ dhs consumer cerebrum-nb usage --help
 Usage of cerebrum-nb usage:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -1844,6 +1913,10 @@ Usage of cerebrum-nb usage:
     	stop collecting this long after the last snapshot frame if no WILDCARD_COMPLETE arrives (default 3s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	filter: these levels only — one ID, or a comma-separated list of IDs / mnemonics
   -log string
@@ -1880,6 +1953,8 @@ Usage of cerebrum-nb usage:
 ========== consumer/cerebrum-nb/replace ==========
 $ dhs consumer cerebrum-nb replace --help
 Usage of cerebrum-nb replace:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -1890,6 +1965,10 @@ Usage of cerebrum-nb replace:
     	snapshot idle fallback (default 3s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	restrict to one level (omitted = every level where --srce is assigned)
   -log string
@@ -1916,6 +1995,8 @@ Usage of cerebrum-nb replace:
     	per-request timeout (default 5s)
   -tls
     	use wss:// instead of ws://
+  -use-tags
+    	USE_TAGS="1" on every ROUTE (§4.1.1)
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
   -with string
@@ -1926,6 +2007,8 @@ $ dhs consumer cerebrum-nb export --help
 Usage of cerebrum-nb export:
   -by-name
     	--device is a DEVICE_NAME (exact, incl. trailing whitespace) instead of an IP
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -1940,6 +2023,10 @@ Usage of cerebrum-nb export:
     	stop collecting this long after the last snapshot frame if no WILDCARD_COMPLETE arrives (default 3s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	restrict the crosspoint read to one level (probel-style per-level export); empty = all levels
   -log string
@@ -1982,6 +2069,8 @@ $ dhs consumer cerebrum-nb list-sources --help
 Usage of cerebrum-nb list-srce:
   -associations
     	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -1994,6 +2083,10 @@ Usage of cerebrum-nb list-srce:
     	stop collecting this long after the last row if no WILDCARD_COMPLETE arrives (default 5s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	LEVEL_ID filter to send (server requires the attribute present; a concrete value is echoed back in the RX row) (default "*")
   -log string
@@ -2028,6 +2121,8 @@ $ dhs consumer cerebrum-nb list-dests --help
 Usage of cerebrum-nb list-dest:
   -associations
     	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -2040,6 +2135,10 @@ Usage of cerebrum-nb list-dest:
     	stop collecting this long after the last row if no WILDCARD_COMPLETE arrives (default 5s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	LEVEL_ID filter to send (server requires the attribute present; a concrete value is echoed back in the RX row) (default "*")
   -log string
@@ -2074,6 +2173,8 @@ $ dhs consumer cerebrum-nb list-levels --help
 Usage of cerebrum-nb list-level:
   -associations
     	print the ASSOCIATION rows of each source / destination as the server sends them (§5.1.5-§5.1.6): level, device, type, device port id, IP uid, tags, reversed
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
@@ -2086,6 +2187,10 @@ Usage of cerebrum-nb list-level:
     	stop collecting this long after the last row if no WILDCARD_COMPLETE arrives (default 5s)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -level string
     	LEVEL_ID filter to send (server requires the attribute present; a concrete value is echoed back in the RX row) (default "*")
   -log string
@@ -2120,6 +2225,8 @@ $ dhs consumer cerebrum-nb import --help
 Usage of cerebrum-nb import:
   -allow-clear
     	an EMPTY cell in a managed label column CLEARS the live label (MNEMONIC="" — clear form live-UNVERIFIED; always --check first)
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -cat-dst string
@@ -2142,6 +2249,10 @@ Usage of cerebrum-nb import:
     	directory holding an export set: <prefix>-xpoint.csv / -src.csv / -dst.csv / -level.csv / -cat-src.csv / -cat-dst.csv (the exact files export --out-dir wrote; files absent from the dir are simply out of scope)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -levels string
     	level-mnemonic CSV to import (columns level,mnemonic — LEVEL_MNE, 0v16 §4.1.4)
   -lock string
@@ -2166,20 +2277,26 @@ Usage of cerebrum-nb import:
     	router IP target (route-master sentinel 0.0.0.0) or a physical Router IP (default "0.0.0.0")
   -src string
     	source-mnemonic CSV to import (columns srce,mnemonic — router mnemonics are per-ID, not per-level, 0v16 §4.1.5)
+  -srce-lock string
+    	SRCE_LOCK CSV to import (columns srce,state,levels[,locked_by] — same rules as --lock)
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)
   -timeout duration
     	per-request timeout (default 5s)
   -tls
     	use wss:// instead of ws://
+  -use-tags
+    	USE_TAGS="1" on every ROUTE (§4.1.1)
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
   -xpoint string
-    	crosspoint CSV to import (columns dest,srce,levels)
+    	crosspoint CSV to import (columns dest,srce,levels[,srce_level])
 
 ========== consumer/cerebrum-nb/lock ==========
 $ dhs consumer cerebrum-nb lock --help
 Usage of cerebrum-nb lock:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -2194,6 +2311,10 @@ Usage of cerebrum-nb lock:
     	optional timed-lock duration
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -kind string
     	lock kind: SRCE_LOCK | DEST_LOCK (default "DEST_LOCK")
   -level string
@@ -2230,6 +2351,8 @@ Usage of cerebrum-nb lock:
 ========== consumer/cerebrum-nb/unlock ==========
 $ dhs consumer cerebrum-nb unlock --help
 Usage of cerebrum-nb unlock:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -2244,6 +2367,10 @@ Usage of cerebrum-nb unlock:
     	optional timed-lock duration
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -kind string
     	lock kind: SRCE_LOCK | DEST_LOCK (default "DEST_LOCK")
   -level string
@@ -2290,6 +2417,8 @@ Usage of cerebrum-nb set-mnemonic:
     	send an empty MNEMONIC (the clear form; 0v16 does not document it — the server's answer is the measurement)
   -alt string
     	alternate mnemonic slot (ALT_MNE)
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -2302,6 +2431,10 @@ Usage of cerebrum-nb set-mnemonic:
     	address by DEVICE_NAME
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -kind string
     	mnemonic kind: LEVEL_MNE | SRCE_MNE | DEST_MNE (default "DEST_MNE")
   -level string
@@ -2338,6 +2471,8 @@ Usage of cerebrum-nb set-mnemonic:
 ========== consumer/cerebrum-nb/set-tags ==========
 $ dhs consumer cerebrum-nb set-tags --help
 Usage of cerebrum-nb set-tags:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -2352,6 +2487,10 @@ Usage of cerebrum-nb set-tags:
     	send the change to the federation source/destination instead of the local one (v0.17 FEDERATION=1)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -kind string
     	tags kind: RM_SRCE_TAGS | RM_DEST_TAGS (default "RM_DEST_TAGS")
   -level string
@@ -2388,6 +2527,8 @@ Usage of cerebrum-nb set-tags:
 ========== consumer/cerebrum-nb/salvo ==========
 $ dhs consumer cerebrum-nb salvo --help
 Usage of cerebrum-nb salvo:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -2402,6 +2543,10 @@ Usage of cerebrum-nb salvo:
     	with --tls, skip TLS cert verification
   -instance string
     	salvo instance
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -2432,6 +2577,8 @@ Usage of cerebrum-nb salvo:
 ========== consumer/cerebrum-nb/category ==========
 $ dhs consumer cerebrum-nb category --help
 Usage of cerebrum-nb category:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -category string
@@ -2448,6 +2595,10 @@ Usage of cerebrum-nb category:
     	with --tls, skip TLS cert verification
   -item-type string
     	§3.3 ITEM_TYPE (modify / modify-all): BLANK|SRCE|SOURCE|DEST|CATEGORY|SALVO|INHERIT|TEXT|FILE|CUSTOM
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -label string
     	label (create)
   -log string
@@ -2480,6 +2631,8 @@ Usage of cerebrum-nb category:
 ========== consumer/cerebrum-nb/set-value ==========
 $ dhs consumer cerebrum-nb set-value --help
 Usage of cerebrum-nb set-value:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -check
@@ -2494,6 +2647,10 @@ Usage of cerebrum-nb set-value:
     	device IP address (alternative to --device, §4.4.1)
   -is-enum
     	VALUE is a string representation of an enumeration (§4.4.1 IS_ENUM)
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string
@@ -2528,12 +2685,18 @@ Usage of cerebrum-nb set-value:
 ========== consumer/cerebrum-nb/obtain-datastore ==========
 $ dhs consumer cerebrum-nb obtain-datastore --help
 Usage of cerebrum-nb obtain-datastore:
+  -ca-file string
+    	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
     	record every TX/RX XML document (ws text payload) to this JSONL wire-trace — the same --capture contract as every other connector (WARNING: contains the LOGIN frame in cleartext, treat as secret). Literal "auto" = captures/cerebrum-nb/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -debug
     	verbose RX/TX XML logging
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
+  -keepalive duration
+    	listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none
+  -keepalive-timeout duration
+    	listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never
   -log string
     	local log FILE in --log-format (the terminal stays the human table). Default "auto" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; "off" disables the local file. (default "auto")
   -log-format string

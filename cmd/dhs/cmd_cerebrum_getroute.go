@@ -22,7 +22,10 @@ type cerebrumRouteRow struct {
 	LevelName string `json:"level_name,omitempty"`
 	Srce      string `json:"srce,omitempty"`
 	SrceName  string `json:"srce_name,omitempty"`
-	Unrouted  bool   `json:"unrouted"`
+	// SrceLevel: a cross-level route, the source is on this level.
+	SrceLevel     string `json:"srce_level,omitempty"`
+	SrceLevelName string `json:"srce_level_name,omitempty"`
+	Unrouted      bool   `json:"unrouted"`
 }
 
 // cerebrumRouteRows joins the crosspoints read for one destination with the
@@ -36,11 +39,11 @@ func cerebrumRouteRows(dest, level string, st *cerebrumState) []cerebrumRouteRow
 		}
 		return m
 	}
-	srcNames, dstNames := names(st.Src), names(st.Dst)
-	routed := map[string]string{}
+	srcNames, dstNames, lvlNames := names(st.Src), names(st.Dst), names(st.Lvl)
+	routed := map[string]routeSpec{}
 	for _, r := range st.Routes {
 		if r.Dest == dest {
-			routed[r.Level] = r.Srce
+			routed[r.Level] = r
 		}
 	}
 	rows := make([]cerebrumRouteRow, 0, len(st.Lvl))
@@ -49,8 +52,9 @@ func cerebrumRouteRows(dest, level string, st *cerebrumState) []cerebrumRouteRow
 			continue
 		}
 		row := cerebrumRouteRow{Dest: dest, DestName: dstNames[dest], Level: l.ID, LevelName: l.Mnemonic, Unrouted: true}
-		if src, ok := routed[l.ID]; ok {
-			row.Srce, row.SrceName, row.Unrouted = src, srcNames[src], false
+		if r, ok := routed[l.ID]; ok {
+			row.Srce, row.SrceName, row.Unrouted = r.Srce, srcNames[r.Srce], false
+			row.SrceLevel, row.SrceLevelName = r.SrceLevel, lvlNames[r.SrceLevel]
 		}
 		rows = append(rows, row)
 	}
@@ -109,13 +113,10 @@ func cerebrumGetRoute(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	st.Routes, st.CrossLevel = routes.Routes, routes.CrossLevel
+	st.Routes = routes.Routes
 	rows := cerebrumRouteRows(id, *level, st)
 	if len(rows) == 0 {
 		return fmt.Errorf("cerebrum-nb get-route: level %q is not on router %s", *level, *router)
-	}
-	if st.CrossLevel > 0 {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb get-route: %d cross-level route(s) on this destination are not shown\n", st.CrossLevel)
 	}
 	if jsonOut {
 		return json.NewEncoder(os.Stdout).Encode(rows)
@@ -124,6 +125,9 @@ func cerebrumGetRoute(ctx context.Context, args []string) error {
 		from := "unrouted"
 		if !r.Unrouted {
 			from = fmt.Sprintf("%s %q", r.Srce, r.SrceName)
+			if r.SrceLevel != "" {
+				from += fmt.Sprintf(" from level %s %q", r.SrceLevel, r.SrceLevelName)
+			}
 		}
 		fmt.Printf("dest %s %q level %s %q <- %s\n", r.Dest, r.DestName, r.Level, r.LevelName, from)
 	}

@@ -144,6 +144,11 @@ func (fc *fakeConn) readClientFrame() ([]byte, error) {
 		case 0x8: // close
 			return nil, io.EOF
 		case 0x9: // ping — answer with a pong, as a real server does.
+			// An empty one is answered with the socket closing, as Cerebrum
+			// 2.9.3 does, so a probe that lost its payload fails here.
+			if plen == 0 {
+				return nil, io.EOF
+			}
 			// The client's keep-alive relies on this: the pong is the
 			// inbound frame that re-arms its idle read deadline and proves
 			// the peer is alive. A fake that stayed silent here would make

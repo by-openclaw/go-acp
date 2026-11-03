@@ -13,7 +13,7 @@ import (
 // matches Ember+ Cerebrum NB §4.1.1 — the exact byte shape the
 // authoritative DOCX shows for a ROUTE action.
 func TestRouteActionEncoding(t *testing.T) {
-	got := string(codec.EncodeAction(42, cerebrumRouteCell("0.0.0.0", "", "60", "60", "1")))
+	got := string(codec.EncodeAction(42, cerebrumRouteCell("0.0.0.0", "", "60", "60", "1", "")))
 
 	for _, want := range []string{
 		`<ACTION MTID="42">`,
@@ -33,6 +33,19 @@ func TestRouteActionEncoding(t *testing.T) {
 	if strings.Contains(got, ` LEVEL_ID=`) {
 		t.Errorf("a ROUTE must not carry LEVEL_ID\n  got: %s", got)
 	}
+	if strings.Contains(got, `SRCE_LEVEL_ID`) {
+		t.Errorf("a same-level ROUTE must not carry SRCE_LEVEL_ID\n  got: %s", got)
+	}
+}
+
+// §4.1.1: a cross-level ROUTE names both levels.
+func TestRouteActionEncodingCrossLevel(t *testing.T) {
+	got := string(codec.EncodeAction(42, cerebrumRouteCell("0.0.0.0", "", "60", "61", "1", "2")))
+	for _, want := range []string{`SRCE_LEVEL_ID="2"`, `DEST_LEVEL_ID="1"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("encoded action missing %q\n  got: %s", want, got)
+		}
+	}
 }
 
 func TestParseRouteFlag(t *testing.T) {
@@ -43,6 +56,9 @@ func TestParseRouteFlag(t *testing.T) {
 	}{
 		{"60:60:1", true, routeSpec{Dest: "60", Srce: "60", Level: "1"}},
 		{"61:62:3", true, routeSpec{Dest: "61", Srce: "62", Level: "3"}},
+		{"61:62:3:1", true, routeSpec{Dest: "61", Srce: "62", Level: "3", SrceLevel: "1"}},
+		{"61:62:3:", false, routeSpec{}},
+		{"61:62:3:1:9", false, routeSpec{}},
 		{"60:60", false, routeSpec{}},
 		{"60::1", false, routeSpec{}},
 		{":", false, routeSpec{}},

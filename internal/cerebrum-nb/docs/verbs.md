@@ -138,7 +138,7 @@ Cerebrum's "set" surface is the §4 `ACTION` envelope plus the §4.5
 | `set-tags` | `ACTION <ROUTING TYPE='RM_*_TAGS'/>` | Routemaster tags |
 | `salvo` | `ACTION <SALVO TYPE='…'/>` | Run / save / rename / delete a salvo |
 | `category` | `ACTION <CATEGORY TYPE='…'/>` | Create / modify / delete a category |
-| `set-value` | `ACTION <DEVICE TYPE='SET_VALUE'/>` | Write a device object value |
+| `set-value` | `ACTION <DEVICE TYPE='SET_VALUE'/>` | Write a device object value. 2.9.3 refuses an empty value, with or without the attribute (NACK 8): Northbound cannot clear a field |
 | `device-config` | `<DEVICE_CONFIGURATION/>` (§7) | Device-tree CRUD |
 | `obtain-datastore` | `OBTAIN <datastore_change path='…'/>` | Fetch a data store |
 
@@ -146,6 +146,8 @@ Cerebrum's "set" surface is the §4 `ACTION` envelope plus the §4.5
 
 ```
 dhs consumer cerebrum-nb route 10.6.239.50 --dest 60 --srce 60 --level 1
+# cross-level (§4.1.1): level 2 of the destination from level 1 of the source
+dhs consumer cerebrum-nb route 10.6.239.50 --dest 60 --srce 60 --level 2 --srce-level 1
 ```
 
 Codec-generated fixture ([`tx_action_route.xml`](../testdata/fixtures/tx_action_route.xml),
@@ -211,9 +213,23 @@ dhs consumer cerebrum-nb extract-all HOST [--roots roots.json] [--refresh]
 ```
 
 Reads the LIST, then each device's sub-devices, and runs `extract` on each, one
-session at a time. Roots as in `extract`; `--roots` is
-`{"<ip>/<sub-device>": ["FOLDER", …]}` for what has no ACP2 model. Exit 1 names
-every sub-device left without a model.
+session at a time. Addresses come from the LIST: never type one, they are set
+by hand and change per Cerebrum instance. Roots as in `extract`; `--roots` names
+the folders of what has no ACP2 model, by device name. `*` is every sub-device
+with no line of its own, because which node sits on which slot differs per
+install (an IP key also works):
+
+```json
+{ "NMOS/0": ["Nodes", "Actions", "SubDevices"], "NMOS/*": ["Devices"] }
+```
+
+`DETAILS` lists a device's slots from 1, so a device's sub-device 0 is read only
+when `--roots` has an exact line for it. An empty list means nothing to read:
+that sub-device is skipped and does not count as a failure.
+
+A device with no identity object gets the model `<name>-<sub-device>`, so
+sub-devices do not overwrite each other. Exit 1 names every sub-device left
+without a model.
 
 ## 6. lock — the 0v16 five-mode lock
 
@@ -231,6 +247,8 @@ every sub-device left without a model.
 dhs consumer cerebrum-nb lock   10.6.239.50 --kind DEST_LOCK --dest 60 --level 1 --mode locked
 dhs consumer cerebrum-nb unlock 10.6.239.50 --kind DEST_LOCK --dest 60 --level 1
 ```
+
+`lock` reads the state first for both kinds, so a second run sends nothing.
 
 The lock detail is reported back in a `ROUTING_CHANGE` `<VALUE>` (SRCE_LOCK,
 §5.1.2) or `<LOCK>` (DEST_LOCK, §5.1.3) child carrying `LOCK_STATE`. The
@@ -470,7 +488,7 @@ dhs consumer cerebrum-nb export HOST --user U --pass P --out-dir DIR --prefix no
 dhs consumer cerebrum-nb import HOST --user U --pass P --in-dir DIR --prefix noc [--check] [--allow-clear]
 # or per-file (partial scope):
 dhs consumer cerebrum-nb import HOST --user U --pass P \
-  [--xpoint xp.csv] [--src s.csv] [--dst d.csv] [--levels l.csv] [--check] [--allow-clear]
+  [--xpoint xp.csv] [--src s.csv] [--dst d.csv] [--levels l.csv] [--lock l.csv] [--srce-lock l.csv] [--check] [--allow-clear]
 ```
 
 `--in-dir` resolves `<prefix>-xpoint.csv / -src.csv / -dst.csv /

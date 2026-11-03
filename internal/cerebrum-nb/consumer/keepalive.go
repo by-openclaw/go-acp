@@ -2,17 +2,21 @@ package cerebrumnb
 
 // Keep-alive + liveness for the Cerebrum NB WebSocket session.
 //
-// There are TWO keep-alives here, in opposite directions.
+// There are THREE keep-alives here.
 //
-//  1. SERVER → US: an RFC 6455 Ping, answered by a Pong. This is ordinary
-//     WebSocket behaviour, not a Cerebrum peculiarity, and ws.Conn has
-//     answered it inline since the WS client was written (conn.go, OpPing;
-//     commit 09d5bf8b "auto-Pong on Ping"). It needs no help from this file
-//     — but do not "simplify" that inline Pong away: a client that ignores
-//     Pings is one any conformant server is entitled to drop.
+//  1. TCP, both ways (§1.1, and what 1754cac0 proved in April). The server
+//     needs nothing else, and the kernel answers it. Alone it finds a dead link
+//     in 153 s (measured 2026-11-02: Go's default 15 s + 9 probes at 15 s).
 //
-//  2. US → SERVER, which is what this file does. It exists for OUR benefit:
-//     to notice a half-open socket, not to satisfy the server.
+//  2. SERVER → US: an RFC 6455 Ping, answered by a Pong. ws.Conn has answered
+//     it inline since the WS client was written (conn.go, OpPing; commit
+//     09d5bf8b "auto-Pong on Ping"). Cerebrum sends none, but do not "simplify"
+//     that inline Pong away: a client that ignores Pings is one any conformant
+//     server is entitled to drop.
+//
+//  3. US → SERVER, which is what this file does. It exists for OUR benefit:
+//     to notice a dead session within the 90 s window, not to satisfy the
+//     server. --keepalive -1ns --keepalive-timeout -1ns leaves only 1 and 2.
 //
 // Note that POLL (spec §2.2, <POLL MTID="n"/> → <POLL_REPLY …>) is the
 // APPLICATION-level keep-alive and redundancy probe — docs/keys.md calls it
@@ -51,6 +55,12 @@ import (
 	"dhs/internal/consumer"
 	"dhs/internal/transport"
 )
+
+// keepAlivePayload is what every Ping carries. Cerebrum 2.9.3 answers an EMPTY
+// Ping with a Pong and then a TCP FIN, no Close frame; a Ping with a payload is
+// answered and the session stays. Measured 2026-11-02 frame by frame. The empty
+// Ping (#989) made every listen and watch reconnect every 31 s.
+var keepAlivePayload = []byte("dhs")
 
 // Defaults chosen to match the rest of the fleet: acp1/acp2 both treat 90 s
 // without RX as stale, and a 30 s probe gives three chances inside that
@@ -176,10 +186,11 @@ func (s *Session) keepAliveLoop(ka *keepAlive, interval time.Duration, clk clock
 			// thing we care about here: is the socket still carrying frames.
 			//
 			// Session SURVIVAL does not depend on this probe at all: Cerebrum
-			// pings US, and ws.Conn answers Pong inline (conn.go). Failing to
-			// do that is what closed sessions at 30s before it was fixed.
+			// keeps the connection up with TCP keep-alives (§1.1) and sends no
+			// Ping of its own. The probe also catches what TCP cannot: a socket
+			// whose peer still ACKs but no longer answers.
 			ctx, cancel := context.WithTimeout(context.Background(), interval)
-			err := s.conn.Ping(ctx, nil)
+			err := s.conn.Ping(ctx, keepAlivePayload)
 			cancel()
 			if err != nil {
 				s.logger.Warn("keepalive ping failed — session lost",
@@ -230,6 +241,11 @@ func (s *Session) classifyReadErr(err error) error {
 	case errors.Is(err, os.ErrDeadlineExceeded) || isNetTimeout(err):
 		// The read deadline fired: the peer went silent. This is the
 		// half-open connection that used to hang the reader forever.
+		if s.conn.IdleTimeout() == 0 {
+			// No read deadline is set, so this is the kernel giving up.
+			return fmt.Errorf("%w: %w: TCP keep-alive to %s timed out",
+				transport.ErrConnectionLost, transport.ErrIdleTimeout, s.host)
+		}
 		return fmt.Errorf("%w: %w: no frame from %s within %s",
 			transport.ErrConnectionLost, transport.ErrIdleTimeout,
 			s.host, s.conn.IdleTimeout())

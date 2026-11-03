@@ -409,6 +409,7 @@ func cerebrumReplace(_ context.Context, args []string) error {
 	with := fs.String("with", "", "source ID that takes over (required)")
 	level := fs.String("level", "", "restrict to one level (omitted = every level where --srce is assigned)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): list the cells that would change, send nothing")
+	useTags := fs.Bool("use-tags", false, "USE_TAGS=\"1\" on every ROUTE (§4.1.1)")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	idle := fs.Duration("idle", 3*time.Second, "snapshot idle fallback")
 	if err := parseVerbFlags(fs, args); err != nil {
@@ -479,7 +480,10 @@ func cerebrumReplace(_ context.Context, args []string) error {
 
 	fails := 0
 	for _, c := range cells {
-		body := cerebrumRouteCell(*router, "", c.Dest, *with, c.Level)
+		body := cerebrumRouteCell(*router, "", c.Dest, *with, c.Level, c.SrceLevel)
+		if *useTags {
+			body.UseTags = "1"
+		}
 		if err := sess.Action(context.Background(), body); err != nil {
 			_, _ = fmt.Fprintf(logw, "[replace] NACK dst=%s lvl=%s reason=%s\n", c.Dest, c.Level, err)
 			fails++

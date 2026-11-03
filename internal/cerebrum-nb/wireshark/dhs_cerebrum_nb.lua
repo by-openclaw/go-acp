@@ -34,6 +34,10 @@
 --       top-level VALUE attr on DEVICE_CHANGE value events (change
 --         events carry VALUE on the root, NOT an OBJECT_VALUE child);
 --       MIN/MAX/STEP descriptor attrs on VALUE rows;
+--       cross-level routes (v0.17 §4.1.1): SRCE_LEVEL_ID + DEST_LEVEL_ID on
+--         the ROUTE action, SOURCE_ID + SOURCE_LEVEL_ID on the ROUTE row,
+--         USE_TAGS on the action;
+--       DEVICE_CONFIGURATION wrapped in ACTION (§4.5 on 2.9.3);
 --       positional <DEVICE_N …> sub-device children in DETAILS replies
 --         (surfaced as a sub-device count);
 --       MTID-less WILDCARD_COMPLETE — the live NOC emits a spurious one
@@ -98,6 +102,10 @@ f.xml_result      = ProtoField.string("dhs_cerebrum_nb.xml.result",       "RESUL
 f.xml_dest_id     = ProtoField.string("dhs_cerebrum_nb.xml.dest_id",      "DEST_ID")
 f.xml_srce_id     = ProtoField.string("dhs_cerebrum_nb.xml.srce_id",      "SRCE_ID")
 f.xml_level_id    = ProtoField.string("dhs_cerebrum_nb.xml.level_id",     "LEVEL_ID")
+f.xml_dest_level  = ProtoField.string("dhs_cerebrum_nb.xml.dest_level",   "DEST_LEVEL_ID")
+f.xml_srce_level  = ProtoField.string("dhs_cerebrum_nb.xml.srce_level",   "SRCE_LEVEL_ID / SOURCE_LEVEL_ID")
+f.xml_source_id   = ProtoField.string("dhs_cerebrum_nb.xml.source_id",    "SOURCE_ID")
+f.xml_use_tags    = ProtoField.string("dhs_cerebrum_nb.xml.use_tags",     "USE_TAGS")
 f.xml_mnemonic    = ProtoField.string("dhs_cerebrum_nb.xml.mnemonic",     "MNEMONIC")
 -- Lock attrs (wire-actual: LOCK on actions, LOCK_STATE + LOCKED_BY on
 -- events; RELEASED is the undocumented clearing value — live 2026-08-16)
@@ -217,6 +225,17 @@ local function xml_attr(s, name)
   return v
 end
 
+-- Same, for a name that is the tail of others: LEVEL_ID must not match
+-- DEST_LEVEL_ID, SRCE_LEVEL_ID, SOURCE_LEVEL_ID or RM_LEVEL_ID.
+local function xml_attr_exact(s, name)
+  local ic = ""
+  for c in name:gmatch(".") do
+    ic = ic .. "[" .. c:lower() .. c:upper() .. "]"
+  end
+  return s:match("%s" .. ic .. "%s*=%s*\"([^\"]*)\"")
+      or s:match("%s" .. ic .. "%s*=%s*'([^']*)'")
+end
+
 -- XML lightweight extraction. Returns a table of the attrs the Info column
 -- cares about, including the 0v16 DEVICE_TYPE and the nested <RESULT
 -- VALUE=…> verdict. Case-insensitive on attribute keys; values preserved.
@@ -236,7 +255,11 @@ local function extract_xml_attrs(s)
     -- children's SOURCE_ID is a different attribute name, so no clash)
     dest_id     = xml_attr(s, "DEST_ID"),
     srce_id     = xml_attr(s, "SRCE_ID"),
-    level_id    = xml_attr(s, "LEVEL_ID"),
+    level_id    = xml_attr_exact(s, "LEVEL_ID"),
+    dest_level  = xml_attr_exact(s, "DEST_LEVEL_ID"),
+    srce_level  = xml_attr_exact(s, "SRCE_LEVEL_ID") or xml_attr_exact(s, "SOURCE_LEVEL_ID"),
+    source_id   = xml_attr_exact(s, "SOURCE_ID"),
+    use_tags    = xml_attr_exact(s, "USE_TAGS"),
     mnemonic    = xml_attr(s, "MNEMONIC"),
     -- Lock (wire-actual): LOCK on actions; LOCK_STATE + LOCKED_BY on
     -- events. LOCK_STATE must be read before LOCK — xml_attr matches the
@@ -268,7 +291,7 @@ local function extract_xml_attrs(s)
   -- there), the OBJECT_VALUE child's VALUE in obtain replies, and the
   -- SET_VALUE action's VALUE under <ACTION>. DEVICE_CONFIGURATION is
   -- excluded — its <RESULT VALUE=…> verdict is surfaced as RESULT instead.
-  if root ~= "DEVICE_CONFIGURATION" then
+  if not s:upper():find("DEVICE_CONFIGURATION", 1, true) then
     r.value = s:match("[%s][Vv][Aa][Ll][Uu][Ee]%s*=%s*\"([^\"]*)\"")
         or s:match("[%s][Vv][Aa][Ll][Uu][Ee]%s*=%s*'([^']*)'")
   end
@@ -435,7 +458,11 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
       -- Routing identity (the "which cell" half of every routing frame)
       if x.dest_id     then subtree:add(f.xml_dest_id,     x.dest_id);     info = info .. " DEST=" .. x.dest_id end
       if x.srce_id     then subtree:add(f.xml_srce_id,     x.srce_id);     info = info .. " SRCE=" .. x.srce_id end
+      if x.source_id   then subtree:add(f.xml_source_id,   x.source_id);   info = info .. " SRCE=" .. x.source_id end
+      if x.srce_level  then subtree:add(f.xml_srce_level,  x.srce_level);  info = info .. " SRCE_LVL=" .. x.srce_level end
+      if x.dest_level  then subtree:add(f.xml_dest_level,  x.dest_level);  info = info .. " DEST_LVL=" .. x.dest_level end
       if x.level_id    then subtree:add(f.xml_level_id,    x.level_id);    info = info .. " LVL=" .. x.level_id end
+      if x.use_tags    then subtree:add(f.xml_use_tags,    x.use_tags);    info = info .. " USE_TAGS=" .. x.use_tags end
       if x.mnemonic    then subtree:add(f.xml_mnemonic,    x.mnemonic);    info = info .. " MNE=" .. string.format("%q", x.mnemonic) end
       -- Lock lifecycle (LOCK on actions; LOCK_STATE/LOCKED_BY on events —
       -- RELEASED is the wire-actual clearing value, keys.md wire-actual)

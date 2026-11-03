@@ -77,6 +77,52 @@ type cerebrumExtractTarget struct {
 	IP, Name, Sub string
 }
 
+// cerebrumSeedRoots finds a target's folders in --roots. The device's name
+// comes first: its address is set by hand and changes per Cerebrum instance.
+// "/*" is every sub-device with no line of its own, since which node sits on
+// which slot differs per install too.
+func cerebrumSeedRoots(seeds map[string][]string, t cerebrumExtractTarget) ([]string, bool) {
+	name := strings.TrimSpace(t.Name)
+	for _, key := range []string{name + "/" + t.Sub, t.IP + "/" + t.Sub, name + "/*", t.IP + "/*"} {
+		if s, ok := seeds[key]; ok {
+			return s, true
+		}
+	}
+	return nil, false
+}
+
+// cerebrumAddRootTargets adds sub-device 0 of the devices --roots names it for:
+// DETAILS lists a device's slots from 1, but Cerebrum and NMOS answer on 0 too.
+func cerebrumAddRootTargets(targets []cerebrumExtractTarget, seeds map[string][]string) []cerebrumExtractTarget {
+	seen := map[string]bool{}
+	for _, t := range targets {
+		seen[t.IP+"/"+t.Sub] = true
+	}
+	out := targets
+	for _, t := range targets {
+		key := t.IP + "/0"
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		_, byName := seeds[strings.TrimSpace(t.Name)+"/0"]
+		if _, byIP := seeds[key]; byName || byIP {
+			out = append(out, cerebrumExtractTarget{IP: t.IP, Name: t.Name, Sub: "0"})
+		}
+	}
+	return out
+}
+
+// cerebrumFallbackModel names the model of a sub-device that publishes no
+// identity: its address would not hold across instances, and each sub-device
+// would overwrite the one before.
+func cerebrumFallbackModel(t cerebrumExtractTarget) string {
+	if name := strings.TrimSpace(t.Name); name != "" {
+		return name + "-" + t.Sub
+	}
+	return t.IP + "-" + t.Sub
+}
+
 // cerebrumExtractTargets lists every sub-device of a device: a device with
 // none is its own sub-device 0.
 func cerebrumExtractTargets(ip, name string, subs []codec.DeviceEntry) []cerebrumExtractTarget {
@@ -112,7 +158,7 @@ func cerebrumExtractAll(ctx context.Context, args []string) error {
 			return rerr
 		}
 		if rerr := json.Unmarshal(raw, &seeds); rerr != nil {
-			return fmt.Errorf("cerebrum-nb extract-all: --roots %s: %w (want {\"<ip>/<sub-device>\": [\"FOLDER\", …]})", roots, rerr)
+			return fmt.Errorf("cerebrum-nb extract-all: --roots %s: %w (want {\"<device name>/<sub-device or *>\": [\"FOLDER\", …]})", roots, rerr)
 		}
 	}
 
@@ -120,18 +166,26 @@ func cerebrumExtractAll(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	targets = cerebrumAddRootTargets(targets, seeds)
 	// A session per device: one Northbound licence at a time.
 	var failed []string
+	skipped := 0
 	for _, t := range targets {
 		key := t.IP + "/" + t.Sub
+		found, seeded := cerebrumSeedRoots(seeds, t)
+		if seeded && len(found) == 0 { // the operator's word: nothing to read here
+			fmt.Printf("=== %s %q sub-device %s: no folders in --roots, skipped\n", t.IP, t.Name, t.Sub)
+			skipped++
+			continue
+		}
 		sub := append([]string{}, args...)
 		// A CONVERT is 49 880 objects: well past extract's default cap.
-		sub = append(sub, "--device", t.IP, "--sub-device", t.Sub, "--max-requests", "50000")
+		sub = append(sub, "--device", t.IP, "--sub-device", t.Sub, "--max-requests", "50000", "--fallback-product", cerebrumFallbackModel(t))
 		if *refresh {
 			sub = append(sub, "--refresh")
 		}
-		if s, ok := seeds[key]; ok {
-			sub = append(sub, "--path", strings.Join(s, ";"))
+		if seeded {
+			sub = append(sub, "--path", strings.Join(found, ";"))
 		}
 		fmt.Printf("=== %s %q sub-device %s\n", t.IP, t.Name, t.Sub)
 		if xerr := cerebrumExtract(ctx, sub); xerr != nil {
@@ -139,7 +193,8 @@ func cerebrumExtractAll(ctx context.Context, args []string) error {
 			failed = append(failed, key)
 		}
 	}
-	fmt.Printf("extract-all: %d of %d sub-devices modelled\n", len(targets)-len(failed), len(targets))
+	total := len(targets) - skipped
+	fmt.Printf("extract-all: %d of %d sub-devices modelled, %d skipped by --roots\n", total-len(failed), total, skipped)
 	if len(failed) > 0 {
 		return fmt.Errorf("cerebrum-nb extract-all: no model for %s: add their Object Browser folders to --roots", strings.Join(failed, ", "))
 	}

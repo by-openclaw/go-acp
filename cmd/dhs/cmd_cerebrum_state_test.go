@@ -102,6 +102,33 @@ func TestDiffCerebrumRoutes(t *testing.T) {
 	}
 }
 
+// A cross-level cell is compared with its source level: the same source from
+// another level is a change, and the same route twice is none.
+func TestDiffCerebrumRoutesCrossLevel(t *testing.T) {
+	live := []routeSpec{
+		{Dest: "13", Srce: "12", Level: "1", SrceLevel: "2"},
+		{Dest: "14", Srce: "12", Level: "1", SrceLevel: "2"},
+		{Dest: "15", Srce: "12", Level: "1"},
+	}
+	desired := []routeSpec{
+		{Dest: "13", Srce: "12", Level: "1", SrceLevel: "2"}, // identical
+		{Dest: "14", Srce: "12", Level: "1"},                 // back to its own level
+		{Dest: "15", Srce: "12", Level: "1", SrceLevel: "1"}, // its own level, spelled out
+		{Dest: "16", Srce: "12", Level: "1", SrceLevel: "3"}, // unrouted live
+	}
+	got := diffCerebrumRoutes(live, desired)
+	want := []cerebrumRouteChange{
+		{Dest: "14", Level: "1", From: "12@lvl2", To: "12"},
+		{Dest: "16", Level: "1", From: "", To: "12", SrceLevel: "3"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("diff:\ngot  %+v\nwant %+v", got, want)
+	}
+	if s := got[1].toText(); s != "12@lvl3" {
+		t.Errorf("toText = %q", s)
+	}
+}
+
 // TestAltSlotArg pins the SetMnemonic slot rendering: primary = empty,
 // alternate = its index.
 func TestAltSlotArg(t *testing.T) {

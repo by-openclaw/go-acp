@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"dhs/internal/cerebrum-nb/codec"
+)
 
 func TestAssocAction(t *testing.T) {
 	a, err := assocAction("SRCE_ASSOC", "7", "", "5", "Snell SW-P-08", "ROUTER", "3", "41", "", "")
@@ -46,5 +50,43 @@ func TestAssocAction(t *testing.T) {
 		if call() == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+}
+
+// The ACK says nothing: the row must read what the action asked for.
+func TestCerebrumAssocMatches(t *testing.T) {
+	ip := codec.RoutingAction{Type: "SRCE_ASSOC_IP", TargetDeviceName: "NMOS", SubDevice: "1", TargetSenderName: "lab-convert-01|VTX-01"}
+	rx := codec.RoutingAction{Type: "DEST_ASSOC_IP", TargetDeviceName: "NMOS", SubDevice: "4", TargetReceiverName: "node|VRX"}
+	router := codec.RoutingAction{Type: "SRCE_ASSOC", TargetDeviceName: "R", TargetSrceID: "7"}
+	for _, tc := range []struct {
+		name string
+		row  codec.RoutingAssociation
+		a    codec.RoutingAction
+		want bool
+	}{
+		{"ip sender", codec.RoutingAssociation{RMIPUID: "NMOS|1|lab-convert-01|VTX-01"}, ip, true},
+		{"ip sender on another node", codec.RoutingAssociation{RMIPUID: "NMOS|1|other|VTX-01"}, ip, false},
+		{"ip receiver", codec.RoutingAssociation{RMIPUID: "NMOS|4|node|VRX"}, rx, true},
+		{"level left empty", codec.RoutingAssociation{}, ip, false},
+		{"router port", codec.RoutingAssociation{RMDeviceName: "R", SrceID: "7"}, router, true},
+		{"router other port", codec.RoutingAssociation{RMDeviceName: "R", SrceID: "8"}, router, false},
+	} {
+		if got := cerebrumAssocMatches(tc.row, tc.a); got != tc.want {
+			t.Errorf("%s: got %v", tc.name, got)
+		}
+	}
+}
+
+// The N of ASSOCIATION_N is the level.
+func TestCerebrumAssocRow(t *testing.T) {
+	rows := []cerebrumMneRow{{ID: "3"}, {ID: "7", Assocs: []codec.RoutingAssociation{{Index: 1, RMDeviceName: "A"}, {Index: 2, RMDeviceName: "B"}}}}
+	if r, ok := cerebrumAssocRow(rows, "7", "2"); !ok || r.RMDeviceName != "B" {
+		t.Errorf("got %+v %v", r, ok)
+	}
+	if _, ok := cerebrumAssocRow(rows, "7", "3"); ok {
+		t.Error("a level with no row must not be found")
+	}
+	if _, ok := cerebrumAssocRow(rows, "9", "1"); ok {
+		t.Error("an unknown id must not be found")
 	}
 }

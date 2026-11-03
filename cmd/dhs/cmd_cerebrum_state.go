@@ -27,13 +27,15 @@ type cerebrumStateWant struct {
 	DstMne     bool
 	LvlMne     bool
 	DestLock   bool // DEST_LOCK snapshot (LOCK_STATE + LOCKED_BY per dest x level)
+	SrceLock   bool // SRCE_LOCK snapshot, same per source x level
 	// StrictMne: a refused *_MNE obtain is an error (import needs live state
 	// to diff against) instead of a warn-and-empty (export's degrade).
 	StrictMne bool
 	Verb      string // message prefix: "export" / "import"
 }
 
-// cerebrumLockSpec is one DEST_LOCK cell of the live snapshot.
+// cerebrumLockSpec is one lock cell of the live snapshot. Dest is the source
+// id on a SRCE_LOCK cell.
 type cerebrumLockSpec struct {
 	Dest     string
 	Level    string
@@ -43,12 +45,12 @@ type cerebrumLockSpec struct {
 
 // cerebrumState is the raw collected snapshot (un-deduped, un-collapsed).
 type cerebrumState struct {
-	Routes     []routeSpec
-	Src        []cerebrumMneRow
-	Dst        []cerebrumMneRow
-	Lvl        []cerebrumMneRow
-	Locks      []cerebrumLockSpec
-	CrossLevel int // routes skipped: SRCE_LEVEL != DEST_LEVEL (shuffle parked)
+	Routes    []routeSpec
+	Src       []cerebrumMneRow
+	Dst       []cerebrumMneRow
+	Lvl       []cerebrumMneRow
+	Locks     []cerebrumLockSpec
+	SrceLocks []cerebrumLockSpec
 }
 
 // cerebrumObtainState issues one-shot OBTAINs (one per row kind so a NACK on
@@ -80,22 +82,25 @@ func cerebrumObtainState(ctx context.Context, sess *cerebrum.Session, router, de
 			if cerebrumNoRouteSentinel(rc.RouteSourceID) {
 				break
 			}
-			if crossLevelRoute(rc.LevelID, rc.RouteSourceLevelID) {
-				st.CrossLevel++
-				break
-			}
-			st.Routes = append(st.Routes, routeSpec{Dest: rc.DestID, Srce: rc.RouteSourceID, Level: rc.LevelID})
+			st.Routes = append(st.Routes, routeSpec{Dest: rc.DestID, Srce: rc.RouteSourceID, Level: rc.LevelID, SrceLevel: crossLevelSource(rc.LevelID, rc.RouteSourceLevelID)})
 		case "SRCE_MNE":
 			if m := primaryMnemonic(rc); m != "" && rc.SrceID != "" {
-				st.Src = append(st.Src, cerebrumMneRow{ID: rc.SrceID, Mnemonic: m, Levels: mneLevelsFromChange(rc), Alts: altMnemonics(rc)})
+				st.Src = append(st.Src, cerebrumMneRow{ID: rc.SrceID, Mnemonic: m, Levels: mneLevelsFromChange(rc), Alts: altMnemonics(rc), Assocs: rc.Associations})
 			}
 		case "DEST_MNE":
 			if m := primaryMnemonic(rc); m != "" && rc.DestID != "" {
-				st.Dst = append(st.Dst, cerebrumMneRow{ID: rc.DestID, Mnemonic: m, Levels: mneLevelsFromChange(rc), Alts: altMnemonics(rc)})
+				st.Dst = append(st.Dst, cerebrumMneRow{ID: rc.DestID, Mnemonic: m, Levels: mneLevelsFromChange(rc), Alts: altMnemonics(rc), Assocs: rc.Associations})
 			}
 		case "LEVEL_MNE":
 			if m := primaryMnemonic(rc); m != "" && rc.LevelID != "" {
 				st.Lvl = append(st.Lvl, cerebrumMneRow{ID: rc.LevelID, Mnemonic: m, Alts: altMnemonics(rc)})
+			}
+		case "SRCE_LOCK":
+			if rc.Lock != nil && rc.SrceID != "" {
+				st.SrceLocks = append(st.SrceLocks, cerebrumLockSpec{
+					Dest: rc.SrceID, Level: rc.LevelID,
+					State: string(rc.Lock.LockState), LockedBy: rc.Lock.LockedBy,
+				})
 			}
 		case "DEST_LOCK":
 			if rc.Lock != nil && rc.DestID != "" {
@@ -147,6 +152,9 @@ func cerebrumObtainState(ctx context.Context, sess *cerebrum.Session, router, de
 	}
 	if want.DestLock {
 		plan = append(plan, obtainItem{"DEST_LOCK", &codec.RoutingChange{Type: "DEST_LOCK", IPAddress: router, DeviceType: codec.DeviceType(deviceType), DestID: "*", LevelID: "*"}})
+	}
+	if want.SrceLock {
+		plan = append(plan, obtainItem{"SRCE_LOCK", &codec.RoutingChange{Type: "SRCE_LOCK", IPAddress: router, DeviceType: codec.DeviceType(deviceType), SrceID: "*", LevelID: "*"}})
 	}
 	if len(plan) == 0 {
 		return st, nil
@@ -200,12 +208,12 @@ collect:
 		return nil, fmt.Errorf("cerebrum-nb %s: %d of %d snapshot(s) did not complete within %s", want.Verb, okSubs-completes, okSubs, idle)
 	}
 	out := &cerebrumState{
-		Routes:     append([]routeSpec(nil), st.Routes...),
-		Src:        append([]cerebrumMneRow(nil), st.Src...),
-		Dst:        append([]cerebrumMneRow(nil), st.Dst...),
-		Lvl:        append([]cerebrumMneRow(nil), st.Lvl...),
-		Locks:      append([]cerebrumLockSpec(nil), st.Locks...),
-		CrossLevel: st.CrossLevel,
+		Routes:    append([]routeSpec(nil), st.Routes...),
+		Src:       append([]cerebrumMneRow(nil), st.Src...),
+		Dst:       append([]cerebrumMneRow(nil), st.Dst...),
+		Lvl:       append([]cerebrumMneRow(nil), st.Lvl...),
+		Locks:     append([]cerebrumLockSpec(nil), st.Locks...),
+		SrceLocks: append([]cerebrumLockSpec(nil), st.SrceLocks...),
 	}
 	return out, nil
 }
@@ -288,18 +296,31 @@ func diffCerebrumMnemonics(kind string, live, desired []cerebrumMneRow, headerSl
 // source differs from live. Cells absent from the CSV are untouched (the
 // import never disconnects). From carries the live source ("" = unrouted).
 type cerebrumRouteChange struct {
-	Dest, Level, From, To string
+	Dest, Level, From, To, SrceLevel string
+}
+
+// toText is the desired source as the logs and the diff show it.
+func (c cerebrumRouteChange) toText() string { return cerebrumRouteSource(c.To, c.SrceLevel) }
+
+// cerebrumRouteSource renders a source, with its level on a cross-level route.
+func cerebrumRouteSource(srce, srceLevel string) string {
+	if srce == "" || srceLevel == "" {
+		return srce
+	}
+	return srce + "@lvl" + srceLevel
 }
 
 func diffCerebrumRoutes(live, desired []routeSpec) []cerebrumRouteChange {
-	cur := map[string]string{} // dest\x00level -> src
+	cur := map[string]string{} // dest\x00level -> src, with its level if another
 	for _, r := range live {
-		cur[r.Dest+"\x00"+r.Level] = r.Srce
+		cur[r.Dest+"\x00"+r.Level] = cerebrumRouteSource(r.Srce, r.SrceLevel)
 	}
 	var out []cerebrumRouteChange
 	for _, d := range desired {
-		if have := cur[d.Dest+"\x00"+d.Level]; have != d.Srce {
-			out = append(out, cerebrumRouteChange{Dest: d.Dest, Level: d.Level, From: have, To: d.Srce})
+		ch := cerebrumRouteChange{Dest: d.Dest, Level: d.Level, To: d.Srce, SrceLevel: crossLevelSource(d.Level, d.SrceLevel)}
+		if have := cur[d.Dest+"\x00"+d.Level]; have != ch.toText() {
+			ch.From = have
+			out = append(out, ch)
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {

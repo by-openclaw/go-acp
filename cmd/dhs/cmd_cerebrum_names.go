@@ -293,11 +293,13 @@ func cerebrumNoRouteSentinel(sourceID string) bool {
 	return err == nil && id >= 0xFFFFFF00
 }
 
-// crossLevelRoute reports whether a routing-snapshot row is a cross-level
-// route (source level differs from the row's dest level). The dest,srce,levels
-// CSV cannot represent those yet, so export skips them LOUDLY, never silently.
-func crossLevelRoute(destLevelID, srcLevelID string) bool {
-	return srcLevelID != "" && destLevelID != "" && srcLevelID != destLevelID
+// crossLevelSource is the source level of a cross-level route, "" when the
+// source sits on the destination's own level.
+func crossLevelSource(destLevelID, srcLevelID string) string {
+	if destLevelID == "" || srcLevelID == destLevelID {
+		return ""
+	}
+	return srcLevelID
 }
 
 // primaryMnemonic extracts the primary (slot 0) mnemonic from a *_MNE

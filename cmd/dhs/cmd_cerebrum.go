@@ -69,6 +69,9 @@ type cerebrumFlags struct {
 	user         string
 	pass         string
 	tls          bool
+	caFile       string
+	keepalive    time.Duration
+	keepTimeout  time.Duration
 	insecure     bool
 	debug        bool
 	logPath      string
@@ -100,6 +103,9 @@ func newCerebrumFlags(fs *flag.FlagSet) *cerebrumFlags {
 	fs.StringVar(&c.pass, "pass", os.Getenv("DHS_CEREBRUM_PASS"), "NB password (or $DHS_CEREBRUM_PASS)")
 	fs.BoolVar(&c.tls, "tls", false, "use wss:// instead of ws://")
 	fs.BoolVar(&c.insecure, "insecure-skip-verify", false, "with --tls, skip TLS cert verification")
+	fs.StringVar(&c.caFile, "ca-file", "", "with --tls, PEM bundle of the CA to trust instead of the system pool")
+	fs.DurationVar(&c.keepalive, "keepalive", 0, "listen / watch: time between liveness probes; 0 = the connector's default, -1ns = none")
+	fs.DurationVar(&c.keepTimeout, "keepalive-timeout", 0, "listen / watch: session is lost after this long with nothing received; 0 = three probes, -1ns = never")
 	fs.BoolVar(&c.debug, "debug", false, "verbose RX/TX XML logging")
 	fs.StringVar(&c.logPath, "log", "auto", "local log FILE in --log-format (the terminal stays the human table). Default \"auto\" = .cache/logs/cerebrum-nb/<host>/<verb>.log (always logs locally, like the DM cache); a path overrides it; \"off\" disables the local file.")
 	fs.StringVar(&c.logFormat, "log-format", DefaultLogFormat, "log format: syslog (RFC 5424, default) | json (Loki/Promtail) | text (human) — the LOG stream only; the data tables stay human (epic #987)")
@@ -410,7 +416,7 @@ VERBS
   -----------------------  -----------------------------------------------
   connect                  POLL (LOGIN auto when --user/--pass set)
   listen                   SUBSCRIBE — routing / category / salvo / device events; Ctrl+C to stop  [--router IP: point the routing subscriptions at a specific router instead of the route-master 0.0.0.0] [--dest N[,N…] [--level L]: subscribe ROUTE + DEST_LOCK of those destinations only (default: the §5.1 wildcards dest=* level=*)]
-  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl), or --csv FILE; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
+  route                    ACTION <ROUTING TYPE='ROUTE'/> — single (--dest --srce --level), batch (--route dst:src:lvl[:srclvl]), or --csv FILE (dest,srce,level[,srce_level]); --srce-level L = cross-level route (§4.1.1), the source's level; --use-tags = USE_TAGS="1"; --all-levels --dest --srce = the document's "all level" request without LEVEL_ID (§4.1.1). Every dest/srce/level takes an ID or the mnemonic (§1.8, resolved client-side and reported); --level "Video,StrAudio1" = one ROUTE per level
   list-sources             one-shot OBTAIN SRCE_MNE  → every source: ID + capability levels + label + alts  [--id N] [--out FILE] [--associations]
   list-dests               one-shot OBTAIN DEST_MNE  → same for destinations (alias: list-destinations)     [--id N] [--out FILE] [--associations]
   get-route                one-shot OBTAIN of one destination, every level: --dest ID|NAME [--level L] [--router IP] [--output json]
@@ -430,7 +436,7 @@ VERBS
   list-salvo-instances     OBTAIN <salvo_change type='INSTANCE_LIST'/>      --group NAME
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
-  extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<ip>/<sub>": ["FOLDER"]})
+  extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<device name>/<sub or *>": ["FOLDER"]})
   extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
@@ -459,6 +465,7 @@ FLAGS (order doesn't matter — flags can come before OR after the host)
   --pass P                  NB password (or $DHS_CEREBRUM_PASS)
   --tls                     use wss:// instead of ws://
   --insecure-skip-verify    with --tls, skip cert validation
+  --ca-file FILE            with --tls, PEM bundle of the CA to trust
   --debug                   verbose RX/TX XML logging (stderr)
   --log FILE                full debug log incl. RX/TX XML to FILE (clean UTF-8; stderr stays quiet)
   --capture FILE            record every TX/RX XML document to a JSONL wire-trace — same contract as
@@ -532,6 +539,7 @@ func dialCerebrum(cf *cerebrumFlags, positionals []string, verb string) (*cerebr
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.CAFile = cf.caFile
 	p.Capture = cf.capture
 	p.CaptureMeta = captureMeta("cerebrum-nb", host, verb)
 
@@ -821,6 +829,7 @@ func cerebrumListen(ctx context.Context, args []string) error {
 	}
 
 	attach := func(setupCtx context.Context, sess *cerebrum.Session) error {
+		cf.applyKeepAlive(sess)
 		if events == nil {
 			events = newCerebrumEventLog(cf)
 		}
@@ -873,14 +882,14 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		// NACK ONE_OR_MORE_EVENTS_INVALID. With --dest the ID wildcards
 		// become the named destinations (one ROUTE + one DEST_LOCK row each).
 		//
-		// SRCE_LOCK deliberately NOT subscribed: every live Cerebrum tested
-		// (RT + per-router, 2026-04..2026-08) NACKs it, and source locks
-		// are unreal in this production. Skipped with a notice below so a
-		// clean run shows 0 failed — re-add the row if a server ever
-		// grants it.
 		var plan []sub
 		for _, rc := range cerebrumListenRoutingItems(router, dests, level) {
 			plan = append(plan, sub{fmt.Sprintf("ROUTING_CHANGE TYPE=%s dest=%s level=%s", rc.Type, rc.DestID, rc.LevelID), rc})
+		}
+		// §5.1.2. A destination filter leaves source locks out.
+		if strings.TrimSpace(dests) == "" {
+			rc := cerebrumListenSrceLockItem(router, level)
+			plan = append(plan, sub{fmt.Sprintf("ROUTING_CHANGE TYPE=SRCE_LOCK level=%s", rc.LevelID), rc})
 		}
 		// Category / salvo / device rows exist only at Routemaster scope
 		// (owner rule: no cat/salvo on a physical ROUTER — 0.0.0.0 RT only).
@@ -918,7 +927,7 @@ func cerebrumListen(ctx context.Context, args []string) error {
 		live, items = sess, granted
 		mu.Unlock()
 		events.start()
-		fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed (SRCE_LOCK skipped — every live Cerebrum NACKs it; re-enable if a server grants it)\n", ok, fail)
+		fmt.Fprintf(os.Stderr, "subscribed: %d ok, %d failed\n", ok, fail)
 		return nil
 	}
 
@@ -970,6 +979,21 @@ func cerebrumListen(ctx context.Context, args []string) error {
 // DEST_LOCK row per destination of --dest (comma-separated IDs), every row
 // on --level (default *). Addressed to the route-master sentinel or the
 // --router given, DEVICE_TYPE=ROUTER as the server requires.
+// applyKeepAlive hands --keepalive / --keepalive-timeout to the session; with
+// neither set the session keeps the connector's default.
+func (c *cerebrumFlags) applyKeepAlive(sess *cerebrum.Session) {
+	if c.keepalive != 0 || c.keepTimeout != 0 {
+		sess.SetKeepAlive(consumer.KeepAliveConfig{Interval: c.keepalive, Timeout: c.keepTimeout})
+	}
+}
+
+func cerebrumListenSrceLockItem(router, level string) *codec.RoutingChange {
+	if strings.TrimSpace(level) == "" {
+		level = "*"
+	}
+	return &codec.RoutingChange{Type: "SRCE_LOCK", IPAddress: router, DeviceType: codec.DeviceType("ROUTER"), SrceID: "*", LevelID: level}
+}
+
 func cerebrumListenRoutingItems(router, dests, level string) []*codec.RoutingChange {
 	if strings.TrimSpace(level) == "" {
 		level = "*"
@@ -2150,6 +2174,7 @@ func cerebrumWatch(ctx context.Context, args []string) error {
 	// change that happened during the gap is logged, the unchanged rest is not.
 	var watchEvents *cerebrumEventLog
 	attach := func(ctx context.Context, sess *cerebrum.Session) error {
+		cf.applyKeepAlive(sess)
 		if watchEvents == nil {
 			watchEvents = newCerebrumEventLog(cf)
 		}
@@ -2870,18 +2895,29 @@ func currentAPIVer(sess *cerebrum.Session) string {
 // ----------------------------------------------------------------------
 
 // routeSpec is one (dest, srce, level) triple parsed from --route or --csv.
-type routeSpec struct{ Dest, Srce, Level string }
+//
+// SrceLevel is the source's level on a cross-level route (§4.1.1); "" is the
+// destination's own level.
+type routeSpec struct{ Dest, Srce, Level, SrceLevel string }
 
-// parseRouteFlag parses "dst:src:lvl" into a routeSpec.
+// parseRouteFlag parses "dst:src:lvl" or, cross-level, "dst:src:lvl:srclvl".
 func parseRouteFlag(s string) (routeSpec, error) {
 	parts := strings.Split(s, ":")
-	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-		return routeSpec{}, fmt.Errorf("--route %q: expected dst:src:lvl", s)
+	if len(parts) < 3 || len(parts) > 4 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return routeSpec{}, fmt.Errorf("--route %q: expected dst:src:lvl[:srclvl]", s)
 	}
-	return routeSpec{Dest: parts[0], Srce: parts[1], Level: parts[2]}, nil
+	r := routeSpec{Dest: parts[0], Srce: parts[1], Level: parts[2]}
+	if len(parts) == 4 {
+		if parts[3] == "" {
+			return routeSpec{}, fmt.Errorf("--route %q: expected dst:src:lvl[:srclvl]", s)
+		}
+		r.SrceLevel = parts[3]
+	}
+	return r, nil
 }
 
-// readRoutesCSV parses a CSV file with header dest,srce,level (any order; case-insensitive).
+// readRoutesCSV parses a CSV file with header dest,srce,level (any order;
+// case-insensitive) and, cross-level, an optional srce_level column.
 func readRoutesCSV(path string) ([]routeSpec, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -2911,11 +2947,15 @@ func readRoutesCSV(path string) ([]routeSpec, error) {
 		if len(f) < len(header) {
 			return nil, fmt.Errorf("--csv %s line %d: %d cols < %d", path, n+2, len(f), len(header))
 		}
-		out = append(out, routeSpec{
+		r := routeSpec{
 			Dest:  strings.TrimSpace(f[idx["dest"]]),
 			Srce:  strings.TrimSpace(f[idx["srce"]]),
 			Level: strings.TrimSpace(f[idx["level"]]),
-		})
+		}
+		if col, ok := idx["srce_level"]; ok {
+			r.SrceLevel = strings.TrimSpace(f[col])
+		}
+		out = append(out, r)
 	}
 	return out, nil
 }
@@ -2935,6 +2975,8 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	dest := fs.String("dest", "", "destination ID or mnemonic (single-route mode)")
 	srce := fs.String("srce", "", "source ID or mnemonic (single-route mode)")
 	level := fs.String("level", "", "level ID or mnemonic (single-route mode); a comma-separated list routes several levels, one ROUTE per level")
+	srceLevel := fs.String("srce-level", "", "cross-level route (§4.1.1): the source's level, ID or mnemonic; --level stays the destination's")
+	useTags := fs.Bool("use-tags", false, "USE_TAGS=\"1\" on every ROUTE (§4.1.1): the server routes by the tags of the source and destination")
 	allLevels := fs.Bool("all-levels", false, "single-route mode without LEVEL_ID: the document's \"all level\" request (§4.1.1), what a panel take on every level sends — ONE action, no read-before, no diff")
 	var routesFlag stringSliceFlag
 	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
@@ -2956,15 +2998,15 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	// Build the route list from flags.
 	var routes []routeSpec
 	if *allLevels {
-		if *dest == "" || *srce == "" || *level != "" || len(routesFlag) > 0 || *csv != "" {
+		if *dest == "" || *srce == "" || *level != "" || *srceLevel != "" || len(routesFlag) > 0 || *csv != "" {
 			return fmt.Errorf("--all-levels takes --dest and --srce only")
 		}
-	} else if *dest != "" || *srce != "" || *level != "" {
+	} else if *dest != "" || *srce != "" || *level != "" || *srceLevel != "" {
 		if *dest == "" || *srce == "" || *level == "" {
 			return fmt.Errorf("--dest/--srce/--level: all three required for single-route mode")
 		}
 		for _, lvl := range cerebrumSplitList(*level) {
-			routes = append(routes, routeSpec{Dest: *dest, Srce: *srce, Level: lvl})
+			routes = append(routes, routeSpec{Dest: *dest, Srce: *srce, Level: lvl, SrceLevel: *srceLevel})
 		}
 	}
 	for _, r := range routesFlag {
@@ -3002,6 +3044,7 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	p.Password = cf.pass
 	p.UseTLS = cf.tls
 	p.InsecureSkipVerify = cf.insecure
+	p.CAFile = cf.caFile
 	p.Capture = cf.capture
 	p.CaptureMeta = captureMeta("cerebrum-nb", host, "route")
 
@@ -3046,6 +3089,9 @@ func cerebrumRoute(_ context.Context, args []string) error {
 		// §4.1.1: DEST_LEVEL_ID absent = "all level" request; the server may
 		// send several updates for it. Sent as is, the answer is the measurement.
 		body := &codec.RoutingAction{Type: "ROUTE", IPAddress: *router, DeviceName: *deviceName, DeviceType: codec.DeviceType("ROUTER"), DestID: destID, SrceID: srceID}
+		if *useTags {
+			body.UseTags = "1"
+		}
 		if err := sess.Action(context.Background(), body); err != nil {
 			return fmt.Errorf("cerebrum-nb route --all-levels dst=%s src=%s: %w", destID, srceID, err)
 		}
@@ -3074,13 +3120,13 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	changes := diffCerebrumRoutes(st.Routes, routes)
 	diffs := make([]ensureDiff, 0, len(changes))
 	for _, c := range changes {
-		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("route.%s.%s", c.Dest, c.Level), From: c.From, To: c.To})
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("route.%s.%s", c.Dest, c.Level), From: c.From, To: c.toText()})
 	}
 	changed := len(changes) > 0
 
 	if *check {
 		for _, c := range changes {
-			_, _ = fmt.Fprintf(logw, "[would-route] dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
+			_, _ = fmt.Fprintf(logw, "[would-route] dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.toText())
 		}
 		_, _ = fmt.Fprintf(logw, "cerebrum-nb route --check: would_change=%d of %d desired — nothing sent\n", len(changes), len(routes))
 		if jsonOut {
@@ -3091,13 +3137,16 @@ func cerebrumRoute(_ context.Context, args []string) error {
 
 	fails := 0
 	for _, c := range changes {
-		body := cerebrumRouteCell(*router, *deviceName, c.Dest, c.To, c.Level)
+		body := cerebrumRouteCell(*router, *deviceName, c.Dest, c.To, c.Level, c.SrceLevel)
+		if *useTags {
+			body.UseTags = "1"
+		}
 		if err := sess.Action(context.Background(), body); err != nil {
-			_, _ = fmt.Fprintf(logw, "[route] NACK dst=%s src=%s lvl=%s reason=%s\n", c.Dest, c.To, c.Level, err)
+			_, _ = fmt.Fprintf(logw, "[route] NACK dst=%s src=%s lvl=%s reason=%s\n", c.Dest, c.toText(), c.Level, err)
 			fails++
 			continue
 		}
-		_, _ = fmt.Fprintf(logw, "[route] OK   dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.To)
+		_, _ = fmt.Fprintf(logw, "[route] OK   dst=%s lvl=%s: %q -> src %s\n", c.Dest, c.Level, c.From, c.toText())
 	}
 	if fails > 0 {
 		return fmt.Errorf("%d/%d route change(s) failed", fails, len(changes))
@@ -3125,12 +3174,13 @@ func cerebrumRoute(_ context.Context, args []string) error {
 
 // cerebrumRouteCell is one crosspoint on one level. §4.1.1 scopes a ROUTE
 // with DEST_LEVEL_ID alone: LEVEL_ID is not an attribute of ROUTE, and a
-// ROUTE without DEST_LEVEL_ID is an "all level" request.
-func cerebrumRouteCell(router, deviceName, dest, srce, level string) *codec.RoutingAction {
+// ROUTE without DEST_LEVEL_ID is an "all level" request. srceLevel is the
+// source's level on a cross-level route, "" otherwise.
+func cerebrumRouteCell(router, deviceName, dest, srce, level, srceLevel string) *codec.RoutingAction {
 	return &codec.RoutingAction{
 		Type: "ROUTE", IPAddress: router, DeviceName: deviceName,
 		DeviceType: codec.DeviceType("ROUTER"),
-		DestID:     dest, SrceID: srce, DestLevelID: level,
+		DestID:     dest, SrceID: srce, DestLevelID: level, SrceLevelID: srceLevel,
 	}
 }
 
@@ -3209,8 +3259,8 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	// DEST_LOCK state is readable (LOCK_STATE + LOCKED_BY per cell); the
 	// desired state maps: LOCKED/PROTECTED/... set values compare directly,
 	// the clearing values (RELEASED wire-actual, legacy RELEASE) converge to
-	// RELEASED. SRCE_LOCK reads are refused by every live Cerebrum tested —
-	// falls through to an imperative send reported as changed.
+	// RELEASED. SRCE_LOCK reads the same on 2.9.3. A refused read falls
+	// through to an imperative send reported as changed.
 	desired := strings.ToUpper(string(mode))
 	if desired == "RELEASE" {
 		desired = "RELEASED"
@@ -3218,16 +3268,20 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	type lockChange struct{ Level, From string }
 	var changes []lockChange
 	readOK := false
-	if *kind == "DEST_LOCK" && *dest != "" {
+	id := *dest
+	if *kind == "SRCE_LOCK" {
+		id = *srce
+	}
+	if id != "" {
 		st, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 10*time.Second, cerebrumStateWant{
-			DestLock: true, Verb: verb,
+			DestLock: *kind == "DEST_LOCK", SrceLock: *kind == "SRCE_LOCK", Verb: verb,
 		})
 		if serr == nil {
 			readOK = true
 			live := map[string]cerebrumLockSpec{}
 			var destLevels []string
-			for _, l := range st.Locks {
-				if l.Dest == *dest {
+			for _, l := range append(st.Locks, st.SrceLocks...) {
+				if l.Dest == id {
 					live[l.Level] = l
 					destLevels = append(destLevels, l.Level)
 				}
@@ -3249,8 +3303,6 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 		} else {
 			fmt.Fprintf(os.Stderr, "cerebrum-nb %s: lock-state read unavailable (%v) — imperative send, reported changed\n", verb, serr)
 		}
-	} else {
-		fmt.Fprintf(os.Stderr, "cerebrum-nb %s: SRCE_LOCK state is not readable on live Cerebrums — imperative send, reported changed\n", verb)
 	}
 	if !readOK {
 		lv := levels
@@ -3289,7 +3341,19 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 		if err != nil {
 			return fmt.Errorf("cerebrum-nb %s lvl=%s: %w", verb, displayDash(c.Level), err)
 		}
-		_, _ = fmt.Fprintf(logw, "[%s] OK %s mode=%s srce=%s dest=%s lvl=%s (was %s)\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(c.Level), c.From)
+		_, _ = fmt.Fprintf(logw, "[%s] ACK %s mode=%s srce=%s dest=%s lvl=%s (was %s)\n", verb, *kind, mode, displayDash(*srce), displayDash(*dest), displayDash(c.Level), c.From)
+	}
+	// A Neuron router answers ACK to a lock it does not apply: no event, the
+	// state stays RELEASED. Only the state read says it happened.
+	if readOK && len(changes) > 0 {
+		levels := make([]string, 0, len(changes))
+		for _, c := range changes {
+			levels = append(levels, c.Level)
+		}
+		if err := cerebrumAwaitLock(sess, *router, *kind, id, levels, desired); err != nil {
+			return fmt.Errorf("cerebrum-nb %s: %w", verb, err)
+		}
+		_, _ = fmt.Fprintf(logw, "[%s] OK state=%s read back\n", verb, desired)
 	}
 	if len(changes) == 0 {
 		_, _ = fmt.Fprintf(logw, "[%s] already converged — nothing sent (state=%s)\n", verb, desired)
@@ -3298,6 +3362,51 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 		return emitEnsure(true, ensureResult{Changed: &changed, Diff: diffs})
 	}
 	return nil
+}
+
+// cerebrumLockSettle is how long a lock may take to show in the state read.
+const cerebrumLockSettle = 5 * time.Second
+
+// cerebrumAwaitLock reads the lock state until every level shows it.
+func cerebrumAwaitLock(sess *cerebrum.Session, router, kind, id string, levels []string, desired string) error {
+	deadline := time.Now().Add(cerebrumLockSettle)
+	for {
+		st, err := cerebrumObtainState(context.Background(), sess, router, "ROUTER", 10*time.Second, cerebrumStateWant{
+			DestLock: kind == "DEST_LOCK", SrceLock: kind == "SRCE_LOCK", Verb: "lock",
+		})
+		if err != nil {
+			return err
+		}
+		level, state, bad := cerebrumLockMismatch(append(st.Locks, st.SrceLocks...), id, levels, desired)
+		if !bad {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("acknowledged, but %s %s level %s reads %s after %s: this target does not apply %s", kind, id, level, state, cerebrumLockSettle, desired)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+// cerebrumLockMismatch finds the first level not in the desired state; a cell
+// the snapshot leaves out is RELEASED.
+func cerebrumLockMismatch(locks []cerebrumLockSpec, id string, levels []string, desired string) (level, state string, bad bool) {
+	live := map[string]string{}
+	for _, l := range locks {
+		if l.Dest == id {
+			live[l.Level] = strings.ToUpper(l.State)
+		}
+	}
+	for _, lvl := range levels {
+		state = live[lvl]
+		if state == "" {
+			state = "RELEASED"
+		}
+		if state != desired {
+			return lvl, state, true
+		}
+	}
+	return "", "", false
 }
 
 // lockModeValue maps a --mode string to one of the 0v16 §3.2 five-value
@@ -3966,6 +4075,9 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	port := fs.String("port-number", "", "PROTOCOL PORT_NUMBER (generic/panel/snmp body port)")
 	timeout := fs.String("timeout-ms", "", "PROTOCOL TIMEOUT (ms)")
 	poll := fs.String("poll", "", "PROTOCOL POLL_PERIOD (ms)")
+	virtualise := fs.String("virtualise", "", "PROTOCOL VIRTUALISE: 0 | 1")
+	secondaryIP := fs.String("secondary-ip", "", "PROTOCOL SECONDARY_IP")
+	protoSpecific := fs.String("protocol-specific", "", "GENERIC <PROTOCOL_SPECIFIC> content, raw XML (§4.5.1.1: its shape depends on the protocol)")
 	// PANEL extras
 	cpf := fs.String("cpf", "", "PANEL CPF")
 	panelID := fs.String("panel-id", "", "PANEL PANEL_ID")
@@ -4007,6 +4119,7 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 		dt, buildErr := buildDeviceConfigBody(dc, *deviceType, deviceConfigBodyFlags{
 			device: *device, version: *version, name: *name,
 			connType: *connType, port: *port, timeout: *timeout, poll: *poll,
+			virtualise: *virtualise, secondaryIP: *secondaryIP, protoSpecific: *protoSpecific,
 			cpf: *cpf, panelID: *panelID, panelType: *panelType,
 			routerType: *rtype, baud: *baud, parity: *parity,
 			maxLevel: *maxLevel, maxSource: *maxSource, maxDest: *maxDest,
@@ -4102,6 +4215,8 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 type deviceConfigBodyFlags struct {
 	device, version, name         string
 	connType, port, timeout, poll string
+	virtualise, secondaryIP       string
+	protoSpecific                 string
 	cpf, panelID, panelType       string
 	routerType, baud, parity      string
 	maxLevel, maxSource, maxDest  string
@@ -4151,7 +4266,7 @@ func cerebrumSameDeviceClass(listed string, want codec.ConfigDeviceType) bool {
 // the chosen type are consumed.
 func buildDeviceConfigBody(dc *codec.DeviceConfiguration, deviceType string, f deviceConfigBodyFlags) (codec.ConfigDeviceType, error) {
 	protocol := func() *codec.ProtocolConfiguration {
-		if f.connType == "" && f.port == "" && f.timeout == "" && f.poll == "" {
+		if f.connType == "" && f.port == "" && f.timeout == "" && f.poll == "" && f.virtualise == "" && f.secondaryIP == "" {
 			return nil
 		}
 		return &codec.ProtocolConfiguration{
@@ -4159,6 +4274,8 @@ func buildDeviceConfigBody(dc *codec.DeviceConfiguration, deviceType string, f d
 			PortNumber:     f.port,
 			Timeout:        f.timeout,
 			PollPeriod:     f.poll,
+			Virtualise:     f.virtualise,
+			SecondaryIP:    f.secondaryIP,
 		}
 	}
 	switch strings.ToLower(deviceType) {
@@ -4166,6 +4283,9 @@ func buildDeviceConfigBody(dc *codec.DeviceConfiguration, deviceType string, f d
 		dc.Generic = &codec.GenericConfig{
 			Device: f.device, Version: f.version, Name: f.name,
 			Protocol: protocol(),
+		}
+		if f.protoSpecific != "" {
+			dc.Generic.ProtocolSpecific = &f.protoSpecific
 		}
 		return codec.ConfigDeviceGeneric, nil
 	case "panel":

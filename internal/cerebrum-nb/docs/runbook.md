@@ -71,7 +71,9 @@ device we serve (see [provider.md](provider.md)).
 | `listen` | Routing, category, salvo and device events. Reconnects and re-subscribes; `UNSUBSCRIBE` on stop. With a log sink, one record per change, the initial state and repeats left out | `--dest --level --router --metrics-addr --syslog-addr` |
 | `get-route` | What feeds one destination, level by level | `--dest --level --router --output` |
 | `extract-all` | One DM per device | `--roots --refresh` |
-| `route` | Apply one or more routes | `--dest --srce --level`, `--route dst:src:lvl`, `--csv FILE` |
+| `route` | Apply one or more routes, cross-level ones included | `--dest --srce --level [--srce-level] [--use-tags]`, `--route dst:src:lvl[:srclvl]`, `--csv FILE` |
+| `rm-add` | Add sources or destinations; the new ids are read back | `--kind`, `--count N` or `--total N` (run twice = no change), `--check` with `--total`, `--virtual`, `--federation` |
+| `assoc` | Bind a source or destination, on one level, to a device IO. The binding is read back: exit 1 when the ACK was not honoured | `--kind --srce\|--dest --level --target-device …` |
 | `lock` / `unlock` | Lock / unlock a source or dest | `--kind SRCE_LOCK\|DEST_LOCK`, `--mode` (5-value enum), `--level`, `--duration` |
 | `device-config` | Add / modify / remove a device in the Cerebrum tree (0v16 §4.5) | `add\|modify\|remove --device-type generic\|panel\|router\|snmp --ip IP …` |
 | `set-mnemonic` | Set a level / source / dest mnemonic | `--kind LEVEL_MNE\|SRCE_MNE\|DEST_MNE --mnemonic TXT --level [--alt SLOT]` |
@@ -127,7 +129,8 @@ tighten if needed. See [verbs.md](verbs.md) §5 and `codec/events.go`
 | Session refused / dropped immediately | NB licence missing or exhausted | Enable / free a northbound licence on the Cerebrum |
 | `NACK` with `MTID_ERROR` on a write | lowercase keys sent (some impls reject) | the encoder emits UPPERCASE by default — do not hand-craft lowercase |
 | `connect` hangs | wrong `--port` (configurable in Cerebrum) | confirm the app's NB port |
-| TLS handshake fails | self-signed cert | `--tls --insecure-skip-verify` (lab only) |
+| TLS handshake fails | self-signed cert | `--tls --ca-file CA.pem`, or `--tls --insecure-skip-verify` (lab only) |
+| `assoc`: acknowledged, but the level reads empty | the level has no default device, or the name is not one Cerebrum knows; the server answers ACK to any string | set the level's default device in the user interface; use `NMOS\|slot\|node\|name` |
 
 ## See also
 

@@ -199,22 +199,22 @@ func TestCerebrumNoRouteSentinel(t *testing.T) {
 	}
 }
 
-// TestCrossLevelRoute pins the cross-level detector export uses to refuse
-// silently flattening SRCE_LEVEL != DEST_LEVEL rows.
-func TestCrossLevelRoute(t *testing.T) {
+// TestCrossLevelSource pins what makes a row cross-level: SOURCE_LEVEL_ID
+// differing from the row's level (§5.1.1).
+func TestCrossLevelSource(t *testing.T) {
 	cases := []struct {
 		destLvl, srcLvl string
-		want            bool
+		want            string
 	}{
-		{"1", "1", false},
-		{"1", "", false}, // no source level on the row = same-level
-		{"", "1", false}, // defensive: no dest level
-		{"1", "2", true},
-		{"2", "1", true},
+		{"1", "1", ""},
+		{"1", "", ""}, // no source level on the row = same-level
+		{"", "1", ""}, // defensive: no dest level
+		{"1", "2", "2"},
+		{"2", "1", "1"},
 	}
 	for _, tc := range cases {
-		if got := crossLevelRoute(tc.destLvl, tc.srcLvl); got != tc.want {
-			t.Errorf("crossLevelRoute(%q,%q) = %v, want %v", tc.destLvl, tc.srcLvl, got, tc.want)
+		if got := crossLevelSource(tc.destLvl, tc.srcLvl); got != tc.want {
+			t.Errorf("crossLevelSource(%q,%q) = %q, want %q", tc.destLvl, tc.srcLvl, got, tc.want)
 		}
 	}
 }
