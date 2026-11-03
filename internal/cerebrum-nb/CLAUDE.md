@@ -105,6 +105,14 @@ Unsigned 32-bit, decimal-as-string on the wire. Allocated via
 
 ---
 
+## Keep-alive
+
+TCP keep-alive carries the session (§1.1, proven in `1754cac0`); `POLL` is not a
+keep-alive. Our WebSocket Ping always carries a payload: Cerebrum 2.9.3 answers
+an empty one with a Pong and a TCP FIN. See `consumer/keepalive.go`.
+
+---
+
 ## Compliance events
 
 Every spec deviation absorbed by the decoder fires a named event via

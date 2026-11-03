@@ -70,6 +70,10 @@ type Plugin struct {
 	// when UseTLS is true.
 	InsecureSkipVerify bool
 
+	// CAFile, when set, is the PEM bundle of the CA to trust instead of the
+	// system pool. Only honoured when UseTLS is true.
+	CAFile string
+
 	// Capture, when set, records every TX/RX XML document (the ws text
 	// payload) to a JSONL wire-trace at this path — the same --capture
 	// contract every other connector honours (#242). Set before Connect.
@@ -146,6 +150,7 @@ func (p *Plugin) Connect(ctx context.Context, host string, port int) error {
 	sess, err := newSession(ctx, p.logger, url, transport.TLSOptions{
 		Enable:   p.UseTLS,
 		Insecure: p.InsecureSkipVerify,
+		CAFile:   p.CAFile,
 	}, rec, p.Metrics(), p.Clock())
 	if err != nil {
 		_ = rec.Close() // nil-safe; don't leak the file on dial failure
@@ -247,11 +252,11 @@ func (p *Plugin) GetDeviceInfo(ctx context.Context) (consumer.DeviceInfo, error)
 // supported entry points.
 
 func (p *Plugin) GetSlotInfo(_ context.Context, _ int) (consumer.SlotInfo, error) {
-	return consumer.SlotInfo{}, fmt.Errorf("cerebrum-nb: slot-info not applicable; use Session.ListDevices / ListRouters")
+	return consumer.SlotInfo{}, fmt.Errorf("cerebrum-nb: slot-info not applicable: Cerebrum has no slots; use the list-devices verb")
 }
 
 func (p *Plugin) Walk(_ context.Context, _ int) ([]consumer.Object, error) {
-	return nil, fmt.Errorf("cerebrum-nb: walk not applicable; use Session.WalkAll")
+	return nil, fmt.Errorf("cerebrum-nb: walk not applicable: Cerebrum has no slots, and a device's objects need their root; use the extract verb")
 }
 
 // GetValue is implemented in device_canonical.go (D2 — the DEVICE

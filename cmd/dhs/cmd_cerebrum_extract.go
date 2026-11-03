@@ -51,6 +51,7 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	product := fs.String("product", "", `override the DM Model (default: "IDENTITY.Card Name" obtained from the device tree — same identity object acp2's probe reads)`)
 	version := fs.String("version", "", `override the DM SwRev (default: "IDENTITY.Product Version" from the device tree, falling back to "BOARD.Hardware Version")`)
 	refresh := fs.Bool("refresh", false, "re-walk even when the DM for this Model@SwRev already exists (default: cache hit = zero walk — schema is captured once per card+firmware, ADR-0028)")
+	fallback := fs.String("fallback-product", "", "DM Model of a device that publishes no identity object (default: --device)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -113,7 +114,11 @@ func cerebrumExtract(ctx context.Context, args []string) error {
 	// override; they are never required.
 	identityFromTree := model != "" && swRev != ""
 	if model == "" {
-		model = sanitizeKey(strings.TrimSpace(deviceName))
+		model = strings.TrimSpace(*fallback)
+		if model == "" {
+			model = strings.TrimSpace(deviceName)
+		}
+		model = sanitizeKey(model)
 		if model == "" {
 			model = "device"
 		}

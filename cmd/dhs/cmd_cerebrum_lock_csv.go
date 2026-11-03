@@ -8,12 +8,13 @@ import (
 	"dhs/internal/cerebrum-nb/codec"
 )
 
-// -lock.csv — the DEST_LOCK half of a snapshot (SRCE_LOCK state is not
-// readable on any live Cerebrum, so it has no file). Columns follow the
-// xpoint grammar:
+// -lock.csv and -srce-lock.csv — the DEST_LOCK and SRCE_LOCK halves of a
+// snapshot. Columns follow the xpoint grammar:
 //
 //	dest,state,levels[,locked_by]
 //	12,LOCKED,1;2;3,Admin
+//
+// with srce in place of dest in -srce-lock.csv.
 //
 // Export writes only SET cells (state != RELEASED) — an unlocked cell is
 // simply absent. Import converges per (dest, level): a row's state is the
@@ -22,7 +23,8 @@ import (
 // locks protect production, absence must stay safe). locked_by is
 // informational (the wire offers no way to set it) and ignored on import.
 
-// cerebrumLockRow is one parsed -lock.csv row (levels still grouped).
+// cerebrumLockRow is one parsed lock row (levels still grouped). Dest is the
+// source id in a -srce-lock.csv.
 type cerebrumLockRow struct {
 	Dest     string
 	State    string // canonical UPPERCASE wire value
@@ -43,6 +45,15 @@ var cerebrumLockStates = map[string]bool{
 // (dest, state, locked_by) with levels collapsed ';'-joined; rows sort
 // dest-then-state numeric-aware so exports diff cleanly.
 func formatCerebrumLockCSV(locks []cerebrumLockSpec) string {
+	return formatCerebrumLockRows("dest", locks)
+}
+
+// formatCerebrumSrceLockCSV is the same for the SRCE_LOCK snapshot.
+func formatCerebrumSrceLockCSV(locks []cerebrumLockSpec) string {
+	return formatCerebrumLockRows("srce", locks)
+}
+
+func formatCerebrumLockRows(keyCol string, locks []cerebrumLockSpec) string {
 	type acc struct {
 		dest, state, by string
 		levels          []string
@@ -81,7 +92,7 @@ func formatCerebrumLockCSV(locks []cerebrumLockSpec) string {
 		return a.state < b.state
 	})
 	var b strings.Builder
-	b.WriteString("dest,state,levels,locked_by\n")
+	b.WriteString(keyCol + ",state,levels,locked_by\n")
 	for _, key := range order {
 		g := groups[key]
 		sortCerebrumIDs(g.levels)
@@ -101,6 +112,15 @@ func formatCerebrumLockCSV(locks []cerebrumLockSpec) string {
 // locked_by is optional (and ignored on import). State values validate
 // against the importable enum so a typo can never fabricate a wire value.
 func parseCerebrumLockCSV(data []byte, srcName string) ([]cerebrumLockRow, error) {
+	return parseCerebrumLockRows("dest", data, srcName)
+}
+
+// parseCerebrumSrceLockCSV is the same for a -srce-lock.csv.
+func parseCerebrumSrceLockCSV(data []byte, srcName string) ([]cerebrumLockRow, error) {
+	return parseCerebrumLockRows("srce", data, srcName)
+}
+
+func parseCerebrumLockRows(keyCol string, data []byte, srcName string) ([]cerebrumLockRow, error) {
 	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
 	start := 0
 	for start < len(lines) && (strings.TrimSpace(lines[start]) == "" || strings.HasPrefix(strings.TrimSpace(lines[start]), "#")) {
@@ -114,7 +134,7 @@ func parseCerebrumLockCSV(data []byte, srcName string) ([]cerebrumLockRow, error
 	for i, h := range header {
 		idx[strings.TrimSpace(h)] = i
 	}
-	for _, col := range []string{"dest", "state", "levels"} {
+	for _, col := range []string{keyCol, "state", "levels"} {
 		if _, ok := idx[col]; !ok {
 			return nil, fmt.Errorf("%s: missing column %q", srcName, col)
 		}
@@ -127,10 +147,10 @@ func parseCerebrumLockCSV(data []byte, srcName string) ([]cerebrumLockRow, error
 		}
 		f := strings.Split(line, ",")
 		if len(f) < 3 {
-			return nil, fmt.Errorf("%s line %d: need at least dest,state,levels", srcName, start+n+2)
+			return nil, fmt.Errorf("%s line %d: need at least %s,state,levels", srcName, start+n+2, keyCol)
 		}
 		row := cerebrumLockRow{
-			Dest:   strings.TrimSpace(f[idx["dest"]]),
+			Dest:   strings.TrimSpace(f[idx[keyCol]]),
 			State:  strings.ToUpper(strings.TrimSpace(f[idx["state"]])),
 			Levels: splitLevelCell(f[idx["levels"]]),
 		}
@@ -138,7 +158,7 @@ func parseCerebrumLockCSV(data []byte, srcName string) ([]cerebrumLockRow, error
 			row.LockedBy = strings.TrimSpace(f[i])
 		}
 		if row.Dest == "" {
-			return nil, fmt.Errorf("%s line %d: empty dest", srcName, start+n+2)
+			return nil, fmt.Errorf("%s line %d: empty %s", srcName, start+n+2, keyCol)
 		}
 		if !cerebrumLockStates[row.State] {
 			return nil, fmt.Errorf("%s line %d: state %q (want LOCKED|PROTECTED|LOCKED_PATH|PROTECTED_PATH|RELEASED — RELEASED is the wire-actual clear; UNLOCKED/RELEASE NACK on live Cerebrums)", srcName, start+n+2, row.State)
@@ -151,13 +171,13 @@ func parseCerebrumLockCSV(data []byte, srcName string) ([]cerebrumLockRow, error
 	return out, nil
 }
 
-// cerebrumLockChange is one converging DEST_LOCK cell.
+// cerebrumLockChange is one converging lock cell.
 type cerebrumLockChange struct {
 	Dest, Level, From, To string
 }
 
-// diffCerebrumLocks compares desired rows against the live DEST_LOCK
-// snapshot per (dest, level). Live-absent cell = RELEASED baseline.
+// diffCerebrumLocks compares desired rows against a live lock snapshot per
+// (id, level). Live-absent cell = RELEASED baseline.
 // CSV-absent cell = untouched (not visited at all).
 func diffCerebrumLocks(live []cerebrumLockSpec, want []cerebrumLockRow) []cerebrumLockChange {
 	cur := map[string]string{}

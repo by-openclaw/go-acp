@@ -68,6 +68,24 @@ func TestSessionIdleTimeoutMarksConnectionLost(t *testing.T) {
 	}
 }
 
+// With no read deadline a timeout can only be the kernel's TCP keep-alive.
+func TestClassifyTimeoutWithoutDeadlineNamesTCP(t *testing.T) {
+	fs := newFakeCerebrum(t, func(fc *fakeConn) { _, _ = fc.readClientFrame() })
+	_, sess := dialFake(t, fs)
+	sess.conn.SetIdleTimeout(0)
+	got := sess.classifyReadErr(os.ErrDeadlineExceeded)
+	if !errors.Is(got, transport.ErrIdleTimeout) || !strings.Contains(got.Error(), "TCP keep-alive") {
+		t.Fatalf("got %v", got)
+	}
+}
+
+// keepAlivePayload must never be empty: Cerebrum 2.9.3 drops the socket then.
+func TestKeepAlivePayloadIsNotEmpty(t *testing.T) {
+	if n := len(keepAlivePayload); n == 0 || n > 125 {
+		t.Fatalf("payload of %d bytes", n)
+	}
+}
+
 // The counterpart: a server that answers our Pings keeps the session alive
 // well past the idle window. Without the per-frame deadline re-arm in the ws
 // layer, this test fails — the connection would be declared dead despite

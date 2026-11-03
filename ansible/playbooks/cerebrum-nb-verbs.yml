@@ -41,6 +41,7 @@
     vt_dest: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_DEST') | default('', true) }}"
     vt_srce: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_SRCE') | default('', true) }}"
     vt_level: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_LEVEL') | default('', true) }}"
+    vt_srce_level: "{{ lookup('ansible.builtin.env', 'CEREBRUM_VT_SRCE_LEVEL') | default('', true) }}"
     # Common argv tail every verb needs (auth + port).
     cereb_auth:
       - --port
@@ -197,6 +198,53 @@
               - not (vt_lock.results[1].stdout | from_json).changed
             fail_msg: "lock did not converge — second identical apply still reported changed"
             quiet: true
+
+        - name: "lock SRCE_LOCK: state read, second apply a no-op, released"
+          ansible.builtin.command:
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'lock', cerebrum_host, '--kind', 'SRCE_LOCK', '--srce', vt_srce, '--level', vt_level, '--mode', item, '--output', 'json'] + cereb_auth }}"
+          loop: [locked, locked, released]
+          register: vt_srce_lock
+          changed_when: (vt_srce_lock.stdout | default('{}') | from_json).changed | default(false)
+
+        - name: "ASSERT the source lock converged on the second apply"
+          ansible.builtin.assert:
+            that:
+              - not (vt_srce_lock.results[1].stdout | from_json).changed
+            fail_msg: "source lock did not converge"
+            quiet: true
+
+        # Cross-level: CEREBRUM_VT_SRCE_LEVEL names the source's level. The
+        # cell is put back with the same-level route the block converged on.
+        - name: Cross-level route
+          when: (vt_srce_level | length) > 0
+          block:
+            - name: "route --srce-level (pass 1 and 2)"
+              ansible.builtin.command:
+                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--srce-level', vt_srce_level, '--output', 'json'] + cereb_auth }}"
+              loop: [1, 2]
+              register: vt_cross
+              changed_when: (vt_cross.stdout | from_json).changed
+
+            - name: "get-route reads the source level"
+              ansible.builtin.command:
+                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'get-route', cerebrum_host, '--dest', vt_dest, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+              register: vt_cross_read
+              changed_when: false
+
+            - name: "route back to the source's own level"
+              ansible.builtin.command:
+                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+              register: vt_cross_back
+              changed_when: (vt_cross_back.stdout | from_json).changed
+
+            - name: "ASSERT the cross-level route converged and read back"
+              ansible.builtin.assert:
+                that:
+                  - not (vt_cross.results[1].stdout | from_json).changed
+                  - (vt_cross_read.stdout | from_json)[0].srce_level == vt_srce_level
+                  - not (vt_cross_read.stdout | from_json)[0].unrouted
+                fail_msg: "cross-level route did not converge or did not read back"
+                quiet: true
 
     - name: Cerebrum NB verb contract result
       ansible.builtin.debug:

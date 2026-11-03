@@ -220,6 +220,28 @@ func TestCerebrumXpointRoundTrip(t *testing.T) {
 	}
 }
 
+// A cross-level route survives export -> import, and keeps its own row beside
+// the same source on its own level.
+func TestCerebrumXpointRoundTripCrossLevel(t *testing.T) {
+	orig := []routeSpec{
+		{Dest: "60", Srce: "60", Level: "1", SrceLevel: "2"},
+		{Dest: "60", Srce: "60", Level: "3"},
+	}
+	csv := formatCerebrumXpointCSV(collapseCerebrumRoutes(orig))
+	if want := "dest,srce,levels,srce_level\n60,60,3,\n60,60,1,2\n"; csv != want {
+		t.Fatalf("csv = %q, want %q", csv, want)
+	}
+	rows, err := parseCerebrumXpoint([]byte(csv), "roundtrip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := expandCerebrumXpoint(rows)
+	want := []routeSpec{orig[1], orig[0]}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v\nwant %+v", got, want)
+	}
+}
+
 // TestFormatCerebrumXpointCSV pins the exact serialized shape (header +
 // ';'-joined levels) so the format stays stable for operators + tooling.
 func TestFormatCerebrumXpointCSV(t *testing.T) {

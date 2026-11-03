@@ -12,7 +12,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"dhs/internal/cerebrum-nb/codec"
 	cerebrum "dhs/internal/cerebrum-nb/consumer"
@@ -60,8 +62,73 @@ func cerebrumAssoc(_ context.Context, args []string) error {
 	if err := sess.Assoc(ctx, target, a); err != nil {
 		return fmt.Errorf("cerebrum-nb assoc: %w", err)
 	}
+	// The server answers ACK to any string and to a level with no device, so
+	// the ACK says nothing. The federation resource is not in the local list.
+	if *federation {
+		fmt.Printf("[assoc] ACK %s %s level=%s -> %s (federation: no read-back)\n", a.Type, a.LogicalSrceID+a.LogicalDestID, a.LogicalLevelID, assocTarget(a))
+		return nil
+	}
+	if err := cerebrumAwaitAssoc(ctx, sess, a); err != nil {
+		return err
+	}
 	fmt.Printf("[assoc] OK %s %s level=%s -> %s\n", a.Type, a.LogicalSrceID+a.LogicalDestID, a.LogicalLevelID, assocTarget(a))
 	return nil
+}
+
+// cerebrumAwaitAssoc reads the resource's ASSOCIATION rows until the binding
+// is there, or says what the level holds instead.
+func cerebrumAwaitAssoc(ctx context.Context, sess *cerebrum.Session, a codec.RoutingAction) error {
+	want := cerebrumStateWant{SrcMne: true, Verb: "assoc"}
+	id := a.LogicalSrceID
+	if strings.HasPrefix(a.Type, "DEST") {
+		want = cerebrumStateWant{DstMne: true, Verb: "assoc"}
+		id = a.LogicalDestID
+	}
+	deadline := time.Now().Add(cerebrumDeviceSettle)
+	for {
+		st, err := cerebrumObtainState(ctx, sess, "0.0.0.0", "ROUTER", 15*time.Second, want)
+		if err != nil {
+			return err
+		}
+		row, ok := cerebrumAssocRow(append(st.Src, st.Dst...), id, a.LogicalLevelID)
+		if ok && cerebrumAssocMatches(row, a) {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("cerebrum-nb assoc: acknowledged, but %s level %s reads device=%q port=%q ip_uid=%q after %s: is the level's default device set in the Cerebrum user interface?",
+				id, a.LogicalLevelID, row.RMDeviceName, row.SrceID+row.DestID, row.RMIPUID, cerebrumDeviceSettle)
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+// cerebrumAssocRow is the ASSOCIATION row of one level: its N is the level.
+func cerebrumAssocRow(rows []cerebrumMneRow, id, level string) (codec.RoutingAssociation, bool) {
+	for _, r := range rows {
+		if r.ID != id {
+			continue
+		}
+		for _, as := range r.Assocs {
+			if strconv.Itoa(as.Index) == level {
+				return as, true
+			}
+		}
+	}
+	return codec.RoutingAssociation{}, false
+}
+
+// cerebrumAssocMatches compares a row with the action: an IP binding reads
+// back as RM_IP_UID "<device>|<sub-device>|<name>", a router one as the device
+// and its port.
+func cerebrumAssocMatches(row codec.RoutingAssociation, a codec.RoutingAction) bool {
+	if strings.HasSuffix(a.Type, "_IP") {
+		parts := []string{a.TargetDeviceName}
+		if a.SubDevice != "" {
+			parts = append(parts, a.SubDevice)
+		}
+		return row.RMIPUID == strings.Join(append(parts, a.TargetSenderName+a.TargetReceiverName), "|")
+	}
+	return row.RMDeviceName == a.TargetDeviceName && row.SrceID+row.DestID == a.TargetSrceID+a.TargetDestID
 }
 
 // assocAction builds the action from the flags, refusing what the server

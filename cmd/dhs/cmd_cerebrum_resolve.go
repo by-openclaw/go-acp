@@ -130,6 +130,9 @@ func cerebrumRoutesNeedNames(routes []routeSpec) bool {
 		if !cerebrumIsID(r.Dest) || !cerebrumIsID(r.Srce) || !cerebrumIsID(r.Level) {
 			return true
 		}
+		if r.SrceLevel != "" && !cerebrumIsID(r.SrceLevel) {
+			return true
+		}
 	}
 	return false
 }
@@ -164,7 +167,14 @@ func cerebrumResolveRoutes(routes []routeSpec, st *cerebrumState, w io.Writer) (
 			return nil, err
 		}
 		tell("level", strings.TrimSpace(r.Level), l)
-		out = append(out, routeSpec{Dest: d, Srce: s, Level: l})
+		sl := r.SrceLevel
+		if sl != "" {
+			if sl, err = cerebrumResolveID("level", r.SrceLevel, st.Lvl); err != nil {
+				return nil, err
+			}
+			tell("level", strings.TrimSpace(r.SrceLevel), sl)
+		}
+		out = append(out, routeSpec{Dest: d, Srce: s, Level: l, SrceLevel: sl})
 	}
 	return out, nil
 }

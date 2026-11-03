@@ -183,12 +183,14 @@ protocols rather than only within one.
 
 - No provider, by design — see [provider.md](provider.md). Cerebrum is a
   northbound API we consume; there is no "serve Cerebrum" role.
-- TLS root-CA pinning not yet wired; only `--insecure-skip-verify`
-  toggles validation.
-- **Metrics: the watch serves them, other verbs do not.**
-  `watch --metrics-addr :9100` serves Prometheus `/metrics` +
-  `/snapshot.json` labelled `proto` / `device` / `role`, and one counter
-  set survives a reconnect, so `dhs metrics show` scrapes a Cerebrum
-  like any other connector. Every verb writes its session counters to
-  the log sink (`uptime`, `rx`/`tx` frames and bytes, errors, latency
-  p50/p95/p99), but only the watch exposes an endpoint.
+- **Metrics: `listen` and `watch` serve them, one-shot verbs do not.**
+  `--metrics-addr :9100` serves Prometheus `/metrics` + `/snapshot.json`
+  labelled `proto` / `device` / `role`, and one counter set survives a
+  reconnect, so `dhs metrics show` scrapes a Cerebrum like any other
+  connector. Every verb writes its session counters to the log sink
+  (`uptime`, `rx`/`tx` frames and bytes, errors, latency p50/p95/p99).
+- **Liveness: a WebSocket Ping that always carries a payload.** Cerebrum
+  2.9.3 drops the socket after an empty Ping; see `consumer/keepalive.go`.
+  TCP keep-alive holds the session on its own (§1.1); `--keepalive -1ns
+  --keepalive-timeout -1ns` on `listen` and `watch` leaves only that, and a
+  dead link is then found after about 150 s.
