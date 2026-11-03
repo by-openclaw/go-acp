@@ -7,6 +7,26 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.53.0](https://github.com/by-openclaw/go-acp/compare/v0.52.1...v0.53.0) (2026-11-03)
+
+
+### Features
+
+* **consumer:** --node names the device behind a controller that fronts several (ADR-0037 P9) ([3931780](https://github.com/by-openclaw/go-acp/commit/39317800ae251fe21a9495e5a58a67bae2fa663d))
+* **consumer:** every get and set answer names its device model (ADR-0037 P4) ([ba4cf29](https://github.com/by-openclaw/go-acp/commit/ba4cf29066729d3e468147af5f4f7274c5fc587d))
+* **consumer:** every writing connector guards its writes with --write-to (ADR-0037 P5) ([ea7f3f3](https://github.com/by-openclaw/go-acp/commit/ea7f3f35154e17c73beecc19e4e0e0122102636f))
+* **consumer:** one write guard on set, import and ensure (ADR-0037 P5) ([e8cdd85](https://github.com/by-openclaw/go-acp/commit/e8cdd85953b3e5c9aa96cc2b85b0c67d53b8ff1f))
+* **consumer:** site limits narrow the factory limits on every write (ADR-0036 built, ADR-0037 P7) ([6c5f354](https://github.com/by-openclaw/go-acp/commit/6c5f354c57b79eeba3026202921053b445036974))
+* **rrcs:** get, set, walk and export are the generic verbs, through the plugin (ADR-0037 P2) ([8bb26ba](https://github.com/by-openclaw/go-acp/commit/8bb26badb9147a5c54b8bda9ae33b7da75c1e490))
+* **rrcs:** neutral verbs fall through to the generic table (ADR-0037 P1) ([06101c8](https://github.com/by-openclaw/go-acp/commit/06101c8f9637fa3d6c94c28d1ea1c4f22a14e996))
+* **rrcs:** Riedel RRCS consumer connector and connector parity (ADR-0037) ([b47befa](https://github.com/by-openclaw/go-acp/commit/b47befa52e4a3eb1ee3a07efea6edfc563ed01b3))
+* **rrcs:** the plugin validates a write offline (ADR-0037 P6) ([1e2e82a](https://github.com/by-openclaw/go-acp/commit/1e2e82af7c95464a25711d5acd69ea845060be4e))
+
+
+### Bug Fixes
+
+* **cerebrum-nb:** keep the session alive; new-install gaps ([#1574](https://github.com/by-openclaw/go-acp/issues/1574)) ([#1575](https://github.com/by-openclaw/go-acp/issues/1575)) ([4613199](https://github.com/by-openclaw/go-acp/commit/4613199db09bdfc7c82b13e6b7fad8c1b3fac818))
+
 ## [0.52.1](https://github.com/by-openclaw/go-acp/compare/v0.52.0...v0.52.1) (2026-11-02)
 
 
