@@ -171,6 +171,10 @@ func TestRRCSWatchAskForAll(t *testing.T) {
 	defer cancel()
 	var mu sync.Mutex
 	asked := map[string]int{}
+	// The run ends only once the volume registration has arrived: on a slow
+	// runner the panel spy events could finish before it was sent.
+	volumesAsked := make(chan struct{})
+	var volumesOnce sync.Once
 	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
 		mu.Lock()
 		asked[call.Method]++
@@ -187,6 +191,7 @@ func TestRRCSWatchAskForAll(t *testing.T) {
 			}()
 			return k, true
 		case "RegisterForEventsEx":
+			volumesOnce.Do(func() { close(volumesAsked) })
 			return codec.Array(k, codec.Int(0)), true
 		case "ChangePanelSpyRegistry":
 			url := "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int)) + call.Params[2].Str
@@ -202,6 +207,7 @@ func TestRRCSWatchAskForAll(t *testing.T) {
 						_ = resp.Body.Close()
 					}
 				}
+				<-volumesAsked
 				cancel()
 			}()
 			return k, true
