@@ -38,6 +38,11 @@
 --         the ROUTE action, SOURCE_ID + SOURCE_LEVEL_ID on the ROUTE row,
 --         USE_TAGS on the action;
 --       DEVICE_CONFIGURATION wrapped in ACTION (§4.5 on 2.9.3);
+--       v0.17 RouteMaster actions (§4.1.7-§4.2.5): COUNT / VIRTUAL /
+--         FEDERATION on RM_*_ADD and RM_*_DELETE, the LOGICAL_* and
+--         TARGET_* identity of SRCE_ASSOC / DEST_ASSOC (+ _IP), TAGS on
+--         RM_*_TAGS, ALT_MNE on *_MNE, and the RESULT verdict of the
+--         ROUTING reply envelope;
 --       positional <DEVICE_N …> sub-device children in DETAILS replies
 --         (surfaced as a sub-device count);
 --       MTID-less WILDCARD_COMPLETE — the live NOC emits a spurious one
@@ -107,6 +112,19 @@ f.xml_srce_level  = ProtoField.string("dhs_cerebrum_nb.xml.srce_level",   "SRCE_
 f.xml_source_id   = ProtoField.string("dhs_cerebrum_nb.xml.source_id",    "SOURCE_ID")
 f.xml_use_tags    = ProtoField.string("dhs_cerebrum_nb.xml.use_tags",     "USE_TAGS")
 f.xml_mnemonic    = ProtoField.string("dhs_cerebrum_nb.xml.mnemonic",     "MNEMONIC")
+f.xml_alt_mne     = ProtoField.string("dhs_cerebrum_nb.xml.alt_mne",      "ALT_MNE")
+-- v0.17 RouteMaster: create / delete, associations, tags
+f.xml_count       = ProtoField.string("dhs_cerebrum_nb.xml.count",        "COUNT")
+f.xml_virtual     = ProtoField.string("dhs_cerebrum_nb.xml.virtual",      "VIRTUAL")
+f.xml_federation  = ProtoField.string("dhs_cerebrum_nb.xml.federation",   "FEDERATION")
+f.xml_tags        = ProtoField.string("dhs_cerebrum_nb.xml.tags",         "TAGS")
+f.xml_logical_srce  = ProtoField.string("dhs_cerebrum_nb.xml.logical_srce",  "LOGICAL_SRCE_ID")
+f.xml_logical_dest  = ProtoField.string("dhs_cerebrum_nb.xml.logical_dest",  "LOGICAL_DEST_ID")
+f.xml_logical_level = ProtoField.string("dhs_cerebrum_nb.xml.logical_level", "LOGICAL_LEVEL_ID")
+f.xml_target_device = ProtoField.string("dhs_cerebrum_nb.xml.target_device", "TARGET_DEVICE_NAME")
+f.xml_target_level  = ProtoField.string("dhs_cerebrum_nb.xml.target_level",  "TARGET_LEVEL_ID")
+f.xml_target_io     = ProtoField.string("dhs_cerebrum_nb.xml.target_io",     "TARGET_SRCE_ID / TARGET_DEST_ID")
+f.xml_target_ip     = ProtoField.string("dhs_cerebrum_nb.xml.target_ip",     "TARGET_SENDER_NAME / TARGET_RECEIVER_NAME")
 -- Lock attrs (wire-actual: LOCK on actions, LOCK_STATE + LOCKED_BY on
 -- events; RELEASED is the undocumented clearing value — live 2026-08-16)
 f.xml_lock        = ProtoField.string("dhs_cerebrum_nb.xml.lock",         "LOCK")
@@ -247,27 +265,43 @@ local function extract_xml_attrs(s)
   local r = {
     root        = root,
     mtid        = xml_attr(s, "MTID"),
-    typ         = xml_attr(s, "TYPE"),
+    typ         = xml_attr_exact(s, "TYPE"), -- exact: DEVICE_TYPE may come first
     err         = xml_attr(s, "ERROR"),
     err_code    = xml_attr(s, "ERROR_CODE"),
-    device_type = xml_attr(s, "DEVICE_TYPE"), -- 0v16 §4.5 DEVICE_CONFIGURATION
+    device_type = xml_attr_exact(s, "DEVICE_TYPE"), -- 0v16 §4.5 DEVICE_CONFIGURATION
     -- Routing identity (first occurrence = root/first row attrs; ROUTE
-    -- children's SOURCE_ID is a different attribute name, so no clash)
-    dest_id     = xml_attr(s, "DEST_ID"),
-    srce_id     = xml_attr(s, "SRCE_ID"),
+    -- children's SOURCE_ID is a different attribute name, so no clash).
+    -- Exact names: LOGICAL_SRCE_ID / TARGET_SRCE_ID / TARGET_DEVICE_TYPE
+    -- (v0.17 associations) end in the same words.
+    dest_id     = xml_attr_exact(s, "DEST_ID"),
+    srce_id     = xml_attr_exact(s, "SRCE_ID"),
     level_id    = xml_attr_exact(s, "LEVEL_ID"),
     dest_level  = xml_attr_exact(s, "DEST_LEVEL_ID"),
     srce_level  = xml_attr_exact(s, "SRCE_LEVEL_ID") or xml_attr_exact(s, "SOURCE_LEVEL_ID"),
     source_id   = xml_attr_exact(s, "SOURCE_ID"),
     use_tags    = xml_attr_exact(s, "USE_TAGS"),
     mnemonic    = xml_attr(s, "MNEMONIC"),
+    alt_mne     = xml_attr_exact(s, "ALT_MNE"),
+    -- v0.17 RouteMaster (§4.1.7-§4.2.5)
+    count       = xml_attr_exact(s, "COUNT"),
+    virtual     = xml_attr_exact(s, "VIRTUAL"),
+    federation  = xml_attr_exact(s, "FEDERATION"),
+    tags        = xml_attr_exact(s, "TAGS"),
+    logical_srce  = xml_attr_exact(s, "LOGICAL_SRCE_ID"),
+    logical_dest  = xml_attr_exact(s, "LOGICAL_DEST_ID"),
+    logical_level = xml_attr_exact(s, "LOGICAL_LEVEL_ID"),
+    target_device = xml_attr_exact(s, "TARGET_DEVICE_NAME"),
+    target_level  = xml_attr_exact(s, "TARGET_LEVEL_ID"),
+    target_io     = xml_attr_exact(s, "TARGET_SRCE_ID") or xml_attr_exact(s, "TARGET_DEST_ID"),
+    target_ip     = xml_attr_exact(s, "TARGET_SENDER_NAME") or xml_attr_exact(s, "TARGET_RECEIVER_NAME"),
     -- Lock (wire-actual): LOCK on actions; LOCK_STATE + LOCKED_BY on
     -- events. LOCK_STATE must be read before LOCK — xml_attr matches the
     -- substring "LOCK" inside "LOCK_STATE" otherwise.
     lock_state  = xml_attr(s, "LOCK_STATE"),
     locked_by   = xml_attr(s, "LOCKED_BY"),
     -- Device-object rows (§5.4)
-    device_name = xml_attr(s, "DEVICE_NAME"),
+    -- exact: TARGET_DEVICE_NAME (v0.17 associations) also ends in DEVICE_NAME
+    device_name = xml_attr_exact(s, "DEVICE_NAME"),
     sub_device  = xml_attr(s, "SUB_DEVICE"),
     object      = xml_attr(s, "OBJECT"),
     min         = xml_attr(s, "MIN"),
@@ -291,7 +325,8 @@ local function extract_xml_attrs(s)
   -- there), the OBJECT_VALUE child's VALUE in obtain replies, and the
   -- SET_VALUE action's VALUE under <ACTION>. DEVICE_CONFIGURATION is
   -- excluded — its <RESULT VALUE=…> verdict is surfaced as RESULT instead.
-  if not s:upper():find("DEVICE_CONFIGURATION", 1, true) then
+  local up = s:upper()
+  if not up:find("DEVICE_CONFIGURATION", 1, true) and not up:find("<RESULT", 1, true) then
     r.value = s:match("[%s][Vv][Aa][Ll][Uu][Ee]%s*=%s*\"([^\"]*)\"")
         or s:match("[%s][Vv][Aa][Ll][Uu][Ee]%s*=%s*'([^']*)'")
   end
@@ -464,6 +499,19 @@ local function dissect_ws_frame(buffer, pinfo, tree, offset)
       if x.level_id    then subtree:add(f.xml_level_id,    x.level_id);    info = info .. " LVL=" .. x.level_id end
       if x.use_tags    then subtree:add(f.xml_use_tags,    x.use_tags);    info = info .. " USE_TAGS=" .. x.use_tags end
       if x.mnemonic    then subtree:add(f.xml_mnemonic,    x.mnemonic);    info = info .. " MNE=" .. string.format("%q", x.mnemonic) end
+      if x.alt_mne     then subtree:add(f.xml_alt_mne,     x.alt_mne);     info = info .. " ALT=" .. x.alt_mne end
+      -- v0.17 RouteMaster create / delete / association / tags
+      if x.count       then subtree:add(f.xml_count,       x.count);       info = info .. " COUNT=" .. x.count end
+      if x.virtual     then subtree:add(f.xml_virtual,     x.virtual);     info = info .. " VIRTUAL=" .. x.virtual end
+      if x.federation  then subtree:add(f.xml_federation,  x.federation);  info = info .. " FED=" .. x.federation end
+      if x.logical_srce  then subtree:add(f.xml_logical_srce,  x.logical_srce);  info = info .. " RM_SRCE=" .. x.logical_srce end
+      if x.logical_dest  then subtree:add(f.xml_logical_dest,  x.logical_dest);  info = info .. " RM_DEST=" .. x.logical_dest end
+      if x.logical_level then subtree:add(f.xml_logical_level, x.logical_level); info = info .. " RM_LVL=" .. x.logical_level end
+      if x.target_device then subtree:add(f.xml_target_device, x.target_device); info = info .. " -> " .. string.format("%q", x.target_device) end
+      if x.target_level  then subtree:add(f.xml_target_level,  x.target_level);  info = info .. " lvl=" .. x.target_level end
+      if x.target_io     then subtree:add(f.xml_target_io,     x.target_io);     info = info .. " io=" .. x.target_io end
+      if x.target_ip     then subtree:add(f.xml_target_ip,     x.target_ip);     info = info .. " ip=" .. string.format("%q", x.target_ip) end
+      if x.tags        then subtree:add(f.xml_tags,        x.tags);        info = info .. " TAGS=" .. string.format("%q", x.tags) end
       -- Lock lifecycle (LOCK on actions; LOCK_STATE/LOCKED_BY on events —
       -- RELEASED is the wire-actual clearing value, keys.md wire-actual)
       if x.lock        then subtree:add(f.xml_lock,        x.lock);        info = info .. " LOCK=" .. x.lock end

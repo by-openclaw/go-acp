@@ -317,6 +317,58 @@ func fixtures(t *testing.T) []fixture {
 					`</DATASTORE_CHANGE>`)
 			},
 		},
+
+		// ---- v0.17 RouteMaster (codec_v017_test.go examples) -------
+		{
+			file: "tx_action_rm_srce_add.xml",
+			how:  "codec.EncodeAction(7, &RoutingAction{TYPE:RM_SRCE_ADD COUNT:4}) — v0.17 §4.2.3 p16",
+			gen: func() []byte {
+				return codec.EncodeAction(7, &codec.RoutingAction{Type: "RM_SRCE_ADD", Count: "4", Virtual: "0", Federation: "0"})
+			},
+		},
+		{
+			file: "tx_action_rm_dest_add_virtual_federation.xml",
+			how:  "codec.EncodeAction(8, &RoutingAction{TYPE:RM_DEST_ADD VIRTUAL:1 FEDERATION:1}) — v0.17 §4.2.3 p16",
+			gen: func() []byte {
+				return codec.EncodeAction(8, &codec.RoutingAction{Type: "RM_DEST_ADD", Count: "1", Virtual: "1", Federation: "1"})
+			},
+		},
+		{
+			file: "tx_action_rm_srce_delete.xml",
+			how:  "codec.EncodeAction(9, &RoutingAction{TYPE:RM_SRCE_DELETE SRCE_ID:21,22,23}) — v0.17 §4.2.4 p17",
+			gen: func() []byte {
+				return codec.EncodeAction(9, &codec.RoutingAction{Type: "RM_SRCE_DELETE", SrceID: "21,22,23", Federation: "0"})
+			},
+		},
+		{
+			file: "tx_action_srce_assoc_federation.xml",
+			how:  "codec.EncodeAction(11, &RoutingAction{TYPE:SRCE_ASSOC FEDERATION:1}) — v0.17 §4.1.7 p14",
+			gen: func() []byte {
+				return codec.EncodeAction(11, &codec.RoutingAction{Type: "SRCE_ASSOC", LogicalSrceID: "199", LogicalLevelID: "2",
+					TargetDeviceName: "Hybrid Router", TargetDeviceType: "ROUTER", TargetLevelID: "1", TargetSrceID: "100", Federation: "1"})
+			},
+		},
+		{
+			file: "tx_action_rm_srce_tags_federation.xml",
+			how:  "codec.EncodeAction(13, &RoutingAction{TYPE:RM_SRCE_TAGS FEDERATION:1}) — v0.17 §4.2.1 p15",
+			gen: func() []byte {
+				return codec.EncodeAction(13, &codec.RoutingAction{Type: "RM_SRCE_TAGS", SrceID: "1", LevelID: "1", Tags: "Tag1", Federation: "1"})
+			},
+		},
+		{
+			file: "rx_routing_rm_result_accepted.xml",
+			how:  "codec.Decode(v0.17 §4.2.5 p17 ROUTING RM_SRCE_ADD + RESULT ACCEPTED)",
+			gen: func() []byte {
+				return rxRoundTrip(t, `<ROUTING MTID="7" TYPE="RM_SRCE_ADD" FEDERATION="0"><RESULT VALUE="ACCEPTED"/></ROUTING>`)
+			},
+		},
+		{
+			file: "rx_routing_rm_result_failed.xml",
+			how:  "codec.Decode(v0.17 §4.2.5 p17 ROUTING RM_DEST_DELETE + RESULT FAILED)",
+			gen: func() []byte {
+				return rxRoundTrip(t, `<ROUTING TYPE="RM_DEST_DELETE" FEDERATION="1"><RESULT VALUE="FAILED"/></ROUTING>`)
+			},
+		},
 	}
 }
 
