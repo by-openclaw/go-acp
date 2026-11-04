@@ -90,6 +90,19 @@ go test ./internal/cerebrum-nb/testdata/fixtures/ -run TestFixtures -count=1   #
 | `rx_salvo_change_instance_details.xml` | RX | `Decode` SALVO_CHANGE INSTANCE_DETAILS | §5.3.3 p28 |
 | `rx_category_change_details.xml` | RX | `Decode` CATEGORY_CHANGE CATEGORY_DETAILS | §5.2.2 p28 |
 | `rx_datastore_change_data.xml` | RX | `Decode` DATASTORE_CHANGE FILE + `<DATA>` | §5.5.1 p30 |
+| `tx_action_rm_srce_add.xml` | TX | `EncodeAction(&RoutingAction{RM_SRCE_ADD COUNT=4})` | v0.17 §4.2.3 p16 |
+| `tx_action_rm_dest_add_virtual_federation.xml` | TX | `EncodeAction(&RoutingAction{RM_DEST_ADD VIRTUAL=1 FEDERATION=1})` | v0.17 §4.2.3 p16 |
+| `tx_action_rm_srce_delete.xml` | TX | `EncodeAction(&RoutingAction{RM_SRCE_DELETE SRCE_ID=21,22,23})` | v0.17 §4.2.4 p17 |
+| `tx_action_srce_assoc_federation.xml` | TX | `EncodeAction(&RoutingAction{SRCE_ASSOC FEDERATION=1})` | v0.17 §4.1.7 p14 |
+| `tx_action_rm_srce_tags_federation.xml` | TX | `EncodeAction(&RoutingAction{RM_SRCE_TAGS FEDERATION=1})` | v0.17 §4.2.1 p15 |
+| `rx_routing_rm_result_accepted.xml` | RX | `Decode` ROUTING RM_SRCE_ADD + `<RESULT VALUE="ACCEPTED">` | v0.17 §4.2.5 p17 |
+| `rx_routing_rm_result_failed.xml` | RX | `Decode` ROUTING RM_DEST_DELETE + `<RESULT VALUE="FAILED">` | v0.17 §4.2.5 p17 |
+
+The v0.17 frames are the page-cited examples already pinned in
+[`../../codec/codec_v017_test.go`](../../codec/codec_v017_test.go). Every
+fixture of this table, wrapped in a WebSocket text frame, dissects with
+[`dhs_cerebrum_nb.lua`](../../wireshark/dhs_cerebrum_nb.lua) to an Info
+line carrying its arguments (2026-11-04, tshark 4.2.2).
 
 Covers the headline 0v16 additions over the 0v13 baseline: the
 `<DATASTORES>` login body, `<DEVICE_CONFIGURATION>` CRUD + `<RESULT>`, the
