@@ -1358,7 +1358,7 @@ VERBS
   usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N|NAME = fan-out | --dest N|NAME = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L[,L…] IDs or mnemonics] [--router IP]
   replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
-  import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0. A plan naming a source, destination or level the server does not have is refused whole (exit 2), nothing sent.
+  import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0. A plan naming a source, destination or level the server does not have is refused whole (exit 2), nothing sent. DEVICE mode: --device NAME|IP [--by-name] --sub-device N --in FILE (the file export --device wrote, json|yaml|csv; only its rows are in scope) converges device objects, each judged by its MIN/MAX/ENUM_LIST and read back after the write.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP|NAME [--by-name] [--device-type DEVICE|ROUTER — omitted: DEVICE first, ROUTER if the server refuses (§5.4.2 needs the class; 2.9.3 NACKs 10 without it)]
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
@@ -2234,6 +2234,8 @@ $ dhs consumer cerebrum-nb import --help
 Usage of cerebrum-nb import:
   -allow-clear
     	an EMPTY cell in a managed label column CLEARS the live label (MNEMONIC="" — clear form live-UNVERIFIED; always --check first)
+  -by-name
+    	--device is a DEVICE_NAME instead of an IP
   -ca-file string
     	with --tls, PEM bundle of the CA to trust instead of the system pool
   -capture string
@@ -2250,12 +2252,16 @@ Usage of cerebrum-nb import:
     	alias for --xpoint (kept from the first release)
   -debug
     	verbose RX/TX XML logging
+  -device export --device
+    	DEVICE mode: converge one sub-device on the snapshot export --device wrote (--in); device NAME (--by-name) or IP
   -device-name string
     	address by DEVICE_NAME instead of --router
   -dry-run
     	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -dst string
     	dest-mnemonic CSV to import (columns dest,mnemonic — 0v16 §4.1.6)
+  -in string
+    	DEVICE mode: the snapshot file (json|yaml|csv); only its rows are in scope, each judged by the object's MIN/MAX/ENUM_LIST
   -in-dir export --out-dir
     	directory holding an export set: <prefix>-xpoint.csv / -src.csv / -dst.csv / -level.csv / -cat-src.csv / -cat-dst.csv (the exact files export --out-dir wrote; files absent from the dir are simply out of scope)
   -insecure-skip-verify
@@ -2290,6 +2296,8 @@ Usage of cerebrum-nb import:
     	source-mnemonic CSV to import (columns srce,mnemonic — router mnemonics are per-ID, not per-level, 0v16 §4.1.5)
   -srce-lock string
     	SRCE_LOCK CSV to import (columns srce,state,levels[,locked_by] — same rules as --lock)
+  -sub-device string
+    	DEVICE mode: the sub-device index
   -syslog-addr string
     	also forward logs as RFC 5424 UDP datagrams to host:port (non-blocking: a slow collector drops records; drops counted on stderr — #934)
   -timeout duration
