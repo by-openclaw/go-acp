@@ -124,7 +124,7 @@ func runImport(ctx context.Context, args []string) error {
 		// ADR-0028 default home: import reads exactly where the
 		// defaulted export writes — snapshots/<proto>/<host>/params.*
 		// (first existing of json/yaml/csv).
-		dir := snapshotDir(cf.protocol, deviceKey(host))
+		dir := snapshotDir(cf.protocol, deviceKeyFor(cf.protocol, host))
 		for _, name := range []string{"params.json", "params.yaml", "params.csv"} {
 			p := filepath.Join(dir, name)
 			if _, statErr := os.Stat(p); statErr == nil {

@@ -50,7 +50,7 @@ var probelReadNameSizes = []codec.NameLength{codec.NameLen4, codec.NameLen8, cod
 // folder for matrix 0, its matrix-N/ subfolder for any other, so the
 // matrices of one router never overwrite each other's facets.
 func probelMatrixDir(addr string, matrix int) string {
-	dir := snapshotDir("probel-sw08p", deviceKey(addr))
+	dir := snapshotDir("probel-sw08p", deviceKeyFor("probel-sw08p", addr))
 	if matrix != 0 {
 		dir = filepath.Join(dir, fmt.Sprintf("matrix-%d", matrix))
 	}
@@ -230,7 +230,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 
 	fmt.Printf("exported matrix=%d levels=%v:\n  %s  (descriptor)\n  %s  (%d sources per level)\n  %s  (%d dests)\n  %s  (%d crosspoints, all levels)\n%s  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
 		mtx, levels, descPath, srcPath, probelNameCount(srcBlocks[0].labels), dstPath, probelNameCount(dstLabels), xpPath, nXP, protNote)
-	return writePackMeta(*outDir, "probel-sw08p", deviceKey(addr))
+	return writePackMeta(*outDir, "probel-sw08p", deviceKeyFor("probel-sw08p", addr))
 }
 
 // writeProbelProtectCSV emits the protect dump as

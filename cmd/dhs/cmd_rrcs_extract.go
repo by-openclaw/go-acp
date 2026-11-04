@@ -178,7 +178,7 @@ func rrcsExtract(ctx context.Context, args []string) error {
 			return err
 		}
 	}
-	mf := rrcs.Manifest(model, host, port, set)
+	mf := keyManifest(rrcs.Manifest(model, host, port, set), rrcsProto, host)
 	mfPath, err := manifest.Write(treeStore.BaseDir(), mf)
 	if err != nil {
 		return fmt.Errorf("rrcs extract: %w", err)

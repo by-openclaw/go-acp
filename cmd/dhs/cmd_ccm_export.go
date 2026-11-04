@@ -81,7 +81,7 @@ func runCCMExport(ctx context.Context, args []string) error {
 	// Identity key: productName@productVersion (ADR-0022 Model@SwRev).
 	key := sanitizeKey(dev.ProductName + "@" + dev.ProductVersion)
 	if *out == "" {
-		*out = snapshotDir("ccm", deviceKey(host))
+		*out = snapshotDir("ccm", deviceKeyFor("ccm", host))
 	}
 	dir := filepath.Join(*out, key)
 	if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
