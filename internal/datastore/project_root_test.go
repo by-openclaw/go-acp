@@ -98,3 +98,14 @@ func TestSanitizePathSeg(t *testing.T) {
 		})
 	}
 }
+
+// DHS_DATA_DIR (the global --data-dir) names the root, wherever the
+// binary sits.
+func TestProjectRoot_DataDirEnv(t *testing.T) {
+	d := t.TempDir()
+	t.Setenv(DataDirEnv, d)
+	swapExecutable(t, func() (string, error) { return filepath.Join(d, "elsewhere", "bin", "dhs"), nil })
+	if got, err := ProjectRoot(); err != nil || got != d {
+		t.Fatalf("ProjectRoot = %q, %v; want %q", got, err, d)
+	}
+}

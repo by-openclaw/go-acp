@@ -591,7 +591,8 @@ dhs consumer cerebrum-nb extract HOST --user U --pass P \
 #   root discovered via OBJECT="…": N top group(s): …
 #   identity: CONVERT IP@6.7.4 (from the device tree)
 #   → .cache/dm/cerebrum-nb/<Model@SwRev>.json   (flat canonical Objects)
-#   → .cache/manifest/<device-slug>.json         (device → sub-device → DM ref)
+#   → .cache/manifest/cerebrum-nb/<ip>.json       (device → every sub-device → DM ref;
+#                                                 the name slug when addressed --by-name)
 ```
 
 - **The root has to come from somewhere.** Northbound cannot list a device's
@@ -631,7 +632,7 @@ dhs consumer cerebrum-nb export HOST --user U --pass P \
 
 Same walk as `extract`, but the result goes to a snapshot FILE instead
 of the DM store: json | yaml | csv picked by `--format` then the
-`--out` extension (stdout when `--out` is omitted) — the exact file
+`--out` extension (`snapshots/cerebrum-nb/<device>/params.csv` when `--out` is omitted) — the exact file
 shape `dhs consumer acp2 export` produces for a slot. One facet
 (parameters) → one file; the multi-file `--out-dir` set remains the
 Matrix domain's shape (xpoint/src/dst/level/lock facets). The future

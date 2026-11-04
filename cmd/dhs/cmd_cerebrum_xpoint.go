@@ -275,8 +275,16 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 		return oerr
 	}
 	if *devImport != "" {
-		if *devSub == "" || *devIn == "" {
-			return cerebrumValErr("import", "--device needs --sub-device and --in (the file export --device wrote)")
+		if *devSub == "" {
+			return cerebrumValErr("import", "--device needs --sub-device (and --in, or the file export --device wrote in its default place)")
+		}
+		if *devIn == "" {
+			// ADR-0028: import reads where the defaulted export wrote.
+			*devIn = filepath.Join(snapshotDir("cerebrum-nb", strings.TrimSpace(*devImport)), "params.csv")
+			if _, serr := os.Stat(*devIn); serr != nil {
+				return cerebrumValErr("import", fmt.Sprintf("no --in and no %s (export --device writes it there)", *devIn))
+			}
+			fmt.Fprintf(os.Stderr, "cerebrum-nb import: default snapshot file %s (ADR-0028)\n", *devIn)
 		}
 		p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "import")
 		if err != nil {

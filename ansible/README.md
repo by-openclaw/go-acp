@@ -11,6 +11,10 @@ This is the **authoritative idempotency layer**. The PowerShell scripts under
 `scripts/acp1/` are the fast smoke layer; here a real `ansible-playbook` run
 *is* the consumer, so "run twice → 0 changes" is proven, not simulated.
 
+**Export a device to CSV and import it back (any connector):** see
+[`docs/runbook-export-import.md`](../docs/runbook-export-import.md) —
+`playbooks/csv-export.yml` + `playbooks/csv-import.yml`.
+
 ## Why wrap the CLI (not a custom module)
 
 The CLI `ensure` already owns all the protocol logic — read current → predict the

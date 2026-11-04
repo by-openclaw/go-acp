@@ -457,7 +457,7 @@ skipped and listed.
 		fs.PrintDefaults()
 	}
 	cf := newRRCSFlags(fs)
-	file := fs.String("file", "", "snapshot file written by export, json or csv (required)")
+	file := fs.String("file", "", "snapshot file written by export, json or csv (default: snapshots/rrcs/<ip>/params.json or .csv)")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
 	var paths rrcsProps
 	fs.Var(&paths, "path", "apply only the rows whose path contains this text; comma-separated or repeated")
@@ -468,7 +468,18 @@ skipped and listed.
 		return rrcsValErr("import", "want exactly one host[:port] argument")
 	}
 	if *file == "" {
-		return rrcsValErr("import", "want --file SNAPSHOT")
+		// ADR-0028: import reads where the defaulted export wrote.
+		dir := snapshotDir(rrcsProto, deviceKey(fs.Arg(0)))
+		for _, name := range []string{"params.json", "params.csv"} {
+			if _, serr := os.Stat(filepath.Join(dir, name)); serr == nil {
+				*file = filepath.Join(dir, name)
+				fmt.Fprintf(os.Stderr, "rrcs import: default snapshot file %s (ADR-0028)\n", *file)
+				break
+			}
+		}
+		if *file == "" {
+			return rrcsValErr("import", "want --file SNAPSHOT (nothing in "+dir+")")
+		}
 	}
 	if !dryRun {
 		if err := rrcsWriteGuard("import", fs.Arg(0), *writeTo); err != nil {

@@ -80,7 +80,14 @@ func NewTreeStoreInProjectCache() (*TreeStore, error) {
 // (ADR-0028): <X> when the binary lives at <X>/bin/ (dev / convention
 // layout — keeps artifacts OUT of bin/), else the binary's own dir.
 // .cache/, snapshots/ and captures/ are siblings under this root.
+//
+// DHS_DATA_DIR (set by the global --data-dir flag) names a dedicated
+// root instead, for a plant that keeps its artifacts apart from the
+// binary.
 func ProjectRoot() (string, error) {
+	if d := os.Getenv(DataDirEnv); d != "" {
+		return filepath.Abs(d)
+	}
 	exe, err := osExecutable()
 	if err != nil {
 		return "", fmt.Errorf("storage: locate binary: %w", err)
@@ -91,6 +98,9 @@ func ProjectRoot() (string, error) {
 	}
 	return parent, nil
 }
+
+// DataDirEnv names the environment variable that overrides ProjectRoot.
+const DataDirEnv = "DHS_DATA_DIR"
 
 // SanitizePathSeg strips characters that are illegal in filenames on
 // Windows + POSIX — the shared sanitiser for ADR-0028 path segments

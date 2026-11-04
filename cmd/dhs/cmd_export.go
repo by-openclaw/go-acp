@@ -15,15 +15,15 @@ import (
 )
 
 // runExport walks every present slot on the device and writes the
-// snapshot to disk in json / yaml / csv form. Stream to stdout when
-// --out is omitted. Format is derived from the --format flag first,
+// snapshot to disk in json / yaml / csv form, by default to
+// snapshots/<proto>/<ip>/params.<fmt> (ADR-0028); --out - streams to stdout. Format is derived from the --format flag first,
 // the --out filename extension second, defaulting to json.
 func runExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("export", flag.ExitOnError)
 	fs.Usage = verbUsageFn(fs, helpExport) // #751 G5: -h = rich help + all flags
 	cf := addCommonFlags(fs)
 	format := fs.String("format", "", "output format: json | yaml | csv (default: json or from --out extension)")
-	out := fs.String("out", "", "output file path (default: stdout)")
+	out := fs.String("out", "", "output file path (default: snapshots/<proto>/<ip>/params.<fmt>; - = stdout)")
 	slot := fs.Int("slot", -1, "export only this slot (-1 = all present slots)")
 	pathFlag := fs.String("path", "", "filter objects by path prefix (e.g. BOARD, PSU/1); with --out-dir: the matrix to export (dotted path or numeric OID)")
 	outDir := fs.String("out-dir", "", "canonical matrix file-set mode (#461): write <prefix>-matrix.csv / -xpoint.csv / -src.csv / -dst.csv for the matrix named by --path (same grammar as probel-sw08p / cerebrum-nb)")
@@ -49,7 +49,7 @@ func runExport(ctx context.Context, args []string) error {
 		case "csv":
 			ext = "csv"
 		}
-		*out = filepath.Join(snapshotDir(cf.protocol, host), "params."+ext)
+		*out = filepath.Join(snapshotDir(cf.protocol, deviceKey(host)), "params."+ext)
 		fmt.Fprintf(os.Stderr, "export: default snapshot file %s (ADR-0028)\n", *out)
 	}
 

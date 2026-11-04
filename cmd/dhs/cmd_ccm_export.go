@@ -31,7 +31,7 @@ import (
 
 func runCCMExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("consumer ccm export", flag.ContinueOnError)
-	out := fs.String("out", "ccm-export", "output directory root")
+	out := fs.String("out", "", "output directory root (default: snapshots/ccm/<ip>/, ADR-0028)")
 	verifyTLS := fs.Bool("verify-tls", false, "verify the device certificate (default: skip)")
 	apiBase := fs.String("api-base", "", "the path the API hangs off ('/api/v1' on BRIDGE 7.0.3, '/api' on the newer firmware). Empty asks the device.")
 	apiSpec := fs.String("api-spec", "", "the OpenAPI document relative to the base ('/docs/api.yml' on BRIDGE 7.0.3, '/docs/openapi.yml' on the newer firmware). Empty tries both.")
@@ -80,6 +80,9 @@ func runCCMExport(ctx context.Context, args []string) error {
 
 	// Identity key: productName@productVersion (ADR-0022 Model@SwRev).
 	key := sanitizeKey(dev.ProductName + "@" + dev.ProductVersion)
+	if *out == "" {
+		*out = snapshotDir("ccm", deviceKey(host))
+	}
 	dir := filepath.Join(*out, key)
 	if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
 		return fmt.Errorf("consumer ccm export: %w", mkErr)

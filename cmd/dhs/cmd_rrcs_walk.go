@@ -53,7 +53,7 @@ func rrcsWalk(ctx context.Context, args []string) error {
 	defer closeFn()
 	started := time.Now()
 	if *out == "auto" {
-		*out = filepath.Join(snapshotDir(rrcsProto, hostOnly(fs.Arg(0))),
+		*out = filepath.Join(snapshotDir(rrcsProto, deviceKey(fs.Arg(0))),
 			"snapshot-"+started.UTC().Format("20060102T1504Z")+".json")
 	}
 	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {

@@ -121,6 +121,26 @@ The same header applies to `--log` files.
    is covered by capture replay (`validate`) + the fake-WS test
    server, not a provider.
 
+### 9. Amendment 2026-11-04 (one composer, every connector)
+
+- **A hostname target is resolved to its IP** for every folder and
+  manifest key (`deviceKey`), so one device has one folder whether it
+  was addressed by name or by IP; the name goes into the manifest's
+  `fqdn`. A name that does not resolve keys by itself, with a warning.
+  A port is never part of a key.
+- **Manifests live beside `dm/`** in the tree store's `.cache`, never
+  in the current directory. A device behind a control plane
+  (cerebrum-nb) has ONE manifest holding every sub-device extracted.
+- **One router, several matrices** (probel-sw08p): matrix 0 in the
+  device folder, matrix N in `snapshots/probel-sw08p/<ip>/matrix-N/`;
+  `import --matrix N` reads there.
+- **Root of the buckets**: the install dir (`<X>` for `<X>/bin/dhs`,
+  so `/usr/local/` for the fleet's `/usr/local/bin/dhs`) unless the
+  global `--data-dir DIR` (or `DHS_DATA_DIR`) names a dedicated one.
+- Defaults added: ccm `export` → `snapshots/ccm/<ip>/<Product@Ver>/`,
+  nmos `export` → `snapshots/amwa/<ip>/`, cerebrum-nb `import --device`
+  and rrcs `import` read the file their `export` wrote.
+
 ## Verification (three layers, oracle-per-tier)
 
 1. **CI, no wire**: unit tests pin the path composer — for each

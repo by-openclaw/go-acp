@@ -46,11 +46,22 @@ var probelReadNameSizes = []codec.NameLength{codec.NameLen4, codec.NameLen8, cod
 // (matrix, level)-scoped; dest labels are matrix-scoped (level_id is the run's
 // level, for reference). Pass --srcs / --dsts to bound the collection on big
 // matrices; otherwise it streams until idle.
+// probelMatrixDir is a matrix's default snapshot folder: the device's
+// folder for matrix 0, its matrix-N/ subfolder for any other, so the
+// matrices of one router never overwrite each other's facets.
+func probelMatrixDir(addr string, matrix int) string {
+	dir := snapshotDir("probel-sw08p", deviceKey(addr))
+	if matrix != 0 {
+		dir = filepath.Join(dir, fmt.Sprintf("matrix-%d", matrix))
+	}
+	return dir
+}
+
 func runProbelExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-export", flag.ContinueOnError)
 	matrix := fs.Int("matrix", 0, "matrix id (0-255)")
 	levelsFlag := fs.String("levels", "", "levels to export, e.g. 0,1,2 (empty = every level the matrix answers, from 0 up)")
-	outDir := fs.String("out", "", "output directory for the three CSV files (omitted = snapshots/probel-sw08p/<host>/ with plain facet names, ADR-0028)")
+	outDir := fs.String("out", "", "output directory for the three CSV files (omitted = snapshots/probel-sw08p/<ip>/, matrix N>0 in its matrix-N/ subfolder, plain facet names, ADR-0028)")
 	prefix := fs.String("prefix", "sw08p", "CSV filename prefix (ignored in the default snapshot folder — plain facet names there)")
 	timeout := fs.Duration("timeout", 120*time.Second, "overall timeout")
 	addr, flagArgs := popPositional(args)
@@ -63,7 +74,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 	// ADR-0028 default home: --out omitted → the host's snapshot
 	// folder, plain facet names (never a cwd surprise).
 	if *outDir == "" {
-		*outDir = snapshotDir("probel-sw08p", hostOnly(addr))
+		*outDir = probelMatrixDir(addr, *matrix)
 		*prefix = ""
 		fmt.Fprintf(os.Stderr, "probel-sw08p export: default snapshot folder %s (ADR-0028)\n", *outDir)
 	}
@@ -219,7 +230,7 @@ func runProbelExport(ctx context.Context, args []string) error {
 
 	fmt.Printf("exported matrix=%d levels=%v:\n  %s  (descriptor)\n  %s  (%d sources per level)\n  %s  (%d dests)\n  %s  (%d crosspoints, all levels)\n%s  (label_16 left empty — read cmds support 4/8/12 only; fill it for import)\n",
 		mtx, levels, descPath, srcPath, probelNameCount(srcBlocks[0].labels), dstPath, probelNameCount(dstLabels), xpPath, nXP, protNote)
-	return writePackMeta(*outDir, "probel-sw08p", hostOnly(addr))
+	return writePackMeta(*outDir, "probel-sw08p", deviceKey(addr))
 }
 
 // writeProbelProtectCSV emits the protect dump as
@@ -396,7 +407,8 @@ func labelColumnForSize(size int) (int, error) {
 // without sending.
 func runProbelImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("probel-import", flag.ContinueOnError)
-	inDir := fs.String("in", "", "directory containing the CSV files (omitted = snapshots/probel-sw08p/<host>/ — import reads where export writes, ADR-0028)")
+	inDir := fs.String("in", "", "directory containing the CSV files (omitted = snapshots/probel-sw08p/<ip>/ — import reads where export writes, ADR-0028)")
+	inMatrix := fs.Int("matrix", 0, "with no --in: read the default folder of this matrix (matrix N>0 lives in matrix-N/); the rows carry their own matrix_id")
 	prefix := fs.String("prefix", "sw08p", "CSV filename prefix (ignored in the default snapshot folder — plain facet names there)")
 	size := fs.Int("size", 8, "which label width column to import: 4 | 8 | 12 | 16")
 	dryRun := fs.Bool("dry-run", false, "preview the would-send actions without sending")
@@ -417,7 +429,7 @@ func runProbelImport(ctx context.Context, args []string) error {
 	// ADR-0028 default home: --in omitted → the host's snapshot folder
 	// (exactly where the defaulted export wrote, plain facet names).
 	if *inDir == "" {
-		*inDir = snapshotDir("probel-sw08p", hostOnly(addr))
+		*inDir = probelMatrixDir(addr, *inMatrix)
 		*prefix = ""
 		fmt.Fprintf(os.Stderr, "probel-sw08p import: default snapshot folder %s (ADR-0028)\n", *inDir)
 	}

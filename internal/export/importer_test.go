@@ -3,6 +3,7 @@ package export
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -46,6 +47,75 @@ func (p *countingPlugin) Unsubscribe(consumer.ValueRequest) error               
 func (p *countingPlugin) ValidateValue(context.Context, consumer.ValueRequest, consumer.Value) error {
 	p.validateCalls++
 	return p.validateErr
+}
+
+// recordingPlugin keeps the values SetValue was given.
+type recordingPlugin struct {
+	nonValidatorPlugin
+	sent []consumer.Value
+}
+
+func (p *recordingPlugin) SetValue(_ context.Context, _ consumer.ValueRequest, v consumer.Value) (consumer.Value, error) {
+	p.sent = append(p.sent, v)
+	return v, nil
+}
+
+// Above MAX → MAX, below MIN → MIN, reported; inside the range or with
+// no range, the value goes out as written. A dry run reports and sends
+// nothing.
+func TestApplyBoundsByMinMax(t *testing.T) {
+	row := func(id int, kind consumer.ValueKind, v consumer.Value, lo, hi any) consumer.Object {
+		return consumer.Object{ID: id, Label: "r", Path: []string{"p", strconv.Itoa(id)}, Kind: kind, Access: 3, Value: v, Min: lo, Max: hi}
+	}
+	snap := &Snapshot{Device: DeviceInfo{Protocol: "acp2"}, Slots: []SlotDump{{Slot: 1, Objects: []consumer.Object{
+		row(1, consumer.KindUint, consumer.Value{Kind: consumer.KindUint, Uint: 19000}, uint64(100), uint64(18000)),
+		row(2, consumer.KindInt, consumer.Value{Kind: consumer.KindInt, Int: -5}, int64(0), int64(10)),
+		row(3, consumer.KindFloat, consumer.Value{Kind: consumer.KindFloat, Float: 2.5}, 0.0, 10.0),
+		row(4, consumer.KindFloat, consumer.Value{Kind: consumer.KindFloat, Float: 99}, 5.0, 5.0),
+	}}}}
+
+	p := &recordingPlugin{}
+	rep, err := Apply(context.Background(), p, snap, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.sent) != 0 || len(rep.Clamped) != 2 {
+		t.Fatalf("dry run sent %d, clamped %v", len(p.sent), rep.Clamped)
+	}
+
+	p = &recordingPlugin{}
+	rep, err = Apply(context.Background(), p, snap, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Clamped) != 2 || !strings.Contains(rep.Clamped[0], "19000 above MAX 18000") || !strings.Contains(rep.Clamped[1], "-5 below MIN 0") {
+		t.Fatalf("clamped %v", rep.Clamped)
+	}
+	if len(p.sent) != 4 || p.sent[0].Uint != 18000 || p.sent[1].Int != 0 || p.sent[2].Float != 2.5 || p.sent[3].Float != 99 {
+		t.Fatalf("sent %+v", p.sent)
+	}
+}
+
+// Every reader's MIN/MAX shape counts, a float above MAX takes MAX, and a
+// value that is not a number is never moved.
+func TestBoundedShapes(t *testing.T) {
+	for _, c := range []struct {
+		in   any
+		want float64
+		ok   bool
+	}{{int64(-3), -3, true}, {uint64(7), 7, true}, {1.5, 1.5, true}, {4, 4, true}, {float32(2), 2, true}, {"8.5", 8.5, true}, {"x", 0, false}, {nil, 0, false}} {
+		if got, ok := numOf(c.in); ok != c.ok || (ok && got != c.want) {
+			t.Errorf("numOf(%#v) = %v, %v", c.in, got, ok)
+		}
+	}
+	f := consumer.Object{Min: "0", Max: "10", Value: consumer.Value{Kind: consumer.KindFloat, Float: 12.5}}
+	if v, note, moved := bounded(f); !moved || v.Float != 10 || !strings.Contains(note, "12.5 above MAX 10") {
+		t.Errorf("float: %v %q %v", v.Float, note, moved)
+	}
+	s := consumer.Object{Min: 0.0, Max: 10.0, Value: consumer.Value{Kind: consumer.KindString, Str: "99"}}
+	if _, _, moved := bounded(s); moved {
+		t.Error("a string was moved")
+	}
 }
 
 // nonValidatorPlugin is a Protocol with no ValidateValue method —

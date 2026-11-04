@@ -45,15 +45,11 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 	if m.Device.Protocol == "" {
 		return "", fmt.Errorf("manifest: Write: device protocol required (the ADR-0028 key is manifest/<proto>/<ip>.json)")
 	}
-	key := m.Device.IP
-	if key == "" {
-		key = slugifyDeviceName(m.Device.Name)
-	}
-	dir := filepath.Join(cacheDir, "manifest", sanitizeKeySeg(m.Device.Protocol))
+	path := PathFor(cacheDir, m)
+	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("manifest: mkdir %s: %w", dir, err)
 	}
-	path := filepath.Join(dir, sanitizeKeySeg(key)+".json")
 
 	// Legacy migration: the pre-ADR-0028 name-keyed file (no proto
 	// subfolder). Its endpoints join the union; the file is removed
@@ -95,6 +91,16 @@ func Write(cacheDir string, m *Manifest) (string, error) {
 		_ = os.Remove(legacy)
 	}
 	return path, nil
+}
+
+// PathFor is the file Write puts m in: <cacheDir>/manifest/<proto>/<key>.json,
+// key the device IP or, without one, the name slug.
+func PathFor(cacheDir string, m *Manifest) string {
+	key := m.Device.IP
+	if key == "" {
+		key = slugifyDeviceName(m.Device.Name)
+	}
+	return filepath.Join(cacheDir, "manifest", sanitizeKeySeg(m.Device.Protocol), sanitizeKeySeg(key)+".json")
 }
 
 // sanitizeKeySeg strips characters that are illegal in filenames on

@@ -358,7 +358,7 @@ func runProbelUsage(ctx context.Context, args []string) error {
 	path := *out
 	if path == "" {
 		host, _, _ := splitHostPort(addr, probelproto.DefaultPort)
-		path = filepath.Join(snapshotDir("probel-sw08p", host), "usage.csv")
+		path = filepath.Join(snapshotDir("probel-sw08p", deviceKey(host)), "usage.csv")
 		fmt.Fprintf(os.Stderr, "probel-sw08p usage: default snapshot file %s (ADR-0028)\n", path)
 	}
 	if dir := filepath.Dir(path); dir != "." {

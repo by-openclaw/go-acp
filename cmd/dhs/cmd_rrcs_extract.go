@@ -66,7 +66,7 @@ func rrcsExtract(ctx context.Context, args []string) error {
 		model = rrcsBuildModel(snap)
 		exTypes = rrcs.ExTypeNames(snap)
 		version = rrcs.Version(model.Status["GetVersion"])
-		host = hostOnly(jStr(snap, "target"))
+		host = deviceKey(jStr(snap, "target"))
 		if _, p, err := splitHostPort(jStr(snap, "target"), rrcs.DefaultPort); err == nil {
 			port = p
 		}
@@ -78,7 +78,7 @@ func rrcsExtract(ctx context.Context, args []string) error {
 			return err
 		}
 		defer closeFn()
-		host = hostOnly(client.Peer())
+		host = deviceKey(client.Peer())
 		if _, p, err := splitHostPort(client.Peer(), rrcs.DefaultPort); err == nil {
 			port = p
 		}

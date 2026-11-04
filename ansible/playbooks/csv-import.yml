@@ -1,0 +1,108 @@
+---
+# CSV import into one device, the sample play (runbook:
+# docs/runbook-export-import.md). It takes the CSV files csv-export.yml
+# put in the site, after you edited them, and converges the device on
+# them, the Ansible way:
+#
+#   1. dry run   what would change; a row the device refuses stops here
+#   2. apply     only the rows the device does not already hold
+#   3. dry run   again: must be 0, that is the verification
+#
+# Only the rows in the files are in scope: delete the rows (or facet
+# files) you do not want to touch. A value above the device's MAX is
+# written as MAX and reported as an error (the same rule on every
+# connector).
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/csv-import.yml -e proto=acp2 -e target=10.6.255.102 --check   # dry run
+#   ansible-playbook -i inventory/hosts.ini playbooks/csv-import.yml -e proto=acp2 -e target=10.6.255.102           # apply
+#   ansible-playbook -i inventory/hosts.ini playbooks/csv-import.yml -e proto=acp2 -e target=10.6.255.102           # → changed=0
+#
+# -e from=<folder>  the folder under sites/<site>/snapshots/<proto>/ to
+#                   read (default: the target without its port; probel
+#                   matrix N: 10.6.250.40/matrix-N)
+# -e select=--src   probel-sw08p: which facet (default --xpoints; one
+#                   of --xpoints --src --dst --protect per run)
+
+- name: CSV import — one device
+  hosts: "{{ dhs_host | default('control') }}"
+  gather_facts: false
+  vars:
+    dhs: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    root_args: "{{ ['--data-dir', dhs_data_dir] if (dhs_data_dir | default('')) else [] }}"
+    from_dir: "{{ playbook_dir }}/../sites/{{ site | default('lab') }}/snapshots/{{ proto }}/{{ from | default(target | regex_replace(':[0-9]+$', '')) }}"
+    work: "/tmp/dhs-csv-import/{{ proto }}/{{ from | default(target | regex_replace(':[0-9]+$', '')) }}"
+    # What `import` takes per connector, and how it reports. Every
+    # connector not named here imports its params.csv.
+    import_args:
+      params: [import, "{{ target }}", --file, "{{ work }}/params.csv"]
+      cerebrum-nb: [import, "{{ target }}", --router, "{{ router | default('0.0.0.0') }}", --in-dir, "{{ work }}", --prefix=, --output, json]
+      probel-sw08p: [import, "{{ target }}", --in, "{{ work }}", --prefix=, "{{ select | default('--xpoints') }}", --output, json]
+    kind: "{{ 'json' if proto in ['cerebrum-nb', 'probel-sw08p'] else 'text' }}"
+    # The write guard (ADR-0037 P5): the target named a second time.
+    write_args: "{{ [] if proto == 'probel-sw08p' else ['--write-to', target] }}"
+    login_args: >-
+      {{ ['--user', lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER'), '--pass', lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS')]
+         if proto == 'cerebrum-nb' else [] }}
+    argv: "{{ [dhs] + root_args + ['consumer', proto] + import_args.get(proto, import_args.params) + login_args + (extra | default([])) }}"
+  tasks:
+    - name: proto and target are given
+      ansible.builtin.assert:
+        that: [proto is defined, target is defined]
+        fail_msg: "-e proto=<connector> -e target=<ip or host[:port]>"
+        quiet: true
+
+    - name: "{{ proto }} {{ target }} — the CSV files from the site"
+      ansible.builtin.copy:
+        src: "{{ from_dir }}/"
+        dest: "{{ work }}/"
+        mode: "0644"
+      check_mode: false
+      changed_when: false
+
+    - name: "{{ proto }} {{ target }} — 1. what would change"
+      ansible.builtin.command:
+        argv: "{{ argv + ['--check'] }}"
+      register: before
+      changed_when: false
+      check_mode: false
+      no_log: "{{ proto == 'cerebrum-nb' }}"
+
+    - name: "{{ proto }} {{ target }} — rows to apply"
+      ansible.builtin.set_fact:
+        to_apply: >-
+          {{ ((before.stdout_lines | last | from_json).would_change | default(false)) | ternary(1, 0) if kind == 'json'
+             else (before.stdout.split('would apply ')[1].split(',')[0] | int) }}
+        refused: "{{ 0 if kind == 'json' else (before.stdout.split('failed ')[-1].split()[0] | int) }}"
+
+    - name: "{{ proto }} {{ target }} — a row the device refuses in the dry run is a stop"
+      ansible.builtin.assert:
+        that: refused | int == 0
+        fail_msg: "{{ before.stdout_lines }}"
+        quiet: true
+
+    # The one task that writes. ansible-playbook --check skips it: step 1
+    # has already printed what it would change.
+    - name: "{{ proto }} {{ target }} — 2. apply"
+      ansible.builtin.command:
+        argv: "{{ argv + write_args }}"
+      register: applied
+      when: to_apply | int > 0
+      changed_when: true
+      no_log: "{{ proto == 'cerebrum-nb' }}"
+
+    - name: "{{ proto }} {{ target }} — 3. nothing left to change"
+      ansible.builtin.command:
+        argv: "{{ argv + ['--check'] }}"
+      register: after
+      when: applied is changed
+      changed_when: false
+      failed_when: >-
+        after.rc != 0 or
+        (((after.stdout_lines | last | from_json).would_change | default(false)) if kind == 'json'
+         else (after.stdout.split('would apply ')[1].split(',')[0] | int) > 0)
+      no_log: "{{ proto == 'cerebrum-nb' }}"
+
+    - name: "{{ proto }} {{ target }} — result"
+      ansible.builtin.debug:
+        msg: "{{ (after.stdout_lines | default(before.stdout_lines)) | last }}"
