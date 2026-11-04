@@ -162,6 +162,33 @@ it by. Measured on 2.9.3, dry runs on `Redundancy_Status.Watchdog_Health`
 (0..100): 150 would write 100, -5 would write 0, 1.5 refused, 100 passes; an
 import naming destination 99 refused, nothing sent.
 
+### import --device
+
+Device objects come back with the file `export --device` wrote:
+
+```text
+dhs consumer cerebrum-nb export HOST --device Cerebrum --by-name --sub-device 1 \
+    --path "Senders.[NMOS|2|lab-shuffle-01|ATX-1348]" --out sender.json
+# edit sender.json: keep or change only the rows to converge
+dhs consumer cerebrum-nb import HOST --device Cerebrum --by-name --sub-device 1 \
+    --in sender.json --check
+dhs consumer cerebrum-nb import HOST --write-to HOST --device Cerebrum --by-name \
+    --sub-device 1 --in sender.json
+```
+
+| Step | What happens |
+|---|---|
+| file | json, yaml or csv; only its rows are in scope (a partial file is a partial import); read-only rows are skipped and counted |
+| read | every row is read live with its descriptor (`DATA_TYPE`, `MIN`, `MAX`, `ENUM_LIST`) |
+| judge | the `set-value` rule: above MAX → MAX, below MIN → MIN, exit 2 naming the row, also when the bound is already live; not a number, not whole for an INTEGER, outside the enumeration, or not readable: the whole file is refused, nothing sent |
+| send | only the rows that differ; an ENUM goes by name with `IS_ENUM` |
+| read back | right after each ACK; a row still showing the old value is reported "acknowledged and not applied", exit 1 |
+
+Measured on 2.9.3: `Senders.[NMOS|2|lab-shuffle-01|ATX-1348].Label` is writable
+by its descriptor, the server acknowledges `SET_VALUE` and the value stays
+`ATX-1348` on Northbound and RCP: reported as not applied. A watchdog row of 150
+(0..100) is refused on `--check` with exit 2.
+
 ### route
 
 ```

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -255,6 +256,10 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	prefix := fs.String("prefix", "cerebrum", "file prefix used with --in-dir (same default as export)")
 	check := fs.Bool("check", false, "dry-run: read live state, report would_change per cell, send nothing")
 	wf := addCerebrumWriteFlags(fs)
+	devImport := fs.String("device", "", "DEVICE mode: converge one sub-device on the snapshot `export --device` wrote (--in); device NAME (--by-name) or IP")
+	devByName := fs.Bool("by-name", false, "--device is a DEVICE_NAME instead of an IP")
+	devSub := fs.String("sub-device", "", "DEVICE mode: the sub-device index")
+	devIn := fs.String("in", "", "DEVICE mode: the snapshot file (json|yaml|csv); only its rows are in scope, each judged by the object's MIN/MAX/ENUM_LIST")
 	useTags := fs.Bool("use-tags", false, "USE_TAGS=\"1\" on every ROUTE (§4.1.1)")
 	allowClear := fs.Bool("allow-clear", false, "an EMPTY cell in a managed label column CLEARS the live label (MNEMONIC=\"\" — clear form live-UNVERIFIED; always --check first)")
 	output := fs.String("output", "text", "output format: text|json — json emits the ADR-0007 {changed|would_change, diff[]} shape on stdout (per-action detail goes to stderr)")
@@ -268,6 +273,21 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
+	}
+	if *devImport != "" {
+		if *devSub == "" || *devIn == "" {
+			return cerebrumValErr("import", "--device needs --sub-device and --in (the file export --device wrote)")
+		}
+		p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "import")
+		if err != nil {
+			return err
+		}
+		defer func() { _ = p.Disconnect() }()
+		logw := io.Writer(os.Stdout)
+		if jsonOut {
+			logw = os.Stderr
+		}
+		return cerebrumImportDevice(sess, cf, *devImport, *devByName, *devSub, *devIn, *check, jsonOut, logw)
 	}
 	// In JSON mode stdout carries only the ensure result (Ansible parses it);
 	// per-change narration moves to stderr.
