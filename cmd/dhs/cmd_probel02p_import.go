@@ -94,7 +94,7 @@ func runProbelSW02Import(ctx context.Context, args []string) error {
 		return oerr
 	}
 	if *inDir == "" {
-		*inDir = snapshotDir("probel-sw02p", deviceKey(addr))
+		*inDir = snapshotDir("probel-sw02p", deviceKeyFor("probel-sw02p", addr))
 		*prefix = ""
 		fmt.Fprintf(os.Stderr, "probel-sw02p import: default snapshot folder %s (ADR-0028)\n", *inDir)
 	}

@@ -469,7 +469,7 @@ skipped and listed.
 	}
 	if *file == "" {
 		// ADR-0028: import reads where the defaulted export wrote.
-		dir := snapshotDir(rrcsProto, deviceKey(fs.Arg(0)))
+		dir := snapshotDir(rrcsProto, deviceKeyFor(rrcsProto, fs.Arg(0)))
 		for _, name := range []string{"params.json", "params.csv"} {
 			if _, serr := os.Stat(filepath.Join(dir, name)); serr == nil {
 				*file = filepath.Join(dir, name)

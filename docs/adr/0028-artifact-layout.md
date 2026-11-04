@@ -137,6 +137,15 @@ The same header applies to `--log` files.
 - **Root of the buckets**: the install dir (`<X>` for `<X>/bin/dhs`,
   so `/usr/local/` for the fleet's `/usr/local/bin/dhs`) unless the
   global `--data-dir DIR` (or `DHS_DATA_DIR`) names a dedicated one.
+- **One device, many controllers** (any number): the device keeps ONE
+  folder and manifest, keyed by its primary IP, every controller listed
+  as an endpoint. Any controller IP finds them (endpoint scan of the
+  protocol's direct manifests; a device behind a control plane is never
+  matched). A new controller joins on its own when the connector reads a
+  serial number that a device on file already has; otherwise
+  `--primary IP` names the device. UDP devices keep one controller
+  (ADR-0023). An IP listed by two devices is a conflict: reported, never
+  resolved by picking one.
 - Defaults added: ccm `export` → `snapshots/ccm/<ip>/<Product@Ver>/`,
   nmos `export` → `snapshots/amwa/<ip>/`, cerebrum-nb `import --device`
   and rrcs `import` read the file their `export` wrote.

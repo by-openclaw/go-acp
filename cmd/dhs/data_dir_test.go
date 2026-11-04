@@ -13,6 +13,8 @@ import (
 // then roots under it.
 func TestDataDirFlag(t *testing.T) {
 	t.Setenv(datastore.DataDirEnv, "")
+	prev := treeStore
+	t.Cleanup(func() { treeStore = prev })
 	dir := filepath.Join(t.TempDir(), "plant")
 	for _, args := range [][]string{
 		{"--data-dir", dir, "consumer", "acp1", "export", "10.0.0.1"},
@@ -31,6 +33,9 @@ func TestDataDirFlag(t *testing.T) {
 		}
 		if got := snapshotDir("acp1", "10.0.0.1"); got != filepath.Join(dir, "snapshots", "acp1", "10.0.0.1") {
 			t.Errorf("snapshotDir %q", got)
+		}
+		if got := manifestCacheDir(); got != filepath.Join(dir, ".cache") {
+			t.Errorf("manifests and DMs in %q, want %q", got, filepath.Join(dir, ".cache"))
 		}
 		if _, err := os.Stat(dir); err != nil {
 			t.Errorf("data dir not created: %v", err)

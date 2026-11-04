@@ -64,6 +64,66 @@ func deviceKeyWith(lookup func(context.Context, string) ([]string, error), addr 
 	return ips[0]
 }
 
+// deviceKeyFor is deviceKey for a device that may have several
+// controller IPs (ADR-0028 §2): any of them keys to the device's ONE
+// folder and manifest, the primary IP's. The primary comes from the
+// global --primary flag, else from the manifest of proto that lists this
+// IP as a controller. Two devices listing the same IP is a conflict:
+// reported, and the IP keys by itself.
+func deviceKeyFor(proto, addr string) string {
+	key := deviceKey(addr)
+	if p := os.Getenv(primaryEnv); p != "" {
+		return deviceKey(p)
+	}
+	primary, found, conflict := manifest.PrimaryOf(manifestCacheDir(), proto, key)
+	switch {
+	case len(conflict) > 0:
+		fmt.Fprintf(os.Stderr, "warning: %s is a controller of %d %s devices (%v) — keyed by itself; fix the manifests\n", key, len(conflict), proto, conflict)
+	case found && primary != key:
+		fmt.Fprintf(os.Stderr, "%s: %s is a controller of %s — its folder and manifest (ADR-0028)\n", proto, key, primary)
+		return primary
+	}
+	return key
+}
+
+// keyManifest keys a manifest a connector built for the controller it
+// reached at addr: the device's primary IP (deviceKeyFor), or, when this
+// controller is not known yet, the device already on file with the same
+// serial number — the same box seen at another IP joins it, and the
+// controller's own one-IP manifest goes. The endpoint stays the
+// controller reached.
+func keyManifest(mf *manifest.Manifest, proto, addr string) *manifest.Manifest {
+	own := deviceKey(addr)
+	key := deviceKeyFor(proto, addr)
+	bySerial := false
+	if key == own && os.Getenv(primaryEnv) == "" {
+		if other := manifest.ByUnit(manifestCacheDir(), proto, "serial", mf.Device.Unit["serial"], own); other != "" {
+			key, bySerial = other, true
+		}
+	}
+	// UDP serves one controller per device (ADR-0023: announces are
+	// subnet broadcast); a second one is never joined.
+	if key != own {
+		for _, e := range mf.Device.Endpoints {
+			if e.Transport == "udp" {
+				fmt.Fprintf(os.Stderr, "warning: %s %s is UDP — one controller per device (ADR-0023); not joined to %s\n", proto, own, key)
+				return keyAs(mf, own, addr)
+			}
+		}
+	}
+	if bySerial {
+		fmt.Fprintf(os.Stderr, "%s: %s has the serial of %s — joins it as a controller (ADR-0028)\n", proto, own, key)
+		manifest.Remove(manifestCacheDir(), proto, own)
+	}
+	return keyAs(mf, key, addr)
+}
+
+func keyAs(mf *manifest.Manifest, key, addr string) *manifest.Manifest {
+	mf.Device.IP = key
+	mf.Device.FQDN = fqdnOf(addr)
+	return mf
+}
+
 // fqdnOf is the hostname a target was addressed by, for the manifest's
 // FQDN field; empty when it was addressed by IP.
 func fqdnOf(addr string) string {
@@ -72,14 +132,6 @@ func fqdnOf(addr string) string {
 		return ""
 	}
 	return h
-}
-
-// withFQDN records on m the hostname addr was addressed by.
-func withFQDN(m *manifest.Manifest, addr string) *manifest.Manifest {
-	if m != nil {
-		m.Device.FQDN = fqdnOf(addr)
-	}
-	return m
 }
 
 // manifestCacheDir is the .cache the manifests live in: the tree store's

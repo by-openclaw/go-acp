@@ -273,7 +273,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	// default). With no sink this is exactly the old stderr text logger.
 	op, event, logCleanup, hasSink, lerr := buildConsumerLoggers(
 		lvl, cf.logFormat, cf.logPath, cf.syslogAddr,
-		defaultLogPath(cf.protocol, deviceKey(host), cf.verb), cf.logRetention)
+		defaultLogPath(cf.protocol, deviceKeyFor(cf.protocol, host), cf.verb), cf.logRetention)
 	if lerr != nil {
 		return nil, nil, lerr
 	}
@@ -287,7 +287,7 @@ func connect(ctx context.Context, host string, cf *commonFlags) (consumer.Protoc
 	var recorder *transport.Recorder
 	if cf.capture == "auto" {
 		cf.capture = filepath.Join(artifactRoot(), "captures",
-			datastore.SanitizePathSeg(cf.protocol), datastore.SanitizePathSeg(deviceKey(host)),
+			datastore.SanitizePathSeg(cf.protocol), datastore.SanitizePathSeg(deviceKeyFor(cf.protocol, host)),
 			datastore.SanitizePathSeg(cf.verb)+"-"+time.Now().UTC().Format("20060102T1504Z"))
 		fmt.Fprintf(os.Stderr, "%s: --capture auto → %s (ADR-0028)\n", cf.protocol, cf.capture)
 	}

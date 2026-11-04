@@ -49,7 +49,7 @@ func runExport(ctx context.Context, args []string) error {
 		case "csv":
 			ext = "csv"
 		}
-		*out = filepath.Join(snapshotDir(cf.protocol, deviceKey(host)), "params."+ext)
+		*out = filepath.Join(snapshotDir(cf.protocol, deviceKeyFor(cf.protocol, host)), "params."+ext)
 		fmt.Fprintf(os.Stderr, "export: default snapshot file %s (ADR-0028)\n", *out)
 	}
 

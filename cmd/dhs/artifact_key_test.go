@@ -115,3 +115,78 @@ func TestCerebrumManifestKeepsEverySubDevice(t *testing.T) {
 		}
 	}
 }
+
+// One box, three controllers: the second is recognised by its serial,
+// the third is named with --primary; every IP then keys to the one
+// folder and manifest, which lists all three.
+func TestOneDeviceManyControllers(t *testing.T) {
+	prev := treeStore
+	treeStore = datastore.NewTreeStore(t.TempDir())
+	t.Cleanup(func() { treeStore = prev })
+	t.Setenv(primaryEnv, "")
+	unit := map[string]string{"serial": "NRN-0042"}
+	b := []slotBinding{{Slot: 0, Identity: "CONVERT@6.7.4"}}
+
+	writeSlotManifest("", "acp2", "10.6.255.102", 2072, b, unit)
+	writeSlotManifest("", "acp2", "10.6.255.122", 2072, b, unit) // same serial → joins
+	if _, err := stripPrimaryFlag([]string{"--primary", "10.6.255.102"}); err != nil {
+		t.Fatal(err)
+	}
+	writeSlotManifest("", "acp2", "10.6.255.142", 2072, b, nil) // named
+	_ = os.Unsetenv(primaryEnv)
+
+	files, _ := filepath.Glob(filepath.Join(treeStore.BaseDir(), "manifest", "acp2", "*.json"))
+	if len(files) != 1 {
+		t.Fatalf("manifests %v, want one", files)
+	}
+	mf, err := manifest.Load(files[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ips []string
+	for _, e := range mf.Device.Endpoints {
+		ips = append(ips, e.IP)
+	}
+	if mf.Device.IP != "10.6.255.102" || strings.Join(ips, ",") != "10.6.255.102,10.6.255.122,10.6.255.142" {
+		t.Fatalf("device %s endpoints %v", mf.Device.IP, ips)
+	}
+	for _, ip := range []string{"10.6.255.102", "10.6.255.122:2072", "10.6.255.142"} {
+		if got := deviceKeyFor("acp2", ip); got != "10.6.255.102" {
+			t.Errorf("deviceKeyFor(%s) = %s", ip, got)
+		}
+	}
+	if got := deviceKeyFor("acp1", "10.6.255.122"); got != "10.6.255.122" {
+		t.Errorf("another protocol re-keyed: %s", got)
+	}
+
+	// UDP (acp1): one controller per device, a second is never joined.
+	writeSlotManifest("", "acp1", "10.6.250.30", 2071, b, unit)
+	writeSlotManifest("", "acp1", "10.6.250.31", 2071, b, unit)
+	udp, _ := filepath.Glob(filepath.Join(treeStore.BaseDir(), "manifest", "acp1", "*.json"))
+	if len(udp) != 2 {
+		t.Errorf("acp1 manifests %v, want one per controller", udp)
+	}
+}
+
+func TestPrimaryFlag(t *testing.T) {
+	t.Setenv(primaryEnv, "10.9.9.9") // inherited: cleared, never used
+	rest, err := stripPrimaryFlag([]string{"consumer", "acp2", "walk", "10.0.0.2"})
+	if err != nil || len(rest) != 4 || os.Getenv(primaryEnv) != "" {
+		t.Fatalf("rest %v err %v env %q", rest, err, os.Getenv(primaryEnv))
+	}
+	for _, args := range [][]string{{"--primary=10.0.0.1:2072", "x"}, {"-primary", "10.0.0.1", "x"}, {"-primary=10.0.0.1", "x"}} {
+		rest, err := stripPrimaryFlag(args)
+		if err != nil || len(rest) != 1 || os.Getenv(primaryEnv) != "10.0.0.1" {
+			t.Errorf("%v → %v %v %q", args, rest, err, os.Getenv(primaryEnv))
+		}
+		if got := deviceKeyFor("acp2", "10.0.0.2"); got != "10.0.0.1" {
+			t.Errorf("deviceKeyFor with --primary = %s", got)
+		}
+	}
+	for _, args := range [][]string{{"--primary"}, {"--primary", "frame-a"}} {
+		if _, err := stripPrimaryFlag(args); err == nil {
+			t.Errorf("%v accepted", args)
+		}
+	}
+	_ = os.Unsetenv(primaryEnv)
+}

@@ -22,6 +22,10 @@ GLOBAL FLAGS (every verb)
                            and captures/ (ADR-0028). Default: the install
                            dir (<X> for <X>/bin/dhs); DHS_DATA_DIR names
                            one for every run.
+  --primary <ip>           the target is another controller of the device
+                           whose primary IP this is: one folder, one
+                           manifest per device (ADR-0028). Needed only
+                           where no serial number recognises it.
 
 CONSUMER (outbound — connect to a device, query / control it)
   Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso

@@ -258,7 +258,7 @@ func runEmberUsage(ctx context.Context, args []string) error {
 	}
 	path := *out
 	if path == "" {
-		path = filepath.Join(snapshotDir("emberplus", deviceKey(host)), "usage.csv")
+		path = filepath.Join(snapshotDir("emberplus", deviceKeyFor("emberplus", host)), "usage.csv")
 		fmt.Fprintf(os.Stderr, "emberplus usage: default snapshot file %s (ADR-0028)\n", path)
 	}
 	if dir := filepath.Dir(path); dir != "." {

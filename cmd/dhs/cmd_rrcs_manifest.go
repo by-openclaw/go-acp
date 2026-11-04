@@ -170,7 +170,7 @@ func rrcsEnsureManifest(ctx context.Context, cf *rrcsFlags, host, file, writeTo 
 				if _, p, err := splitHostPort(client.Peer(), rrcs.DefaultPort); err == nil {
 					port = p
 				}
-				if path, err := manifest.Write(treeStore.BaseDir(), withFQDN(rrcs.Manifest(m, deviceKey(client.Peer()), port, set), client.Peer())); err == nil {
+				if path, err := manifest.Write(treeStore.BaseDir(), keyManifest(rrcs.Manifest(m, deviceKey(client.Peer()), port, set), rrcsProto, client.Peer())); err == nil {
 					cf.say("rrcs ensure: inventory rewritten: %s", path)
 				}
 			}
@@ -427,9 +427,9 @@ func rrcsAddrInt(v any) (int, bool) {
 // those that point at it, to the snapshots home of the host (ADR-0028):
 // what import takes to bring the type back.
 func rrcsSaveInstance(host string, r rrcsRetype) (string, error) {
-	dir := snapshotDir(rrcsProto, deviceKey(host))
+	dir := snapshotDir(rrcsProto, deviceKeyFor(rrcsProto, host))
 	if treeStore != nil {
-		dir = filepath.Join(filepath.Dir(treeStore.BaseDir()), "snapshots", rrcsProto, deviceKey(host))
+		dir = filepath.Join(filepath.Dir(treeStore.BaseDir()), "snapshots", rrcsProto, deviceKeyFor(rrcsProto, host))
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err

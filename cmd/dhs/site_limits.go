@@ -22,7 +22,7 @@ func siteLimitsFor(proto, host, flag string) (*consumer.SiteLimits, error) {
 	case "off":
 		return nil, nil
 	case "":
-		path := filepath.Join(snapshotDir(proto, deviceKey(host)), "site-limits.csv")
+		path := filepath.Join(snapshotDir(proto, deviceKeyFor(proto, host)), "site-limits.csv")
 		if _, err := os.Stat(path); err != nil {
 			return nil, nil
 		}

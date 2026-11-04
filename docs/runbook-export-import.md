@@ -24,6 +24,20 @@ The folder is always the device's **IP**: a target given by hostname is
 resolved, and the name is kept in the manifest as `fqdn`. A port is never
 part of it. Probel SW-P-08 matrix N > 0 sits in `<ip>/matrix-N/`.
 
+### A device with several controllers
+
+One device, one folder, whatever IP you address it by. The manifest
+lists every controller IP; the first one walked is the key.
+
+| How a controller IP joins its device | When |
+|---|---|
+| on its own | the connector reads a serial number that a device on file has |
+| `dhs --primary 10.6.255.102 consumer acp2 walk 10.6.255.122 --all` | no serial (or to be explicit) |
+
+After that, `export` / `import` / logs / captures through any controller
+IP use the device's folder (`acp2: 10.6.255.122 is a controller of
+10.6.255.102`). UDP devices (acp1, snmp) keep one controller each.
+
 ## 2. Export
 
 ```bash

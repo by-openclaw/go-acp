@@ -66,7 +66,7 @@ func runNMOSExport(ctx context.Context, args []string) error {
 	}
 
 	if *out == "" {
-		*out = snapshotDir("amwa", deviceKey(*target))
+		*out = snapshotDir("amwa", deviceKeyFor("amwa", *target))
 	}
 	opts := export.Options{
 		Target:      *target,
