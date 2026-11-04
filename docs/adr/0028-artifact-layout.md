@@ -134,6 +134,9 @@ The same header applies to `--log` files.
 - **One router, several matrices** (probel-sw08p): matrix 0 in the
   device folder, matrix N in `snapshots/probel-sw08p/<ip>/matrix-N/`;
   `import --matrix N` reads there.
+- **Root of the buckets**: the install dir (`<X>` for `<X>/bin/dhs`,
+  so `/usr/local/` for the fleet's `/usr/local/bin/dhs`) unless the
+  global `--data-dir DIR` (or `DHS_DATA_DIR`) names a dedicated one.
 - Defaults added: ccm `export` → `snapshots/ccm/<ip>/<Product@Ver>/`,
   nmos `export` → `snapshots/amwa/<ip>/`, cerebrum-nb `import --device`
   and rrcs `import` read the file their `export` wrote.

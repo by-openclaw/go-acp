@@ -86,6 +86,10 @@ GLOBAL FLAGS (every verb)
                            can serve a whole deployment; DHS_SETTINGS
                            names a fallback path. Full reference:
                            docs/cli.md
+  --data-dir <dir>         root of .cache/ (DMs, manifests), snapshots/
+                           and captures/ (ADR-0028). Default: the install
+                           dir (<X> for <X>/bin/dhs); DHS_DATA_DIR names
+                           one for every run.
 
 CONSUMER (outbound — connect to a device, query / control it)
   Protocols: acp1 | acp2 | ccp | cerebrum-nb | emberplus | kratos | prism | probel-sw08p | rrcs | virtuoso
