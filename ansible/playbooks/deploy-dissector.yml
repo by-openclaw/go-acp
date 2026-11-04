@@ -19,8 +19,11 @@
     dissector_file: dhs_acpv1.lua
     lua_src: "{{ playbook_dir }}/../../internal/{{ dissector_proto }}/wireshark/{{ dissector_file }}"
   tasks:
+    # Debian/Ubuntu keep it under the multiarch dir
+    # (/usr/lib/x86_64-linux-gnu/wireshark/plugins/4.2/). tshark 4.2 run
+    # as root loads Lua from this global dir only, never the personal one.
     - name: Locate the global wireshark plugins dir
-      ansible.builtin.shell: ls -d /usr/lib*/wireshark/plugins/*/ 2>/dev/null | head -1
+      ansible.builtin.shell: ls -d /usr/lib*/wireshark/plugins/*/ /usr/lib/*/wireshark/plugins/*/ 2>/dev/null | head -1
       register: plugdir
       changed_when: false
       failed_when: false
