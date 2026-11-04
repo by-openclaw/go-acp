@@ -7,6 +7,18 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.55.0](https://github.com/by-openclaw/go-acp/compare/v0.54.1...v0.55.0) (2026-11-04)
+
+
+### Features
+
+* **artifacts:** one device, many controllers; --data-dir moves .cache too ([#1595](https://github.com/by-openclaw/go-acp/issues/1595)) ([#1596](https://github.com/by-openclaw/go-acp/issues/1596)) ([30bcf23](https://github.com/by-openclaw/go-acp/commit/30bcf2381e720e85951020ded824560ba35f8302))
+
+
+### Bug Fixes
+
+* **import:** every value checked against its definition; enums keep the device's ids ([#1593](https://github.com/by-openclaw/go-acp/issues/1593)) ([#1594](https://github.com/by-openclaw/go-acp/issues/1594)) ([cddecb7](https://github.com/by-openclaw/go-acp/commit/cddecb7870e793f59fc689c71b934c621f5f68b2))
+
 ## [0.54.1](https://github.com/by-openclaw/go-acp/compare/v0.54.0...v0.54.1) (2026-11-04)
 
 
