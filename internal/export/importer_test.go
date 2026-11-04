@@ -96,6 +96,28 @@ func TestApplyBoundsByMinMax(t *testing.T) {
 	}
 }
 
+// Every reader's MIN/MAX shape counts, a float above MAX takes MAX, and a
+// value that is not a number is never moved.
+func TestBoundedShapes(t *testing.T) {
+	for _, c := range []struct {
+		in   any
+		want float64
+		ok   bool
+	}{{int64(-3), -3, true}, {uint64(7), 7, true}, {1.5, 1.5, true}, {4, 4, true}, {float32(2), 2, true}, {"8.5", 8.5, true}, {"x", 0, false}, {nil, 0, false}} {
+		if got, ok := numOf(c.in); ok != c.ok || (ok && got != c.want) {
+			t.Errorf("numOf(%#v) = %v, %v", c.in, got, ok)
+		}
+	}
+	f := consumer.Object{Min: "0", Max: "10", Value: consumer.Value{Kind: consumer.KindFloat, Float: 12.5}}
+	if v, note, moved := bounded(f); !moved || v.Float != 10 || !strings.Contains(note, "12.5 above MAX 10") {
+		t.Errorf("float: %v %q %v", v.Float, note, moved)
+	}
+	s := consumer.Object{Min: 0.0, Max: 10.0, Value: consumer.Value{Kind: consumer.KindString, Str: "99"}}
+	if _, _, moved := bounded(s); moved {
+		t.Error("a string was moved")
+	}
+}
+
 // nonValidatorPlugin is a Protocol with no ValidateValue method —
 // used to assert the importer's graceful fallback when a plugin
 // doesn't implement ValueValidator.
