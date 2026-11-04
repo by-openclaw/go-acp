@@ -226,6 +226,26 @@ func PropertyOptions(p *Property) []string {
 
 // PropertyOptionsMap extracts enum options as a map of wire index →
 // label. Variable-length per option; see PropertyOptions.
+// PropertyOptionIDs returns the option ids of pid=15 in wire order,
+// parallel to PropertyOptions: the value the device gives each item.
+func PropertyOptionIDs(p *Property) []uint32 {
+	var out []uint32
+	pos := 0
+	for pos+4 <= len(p.Data) {
+		out = append(out, binary.BigEndian.Uint32(p.Data[pos:pos+4]))
+		end := pos + 4
+		for end < len(p.Data) && p.Data[end] != 0 {
+			end++
+		}
+		if end < len(p.Data) {
+			end++
+		}
+		used := end - pos
+		pos = end + (4-used%4)%4
+	}
+	return out
+}
+
 func PropertyOptionsMap(p *Property) map[uint32]string {
 	if len(p.Data) < 4 {
 		return nil

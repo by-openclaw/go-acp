@@ -232,7 +232,7 @@ func applyObjectField(o *consumer.Object, key, val string) {
 	case "default":
 		o.Def = parseNum(val, o.Kind)
 	case "enum_items":
-		o.EnumItems = parseFlowSeq(val)
+		o.EnumItems, o.EnumIDs = splitEnumCells(parseFlowSeq(val))
 	case "max_len":
 		o.MaxLen, _ = strconv.Atoi(val)
 	case "alarm_priority":

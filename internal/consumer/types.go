@@ -316,6 +316,10 @@ type Object struct {
 	Def  any `json:"default,omitempty"`
 
 	EnumItems []string `json:"enum_items,omitempty"`
+	// EnumIDs is the value the device gives each item, parallel to
+	// EnumItems, for a device that numbers its items itself (ACP2 options,
+	// an Ember+ enumMap). Empty: the item's value is its position.
+	EnumIDs []int64 `json:"enum_ids,omitempty"`
 
 	MaxLen int `json:"max_len,omitempty"`
 

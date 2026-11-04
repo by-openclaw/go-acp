@@ -408,6 +408,7 @@ func (w *Walker) parseObjectProperties(props []codec.Property, slot int, objID u
 
 		case codec.PIDOptions:
 			obj.EnumItems = codec.PropertyOptions(p)
+			obj.EnumIDs = optionIDs(codec.PropertyOptionIDs(p), len(obj.EnumItems))
 			optionsMap = codec.PropertyOptionsMap(p)
 
 		case codec.PIDEventTag:
@@ -646,4 +647,17 @@ func setMeta(obj *consumer.Object, key string, value any) {
 // beU32 reads a big-endian uint32 from a byte slice.
 func beU32(b []byte) uint32 {
 	return binary.BigEndian.Uint32(b)
+}
+
+// optionIDs widens the wire option ids for consumer.Object.EnumIDs; nil
+// when they do not line up with the names (a malformed options list).
+func optionIDs(ids []uint32, n int) []int64 {
+	if len(ids) != n || n == 0 {
+		return nil
+	}
+	out := make([]int64, n)
+	for i, id := range ids {
+		out[i] = int64(id)
+	}
+	return out
 }

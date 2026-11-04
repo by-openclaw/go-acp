@@ -77,3 +77,21 @@ func TestValidateValueAgainstType_String_AnyValueAccepted(t *testing.T) {
 		t.Fatalf("want nil, got %v", err)
 	}
 }
+
+// 0.0.0.0 typed as an address is a value (an unset gateway); an empty
+// text value is not.
+func TestValidateValueAgainstType_IPv4_ZeroAddressIsAValue(t *testing.T) {
+	if err := validateValueAgainstType(codec.ObjTypeIPv4, codec.NumTypeIPv4, nil, consumer.Value{Kind: consumer.KindIPAddr}, nil); err != nil {
+		t.Fatalf("0.0.0.0 refused: %v", err)
+	}
+	if err := validateValueAgainstType(codec.ObjTypeIPv4, codec.NumTypeIPv4, nil, consumer.Value{Kind: consumer.KindString}, nil); !errors.Is(err, consumer.ErrValidationFailed) {
+		t.Fatalf("empty text accepted: %v", err)
+	}
+}
+
+// A text address (the CLI's --value) is parsed and taken when well formed.
+func TestValidateValueAgainstType_IPv4_TextAccepted(t *testing.T) {
+	if err := validateValueAgainstType(codec.ObjTypeIPv4, codec.NumTypeIPv4, nil, consumer.Value{Kind: consumer.KindString, Str: "239.129.1.20"}, nil); err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+}

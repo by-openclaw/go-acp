@@ -106,7 +106,7 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 
 		// Enum items (pipe-separated).
 		if items := col(row, idx, "enum_items"); items != "" {
-			obj.EnumItems = strings.Split(items, "|")
+			obj.EnumItems, obj.EnumIDs = splitEnumCells(strings.Split(items, "|"))
 		}
 
 		// String max length.
@@ -129,6 +129,9 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 		// Value.
 		obj.Value = parseCSVValue(obj.Kind, col(row, idx, "value"),
 			col(row, idx, "value_name"), obj.EnumItems)
+		if obj.HasWrite() {
+			markCell(&obj, col(row, idx, "value"), col(row, idx, "value_name"))
+		}
 
 		dump.Objects = append(dump.Objects, obj)
 	}

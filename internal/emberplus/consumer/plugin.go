@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1975,7 +1976,7 @@ func (p *Plugin) processParameter(param *glow.Parameter, parentPath []string, pa
 			obj.EnumItems = strings.Split(param.Enumeration, "\n")
 		}
 		if param.EnumMap != nil {
-			obj.EnumItems = appendEnumMap(obj.EnumItems, param.EnumMap)
+			obj.EnumItems, obj.EnumIDs = enumMapItems(param.EnumMap)
 		}
 	}
 
@@ -2536,14 +2537,20 @@ func appendUnique(slice []string, s string) []string {
 	return append(slice, s)
 }
 
-// appendEnumMap flattens an EnumMap into the obj.EnumItems slice. EnumMap
-// is map[key]label but for display we only need the labels; the key is
-// the value a SetValue would send.
-func appendEnumMap(existing []string, em map[int64]string) []string {
-	for _, label := range em {
-		existing = append(existing, label)
+// enumMapItems lays an EnumMap out as items and their values, in value
+// order: the key is the value a SetValue sends, so it travels with the
+// label (an export that kept only labels, in map order, lost it).
+func enumMapItems(em map[int64]string) ([]string, []int64) {
+	ids := make([]int64, 0, len(em))
+	for k := range em {
+		ids = append(ids, k)
 	}
-	return existing
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	items := make([]string, len(ids))
+	for i, k := range ids {
+		items[i] = em[k]
+	}
+	return items, ids
 }
 
 // coerceStringToTyped parses val.Str into the typed field that matches

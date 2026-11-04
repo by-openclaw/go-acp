@@ -240,15 +240,31 @@ func runImport(ctx context.Context, args []string) error {
 	// MIN/MAX (the import rule on every connector): the bound went out,
 	// or would, and the run still ends in error — the file asked for
 	// something the device's range does not hold.
+	for _, ip := range rep.IPs {
+		fmt.Println("ip          " + ip)
+	}
+	for _, c := range rep.Clamped {
+		fmt.Println("clamped     " + c)
+	}
+	for _, c := range rep.Invalid {
+		fmt.Println("invalid     " + c)
+	}
+	// Any row the file got wrong ends the run in error, after the rows it
+	// got right went out: a bound used instead (MIN/MAX), or a value that
+	// does not match its definition (not sent).
+	var reasons []string
 	if len(rep.Clamped) > 0 {
-		for _, c := range rep.Clamped {
-			fmt.Println("clamped     " + c)
-		}
 		verb := "wrote"
 		if *dry {
 			verb = "would write"
 		}
-		return &consumer.ValidationError{Field: "import", Reason: fmt.Sprintf("%d row(s) outside MIN/MAX: %s the bound instead", len(rep.Clamped), verb)}
+		reasons = append(reasons, fmt.Sprintf("%d row(s) outside MIN/MAX: %s the bound instead", len(rep.Clamped), verb))
+	}
+	if len(rep.Invalid) > 0 {
+		reasons = append(reasons, fmt.Sprintf("%d row(s) do not match their definition: not sent", len(rep.Invalid)))
+	}
+	if len(reasons) > 0 {
+		return &consumer.ValidationError{Field: "import", Reason: strings.Join(reasons, "; ")}
 	}
 	return nil
 }
