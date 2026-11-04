@@ -7,6 +7,16 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.54.0](https://github.com/by-openclaw/go-acp/compare/v0.53.0...v0.54.0) (2026-11-04)
+
+
+### Features
+
+* **cerebrum-nb:** --write-to guard on every Northbound writing verb ([#1579](https://github.com/by-openclaw/go-acp/issues/1579)) ([#1580](https://github.com/by-openclaw/go-acp/issues/1580)) ([15287b7](https://github.com/by-openclaw/go-acp/commit/15287b78f152671c8aa69ad13b676be434aa952c))
+* **cerebrum-nb:** import --device, partial, bounded, read back ([#1586](https://github.com/by-openclaw/go-acp/issues/1586)) ([#1587](https://github.com/by-openclaw/go-acp/issues/1587)) ([b82f071](https://github.com/by-openclaw/go-acp/commit/b82f0710c37926da029ac48dc21646ae0ecc1541))
+* **cerebrum-nb:** set-value and import judged by the server's bounds ([#1581](https://github.com/by-openclaw/go-acp/issues/1581)) ([#1582](https://github.com/by-openclaw/go-acp/issues/1582)) ([1901cd4](https://github.com/by-openclaw/go-acp/commit/1901cd438e7cb050b9f8b7b16533bdf172d2c93e))
+* **cerebrum-nb:** v0.17 RouteMaster frames in the dissector and fixtures ([#1584](https://github.com/by-openclaw/go-acp/issues/1584)) ([#1585](https://github.com/by-openclaw/go-acp/issues/1585)) ([455fd22](https://github.com/by-openclaw/go-acp/commit/455fd224a8303a155a1904685394637dda550846))
+
 ## [0.53.0](https://github.com/by-openclaw/go-acp/compare/v0.52.1...v0.53.0) (2026-11-03)
 
 
