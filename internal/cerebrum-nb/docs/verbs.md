@@ -149,6 +149,19 @@ it connects. `--dry-run` is the verb's `--check`: it reads, reports and sends
 nothing; on `assoc`, `rm-delete`, `category` and `rm-add --count`, which read
 nothing first, it prints what would be sent.
 
+Before anything is sent, the plan is judged against what the server
+returns, on a dry run too:
+
+| Verb | Checked against | Out of bounds |
+|---|---|---|
+| `set-value` | the object's `DATA_TYPE`, `MIN`, `MAX`, `ENUM_LIST`, read with its value | a number above MAX is written as MAX, below MIN as MIN, and the run exits 2 naming both; not a number, not whole for an INTEGER, or not in the enumeration: refused, exit 2, nothing sent |
+| `import` | the source, destination and level lists | a route, lock or label naming an IO or level the server does not have: the whole plan is refused, exit 2, every row listed, nothing sent. A level the plan's `--levels` file names may be new: `LEVEL_MNE` creates it |
+
+An object that cannot be read is written as given: there is nothing to judge
+it by. Measured on 2.9.3, dry runs on `Redundancy_Status.Watchdog_Health`
+(0..100): 150 would write 100, -5 would write 0, 1.5 refused, 100 passes; an
+import naming destination 99 refused, nothing sent.
+
 ### route
 
 ```
