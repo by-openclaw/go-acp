@@ -1,0 +1,82 @@
+---
+# CSV export of one device, the sample play (runbook:
+# docs/runbook-export-import.md). dhs writes the CSV where it keeps it
+# (ADR-0028), then the play copies it into the site, ready to read,
+# edit and commit:
+#
+#   on the dhs host  <root>/snapshots/<proto>/<ip>/
+#   in the repo      ansible/sites/<site>/snapshots/<proto>/<ip>/
+#
+# <root> is the install dir (/usr/local for /usr/local/bin/dhs), or the
+# folder named by -e dhs_data_dir=DIR.
+#
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.ini playbooks/csv-export.yml -e proto=acp2 -e target=10.6.255.102
+#   ansible-playbook -i inventory/hosts.ini playbooks/csv-export.yml -e proto=probel-sw08p -e target=10.6.250.40:8910
+#   DHS_CEREBRUM_USER=… DHS_CEREBRUM_PASS=… \
+#   ansible-playbook -i inventory/hosts.ini playbooks/csv-export.yml -e proto=cerebrum-nb -e target=10.6.250.5 \
+#     -e '{"extra": ["--port", "40009"]}'
+#
+# Reads only: the device is never written. The play reports changed when
+# a file in the site differs from the last export.
+
+- name: CSV export — one device
+  hosts: "{{ dhs_host | default('control') }}"
+  gather_facts: false
+  vars:
+    dhs: "{{ dhs_bin | default('/usr/local/bin/dhs') }}"
+    root_args: "{{ ['--data-dir', dhs_data_dir] if (dhs_data_dir | default('')) else [] }}"
+    site_dir: "{{ playbook_dir }}/../sites/{{ site | default('lab') }}/snapshots"
+    # What `export` takes per connector. Every connector not named here
+    # exports its parameters as one params.csv.
+    export_args:
+      params: [export, "{{ target }}", --format, csv]
+      cerebrum-nb: [export, "{{ target }}", --router, "{{ router | default('0.0.0.0') }}"]
+      probel-sw08p: [export, "{{ target }}", --matrix, "{{ matrix | default(0) }}"]
+      probel-sw02p: [export, "{{ target }}"]
+    login_args: >-
+      {{ ['--user', lookup('ansible.builtin.env', 'DHS_CEREBRUM_USER'), '--pass', lookup('ansible.builtin.env', 'DHS_CEREBRUM_PASS')]
+         if proto == 'cerebrum-nb' else [] }}
+  tasks:
+    - name: proto and target are given
+      ansible.builtin.assert:
+        that: [proto is defined, target is defined]
+        fail_msg: "-e proto=<connector> -e target=<ip or host[:port]>"
+        quiet: true
+
+    - name: "{{ proto }} {{ target }} — export"
+      ansible.builtin.command:
+        argv: "{{ [dhs] + root_args + ['consumer', proto] + export_args.get(proto, export_args.params) + login_args + (extra | default([])) }}"
+      register: exported
+      changed_when: false
+      no_log: "{{ proto == 'cerebrum-nb' }}"
+
+    # dhs names what it wrote: "default snapshot file F" or "… folder D".
+    - name: "{{ proto }} {{ target }} — where dhs wrote it"
+      ansible.builtin.set_fact:
+        written: "{{ exported.stderr | regex_search('default snapshot (?:file|folder) (\\S+)', '\\1') | first }}"
+        is_folder: "{{ 'default snapshot folder' in exported.stderr }}"
+
+    # The site keeps dhs's own layout below snapshots/: <proto>/<ip>/…
+    - name: "{{ proto }} {{ target }} — its folder in the site"
+      ansible.builtin.set_fact:
+        key_dir: "{{ (written if is_folder else (written | dirname)) | regex_replace('^.*/snapshots/[^/]+/', '') }}"
+
+    - name: "{{ proto }} {{ target }} — the CSV files"
+      ansible.builtin.find:
+        paths: "{{ written if is_folder else (written | dirname) }}"
+        patterns: "{{ '*.csv' if is_folder else (written | basename) }}"
+      register: csvs
+
+    - name: "{{ proto }} {{ target }} — copy into the site"
+      ansible.builtin.fetch:
+        src: "{{ item.path }}"
+        dest: "{{ site_dir }}/{{ proto }}/{{ key_dir }}/{{ item.path | basename }}"
+        flat: true
+      loop: "{{ csvs.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: "{{ proto }} {{ target }} — exported"
+      ansible.builtin.debug:
+        msg: "{{ csvs.files | length }} file(s) in sites/{{ site | default('lab') }}/snapshots/{{ proto }}/{{ key_dir }}/"

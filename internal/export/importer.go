@@ -48,6 +48,11 @@ type ImportReport struct {
 	// dry-run can show the operator exactly what will not be applied
 	// and why. A single line per skip, slot-qualified.
 	Skips []SkipRecord
+	// Clamped names every row whose value lay outside the MIN/MAX the
+	// file carries beside it: the bound was used instead (written, or
+	// would be in a dry run). A caller reports them as an error even
+	// though the bound went out — the file asked for something else.
+	Clamped []string
 }
 
 // SkipRecord is one rejected-at-client row. Small and printable.
@@ -190,6 +195,12 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 					req.Path = strings.Join(obj.Path, ".")
 				}
 			}
+			// The range export wrote beside the value: above MAX → MAX,
+			// below MIN → MIN, the same rule on every connector.
+			if v, note, moved := bounded(obj); moved {
+				obj.Value = v
+				rep.Clamped = append(rep.Clamped, fmt.Sprintf("slot %d %s: %s", dump.Slot, skipFrom(dump.Slot, obj, "").Path, note))
+			}
 			// Pre-flight Validate when the plugin supports it. Catches
 			// phantom obj-id / enum-out-of-options / type-mismatch
 			// before any SetValue is attempted — applies to both
@@ -264,6 +275,68 @@ func writeAll(ctx context.Context, plug consumer.Protocol, rows []write, rep *Im
 		}
 		rep.Applied++
 	}
+}
+
+// bounded holds a numeric row to the MIN/MAX beside it. A range with
+// MAX not above MIN is no range. note says what moved, for the report.
+func bounded(obj consumer.Object) (consumer.Value, string, bool) {
+	v := obj.Value
+	lo, okLo := numOf(obj.Min)
+	hi, okHi := numOf(obj.Max)
+	if !okLo || !okHi || hi <= lo {
+		return v, "", false
+	}
+	var cur float64
+	switch v.Kind {
+	case consumer.KindInt:
+		cur = float64(v.Int)
+	case consumer.KindUint:
+		cur = float64(v.Uint)
+	case consumer.KindFloat:
+		cur = v.Float
+	default:
+		return v, "", false
+	}
+	var bound float64
+	var side string
+	switch {
+	case cur > hi:
+		bound, side = hi, "above MAX"
+	case cur < lo:
+		bound, side = lo, "below MIN"
+	default:
+		return v, "", false
+	}
+	switch v.Kind {
+	case consumer.KindInt:
+		v.Int = int64(bound)
+	case consumer.KindUint:
+		v.Uint = uint64(bound)
+	case consumer.KindFloat:
+		v.Float = bound
+	}
+	g := func(f float64) string { return strconv.FormatFloat(f, 'g', -1, 64) }
+	return v, fmt.Sprintf("%s %s %s, %s used instead", g(cur), side, g(bound), g(bound)), true
+}
+
+// numOf reads a MIN/MAX cell as a number, whichever reader filled it.
+func numOf(a any) (float64, bool) {
+	switch n := a.(type) {
+	case int64:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case float32:
+		return float64(n), true
+	case string:
+		f, err := strconv.ParseFloat(n, 64)
+		return f, err == nil
+	}
+	return 0, false
 }
 
 // skipFrom builds a SkipRecord describing one row the importer chose

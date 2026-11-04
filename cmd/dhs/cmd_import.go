@@ -237,6 +237,19 @@ func runImport(ctx context.Context, args []string) error {
 	if *dry && len(rep.Skips) > rep.Unchanged {
 		printSkipReport(rep.Skips)
 	}
+	// MIN/MAX (the import rule on every connector): the bound went out,
+	// or would, and the run still ends in error — the file asked for
+	// something the device's range does not hold.
+	if len(rep.Clamped) > 0 {
+		for _, c := range rep.Clamped {
+			fmt.Println("clamped     " + c)
+		}
+		verb := "wrote"
+		if *dry {
+			verb = "would write"
+		}
+		return &consumer.ValidationError{Field: "import", Reason: fmt.Sprintf("%d row(s) outside MIN/MAX: %s the bound instead", len(rep.Clamped), verb)}
+	}
 	return nil
 }
 
