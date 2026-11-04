@@ -238,18 +238,13 @@ func TestSaveSlotCache_DMCarriesTheIdentity(t *testing.T) {
 
 // What is true of one box goes in its manifest, keyed by its IP.
 func TestUnitFactsGoInTheManifest(t *testing.T) {
-	prev, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(prev) })
+	prev := treeStore
+	treeStore = datastore.NewTreeStore(t.TempDir())
+	t.Cleanup(func() { treeStore = prev })
 
 	unit := unitIdentity(context.Background(), describedProber{&fakeProber{}})
 	writeSlotManifest("", "snmp", "10.0.0.1", 161, []slotBinding{{Slot: 0, Identity: "Box@1.0"}}, unit)
-	m, err := manifest.Load(filepath.Join(".cache", "manifest", "snmp", "10.0.0.1.json"))
+	m, err := manifest.Load(filepath.Join(treeStore.BaseDir(), "manifest", "snmp", "10.0.0.1.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -44,7 +44,7 @@ func runProducer(ctx context.Context, protoName string, args []string) error {
 	fs := flag.NewFlagSet("producer "+protoName+" serve", flag.ContinueOnError)
 	var (
 		treePath       = fs.String("tree", "", "path to canonical tree.json (one of --tree | --manifest required)")
-		manifestPath   = fs.String("manifest", "", "path to manifest JSON (.cache/manifest/<device>.json) — assembles the tree from referenced DMs under .cache/dm/<proto>/ per ADR-0022. Mutually exclusive with --tree.")
+		manifestPath   = fs.String("manifest", "", "path to manifest JSON (.cache/manifest/<proto>/<ip>.json) — assembles the tree from referenced DMs under .cache/dm/<proto>/ per ADR-0022. Mutually exclusive with --tree.")
 		cacheDir       = fs.String("cache-dir", ".cache", "root of the cache tree (`.cache/dm/<proto>/<Model@SwRev>.json` lookup base; only used with --manifest)")
 		port           = fs.Int("port", 0, "TCP listen port (0 = plugin default)")
 		host           = fs.String("host", "0.0.0.0", "TCP/UDP listen host (alias: --bind)")

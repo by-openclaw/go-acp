@@ -246,11 +246,12 @@ DESCRIPTION
     csv   lossy, one row per object, header row, '|' for nested fields
 
   Format is picked from --format first, then the --out extension,
-  defaulting to json. With no --out the snapshot streams to stdout.
+  defaulting to json. With no --out the snapshot goes to
+  snapshots/<proto>/<ip>/params.<fmt> (ADR-0028); --out - streams to stdout.
 
 FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
-  --out FILE         output file path    (default: stdout)
+  --out FILE         output file path    (default: snapshots/<proto>/<ip>/params.<fmt>)
   --slot N           export only this slot (-1 = all present)
   --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
                      system,ateme.dr5000.Status.Input). A connector that can

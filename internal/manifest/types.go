@@ -1,12 +1,12 @@
-// Package manifest parses the .cache/manifest/<device>.json file per
-// ADR-0022 §"Manifest shape". The manifest wires Device → Frame →
+// Package manifest parses the .cache/manifest/<proto>/<ip>.json file per
+// ADR-0022 §"Manifest shape" and ADR-0028 (IP key). The manifest wires Device → Frame →
 // Slot → DM-by-ref. DMs are stored under .cache/dm/<proto>/<Model@SwRev>.json.
 //
 // The package is loader-only — it produces typed structs that callers
 // (producer, consumer) translate into protocol-specific tree shapes.
 package manifest
 
-// Manifest is the top-level shape parsed from .cache/manifest/<device>.json.
+// Manifest is the top-level shape parsed from .cache/manifest/<proto>/<ip>.json.
 type Manifest struct {
 	Device Device  `json:"device"`
 	Frames []Frame `json:"frames"`

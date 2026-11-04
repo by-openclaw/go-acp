@@ -126,7 +126,7 @@ VERBS
             system as a template — port types, keys, commands, conferences
             — into .cache/dm/rrcs/<Type@version>.json, and the manifest
             of node, cards and ports with their type and role into
-            .cache/manifest/rrcs/<host>.json. Eight list requests plus the
+            .cache/manifest/rrcs/<ip>.json. Eight list requests plus the
             keys and commands of one port per type; --refresh rewrites a
             model that exists
   import    WRITES: every writable value of an export file that differs
@@ -275,14 +275,14 @@ func (c *rrcsFlags) open(verb, addr string) (*rrcs.Client, rrcs.Tap, func(), err
 	}
 	var tap rrcs.Tap
 	_, sink, logClose, _, lerr := buildConsumerLoggers(parseLogLevel(c.logLevel), c.logFormat, c.logPath, c.syslogAddr,
-		defaultLogPath(rrcsProto, hostOnly(addr), verb), c.logRetention)
+		defaultLogPath(rrcsProto, deviceKey(addr), verb), c.logRetention)
 	if lerr != nil {
 		return nil, nil, nil, rrcsValErr(verb, lerr.Error())
 	}
 	c.sink = sink
 	closeFn := logClose
 	if c.capture == "auto" {
-		c.capture = defaultCapturePath(rrcsProto, hostOnly(addr), verb, "", time.Now())
+		c.capture = defaultCapturePath(rrcsProto, deviceKey(addr), verb, "", time.Now())
 		fmt.Fprintf(os.Stderr, "rrcs %s: --capture auto → %s (ADR-0028)\n", verb, c.capture)
 	}
 	if c.capture != "" {
@@ -605,7 +605,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 		if _, p, err := splitHostPort(client.Peer(), rrcs.DefaultPort); err == nil {
 			port = p
 		}
-		if path, err := manifest.Write(treeStore.BaseDir(), rrcs.Manifest(m, hostOnly(client.Peer()), port, set)); err == nil {
+		if path, err := manifest.Write(treeStore.BaseDir(), withFQDN(rrcs.Manifest(m, deviceKey(client.Peer()), port, set), client.Peer())); err == nil {
 			cf.say("rrcs watch: inventory rewritten: %s", path)
 		}
 	}

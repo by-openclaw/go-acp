@@ -8,11 +8,14 @@ package main
 //	snapshots/<proto>/<key>/<facet>            operator state (export/import)
 //	captures/<proto>/<key>/<verb>[-<scope>]-<utcstamp>.jsonl   wire evidence
 //	.cache/logs/<proto>/<key>/<verb>.log       disposable diagnostics
+//	.cache/manifest/<proto>/<key>.json         inventory anchor (manifest.Write)
 //
-// key = the device identity IP (the RM sentinel 0.0.0.0 included);
-// name-slug only where no IP exists (callers warn loudly).
+// key = the device identity IP (the RM sentinel 0.0.0.0 included), a
+// hostname resolved to it (deviceKey); name-slug only where no IP exists
+// (callers warn loudly).
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -20,6 +23,7 @@ import (
 	"time"
 
 	"dhs/internal/datastore"
+	"dhs/internal/manifest"
 )
 
 // hostOnly strips an optional :port from an addr so the host alone
@@ -29,6 +33,62 @@ func hostOnly(addr string) string {
 		return h
 	}
 	return addr
+}
+
+// deviceKey is the ADR-0028 folder and manifest key of a target: its IP
+// alone, no port. A hostname is resolved here, so one device lands in one
+// folder whether it was addressed by name or by IP; the name itself goes
+// into the manifest as FQDN (fqdnOf), never into a path. A name that does
+// not resolve keys by itself, with a warning.
+func deviceKey(addr string) string {
+	return deviceKeyWith(net.DefaultResolver.LookupHost, addr)
+}
+
+func deviceKeyWith(lookup func(context.Context, string) ([]string, error), addr string) string {
+	h := hostOnly(addr)
+	if h == "" || net.ParseIP(h) != nil {
+		return h
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	ips, err := lookup(ctx, h)
+	if err != nil || len(ips) == 0 {
+		fmt.Fprintf(os.Stderr, "warning: %s does not resolve (%v) — keyed by the name, not an IP (ADR-0028)\n", h, err)
+		return h
+	}
+	for _, ip := range ips {
+		if p := net.ParseIP(ip); p != nil && p.To4() != nil {
+			return ip
+		}
+	}
+	return ips[0]
+}
+
+// fqdnOf is the hostname a target was addressed by, for the manifest's
+// FQDN field; empty when it was addressed by IP.
+func fqdnOf(addr string) string {
+	h := hostOnly(addr)
+	if net.ParseIP(h) != nil {
+		return ""
+	}
+	return h
+}
+
+// withFQDN records on m the hostname addr was addressed by.
+func withFQDN(m *manifest.Manifest, addr string) *manifest.Manifest {
+	if m != nil {
+		m.Device.FQDN = fqdnOf(addr)
+	}
+	return m
+}
+
+// manifestCacheDir is the .cache the manifests live in: the tree store's
+// base dir, the sibling of dm/ — never the current directory.
+func manifestCacheDir() string {
+	if treeStore != nil {
+		return treeStore.BaseDir()
+	}
+	return filepath.Join(artifactRoot(), ".cache")
 }
 
 // artifactRoot resolves the ADR-0028 bucket root (the directory

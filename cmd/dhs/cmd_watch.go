@@ -1008,8 +1008,9 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 			Name:     deviceName,
 			Protocol: proto,
 			// Direct protocols: the device IS the endpoint — its host
-			// IP is the ADR-0028 identity key.
-			IP: host,
+			// IP is the ADR-0028 identity key, a hostname resolved to it.
+			IP:   deviceKey(host),
+			FQDN: fqdnOf(host),
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: defaultTransportFor(proto)},
 			},
@@ -1026,7 +1027,7 @@ func writeSlotManifest(deviceName, proto, host string, port int, bindings []slot
 			DM:   b.Identity + ".json",
 		})
 	}
-	path, err := manifest.Write(".cache", mf)
+	path, err := manifest.Write(manifestCacheDir(), mf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: manifest write: %v\n", err)
 		return
@@ -1141,7 +1142,8 @@ func splitDMByMatrix(ctx context.Context, plug consumer.Protocol, host string, p
 		Device: manifest.Device{
 			Name:     deviceName,
 			Protocol: "emberplus",
-			IP:       host, // direct protocol: device == endpoint (ADR-0028 key)
+			IP:       deviceKey(host), // direct protocol: device == endpoint (ADR-0028 key)
+			FQDN:     fqdnOf(host),
 			Endpoints: []manifest.Endpoint{
 				{IP: host, Port: port, Transport: "tcp"},
 			},
@@ -1157,7 +1159,7 @@ func splitDMByMatrix(ctx context.Context, plug consumer.Protocol, host string, p
 			DM:   r.Identity + ".json",
 		})
 	}
-	path, werr := manifest.Write(".cache", mf)
+	path, werr := manifest.Write(manifestCacheDir(), mf)
 	if werr != nil {
 		fmt.Fprintf(os.Stderr, "warning: manifest write: %v\n", werr)
 		return

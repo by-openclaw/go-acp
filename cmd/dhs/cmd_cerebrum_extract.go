@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -395,6 +396,24 @@ func writeCerebrumManifest(identity, deviceName, deviceIP, host string, port int
 				DM:   identity + ".json",
 			}},
 		}},
+	}
+	// One device, one manifest, every sub-device in it: manifest.Write
+	// replaces the frames, so the bindings of the other sub-devices
+	// already on file are carried over (extract-all writes them one by one).
+	if prior, perr := manifest.Load(manifest.PathFor(treeStore.BaseDir(), mf)); perr == nil && prior != nil {
+		for _, fr := range prior.Frames {
+			if fr.Name != "device" {
+				continue
+			}
+			for _, sl := range fr.Slots {
+				if fmt.Sprint(sl.Addr["sub_device"]) != subDev || fmt.Sprint(sl.Addr["device"]) != deviceName {
+					mf.Frames[0].Slots = append(mf.Frames[0].Slots, sl)
+				}
+			}
+		}
+		sort.SliceStable(mf.Frames[0].Slots, func(i, j int) bool {
+			return fmt.Sprint(mf.Frames[0].Slots[i].Addr["sub_device"]) < fmt.Sprint(mf.Frames[0].Slots[j].Addr["sub_device"])
+		})
 	}
 	mfPath, err := manifest.Write(treeStore.BaseDir(), mf)
 	if err != nil {

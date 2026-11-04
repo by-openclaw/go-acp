@@ -28,7 +28,7 @@ func runNMOSExport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("consumer nmos export", flag.ContinueOnError)
 	var (
 		target   = fs.String("target", "", "device or registry to capture, as host:port (required)")
-		out      = fs.String("out", "nmos-export", "output directory")
+		out      = fs.String("out", "", "output directory (default: snapshots/amwa/<ip>/, ADR-0028)")
 		https    = fs.Bool("https", false, "use TLS")
 		deep     = fs.Bool("deep", false, "also fetch staged / constraints / transporttype per IS-05 endpoint")
 		allVers  = fs.Bool("all-versions", false, "walk every minor of every API")
@@ -65,6 +65,9 @@ func runNMOSExport(ctx context.Context, args []string) error {
 		return fmt.Errorf("consumer nmos export: --target is required (host:port of the device or registry)")
 	}
 
+	if *out == "" {
+		*out = snapshotDir("amwa", deviceKey(*target))
+	}
 	opts := export.Options{
 		Target:      *target,
 		Out:         *out,

@@ -33,7 +33,7 @@ func (s *server) MarkTreeSlotsPresent() error {
 // frame-status object and marks each named slot as "present" (state=2).
 //
 // Used by the manifest-driven boot path: the canonical tree built
-// from `.cache/manifest/<device>.json` + `.cache/dm/<proto>/` carries
+// from `.cache/manifest/<proto>/<ip>.json` + `.cache/dm/<proto>/` carries
 // the per-slot DM trees but no Frame group at slot 0 — frame-status
 // is runtime rack-controller state, not a card schema. Without this
 // object SynapseSetUp and other ACP1 consumers see "no slot populated"

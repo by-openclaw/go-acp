@@ -85,7 +85,7 @@ func dmFromManifest(proto, host string, ref *consumer.DMRef) {
 	if treeStore == nil || ref == nil || len(ref.Addr) == 0 {
 		return
 	}
-	path := filepath.Join(treeStore.BaseDir(), "manifest", datastore.SanitizePathSeg(proto), datastore.SanitizePathSeg(hostOnly(host))+".json")
+	path := filepath.Join(treeStore.BaseDir(), "manifest", datastore.SanitizePathSeg(proto), datastore.SanitizePathSeg(deviceKey(host))+".json")
 	m, err := manifest.Load(path)
 	if err != nil {
 		return

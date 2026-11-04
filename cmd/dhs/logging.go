@@ -127,7 +127,7 @@ func consumerLogger(ctx context.Context, proto, host, verb string) (op, event *s
 	}
 	o, e, c, has, err := buildConsumerLoggers(
 		parseLogLevel(lf.level), lf.format, lf.path, lf.syslogAddr,
-		defaultLogPath(proto, hostOnly(host), verb), lf.retention)
+		defaultLogPath(proto, deviceKey(host), verb), lf.retention)
 	if err != nil || o == nil {
 		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})), nil, func() {}, false
 	}

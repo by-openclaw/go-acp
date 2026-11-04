@@ -789,7 +789,7 @@ Usage of consumer nmos export:
   -no-stamp
     	name folders without a timestamp
   -out string
-    	output directory (default "nmos-export")
+    	output directory (default: snapshots/amwa/<ip>/, ADR-0028)
   -page-limit int
     	resources per Query API page to ask for (default 100); a registry may clamp it and reports the applied value in X-Paging-Limit
   -quiet
@@ -1651,11 +1651,12 @@ DESCRIPTION
     csv   lossy, one row per object, header row, '|' for nested fields
 
   Format is picked from --format first, then the --out extension,
-  defaulting to json. With no --out the snapshot streams to stdout.
+  defaulting to json. With no --out the snapshot goes to
+  snapshots/<proto>/<ip>/params.<fmt> (ADR-0028); --out - streams to stdout.
 
 FLAGS
   --format F         json | yaml | csv   (default: json or from extension)
-  --out FILE         output file path    (default: stdout)
+  --out FILE         output file path    (default: snapshots/<proto>/<ip>/params.<fmt>)
   --slot N           export only this slot (-1 = all present)
   --path PATH        the branches to read, comma-separated (e.g. BOARD, PSU.1,
                      system,ateme.dr5000.Status.Input). A connector that can
@@ -1949,7 +1950,7 @@ VERBS
   salvo-instance-details   OBTAIN <salvo_change type='INSTANCE_DETAILS'/>   --group NAME --instance NAME
   get                      canonical read — ONE dotted path (same verb as every connector): --path "DEVICE.SUB.OBJECT…" (DEVICE_NAME verbatim incl. whitespace; wire form stays available as device-value)
   extract-all              one DM per device: every LIST device and sub-device; roots from the acp2 model, else [--roots FILE] ({"<device name>/<sub or *>": ["FOLDER"]})
-  extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/<device>.json. Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
+  extract                  ADR-0022 card data model — device walk → .cache/dm/cerebrum-nb/<Model@SwRev>.json + .cache/manifest/cerebrum-nb/<device ip>.json (every sub-device in one file). Root auto-DISCOVERED (probe ladder; no --path needed) and identity auto-probed from the device tree (acp2's objects over NB: IDENTITY.Card Name + IDENTITY.Product Version / BOARD.Hardware Version): --device NAME --by-name --sub-device N [--path "GROUP[;GROUP…]" = manual scope] [--product X] [--version V] [--max-requests N]
   validate                 OFFLINE — decode a --capture frames.jsonl through the codec (counts, NACKs, case deviations); --out-tree = observed DEVICE objects as a canonical tree  [--out-params FILE] [--stop-at NOTE]
   health                   3-layer session health (reachable / connected / live)
   keepalive-probe          DIAGNOSTIC — hold WS open, observe TCP keep-alives  [--idle DUR] [--send-login]
