@@ -108,7 +108,7 @@ func buildCSVRow(dev DeviceInfo, slot SlotDump, o consumer.Object) []string {
 	row[14] = numStr(o.Step)
 	row[15] = numStr(o.Def)
 	// enum_items
-	row[16] = strings.Join(o.EnumItems, "|")
+	row[16] = strings.Join(enumCells(o), "|")
 	// max_len
 	if o.MaxLen > 0 {
 		row[17] = strconv.Itoa(o.MaxLen)
@@ -165,7 +165,7 @@ func valueAndNameRaw(o consumer.Object) (string, string) {
 	case consumer.KindFloat:
 		return strconv.FormatFloat(v.Float, 'g', -1, 64), ""
 	case consumer.KindEnum:
-		return strconv.Itoa(int(v.Enum)), v.Str
+		return strconv.FormatInt(enumValue(o), 10), v.Str
 	case consumer.KindString:
 		return v.Str, ""
 	case consumer.KindIPAddr:

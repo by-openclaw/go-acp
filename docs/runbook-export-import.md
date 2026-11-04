@@ -48,6 +48,27 @@ differs from the previous export.
   range as exported — leave them as they are.
 - Commit the edited files; the site is the record of what was asked.
 
+### What a value cell must be
+
+A row that does not match its definition is **not sent**, named in the
+report (`invalid …`), and the import ends with exit 2; the rows that are
+right still go out. Nothing is guessed.
+
+| Kind | Accepted | Refused (examples) |
+|---|---|---|
+| bool | `true` `false` `1` `0` (any case) | `2`, `ture`, `t`, empty |
+| int / uint / float | a number; uint never negative | `4.5` in an int, `1,5`, empty (never written as 0) |
+| enum | `value` = an item's value, `value_name` = that item; or `value_name` alone, spelled exactly | a value that is no item, a name that disagrees with the value, `on` for `On` (the report names the item meant) |
+| ip | dotted IPv4 (`0.0.0.0` included); the report gives its class: private / public unicast, multicast (SSM for 232/8), broadcast, link-local, loopback, unspecified | `10.6.250.300`, `010.6.250.1`, an IPv6 address in an IPv4 field |
+| string | up to `max_len` characters | longer than `max_len` |
+
+`enum_items` carries the device's own value of each item when it numbers
+them itself (ACP2 options, an Ember+ enumMap): `710=Off|711=1 s|715=60 s`,
+and `value` is that number (`715`), never a position. A device whose
+items are positions keeps the plain list `Off|On`.
+
+A value the device already holds is left alone, whatever it is.
+
 ## 4. Import
 
 ```bash
@@ -72,6 +93,7 @@ Options: `-e from=10.6.250.40/matrix-1` (another folder of the site),
 | Message | Meaning | Do |
 |---|---|---|
 | `clamped … 19000 above MAX 18000, 18000 used instead` + exit 2 | a value outside the range in the file | fix the value; nothing was sent in the dry run |
+| `invalid … ` + exit 2 | the row does not match its definition (table above) | fix the cell; that row was not sent |
 | `failed N` in the dry run | the device refuses N rows | read the listed rows; nothing was sent |
 | step 3 fails | written, acknowledged, not applied | a device fault: report it with the play output |
 | `the site limits refuse N rows` | the plant's own limits (ADR-0036) | change the file or the limits |

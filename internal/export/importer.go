@@ -53,6 +53,15 @@ type ImportReport struct {
 	// would be in a dry run). A caller reports them as an error even
 	// though the bound went out — the file asked for something else.
 	Clamped []string
+	// Invalid names every row whose value does not match its definition
+	// (a boolean that is not true/false/1/0, an enum whose index and name
+	// disagree, a malformed address, a string over max_len, an empty
+	// number…). Those rows are not sent; a caller reports them as an
+	// error.
+	Invalid []string
+	// IPs names every IPv4 value sent (or that would be) with its class:
+	// unicast, multicast, broadcast… for the run's log.
+	IPs []string
 }
 
 // SkipRecord is one rejected-at-client row. Small and printable.
@@ -195,6 +204,11 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 					req.Path = strings.Join(obj.Path, ".")
 				}
 			}
+			// A cell that does not parse as its kind is never sent.
+			if p, bad := obj.Meta[metaInvalid].(string); bad {
+				rep.Invalid = append(rep.Invalid, fmt.Sprintf("slot %d %s: %s", dump.Slot, skipFrom(dump.Slot, obj, "").Path, p))
+				continue
+			}
 			// The range export wrote beside the value: above MAX → MAX,
 			// below MIN → MIN, the same rule on every connector.
 			if v, note, moved := bounded(obj); moved {
@@ -213,6 +227,9 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 					}
 					rep.Skipped++
 					rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, reason))
+					// Not sent, and not silent: the file names something
+					// the device does not take.
+					rep.Invalid = append(rep.Invalid, fmt.Sprintf("slot %d %s: %v", dump.Slot, skipFrom(dump.Slot, obj, "").Path, vErr))
 					continue
 				}
 			}
@@ -226,6 +243,17 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 				rep.Unchanged++
 				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "unchanged"))
 				continue
+			}
+			// A value the device does not hold must match its definition
+			// (an item of the enumeration, a string within max_len); one
+			// the device already holds is left alone above, whatever it is.
+			if p := valueProblem(obj); p != "" {
+				rep.Invalid = append(rep.Invalid, fmt.Sprintf("slot %d %s: %s", dump.Slot, skipFrom(dump.Slot, obj, "").Path, p))
+				continue
+			}
+			if obj.Value.Kind == consumer.KindIPAddr {
+				rep.IPs = append(rep.IPs, fmt.Sprintf("slot %d %s: %s %s", dump.Slot, skipFrom(dump.Slot, obj, "").Path,
+					net.IP(obj.Value.IPAddr[:]).String(), ipClass(obj.Value.IPAddr)))
 			}
 			if dryRun {
 				rep.Applied++

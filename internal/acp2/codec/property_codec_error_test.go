@@ -123,6 +123,27 @@ func TestPropertyOptions_VariableLength(t *testing.T) {
 	}
 }
 
+// PropertyOptionIDs: the u32 id of each record, in wire order, parallel to
+// PropertyOptions — ids a device picks itself (7, 203), not positions.
+func TestPropertyOptionIDs(t *testing.T) {
+	data := []byte{
+		0x00, 0x00, 0x00, 0x07, 'O', 'f', 'f', 0x00, // id 7 + "Off\0", aligned
+		0x00, 0x00, 0x00, 0xCB, '6', '0', ' ', 's', 0x00, 0x00, 0x00, 0x00, // id 203 + "60 s\0" + 3 pad
+		0x00, 0x00, 0x01, 0x00, 'z', // id 256, name runs to the end
+	}
+	p := &Property{Data: data}
+	ids := PropertyOptionIDs(p)
+	if len(ids) != 3 || ids[0] != 7 || ids[1] != 203 || ids[2] != 256 {
+		t.Fatalf("ids %v", ids)
+	}
+	if opts := PropertyOptions(p); len(opts) != 3 || opts[1] != "60 s" {
+		t.Fatalf("names %v", opts)
+	}
+	if PropertyOptionIDs(&Property{Data: []byte{0, 1}}) != nil {
+		t.Fatal("short data gives ids")
+	}
+}
+
 // PropertyOptions: a record header present but its name runs to the end of
 // the buffer with no NUL (exercises the end-of-buffer break paths).
 func TestPropertyOptions_NameRunsToEnd(t *testing.T) {

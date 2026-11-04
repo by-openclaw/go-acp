@@ -188,7 +188,7 @@ func jsonLeaf(o consumer.Object) map[string]any {
 		m["step"] = o.Step
 		m["default"] = o.Def
 	case consumer.KindEnum:
-		m["enum_items"] = o.EnumItems
+		m["enum_items"] = enumCells(o)
 		m["default"] = o.Def
 	case consumer.KindString:
 		if o.MaxLen > 0 {
@@ -207,7 +207,7 @@ func jsonLeaf(o consumer.Object) map[string]any {
 	case consumer.KindFloat:
 		m["value"] = v.Float
 	case consumer.KindEnum:
-		m["value"] = v.Enum
+		m["value"] = enumValue(o)
 		if v.Str != "" {
 			m["value_name"] = v.Str
 		}
@@ -350,7 +350,7 @@ func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, o
 			obj.Kind = parseValueKind(lf.Kind)
 			obj.Access = parseAccess(lf.Access)
 			obj.Unit = lf.Unit
-			obj.EnumItems = lf.EnumItems
+			obj.EnumItems, obj.EnumIDs = splitEnumCells(lf.EnumItems)
 			obj.MaxLen = lf.MaxLen
 			obj.Min = lf.Min
 			obj.Max = lf.Max
@@ -358,7 +358,10 @@ func flattenJSONTree(tree map[string]json.RawMessage, slot int, path []string, o
 			obj.Def = lf.Default
 			if lf.Value != nil {
 				valStr := strings.Trim(string(lf.Value), "\"")
-				obj.Value = parseCSVValue(obj.Kind, valStr, lf.ValueName, lf.EnumItems)
+				obj.Value = parseCSVValue(obj.Kind, valStr, lf.ValueName, obj.EnumItems)
+				if obj.HasWrite() {
+					markCell(&obj, valStr, lf.ValueName)
+				}
 			}
 			*out = append(*out, obj)
 		} else {

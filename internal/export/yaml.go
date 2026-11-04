@@ -186,7 +186,7 @@ func writeTreeLeaf(sb *strings.Builder, indent int, o *consumer.Object) {
 		writeKVPad(sb, pad, "step", o.Step)
 		writeKVPad(sb, pad, "default", o.Def)
 	case consumer.KindEnum:
-		writeKVPad(sb, pad, "enum_items", o.EnumItems)
+		writeKVPad(sb, pad, "enum_items", enumCells(*o))
 		writeKVPad(sb, pad, "default", o.Def)
 	case consumer.KindString:
 		if o.MaxLen > 0 {
@@ -243,7 +243,7 @@ func writeValue(sb *strings.Builder, pad string, o consumer.Object) {
 	case consumer.KindFloat:
 		writeKVPad(sb, pad, "value", v.Float)
 	case consumer.KindEnum:
-		writeKVPad(sb, pad, "value", v.Enum)
+		writeKVPad(sb, pad, "value", enumValue(o))
 		if v.Str != "" {
 			writeKVPad(sb, pad, "value_name", v.Str)
 		}

@@ -97,3 +97,14 @@ func TestWalker_DecodesPid20_PresetParent(t *testing.T) {
 		t.Errorf("acp2.presetParent=%v want 12345", v)
 	}
 }
+
+// optionIDs carries the wire ids beside the names, and none when the two
+// lists disagree in length.
+func TestOptionIDs(t *testing.T) {
+	if got := optionIDs([]uint32{7, 203}, 2); len(got) != 2 || got[0] != 7 || got[1] != 203 {
+		t.Errorf("%v", got)
+	}
+	if optionIDs([]uint32{7}, 2) != nil || optionIDs(nil, 0) != nil {
+		t.Error("mismatched or empty lists give ids")
+	}
+}

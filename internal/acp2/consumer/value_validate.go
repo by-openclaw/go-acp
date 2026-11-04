@@ -121,7 +121,9 @@ func validateValueAgainstType(objType codec.ACP2ObjType, numType codec.NumberTyp
 		return nil
 
 	case codec.ObjTypeIPv4:
-		if val.IPAddr != [4]byte{} {
+		// A typed address is the address, 0.0.0.0 included (an unset
+		// gateway is a value); only a text value is parsed here.
+		if val.IPAddr != [4]byte{} || val.Kind == consumer.KindIPAddr {
 			return nil
 		}
 		if val.Str == "" {
