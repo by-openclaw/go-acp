@@ -1956,6 +1956,7 @@ VERBS
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view. Every change is judged by the per-model alarm template (dhs consumer cerebrum-nb alarm): --alarm FILE names one, --no-alarm turns it off. --metrics-addr :9100 serves Prometheus /metrics + /snapshot.json for this watch (labels proto/device/role), surviving reconnects
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
+  Every write verb (and route, replace, import) sends only with --write-to HOST naming the host a second time (ADR-0037 P5); --dry-run (= --check) sends nothing
   -----------------------  -----------------------------------------------
   lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
@@ -1997,8 +1998,8 @@ EXAMPLES
   dhs consumer cerebrum-nb connect       10.6.239.50
   dhs consumer cerebrum-nb listen        10.6.239.50 --user admin --pass s3cr3t
   dhs consumer cerebrum-nb list-devices  10.6.239.50:40007 --device-type Router
-  dhs consumer cerebrum-nb route         10.6.239.50 --dest 60 --srce 60 --level 1
-  dhs consumer cerebrum-nb route         10.6.239.50 --route 60:60:1 --route 61:61:1
+  dhs consumer cerebrum-nb route         10.6.239.50 --write-to 10.6.239.50 --dest 60 --srce 60 --level 1
+  dhs consumer cerebrum-nb route         10.6.239.50 --write-to 10.6.239.50 --route 60:60:1 --route 61:61:1
   dhs consumer cerebrum-nb device-details 10.6.239.50 --port 40008 --device 10.107.30.100
 ```
 

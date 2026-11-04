@@ -236,7 +236,7 @@
 
     - name: Remove the plan's categories
       ansible.builtin.command:
-        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, category, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --op, delete, --category, "{{ item.name }}"]
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, category, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --write-to, "{{ rcp_host }}", --op, delete, --category, "{{ item.name }}"]
       environment: "{{ rcp_env }}"
       # parents are listed after their sub-categories: removed first.
       loop: "{{ rcp_categories | reverse | list }}"
@@ -258,7 +258,7 @@
 
     - name: "Levels: present"
       ansible.builtin.command:
-        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, set-mnemonic, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off",
+        argv: ["{{ rcp_bin }}", consumer, cerebrum-nb, set-mnemonic, "{{ rcp_host }}", --port, "{{ rcp_nb_port | string }}", --log, "off", --write-to, "{{ rcp_host }}",
                --kind, LEVEL_MNE, --level, "{{ item.id | string }}", --mnemonic, "{{ item.name }}"]
       environment: "{{ rcp_env }}"
       loop: "{{ rcp_levels }}"
@@ -358,7 +358,7 @@
       ansible.builtin.command:
         argv: >-
           {{ [rcp_bin, 'consumer', 'cerebrum-nb', 'import', rcp_host, '--port', rcp_nb_port | string, '--log', 'off',
-              '--cat-src', rcp_dir ~ '/cat-src.csv', '--cat-dst', rcp_dir ~ '/cat-dst.csv', '--output', 'json']
+              '--cat-src', rcp_dir ~ '/cat-src.csv', '--cat-dst', rcp_dir ~ '/cat-dst.csv', '--output', 'json', '--write-to', rcp_host]
              + (['--check'] if ansible_check_mode else []) }}
       environment: "{{ rcp_env }}"
       register: rcp_cat_import

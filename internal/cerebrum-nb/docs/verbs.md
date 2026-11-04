@@ -142,12 +142,19 @@ Cerebrum's "set" surface is the §4 `ACTION` envelope plus the §4.5
 | `device-config` | `<DEVICE_CONFIGURATION/>` (§7) | Device-tree CRUD |
 | `obtain-datastore` | `OBTAIN <datastore_change path='…'/>` | Fetch a data store |
 
+Every verb that writes (these, plus `route`, `replace`, `import`, `assoc`,
+`rm-add`, `rm-delete`) sends only with `--write-to HOST`, the host named a
+second time exactly as given (ADR-0037 P5). Without it the verb stops before
+it connects. `--dry-run` is the verb's `--check`: it reads, reports and sends
+nothing; on `assoc`, `rm-delete`, `category` and `rm-add --count`, which read
+nothing first, it prints what would be sent.
+
 ### route
 
 ```
-dhs consumer cerebrum-nb route 10.6.239.50 --dest 60 --srce 60 --level 1
+dhs consumer cerebrum-nb route 10.6.239.50 --write-to 10.6.239.50 --dest 60 --srce 60 --level 1
 # cross-level (§4.1.1): level 2 of the destination from level 1 of the source
-dhs consumer cerebrum-nb route 10.6.239.50 --dest 60 --srce 60 --level 2 --srce-level 1
+dhs consumer cerebrum-nb route 10.6.239.50 --write-to 10.6.239.50 --dest 60 --srce 60 --level 2 --srce-level 1
 ```
 
 Codec-generated fixture ([`tx_action_route.xml`](../testdata/fixtures/tx_action_route.xml),
@@ -244,8 +251,8 @@ without a model.
 | `protected_path` | `PROTECTED_PATH` | whole path protected |
 
 ```
-dhs consumer cerebrum-nb lock   10.6.239.50 --kind DEST_LOCK --dest 60 --level 1 --mode locked
-dhs consumer cerebrum-nb unlock 10.6.239.50 --kind DEST_LOCK --dest 60 --level 1
+dhs consumer cerebrum-nb lock   10.6.239.50 --write-to 10.6.239.50 --kind DEST_LOCK --dest 60 --level 1 --mode locked
+dhs consumer cerebrum-nb unlock 10.6.239.50 --write-to 10.6.239.50 --kind DEST_LOCK --dest 60 --level 1
 ```
 
 `lock` reads the state first for both kinds, so a second run sends nothing.
@@ -284,7 +291,7 @@ in the Cerebrum device tree. `--device-type` selects the body shape
 > spec-correct and fixture-pinned.
 
 ```text
-dhs consumer cerebrum-nb device-config add 10.6.239.50 \
+dhs consumer cerebrum-nb device-config add 10.6.239.50 --write-to 10.6.239.50 \
   --device-type generic --ip 10.10.10.1 \
   --device "Shotoku STAR Protocol" --version Latest --name "Shotoku STAR Protocol" \
   --conn-type TCP --port-number 8000 --timeout-ms 5000 --poll 3000
@@ -487,7 +494,7 @@ dhs consumer cerebrum-nb export HOST --user U --pass P --out-dir DIR --prefix no
 # mirror of export --out-dir — reads the same file set back:
 dhs consumer cerebrum-nb import HOST --user U --pass P --in-dir DIR --prefix noc [--check] [--allow-clear]
 # or per-file (partial scope):
-dhs consumer cerebrum-nb import HOST --user U --pass P \
+dhs consumer cerebrum-nb import HOST --write-to HOST --user U --pass P \
   [--xpoint xp.csv] [--src s.csv] [--dst d.csv] [--levels l.csv] [--lock l.csv] [--srce-lock l.csv] [--check] [--allow-clear]
 ```
 

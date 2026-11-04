@@ -444,6 +444,7 @@ VERBS
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view. Every change is judged by the per-model alarm template (dhs consumer cerebrum-nb alarm): --alarm FILE names one, --no-alarm turns it off. --metrics-addr :9100 serves Prometheus /metrics + /snapshot.json for this watch (labels proto/device/role), surviving reconnects
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
+  Every write verb (and route, replace, import) sends only with --write-to HOST naming the host a second time (ADR-0037 P5); --dry-run (= --check) sends nothing
   -----------------------  -----------------------------------------------
   lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
@@ -485,8 +486,8 @@ EXAMPLES
   dhs consumer cerebrum-nb connect       10.6.239.50
   dhs consumer cerebrum-nb listen        10.6.239.50 --user admin --pass s3cr3t
   dhs consumer cerebrum-nb list-devices  10.6.239.50:40007 --device-type Router
-  dhs consumer cerebrum-nb route         10.6.239.50 --dest 60 --srce 60 --level 1
-  dhs consumer cerebrum-nb route         10.6.239.50 --route 60:60:1 --route 61:61:1
+  dhs consumer cerebrum-nb route         10.6.239.50 --write-to 10.6.239.50 --dest 60 --srce 60 --level 1
+  dhs consumer cerebrum-nb route         10.6.239.50 --write-to 10.6.239.50 --route 60:60:1 --route 61:61:1
   dhs consumer cerebrum-nb device-details 10.6.239.50 --port 40008 --device 10.107.30.100`)
 }
 
@@ -2982,10 +2983,12 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	fs.Var(&routesFlag, "route", "repeatable: dst:src:lvl (use multiple --route to batch)")
 	csv := fs.String("csv", "", "CSV file with columns dest,srce,level")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read live routes, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
@@ -2993,6 +2996,9 @@ func cerebrumRoute(_ context.Context, args []string) error {
 	rest := fs.Args()
 	if len(rest) < 1 {
 		return cerebrumValErr("route", "missing host[:port] argument")
+	}
+	if err := wf.guard("route", rest, *check); err != nil {
+		return err
 	}
 
 	// Build the route list from flags.
@@ -3218,10 +3224,12 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	// of the five canonical LOCK_STATE values. Empty keeps the verb default.
 	modeFlag := fs.String("mode", "", "0v16 lock mode: locked | protected | locked_path | protected_path | released (overrides the default "+verb+" verb)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live lock state, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
@@ -3238,6 +3246,9 @@ func cerebrumLock(_ context.Context, args []string, mode codec.LockKind) error {
 	}
 	if *srce == "" && *dest == "" {
 		return cerebrumValErr(verb, "--srce or --dest is required")
+	}
+	if err := wf.guard(verb, fs.Args(), *check); err != nil {
+		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), verb)
 	if err != nil {
@@ -3450,10 +3461,12 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	allowClear := fs.Bool("allow-clear", false, "send an empty MNEMONIC (the clear form; 0v16 does not document it — the server's answer is the measurement)")
 	alt := fs.String("alt", "", "alternate mnemonic slot (ALT_MNE)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live label, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
@@ -3463,6 +3476,9 @@ func cerebrumSetMnemonic(_ context.Context, args []string) error {
 	}
 	if *mnemonic == "" && !*allowClear {
 		return cerebrumValErr("set-mnemonic", "--mnemonic is required (or --allow-clear to send the empty clear form)")
+	}
+	if err := wf.guard("set-mnemonic", fs.Args(), *check); err != nil {
+		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-mnemonic")
 	if err != nil {
@@ -3568,10 +3584,12 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	tags := fs.String("tags", "", "comma-separated tag list")
 	federation := fs.Bool("federation", false, "send the change to the federation source/destination instead of the local one (v0.17 FEDERATION=1)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live tags where the server allows, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
@@ -3581,6 +3599,9 @@ func cerebrumSetTags(_ context.Context, args []string) error {
 	}
 	if *tags == "" {
 		return cerebrumValErr("set-tags", "--tags is required")
+	}
+	if err := wf.guard("set-tags", fs.Args(), *check); err != nil {
+		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-tags")
 	if err != nil {
@@ -3677,10 +3698,12 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	newName := fs.String("new-name", "", "new name (rename)")
 	desc := fs.String("description", "", "description text (op=description; §4.3 DESCRIPTION)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read live state, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	salvoType, err := salvoOpType(*op)
 	if err != nil {
 		return err
@@ -3697,6 +3720,9 @@ func cerebrumSalvo(_ context.Context, args []string) error {
 	}
 	if salvoType == "DESCRIPTION" && *desc == "" {
 		return cerebrumValErr("salvo", "--description is required for description")
+	}
+	if err := wf.guard("salvo", fs.Args(), *check); err != nil {
+		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "salvo")
 	if err != nil {
@@ -3799,6 +3825,7 @@ func cerebrumCategory(_ context.Context, args []string) error {
 	label := fs.String("label", "", "label (create)")
 	inherits := fs.String("inherits", "", "parent category (create)")
 	desc := fs.String("description", "", "description (create / modify-desc)")
+	wf := addCerebrumWriteFlags(fs)
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
@@ -3839,6 +3866,13 @@ func cerebrumCategory(_ context.Context, args []string) error {
 			return cerebrumValErr("category", "--name is required for create (§4.2 CREATE)")
 		}
 	}
+	if err := wf.guard("category", fs.Args(), *wf.dryRun); err != nil {
+		return err
+	}
+	if *wf.dryRun {
+		wf.dryRunNote("category", fmt.Sprintf("%s category=%s", catType, categoryTarget(catType, *category, *name)))
+		return nil
+	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "category")
 	if err != nil {
 		return err
@@ -3876,10 +3910,12 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	isEnum := fs.Bool("is-enum", false, "VALUE is a string representation of an enumeration (§4.4.1 IS_ENUM)")
 	mode := fs.String("mode", "", "CSV write mode: SET|ADD_TAIL|INSERT_AT_HEAD|REMOVE (default SET)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live value, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, previous, current, diff[]})")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
@@ -3889,6 +3925,9 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	}
 	normMode, err := setValueModeValue(*mode)
 	if err != nil {
+		return err
+	}
+	if err := wf.guard("set-value", fs.Args(), *check); err != nil {
 		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "set-value")
@@ -4092,11 +4131,13 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 	// SNMP body
 	snmpPort := fs.String("snmp-port", "", "SNMP PORT")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): consult the live device LIST, report would_change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 
 	if err := parseVerbFlags(fs, rest); err != nil {
 		return err
 	}
+	*check = *check || *wf.dryRun
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
@@ -4131,6 +4172,9 @@ func cerebrumDeviceConfig(_ context.Context, args []string) error {
 		dc.DeviceType = dt
 	}
 
+	if err := wf.guard("device-config", fs.Args(), *check); err != nil {
+		return err
+	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "device-config")
 	if err != nil {
 		return err

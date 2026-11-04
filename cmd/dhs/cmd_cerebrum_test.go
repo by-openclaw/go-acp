@@ -118,7 +118,7 @@ func TestCerebrumWriteVerbsRequireHost(t *testing.T) {
 // Port 1 on loopback refuses instantly; the dial error must name it.
 func TestWriteVerbPortReachesDial(t *testing.T) {
 	cases := [][]string{
-		{"salvo", "--op", "run", "--group", "G", "--user", "u", "--pass", "p", "--port", "1", "--timeout", "500ms", "127.0.0.1"},
+		{"salvo", "--op", "run", "--group", "G", "--user", "u", "--pass", "p", "--port", "1", "--timeout", "500ms", "--write-to", "127.0.0.1", "127.0.0.1"},
 		{"obtain-datastore", "--name", "x", "--port", "1", "--timeout", "500ms", "127.0.0.1"},
 	}
 	for _, args := range cases {

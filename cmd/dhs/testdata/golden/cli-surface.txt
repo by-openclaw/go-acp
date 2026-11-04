@@ -1377,6 +1377,7 @@ VERBS
   watch                    SUBSCRIBE one device (§5.4): --device IP [--device-type T] = DETAILS state watch; --device NAME --by-name --sub-device S --object O = VALUE watch. --object takes ONE path, a ';'-separated LIST, "GROUP.*" = GROUP's direct children, or "GROUP.**" = every leaf beneath it (descends into child groups; use on ONE node, not on Nodes). --label "SubID,Connected" reports only those objects (same filter name the generic watch uses). A group SUBSCRIBE only lists its children — change events come from leaf rows — so ".*"/".**" are expanded client-side by obtains; the wire itself refuses wildcards. VALUE rows render in the Tree/DM columns like dhs watch. Reports CHANGES only - a SUBSCRIBE answers with the current value and the server re-asserts unchanged ones, so both are suppressed; --initial prints the baseline, export produces a snapshot. --raw keeps the per-frame wire view. Every change is judged by the per-model alarm template (dhs consumer cerebrum-nb alarm): --alarm FILE names one, --no-alarm turns it off. --metrics-addr :9100 serves Prometheus /metrics + /snapshot.json for this watch (labels proto/device/role), surviving reconnects
 
   Write verbs (§4 ACTION — auto-LOGIN with --user/--pass; require an authenticated session)
+  Every write verb (and route, replace, import) sends only with --write-to HOST naming the host a second time (ADR-0037 P5); --dry-run (= --check) sends nothing
   -----------------------  -----------------------------------------------
   lock                     ACTION <ROUTING LOCK='…'/>         --kind SRCE_LOCK|DEST_LOCK [--srce ID|--dest ID] [--level ID | "1;2;3" | omit = ALL levels] [--duration S] [--mode locked|protected|locked_path|protected_path|released] (default protected)
   unlock                   ACTION <ROUTING LOCK='RELEASED'/>  (same flags as lock; RELEASED is the wire-actual clearing value — the spec's RELEASE/UNLOCKED NACK on live Cerebrums)
@@ -1418,8 +1419,8 @@ EXAMPLES
   dhs consumer cerebrum-nb connect       10.6.239.50
   dhs consumer cerebrum-nb listen        10.6.239.50 --user admin --pass s3cr3t
   dhs consumer cerebrum-nb list-devices  10.6.239.50:40007 --device-type Router
-  dhs consumer cerebrum-nb route         10.6.239.50 --dest 60 --srce 60 --level 1
-  dhs consumer cerebrum-nb route         10.6.239.50 --route 60:60:1 --route 61:61:1
+  dhs consumer cerebrum-nb route         10.6.239.50 --write-to 10.6.239.50 --dest 60 --srce 60 --level 1
+  dhs consumer cerebrum-nb route         10.6.239.50 --write-to 10.6.239.50 --route 60:60:1 --route 61:61:1
   dhs consumer cerebrum-nb device-details 10.6.239.50 --port 40008 --device 10.107.30.100
 
 ========== consumer/cerebrum-nb/connect ==========
@@ -1855,6 +1856,8 @@ Usage of cerebrum-nb route:
     	destination ID or mnemonic (single-route mode)
   -device-name string
     	alternative to --router: address by DEVICE_NAME
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
   -keepalive duration
@@ -1895,6 +1898,8 @@ Usage of cerebrum-nb route:
     	USE_TAGS="1" on every ROUTE (§4.1.1): the server routes by the tags of the source and destination
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/usage ==========
 $ dhs consumer cerebrum-nb usage --help
@@ -1961,6 +1966,8 @@ Usage of cerebrum-nb replace:
     	dry-run (ADR-0007): list the cells that would change, send nothing
   -debug
     	verbose RX/TX XML logging
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -idle duration
     	snapshot idle fallback (default 3s)
   -insecure-skip-verify
@@ -2001,6 +2008,8 @@ Usage of cerebrum-nb replace:
     	NB username (or $DHS_CEREBRUM_USER)
   -with string
     	source ID that takes over (required)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/export ==========
 $ dhs consumer cerebrum-nb export --help
@@ -2243,6 +2252,8 @@ Usage of cerebrum-nb import:
     	verbose RX/TX XML logging
   -device-name string
     	address by DEVICE_NAME instead of --router
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -dst string
     	dest-mnemonic CSV to import (columns dest,mnemonic — 0v16 §4.1.6)
   -in-dir export --out-dir
@@ -2289,6 +2300,8 @@ Usage of cerebrum-nb import:
     	USE_TAGS="1" on every ROUTE (§4.1.1)
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
   -xpoint string
     	crosspoint CSV to import (columns dest,srce,levels[,srce_level])
 
@@ -2307,6 +2320,8 @@ Usage of cerebrum-nb lock:
     	destination ID (DEST_LOCK)
   -device-name string
     	address by DEVICE_NAME instead of --router
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -duration string
     	optional timed-lock duration
   -insecure-skip-verify
@@ -2347,6 +2362,8 @@ Usage of cerebrum-nb lock:
     	use wss:// instead of ws://
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/unlock ==========
 $ dhs consumer cerebrum-nb unlock --help
@@ -2363,6 +2380,8 @@ Usage of cerebrum-nb unlock:
     	destination ID (DEST_LOCK)
   -device-name string
     	address by DEVICE_NAME instead of --router
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -duration string
     	optional timed-lock duration
   -insecure-skip-verify
@@ -2403,6 +2422,8 @@ Usage of cerebrum-nb unlock:
     	use wss:// instead of ws://
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/device-config ==========
 $ dhs consumer cerebrum-nb device-config --help
@@ -2429,6 +2450,8 @@ Usage of cerebrum-nb set-mnemonic:
     	destination ID
   -device-name string
     	address by DEVICE_NAME
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
   -keepalive duration
@@ -2467,6 +2490,8 @@ Usage of cerebrum-nb set-mnemonic:
     	use wss:// instead of ws://
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/set-tags ==========
 $ dhs consumer cerebrum-nb set-tags --help
@@ -2483,6 +2508,8 @@ Usage of cerebrum-nb set-tags:
     	destination ID
   -device-name string
     	address by DEVICE_NAME
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -federation
     	send the change to the federation source/destination instead of the local one (v0.17 FEDERATION=1)
   -insecure-skip-verify
@@ -2523,6 +2550,8 @@ Usage of cerebrum-nb set-tags:
     	use wss:// instead of ws://
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/salvo ==========
 $ dhs consumer cerebrum-nb salvo --help
@@ -2537,6 +2566,8 @@ Usage of cerebrum-nb salvo:
     	verbose RX/TX XML logging
   -description string
     	description text (op=description; §4.3 DESCRIPTION)
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -group string
     	salvo group
   -insecure-skip-verify
@@ -2573,6 +2604,8 @@ Usage of cerebrum-nb salvo:
     	use wss:// instead of ws://
   -user string
     	NB username (or $DHS_CEREBRUM_USER)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/category ==========
 $ dhs consumer cerebrum-nb category --help
@@ -2587,6 +2620,8 @@ Usage of cerebrum-nb category:
     	verbose RX/TX XML logging
   -description string
     	description (create / modify-desc)
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -index string
     	item index (modify / delete-item)
   -inherits string
@@ -2627,6 +2662,8 @@ Usage of cerebrum-nb category:
     	NB username (or $DHS_CEREBRUM_USER)
   -value string
     	item value (modify); comma-separated list (modify-all)
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/set-value ==========
 $ dhs consumer cerebrum-nb set-value --help
@@ -2641,6 +2678,8 @@ Usage of cerebrum-nb set-value:
     	verbose RX/TX XML logging
   -device string
     	device name (or use --ip)
+  -dry-run
+    	read, report what would be written, send nothing (the same switch as --check, ADR-0007)
   -insecure-skip-verify
     	with --tls, skip TLS cert verification
   -ip string
@@ -2681,6 +2720,8 @@ Usage of cerebrum-nb set-value:
     	NB username (or $DHS_CEREBRUM_USER)
   -value string
     	value to set
+  -write-to string
+    	confirm the target of a write: repeat the host here, exactly as given. every connector that can write (consumer.WriteGuard) refuses a write without it and stays with the dry run (ADR-0037 P5)
 
 ========== consumer/cerebrum-nb/obtain-datastore ==========
 $ dhs consumer cerebrum-nb obtain-datastore --help

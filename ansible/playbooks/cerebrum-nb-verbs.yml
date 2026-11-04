@@ -152,7 +152,7 @@
       block:
         - name: "route --check (would_change dry-run, mutates nothing)"
           ansible.builtin.command:
-            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--check', '--output', 'json'] + cereb_auth }}"
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--check', '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
           register: vt_route_check
           changed_when: false
 
@@ -165,13 +165,13 @@
 
         - name: "route apply (converge pass 1)"
           ansible.builtin.command:
-            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
           register: vt_route_1
           changed_when: (vt_route_1.stdout | from_json).changed
 
         - name: "route apply (converge pass 2 — MUST be a no-op)"
           ansible.builtin.command:
-            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
           register: vt_route_2
           changed_when: (vt_route_2.stdout | from_json).changed
 
@@ -187,7 +187,7 @@
         # play itself is run-twice clean.
         - name: "lock DEST_LOCK (pass 1) then re-apply (pass 2 no-op) then release"
           ansible.builtin.command:
-            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'lock', cerebrum_host, '--kind', 'DEST_LOCK', '--dest', vt_dest, '--level', vt_level, '--mode', item, '--output', 'json'] + cereb_auth }}"
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'lock', cerebrum_host, '--kind', 'DEST_LOCK', '--dest', vt_dest, '--level', vt_level, '--mode', item, '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
           loop: [locked, locked, released]
           register: vt_lock
           changed_when: (vt_lock.stdout | default('{}') | from_json).changed | default(false)
@@ -201,7 +201,7 @@
 
         - name: "lock SRCE_LOCK: state read, second apply a no-op, released"
           ansible.builtin.command:
-            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'lock', cerebrum_host, '--kind', 'SRCE_LOCK', '--srce', vt_srce, '--level', vt_level, '--mode', item, '--output', 'json'] + cereb_auth }}"
+            argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'lock', cerebrum_host, '--kind', 'SRCE_LOCK', '--srce', vt_srce, '--level', vt_level, '--mode', item, '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
           loop: [locked, locked, released]
           register: vt_srce_lock
           changed_when: (vt_srce_lock.stdout | default('{}') | from_json).changed | default(false)
@@ -220,7 +220,7 @@
           block:
             - name: "route --srce-level (pass 1 and 2)"
               ansible.builtin.command:
-                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--srce-level', vt_srce_level, '--output', 'json'] + cereb_auth }}"
+                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--srce-level', vt_srce_level, '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
               loop: [1, 2]
               register: vt_cross
               changed_when: (vt_cross.stdout | from_json).changed
@@ -233,7 +233,7 @@
 
             - name: "route back to the source's own level"
               ansible.builtin.command:
-                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth }}"
+                argv: "{{ [dhs_bin, 'consumer', 'cerebrum-nb', 'route', cerebrum_host, '--dest', vt_dest, '--srce', vt_srce, '--level', vt_level, '--output', 'json'] + cereb_auth + ['--write-to', cerebrum_host] }}"
               register: vt_cross_back
               changed_when: (vt_cross_back.stdout | from_json).changed
 

@@ -409,6 +409,7 @@ func cerebrumReplace(_ context.Context, args []string) error {
 	with := fs.String("with", "", "source ID that takes over (required)")
 	level := fs.String("level", "", "restrict to one level (omitted = every level where --srce is assigned)")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): list the cells that would change, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	useTags := fs.Bool("use-tags", false, "USE_TAGS=\"1\" on every ROUTE (§4.1.1)")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002; json = {changed|would_change, diff[]})")
 	idle := fs.Duration("idle", 3*time.Second, "snapshot idle fallback")
@@ -428,6 +429,10 @@ func cerebrumReplace(_ context.Context, args []string) error {
 	rest := fs.Args()
 	if len(rest) < 1 {
 		return cerebrumValErr("replace", "missing host[:port] argument")
+	}
+	*check = *check || *wf.dryRun
+	if err := wf.guard("replace", rest, *check); err != nil {
+		return err
 	}
 	host, portArg, err := splitHostPort(rest[0], cf.port)
 	if err != nil {

@@ -254,10 +254,15 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	inDir := fs.String("in-dir", "", "directory holding an export set: <prefix>-xpoint.csv / -src.csv / -dst.csv / -level.csv / -cat-src.csv / -cat-dst.csv (the exact files `export --out-dir` wrote; files absent from the dir are simply out of scope)")
 	prefix := fs.String("prefix", "cerebrum", "file prefix used with --in-dir (same default as export)")
 	check := fs.Bool("check", false, "dry-run: read live state, report would_change per cell, send nothing")
+	wf := addCerebrumWriteFlags(fs)
 	useTags := fs.Bool("use-tags", false, "USE_TAGS=\"1\" on every ROUTE (§4.1.1)")
 	allowClear := fs.Bool("allow-clear", false, "an EMPTY cell in a managed label column CLEARS the live label (MNEMONIC=\"\" — clear form live-UNVERIFIED; always --check first)")
 	output := fs.String("output", "text", "output format: text|json — json emits the ADR-0007 {changed|would_change, diff[]} shape on stdout (per-action detail goes to stderr)")
 	if err := parseVerbFlags(fs, args); err != nil {
+		return err
+	}
+	*check = *check || *wf.dryRun
+	if err := wf.guard("import", fs.Args(), *check); err != nil {
 		return err
 	}
 	jsonOut, oerr := resolveEnsureOutput(*output, false)

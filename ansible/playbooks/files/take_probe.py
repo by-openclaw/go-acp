@@ -86,7 +86,7 @@ def main():
             th = threading.Thread(target=poll, daemon=True)
             th.start()
             time.sleep(0.3)
-        argv = [a.dhs, "consumer", "cerebrum-nb", "route", a.cerebrum, "--timeout", "10s", "--log", "off"]
+        argv = [a.dhs, "consumer", "cerebrum-nb", "route", a.cerebrum, "--timeout", "10s", "--log", "off", "--write-to", a.cerebrum]
         for l in levels:
             argv += ["--route", f"{a.dest}:{src}:{l}"]
         t0 = time.time()

@@ -28,6 +28,7 @@ func cerebrumRMAdd(_ context.Context, args []string) error {
 	count := fs.Int("count", 1, "number to create, 1-1000")
 	total := fs.Int("total", 0, "ensure this many exist: adds only what is missing, nothing on a second run; instead of --count")
 	check := fs.Bool("check", false, "dry-run (ADR-0007): read the live list, report what would be added, send nothing; needs --total")
+	wf := addCerebrumWriteFlags(fs)
 	virtual := fs.Bool("virtual", false, "create virtual sources / destinations (VIRTUAL=1)")
 	federation := fs.Bool("federation", false, "create them in the federation (FEDERATION=1)")
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
@@ -47,6 +48,18 @@ func cerebrumRMAdd(_ context.Context, args []string) error {
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
+	}
+	if *wf.dryRun && *total == 0 {
+		// --count adds without reading: the dry run has nothing to read.
+		if err := wf.guard("rm-add", fs.Args(), true); err != nil {
+			return err
+		}
+		wf.dryRunNote("rm-add", fmt.Sprintf("%d %s (virtual=%t federation=%t)", *count, k, *virtual, *federation))
+		return nil
+	}
+	*check = *check || *wf.dryRun
+	if err := wf.guard("rm-add", fs.Args(), *check); err != nil {
+		return err
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "rm-add")
 	if err != nil {
@@ -159,6 +172,7 @@ func cerebrumRMDelete(_ context.Context, args []string) error {
 	kind := fs.String("kind", "", "source | destination")
 	id := fs.String("id", "", "comma-separated existing numeric ids, e.g. 21,22,23")
 	federation := fs.Bool("federation", false, "delete them in the federation (FEDERATION=1)")
+	wf := addCerebrumWriteFlags(fs)
 	output := fs.String("output", "text", "output format: text | json (ADR-0002)")
 	if err := parseVerbFlags(fs, args); err != nil {
 		return err
@@ -174,6 +188,13 @@ func cerebrumRMDelete(_ context.Context, args []string) error {
 	jsonOut, oerr := resolveEnsureOutput(*output, false)
 	if oerr != nil {
 		return oerr
+	}
+	if err := wf.guard("rm-delete", fs.Args(), *wf.dryRun); err != nil {
+		return err
+	}
+	if *wf.dryRun {
+		wf.dryRunNote("rm-delete", fmt.Sprintf("%s %s (federation=%t)", k, strings.Join(ids, ","), *federation))
+		return nil
 	}
 	p, sess, _, err := dialCerebrumAuth(cf, fs.Args(), "rm-delete")
 	if err != nil {
