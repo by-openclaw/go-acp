@@ -43,6 +43,8 @@
     np_settle: 5
     np_nb: ["{{ np_bin }}", consumer, cerebrum-nb]
     np_nb_tail: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log, "off"]
+    # every write names its target a second time (ADR-0037 P5)
+    np_nb_write: "{{ np_nb_tail + ['--write-to', cerebrum.host] }}"
     # read-backs also keep the wire: the redacted RX XML of the OBTAIN reply
     # (`--log FILE --log-level debug --log-format json`), one file per read-back
     np_nb_raw: ["{{ cerebrum.host }}", --port, "{{ cerebrum.nb_port | string }}", --log-level, debug, --log-format, json, --log]
@@ -96,7 +98,7 @@
     # ---- case 1: one local source -------------------------------------------
     - name: "Case 1 · RM_SRCE_ADD local"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c1
       changed_when: np_c1.rc == 0
@@ -139,7 +141,7 @@
     # ---- case 2: one virtual source ----------------------------------------
     - name: "Case 2 · RM_SRCE_ADD VIRTUAL=1"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--virtual', '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--virtual', '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c2
       changed_when: np_c2.rc == 0
@@ -194,7 +196,7 @@
     # ---- case 3: one local destination -------------------------------------
     - name: "Case 3 · RM_DEST_ADD local"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-add', '--kind', 'destination', '--count', '1', '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-add', '--kind', 'destination', '--count', '1', '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c3
       changed_when: np_c3.rc == 0
@@ -234,7 +236,7 @@
     # ---- case 4: a federation source on a standalone server ----------------
     - name: "Case 4 · RM_SRCE_ADD FEDERATION=1"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--federation', '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-add', '--kind', 'source', '--count', '1', '--federation', '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c4
       changed_when: np_c4.rc == 0
@@ -256,7 +258,7 @@
     - name: "Case 5a · SRCE_ASSOC_IP local on the temporary source"
       ansible.builtin.command:
         argv: "{{ np_nb + ['assoc', '--kind', 'SRCE_ASSOC_IP', '--srce', np_s1 | string, '--level', np_target.level | string,
-                 '--target-device', np_target.device, '--target-name', np_target.sender, '--sub-device', np_target.sub_device | string] + np_nb_tail }}"
+                 '--target-device', np_target.device, '--target-name', np_target.sender, '--sub-device', np_target.sub_device | string] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c5a
       changed_when: np_c5a.rc == 0
@@ -264,7 +266,7 @@
 
     - name: "Case 6a · RM_SRCE_TAGS local on the temporary source"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-tags', '--kind', 'RM_SRCE_TAGS', '--srce', np_s1 | string, '--level', np_target.level | string, '--tags', 'ZZ-PROBE'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-tags', '--kind', 'RM_SRCE_TAGS', '--srce', np_s1 | string, '--level', np_target.level | string, '--tags', 'ZZ-PROBE'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c6a
       changed_when: np_c6a.rc == 0
@@ -314,7 +316,7 @@
     - name: "Case 5b · SRCE_ASSOC_IP document-exact (--bare) on level {{ np_target.level2 }}"
       ansible.builtin.command:
         argv: "{{ np_nb + ['assoc', '--bare', '--kind', 'SRCE_ASSOC_IP', '--srce', np_s1 | string, '--level', np_target.level2 | string,
-                 '--target-device', np_target.device, '--target-name', np_target.sender2, '--sub-device', np_target.sub_device | string] + np_nb_tail }}"
+                 '--target-device', np_target.device, '--target-name', np_target.sender2, '--sub-device', np_target.sub_device | string] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c5b
       changed_when: np_c5b.rc == 0
@@ -323,7 +325,7 @@
     - name: "Case 5c · SRCE_ASSOC router form on level {{ np_target.level3 }}: {{ np_target.router_device }} level {{ np_target.router_level }} input {{ np_target.router_io }}"
       ansible.builtin.command:
         argv: "{{ np_nb + ['assoc', '--kind', 'SRCE_ASSOC', '--srce', np_s1 | string, '--level', np_target.level3 | string,
-                 '--target-device', np_target.router_device, '--target-device-type', 'ROUTER', '--target-level', np_target.router_level | string, '--target-io', np_target.router_io | string] + np_nb_tail }}"
+                 '--target-device', np_target.router_device, '--target-device-type', 'ROUTER', '--target-level', np_target.router_level | string, '--target-io', np_target.router_io | string] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c5c
       changed_when: np_c5c.rc == 0
@@ -347,7 +349,7 @@
     # (OBTAIN SRCE_MNE: ALT_MNE_N elements) and over RCP (alternateMnemonics)
     - name: "Case 6b · SRCE_MNE ALT_MNE=1 on the temporary source"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'SRCE_MNE', '--srce', np_s1 | string, '--mnemonic', 'ZZ-ALT1', '--alt', '1'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'SRCE_MNE', '--srce', np_s1 | string, '--mnemonic', 'ZZ-ALT1', '--alt', '1'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c6b1
       changed_when: np_c6b1.rc == 0
@@ -355,7 +357,7 @@
 
     - name: "Case 6b · SRCE_MNE ALT_MNE=2 on the temporary source"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'SRCE_MNE', '--srce', np_s1 | string, '--mnemonic', 'ZZ-ALT2', '--alt', '2'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'SRCE_MNE', '--srce', np_s1 | string, '--mnemonic', 'ZZ-ALT2', '--alt', '2'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c6b2
       changed_when: np_c6b2.rc == 0
@@ -382,7 +384,7 @@
     - name: "Case 5 · SRCE_ASSOC_IP FEDERATION=1"
       ansible.builtin.command:
         argv: "{{ np_nb + ['assoc', '--kind', 'SRCE_ASSOC_IP', '--srce', np_s1 | string, '--level', np_target.level | string,
-                 '--target-device', np_target.device, '--target-name', np_target.sender, '--sub-device', np_target.sub_device | string, '--federation'] + np_nb_tail }}"
+                 '--target-device', np_target.device, '--target-name', np_target.sender, '--sub-device', np_target.sub_device | string, '--federation'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c5
       changed_when: np_c5.rc == 0
@@ -399,7 +401,7 @@
     # ---- case 6: tags with FEDERATION=1 on the temporary source ------------
     - name: "Case 6 · RM_SRCE_TAGS FEDERATION=1"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-tags', '--kind', 'RM_SRCE_TAGS', '--srce', np_s1 | string, '--level', np_target.level | string, '--tags', 'ZZ-PROBE', '--federation'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-tags', '--kind', 'RM_SRCE_TAGS', '--srce', np_s1 | string, '--level', np_target.level | string, '--tags', 'ZZ-PROBE', '--federation'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c6
       changed_when: np_c6.rc == 0
@@ -416,7 +418,7 @@
     # ---- case 7: delete the temporary IOs ----------------------------------
     - name: "Case 7 · RM_SRCE_DELETE the two sources"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-delete', '--kind', 'source', '--id', ([np_s1, np_s2] | unique | map('string') | join(',')), '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'source', '--id', ([np_s1, np_s2] | unique | map('string') | join(',')), '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c7s
       changed_when: np_c7s.rc == 0
@@ -435,7 +437,7 @@
 
     - name: "Case 7 · RM_DEST_DELETE the remaining probe destination (the last id)"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-delete', '--kind', 'destination', '--id', ((np_c7_dlist.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max) | string, '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'destination', '--id', ((np_c7_dlist.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max) | string, '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c7d
       changed_when: np_c7d.rc == 0
@@ -443,7 +445,7 @@
 
     - name: "Case 7 · a federation source, when one was created"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['rm-delete', '--kind', 'source', '--id', ((np_c4_list.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max) | string, '--federation', '--output', 'json'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['rm-delete', '--kind', 'source', '--id', ((np_c4_list.stdout | regex_findall(np_idre, multiline=True)) | map('int') | max) | string, '--federation', '--output', 'json'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_c7f
       changed_when: true
@@ -481,7 +483,7 @@
 
     - name: "Case 8 · LEVEL_MNE create on level {{ probe_level | default(5) }}"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'LEVEL_MNE', '--level', (probe_level | default(5)) | string, '--mnemonic', 'ZZ-PROBE-L'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'LEVEL_MNE', '--level', (probe_level | default(5)) | string, '--mnemonic', 'ZZ-PROBE-L'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_l_create
       changed_when: np_l_create.rc == 0
@@ -504,7 +506,7 @@
 
     - name: "Case 8 · LEVEL_MNE rename"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'LEVEL_MNE', '--level', (probe_level | default(5)) | string, '--mnemonic', 'ZZ-PROBE-L2'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'LEVEL_MNE', '--level', (probe_level | default(5)) | string, '--mnemonic', 'ZZ-PROBE-L2'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_l_rename
       changed_when: np_l_rename.rc == 0
@@ -512,7 +514,7 @@
 
     - name: "Case 8 · LEVEL_MNE delete attempt (empty mnemonic)"
       ansible.builtin.command:
-        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'LEVEL_MNE', '--level', (probe_level | default(5)) | string, '--mnemonic', '', '--allow-clear'] + np_nb_tail }}"
+        argv: "{{ np_nb + ['set-mnemonic', '--kind', 'LEVEL_MNE', '--level', (probe_level | default(5)) | string, '--mnemonic', '', '--allow-clear'] + np_nb_write }}"
       environment: "{{ np_env }}"
       register: np_l_delete
       changed_when: np_l_delete.rc == 0

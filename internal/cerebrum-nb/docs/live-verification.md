@@ -113,7 +113,7 @@ Same peer, Cerebrum 2.9.3 b15692. Destination 16 (virtual, no receiver).
 | `listen`, socket killed (`ss -K`) | reconnected after 1 s, subscriptions restored, the next route event received |
 | BUSY | not reached: 10 parallel exports, then 1,000 OBTAIN pipelined on one session (96,000 rows answered), 0 BUSY. Unit-tested only |
 | `lock` modes, RouteMaster | `locked`, `protected`: applied on destination and source. `locked_path`, `protected_path`: NACK 8 on both. §3.2: support depends on the target |
-| `lock` modes, Neuron router | all four answered ACK and none applied: no event, the state stays RELEASED. `lock` now reads the state back and exits 1 |
+| `lock` modes, addressed to the Shuffler's router (`--router 10.6.255.103`), not the RouteMaster | all four answered ACK and none applied: no event, the state stays RELEASED. `lock` reads the state back and exits 1. The lock we use is the RouteMaster one above: it lives in Cerebrum and is never sent into the equipment |
 | `rm-add --virtual`, `set-mnemonic`, `rm-delete` | pair created, renamed on both sides, deleted; confirmed by RCP reads |
 | `assoc --kind SRCE_ASSOC`, virtual router | source on level 5 bound to device level 1, input 2; RCP reads `"Virtual Router"/1 io 2` |
 | Device object label | `set-value` on `UserLabel` applied. An empty value is NACK 8, with or without `VALUE`: Northbound cannot clear a field |

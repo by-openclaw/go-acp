@@ -79,10 +79,10 @@ dhs consumer cerebrum-nb list-devices 10.6.239.50
 dhs consumer cerebrum-nb list-devices --device-type Router 10.6.239.50
 
 # Apply a route at the route-master (level 1, dest 60 ← srce 60)
-dhs consumer cerebrum-nb route --dest 60 --srce 60 --level 1 10.6.239.50
+dhs consumer cerebrum-nb route --dest 60 --srce 60 --level 1 --write-to 10.6.239.50 10.6.239.50
 
 # Batch routes
-dhs consumer cerebrum-nb route --route 60:60:1 --route 61:61:1 10.6.239.50
+dhs consumer cerebrum-nb route --route 60:60:1 --route 61:61:1 --write-to 10.6.239.50 10.6.239.50
 
 # Over TLS
 dhs consumer cerebrum-nb listen cerebrum.local --tls
