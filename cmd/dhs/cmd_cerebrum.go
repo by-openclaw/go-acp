@@ -425,7 +425,7 @@ VERBS
   usage                    source usage / reverse tally: WHERE is a source assigned (all dsts + levels). [--srce N|NAME = fan-out | --dest N|NAME = upstream chain] [--resolve = follow VIRTUAL chains to the effective source] [--format csv|ascii] [--out FILE|-] [--level L[,L…] IDs or mnemonics] [--router IP]
   replace                  source substitution: replace src A with B on every LITERAL cell carrying A — virtual subscribers inherit through their own chains: --srce A --with B [--level L] [--check] [--output json] [--router IP]
   export                   one-shot OBTAIN wildcards → CSVs. Crosspoints only: [--out FILE] [--level N]. Full snapshot (src+dst+level mnemonics+xpoint+locks as -lock.csv+categories as -cat-src.csv/-cat-dst.csv): --out-dir DIR [--prefix P]. --router IP = PHYSICAL router (device-native numbering, cat files skipped — categories are RM-only; import back with the same --router). DEVICE snapshot (Tree/DM, acp2 parity — ONE file): --device NAME|IP [--by-name] --sub-device N --path "GROUP[;GROUP…]" --out FILE.json|yaml|csv [--format F] [--max-requests N]
-  import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0.
+  import                   ENSURE (ADR-0007): read live state, diff vs CSVs, converge only differences. --in-dir DIR [--prefix P] reads the set export wrote (missing files = out of scope), or per-file --xpoint (--csv alias) / --src / --dst / --levels / --lock (dest,state,levels[,locked_by] — absent cell untouched, clears need explicit RELEASED rows) / --cat-src / --cat-dst (categories: category,type,value rows — row order = slot order; builds the navigation panel). --check = report would_change, send nothing. --output json = ADR-0007 {changed|would_change, diff[]} on stdout. Empty cell/absent column = untouched; --allow-clear makes an empty MANAGED cell clear the live label. Run-twice = 0. A plan naming a source, destination or level the server does not have is refused whole (exit 2), nothing sent.
   list-devices             OBTAIN <device_change type='LIST'/>  [--device-type Router|SNMP|Device] [--names: join DEVICE_NAME + PRIMARY/SECONDARY state via one DETAILS obtain per IP — LIST itself never carries names (§5.4.1)]
   device-details           OBTAIN <device_change type='DETAILS'/>  --device IP|NAME [--by-name] [--device-type DEVICE|ROUTER — omitted: DEVICE first, ROUTER if the server refuses (§5.4.2 needs the class; 2.9.3 NACKs 10 without it)]
   device-value             OBTAIN <device_change type='VALUE'/>    --device NAME --by-name --sub-device X --object Y
@@ -457,7 +457,7 @@ VERBS
   salvo                    ACTION <SALVO TYPE='…'/>           --op run|save|rename|description|delete --group G [--instance I] [--new-name N] [--description D] [--check] [--output json]
                            ENSURE (ADR-0007): description/rename/delete read live state first — already-converged = changed:false, nothing sent; run/save are events (always fire, always changed). --check sends nothing.
   category                 ACTION <CATEGORY TYPE='…'/>        --op create|modify|modify-all|modify-desc|delete|delete-item --category C [--index N] [--item-type T] [--value V] [--name N] [--label L] [--inherits P] [--description D]
-  set-value                ACTION <DEVICE TYPE='SET_VALUE'/>  --device NAME --sub-device X --object Y --value V
+  set-value                ACTION <DEVICE TYPE='SET_VALUE'/>  --device NAME --sub-device X --object Y --value V (judged by the object's MIN/MAX/ENUM_LIST: above MAX is written as MAX and exits 2; not a number or not in the enumeration: refused)
   obtain-datastore         OBTAIN <datastore_change name='…'/>  --name PATH
 
 FLAGS (order doesn't matter — flags can come before OR after the host)
@@ -3950,14 +3950,33 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 	// CSV writes (ADD_TAIL/INSERT_AT_HEAD/REMOVE) are list edits, not a
 	// converge — they skip the diff and always send.
 	previous, readOK := "", false
+	var desc *codec.DeviceObjectValue
 	if normMode == "" || normMode == "SET" {
 		dc := &codec.DeviceChange{Type: "VALUE", SubDevice: *subDevice, Object: *object, DeviceName: *device, IPAddress: *ip}
 		if got, gerr := obtainSingleDeviceChange(sess, cf.timeout, dc, "VALUE"); gerr == nil && got != nil && got.Device != nil && got.Device.ObjectValue != nil && got.Device.ObjectValue.Available {
 			readOK = true
 			previous = got.Device.ObjectValue.Value
+			desc = got.Device.ObjectValue
 		} else {
 			fmt.Fprintf(os.Stderr, "cerebrum-nb set-value: live value not readable — imperative send, reported changed\n")
 		}
+	}
+	// The object's own MIN / MAX / ENUM_LIST, read with its value, judge the
+	// wanted one before anything is sent: above MAX is written as MAX and the
+	// run ends with an error code; a value it cannot hold is refused.
+	bound, berr := cerebrumBoundValue(desc, *value, *isEnum)
+	if berr != nil {
+		return berr
+	}
+	want := bound.Value
+	if bound.Clamped != "" {
+		_, _ = fmt.Fprintf(os.Stderr, "cerebrum-nb set-value: %s.%s.%s: %s, %s is sent\n", target, *subDevice, *object, bound.Clamped, want)
+	}
+	clamp := func(dry bool) error {
+		if bound.Clamped == "" {
+			return nil
+		}
+		return cerebrumClampError(fmt.Sprintf("%s.%s.%s", strings.TrimSpace(target), *subDevice, *object), bound.Clamped, want, dry)
 	}
 	equalValue := func(a, b string) bool {
 		if a == b {
@@ -3967,29 +3986,33 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 		fb, eb := strconv.ParseFloat(strings.TrimSpace(b), 64)
 		return ea == nil && eb == nil && fa == fb
 	}
-	changed := !readOK || !equalValue(previous, *value)
+	changed := !readOK || !equalValue(previous, want)
 	diffs := []ensureDiff{}
 	if changed {
 		from := previous
 		if !readOK {
 			from = "?"
 		}
-		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("value.%s.%s.%s", strings.TrimSpace(target), *subDevice, *object), From: from, To: *value})
+		diffs = append(diffs, ensureDiff{Field: fmt.Sprintf("value.%s.%s.%s", strings.TrimSpace(target), *subDevice, *object), From: from, To: want})
 	}
 
 	if *check {
-		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-value --check: would_change=%t (%q -> %q) — nothing sent\n", changed, previous, *value)
+		_, _ = fmt.Fprintf(logw, "cerebrum-nb set-value --check: would_change=%t (%q -> %q) — nothing sent\n", changed, previous, want)
 		if jsonOut {
-			return emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: *value, Diff: diffs})
+			if err := emitEnsure(true, ensureResult{WouldChange: &changed, Current: previous, Target: want, Diff: diffs}); err != nil {
+				return err
+			}
 		}
-		return nil
+		return clamp(true)
 	}
 	if !changed {
 		_, _ = fmt.Fprintf(logw, "[set-value] already converged — %s.%s.%s = %q (nothing sent)\n", target, *subDevice, *object, previous)
 		if jsonOut {
-			return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs})
+			if err := emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: previous, Diff: diffs}); err != nil {
+				return err
+			}
 		}
-		return nil
+		return clamp(false)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), cf.timeout)
 	defer cancel()
@@ -4001,18 +4024,20 @@ func cerebrumSetValue(_ context.Context, args []string) error {
 		IPAddress:  *ip,
 		SubDevice:  *subDevice,
 		Object:     *object,
-		Value:      *value,
+		Value:      want,
 		IsEnum:     *isEnum,
 		Mode:       normMode,
 	}
 	if err := sess.Action(ctx, body); err != nil {
 		return fmt.Errorf("cerebrum-nb set-value: %w", err)
 	}
-	_, _ = fmt.Fprintf(logw, "[set-value] OK %s.%s.%s: %q -> %q\n", target, *subDevice, *object, previous, *value)
+	_, _ = fmt.Fprintf(logw, "[set-value] OK %s.%s.%s: %q -> %q\n", target, *subDevice, *object, previous, want)
 	if jsonOut {
-		return emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: *value, Diff: diffs})
+		if err := emitEnsure(true, ensureResult{Changed: &changed, Previous: previous, Current: want, Diff: diffs}); err != nil {
+			return err
+		}
 	}
-	return nil
+	return clamp(false)
 }
 
 // setValueModeValue validates/normalises the set-value --mode flag to the

@@ -116,6 +116,7 @@ Same peer, Cerebrum 2.9.3 b15692. Destination 16 (virtual, no receiver).
 | `lock` modes, addressed to the Shuffler's router (`--router 10.6.255.103`), not the RouteMaster | all four answered ACK and none applied: no event, the state stays RELEASED. `lock` reads the state back and exits 1. The lock we use is the RouteMaster one above: it lives in Cerebrum and is never sent into the equipment |
 | `rm-add --virtual`, `set-mnemonic`, `rm-delete` | pair created, renamed on both sides, deleted; confirmed by RCP reads |
 | `assoc --kind SRCE_ASSOC`, virtual router | source on level 5 bound to device level 1, input 2; RCP reads `"Virtual Router"/1 io 2` |
+| `set-mnemonic --alt 1`, destination 5 | `"Custom Label"` → `"DHS ALT1"`, a second run sends nothing, then restored; RCP `mnemonics` reads `Name 1` = the new value and then `"Custom Label"` |
 | Device object label | `set-value` on `UserLabel` applied. An empty value is NACK 8, with or without `VALUE`: Northbound cannot clear a field |
 
 ## Northbound gap: the levels of the RouteMaster

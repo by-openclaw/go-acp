@@ -468,9 +468,15 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 	target := routeTargetFromFlags(*router, *deviceName)
 
 	st := &cerebrumState{}
-	if xp != "" || *srcPath != "" || *dstPath != "" || *lvlPath != "" || len(lockRows) > 0 {
+	if xp != "" || *srcPath != "" || *dstPath != "" || *lvlPath != "" || len(lockRows) > 0 || len(srceLockRows) > 0 {
+		// The catalogues come with every leg that names an IO or a level:
+		// the plan is checked against them before anything is sent.
+		named := xp != "" || len(lockRows) > 0 || len(srceLockRows) > 0
 		got, serr := cerebrumObtainState(context.Background(), sess, *router, "ROUTER", 15*time.Second, cerebrumStateWant{
-			Routes: xp != "", SrcMne: *srcPath != "", DstMne: *dstPath != "", LvlMne: *lvlPath != "",
+			Routes:    xp != "",
+			SrcMne:    *srcPath != "" || xp != "" || len(srceLockRows) > 0,
+			DstMne:    *dstPath != "" || xp != "" || len(lockRows) > 0,
+			LvlMne:    *lvlPath != "" || named,
 			DestLock:  len(lockRows) > 0,
 			SrceLock:  len(srceLockRows) > 0,
 			StrictMne: true, Verb: "import",
@@ -479,6 +485,9 @@ func cerebrumImportXpoint(_ context.Context, args []string) error {
 			return serr
 		}
 		st = got
+		if bad := cerebrumPlanUnknown(st, cerebrumPlan{routes: routes, locks: lockRows, srceLocks: srceLockRows, src: srcRows, dst: dstRows, lvl: lvlRows}); len(bad) > 0 {
+			return cerebrumPlanError(bad)
+		}
 	}
 
 	routeChanges := diffCerebrumRoutes(st.Routes, routes)
