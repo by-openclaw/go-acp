@@ -307,28 +307,39 @@ func TestRRCSWatchRegistrationRefused(t *testing.T) {
 func TestRRCSWatchText(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	// The events start on the first registration check: only a client
+	// that has read its RegisterForAllEvents reply asks, so the cancel
+	// below can never cut the registration itself (it did on rhel9).
+	urls := make(chan string, 1)
+	var once sync.Once
 	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
-		if call.Method == "RegisterForAllEvents" {
-			url := "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int)) + call.Params[2].Str
-			go func() {
-				for _, m := range []string{"GetAlive", "ConfigurationChange"} {
-					var params []codec.Value
-					if m != "GetAlive" {
-						params = append(params, codec.String("R0000000002"))
+		switch call.Method {
+		case "RegisterForAllEvents":
+			urls <- "http://127.0.0.1:" + strconv.Itoa(int(call.Params[1].Int)) + call.Params[2].Str
+		case "IsRegisteredForAllEvents":
+			once.Do(func() {
+				go func() {
+					url := <-urls
+					for _, m := range []string{"GetAlive", "ConfigurationChange"} {
+						var params []codec.Value
+						if m != "GetAlive" {
+							params = append(params, codec.String("R0000000002"))
+						}
+						doc, _ := codec.EncodeCall(m, params...)
+						if resp, err := http.Post(url, "text/xml", bytes.NewReader(doc)); err == nil {
+							_ = resp.Body.Close()
+						}
 					}
-					doc, _ := codec.EncodeCall(m, params...)
-					if resp, err := http.Post(url, "text/xml", bytes.NewReader(doc)); err == nil {
-						_ = resp.Body.Close()
-					}
-				}
-				cancel()
-			}()
+					cancel()
+				}()
+			})
+			return codec.Struct(codec.Member{Name: "IsRegistered", Value: codec.Bool(true)}, codec.Member{Name: "TransKey", Value: call.Params[0]}), true
 		}
 		return call.Params[0], true
 	})
 	capture := filepath.Join(t.TempDir(), "watch.jsonl")
 	out, err := rrcsStdout(t, func() error {
-		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "0", "--capture", capture, "--events", "raw"})
+		return runRRCS(ctx, []string{"watch", f.addr(), "--spy", "none", "--volume", "no", "--listen", "127.0.0.1:0", "--check", "10ms", "--capture", capture, "--events", "raw"})
 	})
 	// The capture tells the run on its own: registered, unregistered, counts.
 	raw, _ := os.ReadFile(capture)
