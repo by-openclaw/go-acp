@@ -12,6 +12,10 @@ const (
 	// (§5.1 has `GET /api` return the domains).
 	NoAPIRoot = "ccm_no_api_root"
 
+	// EnumIsExample: the api.yml uses an enum of one entry for a field's
+	// example, so it is not treated as a constraint.
+	EnumIsExample = "ccm_enum_is_example"
+
 	// NoWebSocket: the device refused the upgrade. §13.1 has every
 	// non-trivial device serve the channel.
 	NoWebSocket = "ccm_no_websocket"

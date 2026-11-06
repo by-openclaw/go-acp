@@ -114,6 +114,9 @@ func TestIdentityIsReadWhereverTheDevicePutsIt(t *testing.T) {
 	if got := q.ComplianceProfile().Snapshot()[SelfUnderApp]; got != 1 {
 		t.Errorf("%s noted %d time(s), want 1", SelfUnderApp, got)
 	}
+	if got := q.ComplianceProfile().Snapshot()[EnumIsExample]; got != 1 {
+		t.Errorf("%s noted %d time(s), want 1", EnumIsExample, got)
+	}
 	_ = q.Disconnect()
 }
 

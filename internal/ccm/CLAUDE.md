@@ -135,6 +135,14 @@ same way. Everything here is measured from the devices, not supposed.
 | verified on | 10.6.255.102, fw 7.0.3 | 10.44.72.27, fw 2.0.0, 2026-09-25 |
 | API base | `/api/v1` | `/api` — **no version segment** |
 | spec document | `/docs/api.yml` | `/docs/openapi.yml` |
+
+NeuronView 1.13.2 serves its document at `/swagger/api.yml`, off the API base,
+beside its Swagger page. Its generator writes a field's example as an enum of
+one (200 of 264 enums, `name: [Head name]`); an enum of one is not a constraint
+here, and a session counts `ccm_enum_is_example`. A widget is reached both
+under `/heads/{uuid}/widgets/{uuid}` and through its head: one object is kept,
+the writable copy. Measured 2026-11-02: info, walk, export (5 032 objects),
+watch polled, a head name set, read back, seen by the watch and restored.
 | OpenAPI | 3.1.2 | 3.1.1 |
 | matrix info | `/matrix/video/path/info` | `/matrices/audio/info` |
 | state maps | beside the info (`…/path/main`) | a level below (`…/state/main`) |
@@ -236,6 +244,28 @@ Nothing in that path is CCM-specific: it is driven by the link metadata
 any connector's walk attaches, so a protocol that resolves its
 crosspoints gets the file-set without new code. See
 `cmd/dhs/cmd_matrix_linked.go`.
+
+### A values file: checked, read once per resource, never cut
+
+`dhs consumer ccm import <ip> --file params.csv [--check]` puts a values
+export back. Three things keep it honest on a 1 544-stream SHUFFLE:
+
+- **Nothing is cut on export.** Text is kept whole: an SDP is 600 to 900
+  characters and a value the device takes back on a PUT; only an
+  unbroken encoded blob (a thumbnail) is summarised. An export that kept
+  256 characters wrote a broken SDP on import (measured 2026-11-05).
+- **One read per resource.** The import compares every row with the
+  device inside a read scope (`ReadScope`): a receiver's dozen fields are
+  one GET, not twelve. A write in the scope replaces what it holds with
+  its read-back; outside the scope every read goes to the device.
+- **Checked before the wire** (`ValidateValue`, so `--check` reports it
+  too): read-only, a word outside the enumeration, a number past its
+  bounds, a string past its length — and an address field given
+  something that is not an IPv4 address. The api.yml types addresses as
+  plain strings (no format, no pattern on SHUFFLE 6.0.0 or CONVERT
+  7.0.3), so that rule comes from the value the device holds now; an
+  empty field is left to the device. A row the device already holds is
+  left alone whatever it is.
 
 ### Declared paths nest two parameters deep
 

@@ -76,6 +76,10 @@ components:
     ThingWrite:
       type: object
       properties:
+        example:
+          type: string
+          enum:
+            - only
         mode:
           type: string
           enum:

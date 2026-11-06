@@ -240,6 +240,11 @@ func runImport(ctx context.Context, args []string) error {
 	// MIN/MAX (the import rule on every connector): the bound went out,
 	// or would, and the run still ends in error — the file asked for
 	// something the device's range does not hold.
+	if *dry {
+		for _, c := range rep.Changes {
+			fmt.Println("would set   " + c)
+		}
+	}
 	for _, ip := range rep.IPs {
 		fmt.Println("ip          " + ip)
 	}

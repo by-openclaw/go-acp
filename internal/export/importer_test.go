@@ -451,3 +451,52 @@ func TestApply_BatchesWhereThePluginCan(t *testing.T) {
 		t.Errorf("converged: applied=%d unchanged=%d batches=%v sets=%v", rep.Applied, rep.Unchanged, p.batches, p.sets)
 	}
 }
+
+// scopedPlugin records the read scope an import opens around its reads.
+type scopedPlugin struct {
+	livePlugin
+	open, opened, readsInScope int
+}
+
+func (p *scopedPlugin) ReadScope(context.Context) func() {
+	p.open++
+	p.opened++
+	return func() { p.open-- }
+}
+func (p *scopedPlugin) GetValue(ctx context.Context, req consumer.ValueRequest) (consumer.Value, error) {
+	if p.open > 0 {
+		p.readsInScope++
+	}
+	return p.livePlugin.GetValue(ctx, req)
+}
+
+// An import does its reads inside one read scope, so a plugin that can
+// serve many rows from one read of the device does — and closes it after.
+func TestApply_ReadsInsideOneReadScope(t *testing.T) {
+	p := &scopedPlugin{livePlugin: livePlugin{live: map[int]consumer.Value{}, readErr: map[int]error{}}}
+	if _, err := Apply(context.Background(), p, snapshotForTest("acp2"), true); err != nil {
+		t.Fatal(err)
+	}
+	if p.opened != 1 || p.open != 0 || p.readsInScope != 2 {
+		t.Errorf("scopes opened %d, still open %d, reads in scope %d", p.opened, p.open, p.readsInScope)
+	}
+}
+
+// A dry run names each row it would change, with what the device holds and
+// what the file asks for — not only how many.
+func TestApply_DryRunNamesWhatItWouldChange(t *testing.T) {
+	p := &livePlugin{
+		live: map[int]consumer.Value{
+			67604: {Kind: consumer.KindString, Str: "239.129.1.20"},
+			67605: {Kind: consumer.KindInt, Int: 12000},
+		},
+		readErr: map[int]error{},
+	}
+	rep, err := Apply(context.Background(), p, snapshotForTest("acp2"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Changes) != 1 || !strings.Contains(rep.Changes[0], `"12000" -> "12700"`) {
+		t.Errorf("changes = %q", rep.Changes)
+	}
+}

@@ -1,6 +1,7 @@
 package export
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -16,7 +17,12 @@ import (
 // arrays, preset depth) are recovered on a best-effort basis from the
 // pipe-separated cell format.
 func ReadCSV(r io.Reader) (*Snapshot, error) {
-	cr := csv.NewReader(r)
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("csv: read: %w", err)
+	}
+	data, keptCR := hideQuotedCR(data)
+	cr := csv.NewReader(bytes.NewReader(data))
 	cr.FieldsPerRecord = -1 // tolerate ragged rows
 
 	header, err := cr.Read()
@@ -35,6 +41,11 @@ func ReadCSV(r io.Reader) (*Snapshot, error) {
 		}
 		if err != nil {
 			return nil, fmt.Errorf("csv: read row: %w", err)
+		}
+		if keptCR {
+			for i := range row {
+				row[i] = strings.ReplaceAll(row[i], crMark, "\r")
+			}
 		}
 
 		ip := col(row, idx, "ip")
