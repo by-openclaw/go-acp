@@ -11,7 +11,7 @@
 // Gated on SNMP_TEST_HOST, so CI's unit run never reaches a device
 // (root CLAUDE.md: "CI runs unit only — never integration"):
 //
-//	SNMP_TEST_HOST=10.6.255.114 go test -tags integration ./internal/snmp/integration/
+//	SNMP_TEST_HOST=10.6.255.116 go test -tags integration ./internal/snmp/integration/
 //
 // DHS_BIN points at a prebuilt CLI for hosts with no Go toolchain —
 // the control node is one, and it is the host with a route to the

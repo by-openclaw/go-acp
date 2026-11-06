@@ -1,7 +1,7 @@
 ---
 # SNMP integration — ADR-0025 deliverable 3, tier 2/3.
 #
-# The oracle is a real agent: the ATEME Kyrion DR5000 at 10.6.255.114,
+# The oracle is a real agent: the ATEME Kyrion DR5000 at 10.6.255.116,
 # SNMP v1 on 161, read community public / write community private (set
 # on the unit's own web UI). Our own agent is the oracle for the other
 # half of this connector, and `snmp-verbs.yml` drives that; here the
@@ -89,7 +89,7 @@
     stage: /root/snmp-integration
     # Named apart from the -e override: a var that defaults to itself
     # is a recursion, not a default.
-    agent: "{{ snmp_host | default('10.6.255.114') }}"
+    agent: "{{ snmp_host | default('10.6.255.116') }}"
     write_community: "{{ snmp_write_community | default(lookup('env', 'SNMP_WRITE_COMMUNITY')) }}"
     # An object this plant agrees may be written, written back to the
     # value it already holds. On the DR5000 that is the SDI output

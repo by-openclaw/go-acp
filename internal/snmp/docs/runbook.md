@@ -30,11 +30,11 @@ there is no anonymous v3.
 ## Is it there?
 
 ```
-dhs consumer snmp info 10.6.255.114
+dhs consumer snmp info 10.6.255.116
 ```
 
 ```
-device       10.6.255.114:161
+device       10.6.255.116:161
 protocol     snmp v1
 dtd_version  1.3.6.1.4.1.27338.5.2.2
 slots        1
@@ -84,21 +84,21 @@ Work down this list before concluding the device is down.
 
 ```
 # SNMP's own shape — OIDs and MIB names
-dhs consumer snmp get --version 1 --oid sysDescr.0,sysUpTime.0 10.6.255.114
+dhs consumer snmp get --version 1 --oid sysDescr.0,sysUpTime.0 10.6.255.116
 
 # the neutral shape — the paths a walk produced, resolved cold
-dhs consumer snmp get 10.6.255.114 --path ateme.dr5000.Status.Input.Sat.Locked
+dhs consumer snmp get 10.6.255.116 --path ateme.dr5000.Status.Input.Sat.Locked
 ```
 
 ## Walk, without hurting yourself
 
 ```
 # the branches you care about — seconds
-dhs consumer snmp walk 10.6.255.114 --slot 0 \
+dhs consumer snmp walk 10.6.255.116 --slot 0 \
     --path system,ateme.dr5000.Status.Input
 
 # the whole device model — minutes on a v1 IRD, and it writes the DM cache
-dhs consumer snmp walk 10.6.255.114 --slot 0
+dhs consumer snmp walk 10.6.255.116 --slot 0
 ```
 
 A scoped walk reads only those branches and deliberately does **not**
@@ -108,8 +108,8 @@ The protocol verb walks OIDs rather than paths, starts at the whole tree
 (`1.3.6.1`) and has no object limit; flags go on either side of the host:
 
 ```
-dhs consumer snmp walk 10.6.255.114                          # everything the agent has
-dhs consumer snmp walk 10.6.255.114 --oid 1.3.6.1.4.1 --limit 500
+dhs consumer snmp walk 10.6.255.116                          # everything the agent has
+dhs consumer snmp walk 10.6.255.116 --oid 1.3.6.1.4.1 --limit 500
 ```
 
 **The DR5000's whole tree is 381 079 objects and takes twelve hours**
@@ -137,7 +137,7 @@ died at object 100 750.
 
 ```
 export SNMP_WRITE_COMMUNITY=private
-dhs consumer snmp set 10.6.255.114 --write-to 10.6.255.114 \
+dhs consumer snmp set 10.6.255.116 --write-to 10.6.255.116 \
     --path ateme.dr5000.Channel.Configuration.Output.Mapping.Connector1 \
     --value hdsdi
 ```
@@ -161,11 +161,11 @@ dhs consumer snmp alarm test --template internal/snmp/alarm/DR5000@1.3.1.1.json 
     --path ateme.dr5000.Status.Input.Sat.Locked --value false
 
 # draft rules from what the device itself declares, then read them
-dhs consumer snmp alarm suggest 10.6.255.114 \
+dhs consumer snmp alarm suggest 10.6.255.116 \
     --path ateme.dr5000.Status.Input --include-writable --out draft.json
 
 # judge the live device, continuously, with Prometheus on the side
-dhs consumer snmp watch 10.6.255.114 --path ateme.dr5000.Status.Input \
+dhs consumer snmp watch 10.6.255.116 --path ateme.dr5000.Status.Input \
     --interval 30s --metrics-addr :9112 \
     --alarm internal/snmp/alarm/DR5000@1.3.1.1.json
 ```
@@ -242,7 +242,7 @@ ansible-playbook -i inventory/hosts.ini playbooks/snmp-dr5000-verify.yml -e snmp
 The Go suite, direct:
 
 ```
-SNMP_TEST_HOST=10.6.255.114 SNMP_WRITE_COMMUNITY=private \
+SNMP_TEST_HOST=10.6.255.116 SNMP_WRITE_COMMUNITY=private \
   go test -tags integration ./internal/snmp/integration/ -v
 ```
 
@@ -262,7 +262,7 @@ the same file read back offline (what the agent refused, and any answer
 no request in the file asked for):
 
 ```
-dhs consumer snmp walk 10.6.255.114 --oid system --capture frames.jsonl
+dhs consumer snmp walk 10.6.255.116 --oid system --capture frames.jsonl
 dhs consumer snmp validate frames.jsonl
 ```
 

@@ -4,7 +4,7 @@ Measured, not claimed. "Released" is the binary the fleet runs. Each play
 was run twice from the control node with the second run changing nothing.
 
 Two oracles, neither written by us: the **ATEME DR5000** decoder
-`10.6.255.114` (v1 and v2c) and **net-snmp** (v3, both directions).
+`10.6.255.116` (v1 and v2c) and **net-snmp** (v3, both directions).
 
 ## The six deliverables (2026-10-09, released v0.43.0)
 

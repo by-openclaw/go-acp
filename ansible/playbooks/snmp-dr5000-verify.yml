@@ -23,7 +23,7 @@
   gather_facts: false
   vars:
     sn_bin: /usr/local/bin/dhs
-    sn_host: 10.6.255.114
+    sn_host: 10.6.255.116
     sn_write_community: private
     sn_name_oid: dr5000UnitName.0
     sn_name_test: "DHS-VERIFY"

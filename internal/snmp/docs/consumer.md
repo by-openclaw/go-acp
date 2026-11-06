@@ -9,8 +9,8 @@ connector verbs, which speak paths and know nothing about SNMP.
 ## The two faces
 
 ```
-dhs consumer snmp get   --oid sysDescr.0        10.6.255.114   # SNMP's own
-dhs consumer snmp get   --path system.Descr     10.6.255.114   # neutral
+dhs consumer snmp get   --oid sysDescr.0        10.6.255.116   # SNMP's own
+dhs consumer snmp get   --path system.Descr     10.6.255.116   # neutral
 ```
 
 `get`, `walk` and `set` exist in both shapes. Whichever flag the
@@ -102,7 +102,7 @@ because that is what the manual prints, what an operator says, and what
 an alarm rule is written against. A SET takes the same word:
 
 ```
-$ dhs consumer snmp get 10.6.255.114 --path ateme.dr5000.Status.Input.Sat.Locked
+$ dhs consumer snmp get 10.6.255.116 --path ateme.dr5000.Status.Input.Sat.Locked
 value = "true"  (enum idx 1)
 ```
 
@@ -165,8 +165,8 @@ dhs consumer snmp trap-listen --bind :1162 --user operator \
 export SNMP_V3_USER=operator SNMP_V3_AUTH=sha256 SNMP_V3_PRIV=aes
 export SNMP_V3_AUTH_PASS=… SNMP_V3_PRIV_PASS=…
 
-dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.114
-dhs consumer snmp info 10.6.255.114     # the neutral verbs, same credential
+dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.116
+dhs consumer snmp info 10.6.255.116     # the neutral verbs, same credential
 ```
 
 v3 authenticates as a **user**, not with a community, and a manager is
