@@ -899,6 +899,9 @@ usage: dhs consumer ccm <verb> <host> [flags]
   walk <host> --tree     walk the FULL recursive DM (every node/resource)
        [--start p1,p2]   seed --tree from explicit node paths (default: from the API root)
   export <host>  store api.yml (schema) + tree (DM) + dm-tree.json (full DM) + extract, versioned for firmware diff
+  io-table <host | params.csv>  inputs.csv / outputs.csv (UI order, write fields, SDP in columns) +
+       matrix-src.csv / matrix-dst.csv (every channel by matrix index, owner, UUIDs)
+       [--names-src F --names-dst F]  the router's label files (<prefix>-src/-dst.csv) beside CCM's names
   flags: --json  emit the whole device as JSON
          --verify-tls  verify the device certificate (default: skip, lab self-signed)
          --timeout D   per-request timeout (default 8s)

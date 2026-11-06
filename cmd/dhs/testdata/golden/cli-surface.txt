@@ -1310,6 +1310,9 @@ usage: dhs consumer ccm <verb> <host> [flags]
   walk <host> --tree     walk the FULL recursive DM (every node/resource)
        [--start p1,p2]   seed --tree from explicit node paths (default: from the API root)
   export <host>  store api.yml (schema) + tree (DM) + dm-tree.json (full DM) + extract, versioned for firmware diff
+  io-table <host | params.csv>  inputs.csv / outputs.csv (UI order, write fields, SDP in columns) +
+       matrix-src.csv / matrix-dst.csv (every channel by matrix index, owner, UUIDs)
+       [--names-src F --names-dst F]  the router's label files (<prefix>-src/-dst.csv) beside CCM's names
   flags: --json  emit the whole device as JSON
          --verify-tls  verify the device certificate (default: skip, lab self-signed)
          --timeout D   per-request timeout (default 8s)
@@ -1344,6 +1347,22 @@ Usage of consumer ccm export:
     	output directory root (default: snapshots/ccm/<ip>/, ADR-0028)
   -verify-tls
     	verify the device certificate (default: skip)
+
+========== consumer/ccm/io-table ==========
+$ dhs consumer ccm io-table --help
+Usage of consumer ccm io-table:
+  -level int
+    	with --names-*: the level_id whose rows are read
+  -matrix int
+    	with --names-*: the matrix_id whose rows are read
+  -names-dst string
+    	the router's destination label file (<prefix>-dst.csv)
+  -names-src string
+    	the router's source label file (<prefix>-src.csv of a matrix export)
+  -out string
+    	output directory (default: snapshots/ccm/<host>/io-table/, ADR-0028)
+  -timeout duration
+    	per-request timeout against a device (default 8s)
 
 ========== consumer/cerebrum-nb/<dispatcher-help> ==========
 $ dhs consumer cerebrum-nb --help

@@ -111,7 +111,7 @@ var perProtocolVerbs = map[string][]string{
 		"discover", "system", "walk", "watch", "connect", "set", "map", "compat", "config", "control", "facade",
 		"events", "export", "audit", "probe", "registers",
 	},
-	"ccm": {"walk", "export"},
+	"ccm": {"walk", "export", "io-table"},
 	"rrcs": {"info", "discover", "watch", "snapshot", "walk", "get", "list", "tree", "set", "export", "extract", "import", "call", "xp", "ensure", "coverage",
 		// Neutral verbs, answered through the registered plugin (ADR-0037 P1).
 		"health", "status",

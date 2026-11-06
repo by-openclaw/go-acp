@@ -77,6 +77,27 @@ canonical matrix file-set (`-matrix.csv`, `-xpoint.csv`, `-dst.csv`,
 `-src.csv`), one directory per matrix; `import --xpoint … --matrix …
 [--check]` puts a matrix back, writing only the crosspoints that differ.
 
+### io-table
+
+The inputs and outputs as the web UI lists them, and every routable
+channel against the matrix index the router addresses it by:
+
+```text
+dhs consumer ccm export 10.6.255.103 --format csv
+dhs consumer probel-sw08p export 10.6.255.103:7800     # the router's labels (SHUFFLE: port 7800)
+dhs consumer ccm io-table snapshots/ccm/10.6.255.103/params.csv \
+    --names-src snapshots/probel-sw08p/10.6.255.103/src.csv \
+    --names-dst snapshots/probel-sw08p/10.6.255.103/dst.csv
+```
+
+The target is a device or a CSV export of one; reading a file needs no
+device. Four files land in `snapshots/ccm/<ip>/io-table/`:
+`inputs.csv`, `outputs.csv`, `matrix-src.csv`, `matrix-dst.csv`. A
+channel CCM gives no matrix index (the generator and analyser on
+SHUFFLE 6.0.0) is reported as `ccm_no_matrix_index` and placed from the
+label files by name when they are given. See
+[`../CLAUDE.md`](../CLAUDE.md) for the columns.
+
 ### get, set
 
 One value by path, without a walk:

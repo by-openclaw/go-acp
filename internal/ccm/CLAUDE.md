@@ -267,6 +267,35 @@ export back. Three things keep it honest on a 1 544-stream SHUFFLE:
   empty field is left to the device. A row the device already holds is
   left alone whatever it is.
 
+### The io-table: streams in UI order, channels by matrix index
+
+`dhs consumer ccm io-table <ip | params.csv> [--names-src F --names-dst F]`
+writes four files to `snapshots/ccm/<ip>/io-table/`:
+
+| file | one row per |
+|---|---|
+| `inputs.csv` | IP input, input 1 to the last: name, uuid, enable, the SDP read into columns (payload, rate, depth, channels, packet time, multicast / port / source per leg), interfaces by name, NMOS label + group hint, first and last matrix index |
+| `outputs.csv` | IP output, the same with the sender's own fields |
+| `matrix-src.csv` | source channel by matrix index: kind (IP input, MADI input, delay bank, generator, mute), owner number / name / uuid, channel, channel uuid |
+| `matrix-dst.csv` | destination channel, the same (IP output, MADI output, delay bank, analyser) |
+
+- **Order is the router's.** Input N is the stream whose first channel
+  comes Nth on the matrix — not the uuid order the API lists them in.
+- **The index is CCM's `matrixIndex`**, the number SW-P-08 addresses the
+  channel by. The 64 generator and 64 analyser channels carry none on
+  SHUFFLE 6.0.0, though the router addresses them (measured 2026-11-05:
+  generator n = source 17663+n, analyser n = destination 17663+n). Each
+  is a `ccm_no_matrix_index` deviation.
+- **The router's labels**, given as the `<prefix>-src.csv` / `-dst.csv` a
+  matrix export writes (probel-sw08p, cerebrum-nb, `export --out-dir`),
+  sit beside CCM's names (`default_label`, `short_label`,
+  `names_agree`), and place a channel CCM gives no index — by name,
+  never by a fixed offset: CCM's `AG001-12` is the router's 8-character
+  `AG000112` (letters, owner × 100 + channel). A label that two indices
+  carry places nothing.
+
+See `internal/ccm/consumer/iotable.go`.
+
 ### Declared paths nest two parameters deep
 
 The shuffler declares 6 paths with two `{…}` segments (per-channel audio

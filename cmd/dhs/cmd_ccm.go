@@ -35,6 +35,9 @@ func runCCM(ctx context.Context, args []string) (handled bool, remaining []strin
 		fmt.Println("  walk <host> --tree     walk the FULL recursive DM (every node/resource)")
 		fmt.Println("       [--start p1,p2]   seed --tree from explicit node paths (default: from the API root)")
 		fmt.Println("  export <host>  store api.yml (schema) + tree (DM) + dm-tree.json (full DM) + extract, versioned for firmware diff")
+		fmt.Println("  io-table <host | params.csv>  inputs.csv / outputs.csv (UI order, write fields, SDP in columns) +")
+		fmt.Println("       matrix-src.csv / matrix-dst.csv (every channel by matrix index, owner, UUIDs)")
+		fmt.Println("       [--names-src F --names-dst F]  the router's label files (<prefix>-src/-dst.csv) beside CCM's names")
 		fmt.Println("  flags: --json  emit the whole device as JSON")
 		fmt.Println("         --verify-tls  verify the device certificate (default: skip, lab self-signed)")
 		fmt.Println("         --timeout D   per-request timeout (default 8s)")
@@ -78,6 +81,8 @@ func runCCM(ctx context.Context, args []string) (handled bool, remaining []strin
 			return false, append([]string{verb}, rest...), nil
 		}
 		return true, nil, runCCMExport(ctx, rest)
+	case "io-table":
+		return true, nil, runCCMIOTable(ctx, rest)
 	}
 	// info, tree, get, set, watch, alarm, ensure, validate…: the neutral
 	// dispatcher owns them now.
