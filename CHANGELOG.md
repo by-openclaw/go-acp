@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.57.0](https://github.com/by-openclaw/go-acp/compare/v0.56.0...v0.57.0) (2026-11-06)
+
+
+### Features
+
+* **ccm:** io-table — streams in UI order, channels by matrix index ([#1603](https://github.com/by-openclaw/go-acp/issues/1603)) ([#1605](https://github.com/by-openclaw/go-acp/issues/1605)) ([a0327a6](https://github.com/by-openclaw/go-acp/commit/a0327a668334c19944ea7df3070a31383122d754))
+
 ## [0.56.0](https://github.com/by-openclaw/go-acp/compare/v0.55.0...v0.56.0) (2026-11-06)
 
 
