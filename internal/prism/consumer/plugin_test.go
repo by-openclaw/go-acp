@@ -289,7 +289,10 @@ func TestAnswerWaitBindsAWalkExchange(t *testing.T) {
 	}))
 	defer s.Close()
 	defer close(release)
-	p := connected(t, s, Options{AnswerWait: 20 * time.Millisecond})
+	// Connect with the default wait: only the stalled walk exchange is the
+	// behaviour under test, not how fast the runner opens its first socket.
+	p := connected(t, s, Options{})
+	p.rest.wait = 20 * time.Millisecond
 	objs, err := p.WalkUnder(context.Background(), "ptp_status")
 	if err != nil || len(objs) != 1 || objs[0].Meta["error"] == nil {
 		t.Fatalf("%v %v", objs, err)

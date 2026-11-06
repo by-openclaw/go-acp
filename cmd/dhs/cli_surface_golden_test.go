@@ -22,7 +22,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"flag"
 	"os"
@@ -34,7 +33,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 var updateCLISurface = flag.Bool("update-cli-surface", false,
@@ -43,9 +41,10 @@ var updateCLISurface = flag.Bool("update-cli-surface", false,
 // goldenCLISurfacePath is the frozen CLI contract.
 var goldenCLISurfacePath = filepath.Join("testdata", "golden", "cli-surface.txt")
 
-// perInvocationTimeout caps a single `dhs ... --help` run. Help must never
-// touch the network; a verb that blocks here is itself the finding.
-const perInvocationTimeout = 20 * time.Second
+// Each `dhs ... --help` run ends on its own exit, never on a timer: a timer
+// turned a slow machine into a changed surface (#1604). Help must never touch
+// the network; a verb that blocks here hangs the test until `go test -timeout`,
+// whose goroutine dump names the blocked invocation.
 
 // genericVerbs is the commands[] dispatch table (main.go). These route through
 // the shared addCommonFlags/connect() path for acp1 / acp2 / emberplus.
@@ -260,20 +259,14 @@ func buildDHSBinary(t *testing.T) string {
 // flag.ErrHelp), so the exit status is recorded rather than failed on.
 func runCLI(t *testing.T, bin string, args []string) string {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), perInvocationTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd := exec.Command(bin, args...)
 	// Deterministic environment: a stray DHS_SETTINGS on the developer's
 	// machine must not leak flag defaults into the frozen contract.
 	cmd.Env = append(os.Environ(), "DHS_SETTINGS=", "NO_COLOR=1")
 	out, err := cmd.CombinedOutput()
 
 	body := string(out)
-	switch {
-	case ctx.Err() != nil:
-		body += "\n[TIMED OUT after " + perInvocationTimeout.String() + "]\n"
-	case err != nil:
+	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) {
 			body += "\n[exit status " + strconv.Itoa(ee.ExitCode()) + "]\n"
