@@ -31,22 +31,12 @@ func (p *Plugin) GetValue(ctx context.Context, req dhsc.ValueRequest) (dhsc.Valu
 	if err != nil {
 		return dhsc.Value{}, err
 	}
-	body, err := client.get(ctx, resource)
+	vals, err := p.fields(ctx, client, spec, resource)
 	if err != nil {
 		return dhsc.Value{}, fmt.Errorf("ccm: get %s: %w", resource, err)
 	}
-	p.RecordRx()
-
-	writable := false
-	if tpl, ok := spec.TemplateFor(resource); ok {
-		writable = spec.Writable(tpl)
-	}
-	objs := flatten(resource, body, writable)
-	typeObjects(spec, resource, objs)
-	for _, o := range objs {
-		if strings.EqualFold(strings.Join(o.Path, "."), strings.Join(append(segments(resource), field...), ".")) {
-			return o.Value, nil
-		}
+	if v, ok := vals[strings.ToLower(strings.Join(append(segments(resource), field...), "."))]; ok {
+		return v, nil
 	}
 	if len(field) == 0 {
 		return dhsc.Value{}, fmt.Errorf("ccm: %s is a resource, not a value — name a field inside it", resource)

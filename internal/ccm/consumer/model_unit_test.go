@@ -137,7 +137,10 @@ func TestANullFieldIsRecordedRatherThanDropped(t *testing.T) {
 
 func TestSummariseKeepsAModelReadable(t *testing.T) {
 	// The real device puts a JPEG in every video channel.
-	long := strings.Repeat("a", maxValueLen+10)
+	blob := strings.Repeat("a", maxValueLen+10)
+	// The SHUFFLE's Input Audio Stream 1, 2026-11-05: 653 bytes.
+	sdp := "v=0\r\no=- 728701109 4002838010 IN IP4 10.6.40.60\r\ns=ATX-01\r\nt=0 0\r\n" +
+		strings.Repeat("a=source-filter: incl IN IP4 239.30.0.1 10.6.40.60\r\n", 10)
 	cases := []struct {
 		name string
 		in   string
@@ -146,7 +149,9 @@ func TestSummariseKeepsAModelReadable(t *testing.T) {
 		{"short text is itself", "Main", "Main"},
 		{"binary is described", "\xff\xd8\xff\xe0JFIF\x00", "<binary, 9 bytes>"},
 		{"a control byte is binary", "ok\x00then", "<binary, 7 bytes>"},
-		{"long text is cut, with its length", long, long[:maxValueLen] + "… <266 bytes total>"},
+		{"a long encoded blob is described, with its length", blob, "<encoded, 266 bytes>"},
+		{"a short unbroken value is itself", blob[:maxValueLen], blob[:maxValueLen]},
+		{"long text is kept whole", sdp, sdp},
 		{"tabs and newlines are text", "a\tb\nc", "a\tb\nc"},
 	}
 	for _, c := range cases {
@@ -391,6 +396,19 @@ func TestDedupeRemovesTheRepeatsASpecCreates(t *testing.T) {
 	}
 	if got := dedupe(nil); got != nil {
 		t.Errorf("dedupe(nil) = %v", got)
+	}
+}
+
+func TestDedupeObjectsKeepsTheWritableCopy(t *testing.T) {
+	path := []string{"heads", "h", "widgets", "w", "name"}
+	got := dedupeObjects([]dhsc.Object{
+		{Path: path, Access: accessRead},
+		{Path: path, Access: accessRead | accessWrite},
+		{Path: path, Access: accessRead},
+		{Path: []string{"self"}, Access: accessRead},
+	})
+	if len(got) != 2 || got[0].Access&accessWrite == 0 {
+		t.Fatalf("got %+v", got)
 	}
 }
 

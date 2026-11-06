@@ -92,6 +92,11 @@ type Plugin struct {
 	byPath   map[string]dhsc.Object
 	interval time.Duration
 
+	// reads holds the documents read inside a ReadScope; nil outside one.
+	reads      map[string][]byte
+	readFields map[string]map[string]dhsc.Value
+	readDepth  int
+
 	poller *pollwatch.Poller
 	// push is the event channel, nil on a device that serves none.
 	push *pusher
@@ -139,6 +144,9 @@ func (p *Plugin) Connect(ctx context.Context, ip string, port int) error {
 	spec, err := codec.ParseSpec(doc)
 	if err != nil {
 		return fmt.Errorf("ccm: %s: %w", host, err)
+	}
+	if spec.ExampleEnums() > 0 {
+		p.ComplianceProfile().Note(EnumIsExample)
 	}
 
 	// Asked of the device, once per session: does it push its state

@@ -57,6 +57,30 @@ type Spec struct {
 }
 
 // ParseSpec reads the document's `paths:` and `components.schemas`.
+// ExampleEnums counts the enums of one entry in the document's schemas, the
+// ones describe does not treat as a constraint.
+func (s *Spec) ExampleEnums() int {
+	var count func(v any) int
+	count = func(v any) int {
+		n := 0
+		switch t := v.(type) {
+		case map[string]any:
+			if e, ok := t["enum"].([]any); ok && len(e) == 1 {
+				n++
+			}
+			for _, c := range t {
+				n += count(c)
+			}
+		case []any:
+			for _, c := range t {
+				n += count(c)
+			}
+		}
+		return n
+	}
+	return count(s.schemas)
+}
+
 func ParseSpec(doc []byte) (*Spec, error) {
 	root, err := parseYAML(doc)
 	if err != nil {
@@ -398,6 +422,12 @@ func (s *Spec) describe(m map[string]any) FieldType {
 			if str, ok := it.(string); ok {
 				ft.Enum = append(ft.Enum, str)
 			}
+		}
+		// NeuronView's generator writes the example of a field as an enum of
+		// one: name: [''], numPips: [0], name: [Head name]. One word is no
+		// choice, so it constrains nothing here; the device has the last say.
+		if len(ft.Enum) == 1 {
+			ft.Enum = nil
 		}
 	}
 	if v, ok := m["minimum"].(string); ok {

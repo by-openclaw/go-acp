@@ -390,18 +390,18 @@ func TestSpecEdges(t *testing.T) {
 		t.Errorf("allOf properties: %v", merged)
 	}
 	// describe: bounds that are not numbers are ignored.
-	ft := s.describe(map[string]any{"type": "integer", "minimum": "low", "maximum": "high", "maxLength": "x", "enum": []any{"a", 1}})
-	if ft.Min != nil || ft.Max != nil || ft.MaxLength != 0 || strings.Join(ft.Enum, ",") != "a" {
+	ft := s.describe(map[string]any{"type": "integer", "minimum": "low", "maximum": "high", "maxLength": "x", "enum": []any{"a", "b", 1}})
+	if ft.Min != nil || ft.Max != nil || ft.MaxLength != 0 || strings.Join(ft.Enum, ",") != "a,b" {
 		t.Errorf("describe with bad keywords = %+v", ft)
 	}
 	// A field in the write schema only: its type comes from there, the
 	// read schema adds nothing, and it is writable.
-	doc := []byte("openapi: 3.1.1\npaths:\n  /t:\n    get:\n      responses:\n        '200':\n          content:\n            application/json:\n              schema:\n                type: object\n                properties:\n                  a:\n                    type: string\n                    format: uuid\n                    enum:\n                      - x\n    put:\n      requestBody:\n        content:\n          application/json:\n            schema:\n              type: object\n              properties:\n                a:\n                  type: ''\n                b:\n                  type: integer\n")
+	doc := []byte("openapi: 3.1.1\npaths:\n  /t:\n    get:\n      responses:\n        '200':\n          content:\n            application/json:\n              schema:\n                type: object\n                properties:\n                  a:\n                    type: string\n                    format: uuid\n                    enum:\n                      - x\n                      - y\n    put:\n      requestBody:\n        content:\n          application/json:\n            schema:\n              type: object\n              properties:\n                a:\n                  type: ''\n                b:\n                  type: integer\n")
 	sp, err := ParseSpec(doc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ft := f(t, sp, "/t", "a"); ft.Type != "string" || ft.Format != "uuid" || strings.Join(ft.Enum, ",") != "x" || ft.ReadOnly {
+	if ft := f(t, sp, "/t", "a"); ft.Type != "string" || ft.Format != "uuid" || strings.Join(ft.Enum, ",") != "x,y" || ft.ReadOnly {
 		t.Errorf("read schema fills what the write schema leaves out: %+v", ft)
 	}
 	if ft := f(t, sp, "/t", "b"); ft.Type != "integer" || ft.ReadOnly {
@@ -409,5 +409,37 @@ func TestSpecEdges(t *testing.T) {
 	}
 	if !sp.Has("/t", PUT) || sp.Has("/t", DELETE) {
 		t.Error("Has")
+	}
+}
+
+func TestYAMLBlockScalars(t *testing.T) {
+	doc := "a: >-\n  one\n  two\nb: |\n  one\n  two\nc:\n  - >-\n    in a\n    sequence\n  - plain\nd: end\n"
+	v, err := parseYAML([]byte(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := v.(map[string]any)
+	if m["a"] != "one two" || m["b"] != "one\ntwo" || m["d"] != "end" {
+		t.Fatalf("%v", m)
+	}
+	seq := m["c"].([]any)
+	if len(seq) != 2 || seq[0] != "in a sequence" || seq[1] != "plain" {
+		t.Fatalf("%v", seq)
+	}
+}
+
+// NeuronView's document: an enum of one is the field's example.
+func TestAnEnumOfOneIsNotAConstraint(t *testing.T) {
+	s := &Spec{schemas: map[string]any{"H": map[string]any{"properties": map[string]any{
+		"name": map[string]any{"type": "string", "enum": []any{"Head name"}},
+	}}}}
+	if ft := s.describe(map[string]any{"type": "string", "enum": []any{"Head name"}}); len(ft.Enum) != 0 {
+		t.Errorf("enum of one kept: %v", ft.Enum)
+	}
+	if ft := s.describe(map[string]any{"type": "string", "enum": []any{"On", "Off"}}); len(ft.Enum) != 2 {
+		t.Errorf("a real enum lost: %v", ft.Enum)
+	}
+	if n := s.ExampleEnums(); n != 1 {
+		t.Errorf("ExampleEnums = %d, want 1", n)
 	}
 }

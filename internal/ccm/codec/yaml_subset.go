@@ -9,10 +9,11 @@ import (
 // A reader for the YAML the device generators emit (BRIDGE / CONVERT
 // 7.0.3 "api.yml", SHUFFLE 2.0.0 "openapi.yml"): block mappings and
 // sequences by indentation, scalars bare or quoted, the empty flow
-// sequence `[]` and a flow sequence of scalars `[a, b]`. Measured on
-// both documents: no anchors, no block scalars (| or >), no tabs, no
-// multi-document streams — so none of that is read, and a document
-// using it is an error rather than a guess. Stdlib only (ADR-0006).
+// sequence `[]`, a flow sequence of scalars `[a, b]`, and block scalars
+// (| and >, which NeuronView's enum descriptions use). Measured on those
+// documents: no anchors, no tabs, no multi-document streams — so none of
+// that is read, and a document using it is an error rather than a guess.
+// Stdlib only (ADR-0006).
 //
 // Every scalar stays a string ("5000", "true"); the caller turns it
 // into a number where it means one. That keeps `enum: [Off, On]` as
@@ -90,6 +91,10 @@ func (p *yamlParser) mapping(indent int) (map[string]any, error) {
 			return nil, errSpec(fmt.Sprintf("line %d: not a key: %q", l.n, l.text))
 		}
 		p.i++
+		if isBlockScalar(val) {
+			m[key] = p.blockScalar(val, indent)
+			continue
+		}
 		if val != "" {
 			m[key] = scalar(val)
 			continue
@@ -150,12 +155,40 @@ func (p *yamlParser) seq(indent int) ([]any, error) {
 				return nil, err
 			}
 			out = append(out, v)
+		case isBlockScalar(rest):
+			p.i++
+			out = append(out, p.blockScalar(rest, indent))
 		default:
 			p.i++
 			out = append(out, scalar(rest))
 		}
 	}
 	return out, nil
+}
+
+// isBlockScalar reports a block scalar header: | or >, with an optional
+// chomping indicator.
+func isBlockScalar(text string) bool {
+	switch text {
+	case "|", "|-", "|+", ">", ">-", ">+":
+		return true
+	}
+	return false
+}
+
+// blockScalar reads the lines indented past the header's parent: > folds
+// them into one line, | keeps them. Only the text matters here, so blank
+// lines and trailing newlines are not kept.
+func (p *yamlParser) blockScalar(header string, indent int) string {
+	var lines []string
+	for p.i < len(p.ls) && p.ls[p.i].indent > indent {
+		lines = append(lines, p.ls[p.i].text)
+		p.i++
+	}
+	if header[0] == '>' {
+		return strings.Join(lines, " ")
+	}
+	return strings.Join(lines, "\n")
 }
 
 // isKV reports whether text is "key: value" or "key:" rather than a

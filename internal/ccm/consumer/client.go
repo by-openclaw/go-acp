@@ -197,6 +197,22 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 // rather than knowing which fleet it is on.
 var SpecPaths = []string{"/docs/api.yml", "/docs/openapi.yml"}
 
+// SpecRootPaths are tried after them, from the device's root: NeuronView
+// serves its document beside its Swagger page, outside the API base.
+var SpecRootPaths = []string{"/swagger/api.yml"}
+
+// deviceRoot is the API base without its path: scheme and host.
+func (c *Client) deviceRoot() string {
+	rest, scheme := c.base, ""
+	if i := strings.Index(rest, "://"); i >= 0 {
+		scheme, rest = rest[:i+3], rest[i+3:]
+	}
+	if i := strings.Index(rest, "/"); i >= 0 {
+		rest = rest[:i]
+	}
+	return scheme + rest
+}
+
 // FetchSpec downloads the device's own OpenAPI schema.
 //
 // It returns the document and the path it came from, so a caller can
@@ -219,6 +235,16 @@ func (c *Client) FetchSpec(ctx context.Context) ([]byte, string, error) {
 		tried = append(tried, c.base+p)
 		if first == nil {
 			first = err
+		}
+	}
+	if c.specPath == "" {
+		root := c.deviceRoot()
+		for _, p := range SpecRootPaths {
+			body, err := c.http.GetBytes(ctx, root+p)
+			if err == nil {
+				return body, p, nil
+			}
+			tried = append(tried, root+p)
 		}
 	}
 	return nil, "", fmt.Errorf("ccm: no OpenAPI document at %s — name it with --api-spec: %w",

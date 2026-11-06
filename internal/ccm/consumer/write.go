@@ -138,6 +138,7 @@ func (p *Plugin) SetValues(ctx context.Context, reqs []dhsc.ValueRequest, vals [
 			return nil, fmt.Errorf("ccm: %s written, but read-back failed: %w", resource, gerr)
 		}
 		p.RecordRx()
+		p.remember(resource, after)
 		held := map[string]dhsc.Value{}
 		leaves := flatten(resource, after, spec.Writable(mustTemplate(spec, resource)))
 		typeObjects(spec, resource, leaves)

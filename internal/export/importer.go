@@ -62,6 +62,10 @@ type ImportReport struct {
 	// IPs names every IPv4 value sent (or that would be) with its class:
 	// unicast, multicast, broadcast… for the run's log.
 	IPs []string
+	// Changes names every row sent (or that would be): its path, what the
+	// device holds and what the file asks for, so a dry run says what it
+	// would change and not only how many.
+	Changes []string
 }
 
 // SkipRecord is one rejected-at-client row. Small and printable.
@@ -125,6 +129,10 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 	// single get_object to catch phantom obj-ids before SetValue, and
 	// rejects enum values outside the options list.
 	validator, _ := plug.(consumer.ValueValidator)
+	// One read of each document serves every row in it, for this import only.
+	if r, ok := plug.(consumer.ReadScoper); ok {
+		defer r.ReadScope(ctx)()
+	}
 	var pending []write
 
 	for _, dump := range s.Slots {
@@ -239,10 +247,15 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 			// what lets --check say how far the device is from the file.
 			// A value that cannot be read is written as before: the write
 			// is what the operator asked for, the read only spares it.
-			if live, gerr := plug.GetValue(ctx, req); gerr == nil && sameValue(live, obj.Value) {
+			live, gerr := plug.GetValue(ctx, req)
+			if gerr == nil && sameValue(live, obj.Value) {
 				rep.Unchanged++
 				rep.Skips = append(rep.Skips, skipFrom(dump.Slot, obj, "unchanged"))
 				continue
+			}
+			held := "(unread)"
+			if gerr == nil {
+				held = strconv.Quote(valueText(live))
 			}
 			// A value the device does not hold must match its definition
 			// (an item of the enumeration, a string within max_len); one
@@ -255,6 +268,8 @@ func Apply(ctx context.Context, plug consumer.Protocol, s *Snapshot, dryRun bool
 				rep.IPs = append(rep.IPs, fmt.Sprintf("slot %d %s: %s %s", dump.Slot, skipFrom(dump.Slot, obj, "").Path,
 					net.IP(obj.Value.IPAddr[:]).String(), ipClass(obj.Value.IPAddr)))
 			}
+			rep.Changes = append(rep.Changes, fmt.Sprintf("slot %d %s: %s -> %s",
+				dump.Slot, skipFrom(dump.Slot, obj, "").Path, held, strconv.Quote(valueText(obj.Value))))
 			if dryRun {
 				rep.Applied++
 				continue

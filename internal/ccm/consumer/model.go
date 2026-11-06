@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -196,6 +197,7 @@ func (p *Plugin) model(ctx context.Context, client *Client, spec *codec.Spec, pl
 	sort.Slice(objs, func(i, j int) bool {
 		return strings.Join(objs[i].Path, "/") < strings.Join(objs[j].Path, "/")
 	})
+	objs = dedupeObjects(objs)
 
 	// Resolve what the matrices route, once, into the model — so a
 	// crosspoint carries the resource it addresses rather than a name
@@ -521,6 +523,24 @@ func parseListing(body []byte) listing {
 	return l
 }
 
+// dedupeObjects keeps one object per path, from a slice sorted by path. Two
+// resources can reach one object: NeuronView answers a widget under its own
+// path and inside /heads/{uuid}/widgets. The writable copy wins, so an object
+// never reads as read-only for having been reached the other way.
+func dedupeObjects(sorted []dhsc.Object) []dhsc.Object {
+	out := sorted[:0]
+	for _, o := range sorted {
+		if n := len(out); n > 0 && slices.Equal(out[n-1].Path, o.Path) {
+			if o.Access&accessWrite != 0 {
+				out[n-1] = o
+			}
+			continue
+		}
+		out = append(out, o)
+	}
+	return out
+}
+
 // dedupe removes repeats from a sorted slice, in place.
 func dedupe(sorted []string) []string {
 	if len(sorted) < 2 {
@@ -616,26 +636,32 @@ func leaf(path []string, v any, writable bool) dhsc.Object {
 	return o
 }
 
-// maxValueLen is the longest string value kept verbatim in the model.
+// maxValueLen is the longest encoded blob kept verbatim in the model.
 //
 // A device model is what an operator reads, an alarm rule matches and
 // a firmware diff compares. This device answers
 // `/processing/video/channels/{uuid}` with a `thumbnail` field
-// carrying a whole JPEG — tens of kilobytes of binary per channel,
-// which is a picture of the video, not a property of the device. Keep
-// the fact that it is there and how big it is; drop the bytes.
+// carrying a whole JPEG — tens of kilobytes per channel, which is a
+// picture of the video, not a property of the device. Keep the fact
+// that it is there and how big it is; drop the bytes.
+//
+// Text is never cut: an SDP is 600 to 900 characters, it is a value
+// the device takes back on a PUT, and an export that held only its
+// first 256 would write a broken SDP on import (measured 2026-11-05 on
+// the SHUFFLE receivers).
 const maxValueLen = 256
 
-// summarise keeps a value readable: short text verbatim, anything long
-// or not printable replaced by a description of itself.
+// summarise keeps a value readable: text verbatim whatever its length,
+// binary and long encoded blobs (one unbroken run of characters, as a
+// base64 picture is) replaced by a description of themselves.
 func summarise(s string) string {
-	if len(s) <= maxValueLen && utf8.ValidString(s) && isPrintable(s) {
-		return s
-	}
 	if !utf8.ValidString(s) || !isPrintable(s) {
 		return fmt.Sprintf("<binary, %d bytes>", len(s))
 	}
-	return s[:maxValueLen] + fmt.Sprintf("… <%d bytes total>", len(s))
+	if len(s) > maxValueLen && !strings.ContainsAny(s, " \t\r\n") {
+		return fmt.Sprintf("<encoded, %d bytes>", len(s))
+	}
+	return s
 }
 
 // isPrintable reports whether every rune is something a terminal can

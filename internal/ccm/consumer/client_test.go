@@ -263,3 +263,16 @@ func TestTLSPostureThatCannotBeBuilt(t *testing.T) {
 		t.Error("a posture that could not be built must not be installed")
 	}
 }
+
+// NeuronView serves its document beside its Swagger page, off the API base.
+func TestFetchSpecFromTheDeviceRoot(t *testing.T) {
+	n := newNeuron(t)
+	n.paths["/swagger/api.yml"] = "openapi: 3.0.2\n"
+	got, from, err := clientFor(t, n).FetchSpec(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if from != "/swagger/api.yml" || !strings.HasPrefix(string(got), "openapi:") {
+		t.Errorf("from %q: %q", from, got)
+	}
+}
