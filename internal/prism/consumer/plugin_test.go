@@ -229,23 +229,33 @@ func TestInfo(t *testing.T) {
 }
 
 // A verb's --timeout is one answer's wait, whatever number of exchanges
-// the verb takes: 10 calls at 30 ms inside a 100 ms timeout all answer.
+// the verb takes: an answer asked for after the verb's own deadline has
+// passed still gets a wait of its own. Decided on the deadlines, not on
+// how fast a runner sleeps: the check starts when the verb's context has
+// ended (an event), and compares two fixed instants.
 func TestInfoWaitIsPerAnswer(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	verbEnds, _ := ctx.Deadline()
+	next := answers(ctx)
+	<-ctx.Done()
+	c, stop := next()
+	defer stop()
+	own, ok := c.Deadline()
+	if !ok || !own.After(verbEnds) {
+		t.Fatalf("an answer after the verb's deadline waits until %v (has deadline %v), the verb ended at %v", own, ok, verbEnds)
+	}
+
+	// And the verb itself: every identity exchange answers, none is cut
+	// by the exchanges before it.
 	f, s := newFake(t)
-	for _, c := range identityCalls() {
-		f.get[c] = `{"object":"x"}`
+	for _, call := range identityCalls() {
+		f.get[call] = `{"object":"x"}`
 	}
 	p := connected(t, s, Options{})
-	slow := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(30 * time.Millisecond)
-			next.ServeHTTP(w, r)
-		})
-	}
-	s.Config.Handler = slow(f)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	si, err := p.GetSlotInfo(ctx, 0)
+	vctx, vcancel := context.WithTimeout(context.Background(), time.Minute)
+	defer vcancel()
+	si, err := p.GetSlotInfo(vctx, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
