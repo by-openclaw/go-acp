@@ -2,8 +2,10 @@ package export
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"dhs/internal/consumer"
 )
@@ -33,5 +35,12 @@ func TestCSVKeepsTheCarriageReturnsOfAValue(t *testing.T) {
 		if v := got.Slots[0].Objects[0].Value.Str; v != sdp {
 			t.Errorf("%s: %q, want %q", name, v, sdp)
 		}
+	}
+}
+
+// A file that cannot be read is an error, not an empty snapshot.
+func TestReadCSVReportsAReadError(t *testing.T) {
+	if _, err := ReadCSV(iotest.ErrReader(errors.New("disk gone"))); err == nil {
+		t.Error("a failed read gave no error")
 	}
 }

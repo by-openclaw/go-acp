@@ -56,6 +56,7 @@ func TestValidateValueBeforeAnImportWrites(t *testing.T) {
 		{"what the device holds, even outside the list", "tx.mode", "Backup", true},
 		{"a resource with no write", "ro.x", "2", false},
 		{"a resource, not a value", "tx", "x", false},
+		{"a path this device does not serve", "nowhere.x", "1", false},
 	}
 	for _, c := range cases {
 		err := p.ValidateValue(context.Background(), dhsc.ValueRequest{Path: c.path}, str(c.val))
@@ -65,5 +66,13 @@ func TestValidateValueBeforeAnImportWrites(t *testing.T) {
 		if err != nil && !errors.Is(err, dhsc.ErrValidationFailed) && !errors.Is(err, dhsc.ErrObjectNotFound) {
 			t.Errorf("%s: %v is neither a validation failure nor not-found", c.name, err)
 		}
+	}
+}
+
+// Without a session there is nothing to check against.
+func TestValidateValueNeedsAConnection(t *testing.T) {
+	err := (&Plugin{}).ValidateValue(context.Background(), dhsc.ValueRequest{Path: "tx.ip"}, dhsc.Value{Kind: dhsc.KindString, Str: "1"})
+	if err == nil {
+		t.Error("an unconnected plugin validated a row")
 	}
 }
