@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.56.0](https://github.com/by-openclaw/go-acp/compare/v0.55.0...v0.56.0) (2026-11-06)
+
+
+### Features
+
+* **ccm:** SHUFFLE export/import with checks; NeuronView get/set/discover ([#1600](https://github.com/by-openclaw/go-acp/issues/1600)) ([6f89841](https://github.com/by-openclaw/go-acp/commit/6f89841790904e52577626b8a2dd8a8a0f88bb05)), closes [#1599](https://github.com/by-openclaw/go-acp/issues/1599)
+
 ## [0.55.0](https://github.com/by-openclaw/go-acp/compare/v0.54.1...v0.55.0) (2026-11-04)
 
 
