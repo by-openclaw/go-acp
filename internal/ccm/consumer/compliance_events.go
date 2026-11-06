@@ -16,6 +16,12 @@ const (
 	// example, so it is not treated as a constraint.
 	EnumIsExample = "ccm_enum_is_example"
 
+	// NoMatrixIndex: a routable channel without `matrixIndex` (SHUFFLE
+	// 6.0.0: the 64 audio generator and 64 analyser channels), though
+	// the router control addresses it. The io-table takes the index
+	// from the router's label file by name when it is given one.
+	NoMatrixIndex = "ccm_no_matrix_index"
+
 	// NoWebSocket: the device refused the upgrade. §13.1 has every
 	// non-trivial device serve the channel.
 	NoWebSocket = "ccm_no_websocket"
