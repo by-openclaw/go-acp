@@ -16,6 +16,68 @@ what it does, the command to copy, what to collect.
   `net.1.node.61.port.1026`, `…port.7.out`, `…port.1026.key.0.1.5`,
   `net.1.node.60.card.1`, `group.665663144`.
 
+## Words of the intercom
+
+| Word | What it is |
+|---|---|
+| Port | One audio connection of the intercom: a panel, a 4-wire, a MADI or AES67 channel. It has an input (towards the matrix) and an output (from the matrix). A 4-wire split port is two objects, `port.N.in` and `port.N.out`. |
+| Panel | A desk or rack unit with keys, a microphone and a speaker. A port with keys. |
+| Key | A button of a panel. What it does is its command: call a port, a conference, a group or an IFB; reply; listen. |
+| Virtual function | A command place on a port without keys — `always`, `vox`, `on-call`. `always` keeps a 4-wire in a conference. |
+| Crosspoint | A fixed route: the input of one port heard at the output of another. |
+| Conference | A party line: every member hears the others. |
+| Member | A port in a conference (with talk and/or listen) or in a group. |
+| Group | A list of ports called together: one key talks to all of them. |
+| IFB | Interruptible fold-back, the presenter's earpiece: programme (input) to the output, cut by a talk key. Mix-minus is the one source left out. |
+| Card | A board of the frame (MADI, AES67, CAT5) that carries the ports and has its own settings. |
+
+## Provisioning — the workflow, from Ansible
+
+One desired-state file, sections in this order; `playbooks/rrcs-oracle-provision.yml` is the worked example (oracle, 2026-11-07: run 1 changed, run 2 changed=0).
+
+| # | Step | Section / variable | What RRCS gets |
+|---|---|---|---|
+| 1 | Port types (MADI 3.1–3.8 as 4-wire split…) | `rrcs_manifest` | PortType create / retype |
+| 2 | Card settings (MADI frame, channel block, optical/electrical) | `rrcs_cards` | client-card edit (writes count from 0, reads from 1) |
+| 3 | Labels, aliases, gains | `rrcs_ports` | SetPortLabel, SetPortAlias, gains |
+| 4 | Conferences, groups, IFBs | `rrcs_conferences`, `rrcs_groups`, `rrcs_ifbs` | create / edit |
+| 5 | Members, on demand | `rrcs_members` | conference: call-to-conference on the `always` virtual function (input = talk, output = listen); group: its member list |
+| 6 | Panel keys | `rrcs_keys` | key command + label + mode |
+| 7 | Panel settings | `rrcs_panels` | portex edit |
+| 8 | Crosspoints and levels | `rrcs_crosspoints`, `rrcs_levels` | SetXp, KillXp, SetXpVolume |
+
+A member is added or removed by changing one cell and running the play
+again: only the cells written are touched.
+
+### The same in CSV — sheets
+
+`dhs consumer rrcs sheets <host>` writes the system as it is into one CSV
+per topic; `ensure --sheets DIR` (Ansible: `rrcs_sheets`) brings the
+system to them. Export, edit a cell in a spreadsheet, run: only that cell
+changes. A blank cell is left as it is.
+
+| Sheet | Columns | A cell |
+|---|---|---|
+| `cards.csv` | card, type, name, frame, channels, up, down | MADI: 56/64, 01-08…57-64, optical/electrical |
+| `ports.csv` | port, type, label, alias | the label and alias of each port |
+| `conferences.csv`, `groups.csv` | name, label | a new row creates it |
+| `ifbs.csv` | number, label, name, input, output, mix_minus, dim_level | a leg is a port path, `-` for none |
+| `members.csv` | port, label, conference.&lt;name&gt;…, group.&lt;name&gt;… | talk+listen, talk, listen, off; on/off for a group; `key` = joins through one of its keys |
+| `keys.csv` | panel, key, function, target, label, mode | call-to-port, call-to-conference, call-to-group, call-to-ifb, reply, listen, off |
+
+`playbooks/rrcs-oracle-sheets.yml` provisions the oracle from the sheets in
+`ansible/sites/lab/rrcs/oracle/` (oracle, 2026-11-07: export → ensure =
+0 changes; one cell `listen` added MADI 3.6 to a conference, `off` took it
+out, each run-twice = 0).
+
+```yaml
+rrcs_members:
+  "conference.DHS CONF 2":          # created in rrcs_conferences if absent
+    net.1.node.93.port.20: talk+listen
+  "conference.DHS CONF 1":
+    net.1.node.93.port.20: "off"    # out of the persistent conference
+```
+
 ## 0. What each verb costs RRCS
 
 Every verb except `watch` opens one connection, sends its requests, reads
@@ -459,7 +521,7 @@ The file has more sections; each is optional:
 | `keys` | panel and `EXPANSION.PAGE.KEY` (0.1.14), as `list keys` prints | function (call-to-port, call-to-conference, call-to-group, call-to-ifb, reply), target, label, mode (auto, momentary, latching); `"state": "absent"` empties the key |
 | `conferences` | `id`, or `name` to create | label, name; create; delete |
 | `groups` | `id`, or `name` to create | label, name, the whole member list; create; delete |
-| `ifbs` | `number` | label, name, input, output, mix minus (`""` = none), dim level; never created |
+| `ifbs` | `number` | label, name, input, output, mix minus (`""` = none), dim level; create (an absent number) |
 | `levels` | source and destination | single level in dB, or `mute` |
 | `ports` | port path | label, alias, input and output gain in dB, or `mute` |
 

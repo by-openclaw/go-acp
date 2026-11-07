@@ -1,0 +1,10 @@
+panel,key,function,target,label,mode
+net.1.node.93.port.8,0.1.1,call-to-port,net.1.node.93.port.17.out,MADI2,latching
+net.1.node.93.port.8,0.1.2,call-to-port,net.1.node.93.port.18.out,MADI3,momentary
+net.1.node.93.port.8,0.1.3,reply,,REPLY,auto
+net.1.node.93.port.8,0.1.4,call-to-conference,conference.DHS CONF 1,CONF1,latching
+net.1.node.93.port.8,0.1.5,call-to-group,group.DHS GROUP 1,GRP1,momentary
+net.1.node.93.port.8,0.1.6,call-to-ifb,ifb.DHSIFB1,IFB1,momentary
+net.1.node.93.port.8,0.1.7,listen,net.1.node.93.port.16.in,DR5K,latching
+net.1.node.93.port.8,0.1.8,listen,net.1.node.93.port.23.in,ATX01,latching
+net.1.node.93.port.8,0.1.9,call-to-port,net.1.node.93.port.20.out,TALK5,momentary

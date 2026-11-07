@@ -48,7 +48,7 @@ func rrcsValErr(verb, reason string) error {
 var rrcsOwnVerbs = map[string]bool{
 	"info": true, "discover": true, "watch": true, "snapshot": true,
 	"list": true, "extract": true, "call": true,
-	"ensure": true, "coverage": true, "xp": true, "import": true, "tree": true,
+	"ensure": true, "coverage": true, "xp": true, "import": true, "tree": true, "sheets": true,
 }
 
 // rrcsHandles says whether runRRCS answers a verb itself.
@@ -86,6 +86,8 @@ func runRRCS(ctx context.Context, args []string) error {
 		return rrcsImport(ctx, args[1:])
 	case "tree":
 		return rrcsTree(ctx, args[1:])
+	case "sheets":
+		return rrcsSheets(ctx, args[1:])
 	}
 	if op := rrcsFindOp(args[0]); op != nil {
 		return rrcsRunOp(ctx, op, args[1:])
@@ -133,6 +135,9 @@ VERBS
             from the live system (ConfigurationChange): --file, --path,
             --dry-run to compare and send nothing
 
+  sheets    the system as CSV sheets — cards, ports, conferences, groups,
+            IFBs, the member matrix, the keys — into snapshots/rrcs/<host>/sheets/;
+            edit a cell and ensure --sheets brings it — read only
   ensure    converge to a desired-state file (values, crosspoints): --file,
             --check to report and send nothing; the contract of every dhs
             ensure, for Ansible. Without --check it WRITES.

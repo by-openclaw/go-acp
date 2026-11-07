@@ -50,6 +50,8 @@ func rrcsOpArgs(t *testing.T, op rrcsOp, dir string) (args []string, params int)
 		switch p.Kind {
 		case "int":
 			args, params = append(args, "--"+p.Flag, "3"), params+1
+		case "volume":
+			args, params = append(args, "--"+p.Flag, "-10dB"), params+1
 		case "bool":
 			args, params = append(args, "--"+p.Flag, "yes"), params+1
 		case "text":
@@ -70,8 +72,12 @@ func rrcsOpArgs(t *testing.T, op rrcsOp, dir string) (args []string, params int)
 			args, params = append(args, "--"+p.Flag, "net.1.node.61.port.1026.key.0.1.5"), params+1
 		case "changes":
 			file := filepath.Join(dir, "changes.json")
-			_ = os.WriteFile(file, []byte(`[{"ChangeType":"edit","ObjectType":"portex","SpecificParams":{"Alias":"x"}}]`), 0o644)
+			_ = os.WriteFile(file, []byte(`[{"ChangeType":"edit","ObjectType":"group","SpecificParams":{"Label":"x"}}]`), 0o644)
 			args, params = append(args, "--"+p.Flag, file), params+1
+			if strings.HasPrefix(op.Method, "Buffer") {
+				// The apply of the same run is proven on its own below.
+				args = append(args, "--apply", "no")
+			}
 		case "xplist":
 			args, params = append(args, "--"+p.Flag, port+">net.1.node.61.port.1026"), params+1
 		default:
@@ -170,9 +176,14 @@ func TestRRCSOpsParameterOrder(t *testing.T) {
 	if got := ints(run("set-port-label", f.addr(), "--port-path", "net.1.node.61.port.1026", "--label", "NOC2")); got != `61 1026 "NOC2" false` {
 		t.Errorf("SetPortLabel: %s", got)
 	}
-	// §8.13 StartPortCloning: two TPortAddress structs.
-	if got := ints(run("start-port-cloning", f.addr(), "--monitor", "net.1.node.61.port.7.out", "--clone", "net.1.node.61.port.1026")); got != `{"IsInput":false,"Node":61,"Port":7} {"IsInput":false,"Node":61,"Port":1026}` {
+	// §8.13 StartPortCloning: each port flat, Node, Port, IsInput — the
+	// form a real RRCS 9.0.RR1 takes (seven parameters with the key).
+	if got := ints(run("start-port-cloning", f.addr(), "--monitor", "net.1.node.61.port.7.out", "--clone", "net.1.node.61.port.1026")); got != `61 7 false 61 1026 false` {
 		t.Errorf("StartPortCloning: %s", got)
+	}
+	// §8.15 UnregisterForEvents: the receiver by its address alone.
+	if got := ints(run("unregister-for-events", f.addr(), "--ip", "10.0.0.9")); got != `"10.0.0.9"` {
+		t.Errorf("UnregisterForEvents: %s", got)
 	}
 	// §8.23 DeletePortCommands: one TCmdPosition, for a key, a virtual function, a whole port.
 	if got := ints(run("delete-port-commands", f.addr(), "--position", "net.1.node.61.port.1026.key.0.1.5")); got != `{"ExpansionPanel":0,"IsInput":false,"KeyNumber":5,"Node":61,"Page":1,"Port":1026,"PositionType":"key"}` {
@@ -236,5 +247,49 @@ func TestRRCSOpsRefusals(t *testing.T) {
 	var fault *codec.Fault
 	if err := runRRCS(ctx, append([]string{"reset-all-nodes", f.addr()}, w...)); !errors.As(err, &fault) {
 		t.Errorf("fault: %v", err)
+	}
+}
+
+// A buffer is applied on its own connection before the run ends: RRCS
+// deletes what a client buffered when that connection closes (oracle,
+// 2026-11-07). A type the buffer does not take is refused before sending.
+func TestRRCSBufferAppliesOnTheSameRun(t *testing.T) {
+	var mu sync.Mutex
+	var methods []string
+	f := newRRCSFake(t, func(call codec.Call) (codec.Value, bool) {
+		mu.Lock()
+		methods = append(methods, call.Method)
+		mu.Unlock()
+		return codec.Array(call.Params[0], codec.Int(0)), true
+	})
+	dir := t.TempDir()
+	group := filepath.Join(dir, "group.json")
+	_ = os.WriteFile(group, []byte(`[{"ChangeType":"edit","ObjectType":"group","SpecificParams":{"ObjectID":1,"Label":"x"}}]`), 0o644)
+	conf := filepath.Join(dir, "conf.json")
+	_ = os.WriteFile(conf, []byte(`[{"ChangeType":"edit","ObjectType":"conference","SpecificParams":{"ObjectID":1,"Alias":"x"}}]`), 0o644)
+	ctx := context.Background()
+	for _, verb := range []string{"buffer-configuration-change", "buffer-configuration-change-ex"} {
+		mu.Lock()
+		methods = nil
+		mu.Unlock()
+		if _, err := rrcsStdout(t, func() error {
+			return runRRCS(ctx, []string{verb, f.addr(), "--file", group, "--write-to", f.addr()})
+		}); err != nil {
+			t.Fatalf("%s: %v", verb, err)
+		}
+		mu.Lock()
+		got := strings.Join(methods, " ")
+		mu.Unlock()
+		ex := ""
+		if strings.HasSuffix(verb, "-ex") {
+			ex = "Ex"
+		}
+		if got != "BufferConfigurationChange"+ex+" ApplyConfigurationChange"+ex {
+			t.Errorf("%s sent %s", verb, got)
+		}
+		var val *consumer.ValidationError
+		if err := runRRCS(ctx, []string{verb, f.addr(), "--file", conf, "--write-to", f.addr()}); !errors.As(err, &val) {
+			t.Errorf("%s with a conference: %v, want a refusal", verb, err)
+		}
 	}
 }

@@ -284,15 +284,30 @@ func Decode(m *Model, e Event) []ChangeLine {
 		if action == "" {
 			action = "action " + strconv.Itoa(MemberInt(d, "KeyAction"))
 		}
-		l := line(fmt.Sprintf("%s.keyevent.%d.%d", path, MemberInt(d, "SubPanel"), MemberInt(d, "Key")), "KeyAction", action)
+		// §9.9.4 names the key "Key"; RRCS 9.0.RR1 sends "KeyNo" (oracle,
+		// 2026-11-07): read either, and say which.
+		key, keyMember := MemberInt(d, "Key"), "Key"
+		if _, has := d.Field("Key"); !has {
+			if _, hasNo := d.Field("KeyNo"); hasNo {
+				key, keyMember = MemberInt(d, "KeyNo"), "KeyNo"
+			}
+		}
+		keyType := map[int]string{0: "standard", 1: "right position", 2: "rotary", 3: "up position", 4: "down position"}[MemberInt(d, "KeyType")]
+		if keyType == "" {
+			keyType = "type " + strconv.Itoa(MemberInt(d, "KeyType"))
+		}
+		l := line(fmt.Sprintf("%s.keyevent.%d.%d", path, MemberInt(d, "SubPanel"), key), "KeyAction", action)
 		l.OID, l.Name = oid, label
-		l.Detail = fmt.Sprintf("key type %d latched %v", MemberInt(d, "KeyType"), FieldBool(d, "IsKeyLatched"))
+		l.Detail = fmt.Sprintf("key %s latched %v", keyType, FieldBool(d, "IsKeyLatched"))
+		if keyMember == "KeyNo" {
+			l.Detail += " (deviation: KeyNo, §9.9.4 names it Key)"
+		}
 		// What the first page holds on that key, for a reader. The event
 		// does not say which page was shown.
 		if m != nil {
 			if port := m.Find(MemberInt(d, "Node"), MemberInt(d, "Port"), false); port != nil {
 				for _, k := range port.Keys {
-					if k.Position == "key" && k.Expansion == MemberInt(d, "SubPanel") && k.Key == MemberInt(d, "Key") && k.Page == 1 {
+					if k.Position == "key" && k.Expansion == MemberInt(d, "SubPanel") && k.Key == key && k.Page == 1 {
 						l.Detail += "; page 1: " + k.CommandType + " " + Target(k)
 					}
 				}

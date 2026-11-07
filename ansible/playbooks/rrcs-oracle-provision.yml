@@ -1,0 +1,92 @@
+---
+# Provision the Riedel oracle (Artist 32 "M90", RRCS on the Windows
+# workstation 10.6.250.105) from one place: the whole intercom set-up the
+# 2026-11-07 session built by hand, as a desired state. The role dhs_rrcs
+# writes it, dry-runs it, applies it and runs it again (run-twice = 0).
+#
+# Order of the run (the role keeps it):
+#   1 port types   MADI 3.1–3.8 as FOUR_WIRE_SPLIT (the manifest)
+#   2 card         MADI-108 bay 3: frame 64, channels 01-08, optical
+#   3 ports        labels of the MADI channels
+#   4 objects      conferences, group, IFBs
+#   5 members      who is in which conference / group (the matrix)
+#   6 keys         what each key of the panel YOUSSEF does
+#   7 panel        speaker settings of YOUSSEF
+#   8 crosspoints  MADI 3.1 (DR5000 audio) to the panel speaker
+#
+#   ansible-playbook playbooks/rrcs-oracle-provision.yml                  # dry-run
+#   ansible-playbook playbooks/rrcs-oracle-provision.yml -e rrcs_apply=true
+#   # before the release: -e dhs_bin=/root/dhs-branch/dhs-rrcs
+- name: Riedel oracle — intercom provisioning
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    rrcs_apply: false
+    oracle: 10.6.250.105
+    node: net.1.node.93
+    panel: "{{ node }}.port.8"            # YOUSSEF, RSP-1216HL
+  roles:
+    - role: dhs_rrcs
+      vars:
+        rrcs_host: "{{ oracle }}"
+        rrcs_check_only: "{{ not (rrcs_apply | bool) }}"
+        rrcs_write_to: "{{ oracle if (rrcs_apply | bool) else '' }}"
+        # 1 — the inventory extract wrote (ports 16–23 = MADI 3.1–3.8).
+        rrcs_manifest: "/usr/local/.cache/manifest/rrcs/{{ oracle }}.json"
+        # 2 — the MADI card listens on the Up fibre, channels 1–8.
+        rrcs_cards:
+          - {card: "{{ node }}.card.3", madi: {frame: 64, channels: "01-08", up: optical, down: optical}}
+        # 3 — labels as Director prints them.
+        rrcs_ports:
+          - {port: "{{ node }}.port.16.in", label: "I.3.1"}
+          - {port: "{{ node }}.port.16.out", label: "O.3.1"}
+          - {port: "{{ node }}.port.17.in", label: "I.3.2"}
+          - {port: "{{ node }}.port.17.out", label: "O.3.2"}
+          - {port: "{{ node }}.port.18.in", label: "I.3.3"}
+          - {port: "{{ node }}.port.18.out", label: "O.3.3"}
+          - {port: "{{ node }}.port.19.in", label: "I.3.4"}
+          - {port: "{{ node }}.port.19.out", label: "O.3.4"}
+          - {port: "{{ node }}.port.20.in", label: "I.3.5"}
+          - {port: "{{ node }}.port.20.out", label: "O.3.5"}
+          - {port: "{{ node }}.port.21.in", label: "I.3.6"}
+          - {port: "{{ node }}.port.21.out", label: "O.3.6"}
+          - {port: "{{ node }}.port.22.in", label: "I.3.7"}
+          - {port: "{{ node }}.port.22.out", label: "O.3.7"}
+          - {port: "{{ node }}.port.23.in", label: "I.3.8"}
+          - {port: "{{ node }}.port.23.out", label: "O.3.8"}
+        # 4 — objects.
+        rrcs_conferences:
+          - {name: "DHS CONF 1", label: DHSCNF1}
+          - {name: "DHS CONF 2", label: DHSCNF2}
+        rrcs_groups:
+          - {name: "DHS GROUP 1", label: DHSGRP1}
+        rrcs_ifbs:
+          - {number: 1, label: DHSIFB1, input: "{{ node }}.port.16.in", output: "{{ node }}.port.18.out", mix_minus: "{{ node }}.port.17.in", dim_level: 4}
+          - {number: 2, label: DHSIFB2, input: "{{ node }}.port.19.in", output: "{{ node }}.port.20.out", mix_minus: "", dim_level: 3}
+        # 5 — the member matrix: conference × port → talk/listen, group × port → on/off.
+        # (Ansible does not template the keys of a dict: write the paths out.)
+        rrcs_members:
+          "conference.DHS CONF 1":
+            net.1.node.93.port.20: "off"            # MADI 3.5 out of the persistent conference
+          "conference.DHS CONF 2":
+            net.1.node.93.port.20: talk+listen      # … and into the second one
+          "group.DHS GROUP 1":
+            net.1.node.93.port.8: "on"              # YOUSSEF
+            net.1.node.93.port.17: "on"             # MADI 3.2
+        # 6 — keys of YOUSSEF.
+        rrcs_keys:
+          - {panel: "{{ panel }}", key: "0.1.1", function: call-to-port, target: "{{ node }}.port.17", label: MADI2, mode: latching}
+          - {panel: "{{ panel }}", key: "0.1.2", function: call-to-port, target: "{{ node }}.port.18", label: MADI3, mode: momentary}
+          - {panel: "{{ panel }}", key: "0.1.3", function: reply, label: REPLY, mode: auto}
+          - {panel: "{{ panel }}", key: "0.1.4", function: call-to-conference, target: "conference.DHS CONF 1", label: CONF1, mode: latching}
+          - {panel: "{{ panel }}", key: "0.1.5", function: call-to-group, target: "group.DHS GROUP 1", label: GRP1, mode: momentary}
+          - {panel: "{{ panel }}", key: "0.1.6", function: call-to-ifb, target: "ifb.DHSIFB1", label: IFB1, mode: momentary}
+          - {panel: "{{ panel }}", key: "0.1.7", function: listen, target: "{{ node }}.port.16", label: DR5K, mode: latching}
+          - {panel: "{{ panel }}", key: "0.1.9", function: call-to-port, target: "{{ node }}.port.20", label: TALK5, mode: momentary}
+        # 7 — panel speaker.
+        rrcs_panels:
+          - {panel: "{{ panel }}", settings: {MinSpeakerVol: 0, SpeakerDimLevel: 5}}
+        # 8 — DR5000 audio on the panel speaker.
+        rrcs_crosspoints:
+          - {source: "{{ node }}.port.16.in", destination: "{{ panel }}", state: present}

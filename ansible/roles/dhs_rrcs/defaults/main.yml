@@ -61,7 +61,7 @@ rrcs_conferences: []
 #   - {name: "Group NOC", label: NOC, members: [net.1.node.61.port.1024, net.1.node.61.port.1026]}
 rrcs_groups: []
 
-# IFBs, by number (an IFB cannot be created through RRCS). A leg is a port
+# IFBs, by number (an absent number is created). A leg is a port
 # path, or "" for none. dim_level: 0 = 0 dB ... 6 = -24 dB, 7 = mute.
 #   - {number: 7, label: SPORT, input: net.1.node.61.port.1040, mix_minus: "", dim_level: 4}
 rrcs_ifbs: []
@@ -95,3 +95,35 @@ rrcs_assert_idempotent: true
 # channel. The channel count of the main output is not set (docs/adr/0035).
 #   - {main: net.1.node.63.port.1072, block: 8}
 rrcs_streams: []
+
+# Members: the conference × port and group × port matrix. A column is
+# conference.<ID or long name> or group.<ID or long name>; a cell is
+# talk+listen, talk, listen or off for a conference, on or off for a
+# group. Only the cells written are touched.
+#   rrcs_members:
+#     "conference.DHS CONF 1":
+#       net.1.node.93.port.8: talk+listen
+#       net.1.node.93.port.20: off
+rrcs_members: {}
+
+# Client cards: name, and for a MADI card frame (56|64), channels
+# (01-08 … 57-64), up and down interface (optical|electrical).
+#   rrcs_cards:
+#     - {card: net.1.node.93.card.3, madi: {frame: 64, channels: "01-08", up: optical, down: optical}}
+rrcs_cards: []
+
+# Panels: any setting the panel reports (dhs consumer rrcs get --path <panel>).
+#   rrcs_panels:
+#     - {panel: net.1.node.93.port.8, settings: {MinSpeakerVol: 0, SpeakerDimLevel: 5}}
+rrcs_panels: []
+
+# Port types: a manifest file (the one extract writes, edited) brought to
+# the system before the rest. Empty: not touched.
+rrcs_manifest: ""
+
+# Sheets: a folder of CSV files (cards, ports, conferences, groups, ifbs,
+# members, keys) as `dhs consumer rrcs sheets <host>` writes them. Edit a
+# cell, run the play: only that cell changes. A blank cell is untouched.
+# Brought together with the variables above.
+rrcs_sheets: ""
+rrcs_sheets_argv: "{{ ['--sheets', rrcs_sheets] if rrcs_sheets | length > 0 else [] }}"

@@ -1,0 +1,5 @@
+card,type,name,frame,channels,up,down
+net.1.node.93.card.1,AES67,,,,,
+net.1.node.93.card.2,CAT5,,,,,
+net.1.node.93.card.3,MADI,,64,01-08,optical,optical
+net.1.node.93.card.4,CAT5,,,,,

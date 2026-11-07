@@ -411,6 +411,8 @@ func TestDoByName(t *testing.T) {
 			switch p.Kind {
 			case "int":
 				args[p.Flag] = "1"
+			case "volume":
+				args[p.Flag] = "-10dB"
 			case "bool":
 				args[p.Flag] = "yes"
 			case "text":

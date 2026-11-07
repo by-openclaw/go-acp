@@ -357,7 +357,11 @@ func (m *Model) buildObjects(lists map[string]any, net int) {
 			if jBool(mm, "Listen") {
 				flags = append(flags, "listen")
 			}
-			path, label := m.ref(net, jInt(mm, "Node"), jInt(mm, "Port"), false)
+			// A 4-wire split port is a member twice: its input talks, its
+			// output listens (oracle, 2026-11-07). A talk-only entry is the
+			// input half.
+			talkOnly := jBool(mm, "Talk") && !jBool(mm, "Listen")
+			path, label := m.ref(net, jInt(mm, "Node"), jInt(mm, "Port"), talkOnly)
 			o.Members = append(o.Members, MemberRef{Port: path, Label: label, Flags: strings.Join(flags, "+")})
 		}
 	}
@@ -447,6 +451,15 @@ func (m *Model) buildKeys(commands []any) {
 					k.Target, k.TargetName = "group."+strconv.Itoa(jInt(cmd, "Group")), jStr(cmd, "GroupName")
 				case cmd["Conference"] != nil:
 					k.Target, k.TargetName = "conference."+strconv.Itoa(jInt(cmd, "Conference")), jStr(cmd, "ConferenceName")
+				case cmd["SourcePortAddress"] != nil:
+					// A listen key names the input it listens to (§8.10.4.13).
+					a := jMap(cmd["SourcePortAddress"])
+					k.Target, k.TargetName = m.ref(jInt(a, "Net"), jInt(a, "Node"), jInt(a, "Port"), true)
+				case cmd["IFBObjectID"] != nil:
+					// A call to an IFB of this system names it by object ID
+					// (§8.10.4.10); RRCS 9.0.RR1 leaves IfbName empty
+					// (oracle, 2026-11-07).
+					k.Target, k.TargetName = "ifb."+strconv.Itoa(jInt(cmd, "IFBObjectID")), jStr(cmd, "IfbName")
 				case cmd["TrunkingNetAddr"] != nil:
 					k.Target = fmt.Sprintf("trunk.%d.%d", jInt(cmd, "TrunkingNetAddr"), jInt(cmd, "TrunkingPortAddr"))
 				}
@@ -669,4 +682,21 @@ func (m *Model) SpyRef(node, port int) (string, int, string) {
 		port += 1024
 	}
 	return m.PortRef(1, node, port, false)
+}
+
+// CardOfPort is the client card a port sits on. On an Artist-1024 each
+// card carries its ports under a node of its own (CardOfNode). On a frame
+// whose cards share the frame's node (Artist 32, 64, 128) the port number
+// tells the slot: Port = (slot - 1) × 8 + position - 1 (§6.5), so slot =
+// Port / 8 + 1 (oracle, 2026-11-07: ports 16-23 on the MADI card of bay 3).
+func (m *Model) CardOfPort(cardOfNode map[int]*Card, p *Port) *Card {
+	if c := cardOfNode[p.Node]; c != nil {
+		return c
+	}
+	for _, c := range m.Cards {
+		if c.Node == p.Node && c.Bay == p.Port/8+1 {
+			return c
+		}
+	}
+	return nil
 }

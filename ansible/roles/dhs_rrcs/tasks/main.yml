@@ -9,6 +9,22 @@
       rrcs_write_to set to the same value as rrcs_host: it is the write
       guard of the verb, kept as a decision of its own per host.
 
+- name: Port types — the inventory first (a port must exist before a key, a member or a label names it)
+  when: rrcs_manifest | length > 0
+  block:
+    - name: Port types — dry-run
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--manifest', rrcs_manifest, '--check'] + rrcs_extra_argv }}"
+      register: rrcs_manifest_check
+      changed_when: false
+
+    - name: Port types — apply
+      when: not rrcs_check_only and ('would change 0,' not in rrcs_manifest_check.stdout)
+      ansible.builtin.command:
+        argv: "{{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--manifest', rrcs_manifest, '--write-to', rrcs_write_to] + rrcs_extra_argv }}"
+      register: rrcs_manifest_apply
+      changed_when: "'changed 0,' not in rrcs_manifest_apply.stdout"
+
 - name: Write the desired state
   ansible.builtin.copy:
     dest: "{{ rrcs_desired_file }}"
@@ -26,6 +42,9 @@
       levels: "{{ rrcs_levels }}"
       ports: "{{ rrcs_ports }}"
       streams: "{{ rrcs_streams }}"
+      members: "{{ rrcs_members }}"
+      cards: "{{ rrcs_cards }}"
+      panels: "{{ rrcs_panels }}"
   # The file is an input of the run, not a change on the gateway.
   changed_when: false
 
@@ -33,7 +52,7 @@
   ansible.builtin.command:
     argv: >-
       {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
-          '--check', '--output', 'json'] + rrcs_extra_argv }}
+          '--check', '--output', 'json'] + rrcs_sheets_argv + rrcs_extra_argv }}
   register: rrcs_check
   changed_when: false
 
@@ -48,7 +67,7 @@
       ansible.builtin.command:
         argv: >-
           {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
-              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_extra_argv }}
+              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_sheets_argv + rrcs_extra_argv }}
       register: rrcs_apply
       changed_when: (rrcs_apply.stdout | from_json).changed | bool
 
@@ -56,7 +75,7 @@
       ansible.builtin.command:
         argv: >-
           {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
-              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_extra_argv }}
+              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_sheets_argv + rrcs_extra_argv }}
       register: rrcs_again
       changed_when: false
       when: rrcs_assert_idempotent

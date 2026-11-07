@@ -1,0 +1,29 @@
+---
+# Provision the Riedel oracle from CSV sheets kept in git:
+# ansible/sites/lab/rrcs/oracle/{cards,ports,conferences,groups,ifbs,members,keys}.csv
+#
+# The sheets were written from the oracle by
+#   dhs consumer rrcs sheets 10.6.250.105 --out ansible/sites/lab/rrcs/oracle
+# Edit a cell (members.csv: a port row × a conference column → talk+listen,
+# talk, listen, off; a group column → on, off; keys.csv: function, target,
+# label, mode), then:
+#
+#   ansible-playbook playbooks/rrcs-oracle-sheets.yml                  # dry-run
+#   ansible-playbook playbooks/rrcs-oracle-sheets.yml -e rrcs_apply=true
+#
+# A blank cell is left as it is; "key" in members.csv means the port joins
+# when one of its keys is pressed (the key is in keys.csv).
+- name: Riedel oracle — provisioning from CSV sheets
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    rrcs_apply: false
+    oracle: 10.6.250.105
+  roles:
+    - role: dhs_rrcs
+      vars:
+        rrcs_host: "{{ oracle }}"
+        rrcs_check_only: "{{ not (rrcs_apply | bool) }}"
+        rrcs_write_to: "{{ oracle if (rrcs_apply | bool) else '' }}"
+        rrcs_sheets: "{{ playbook_dir }}/../sites/lab/rrcs/oracle"

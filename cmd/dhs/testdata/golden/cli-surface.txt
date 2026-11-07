@@ -3925,6 +3925,9 @@ VERBS
             from the live system (ConfigurationChange): --file, --path,
             --dry-run to compare and send nothing
 
+  sheets    the system as CSV sheets — cards, ports, conferences, groups,
+            IFBs, the member matrix, the keys — into snapshots/rrcs/<host>/sheets/;
+            edit a cell and ensure --sheets brings it — read only
   ensure    converge to a desired-state file (values, crosspoints): --file,
             --check to report and send nothing; the contract of every dhs
             ensure, for Ansible. Without --check it WRITES.
@@ -4535,7 +4538,7 @@ and it may also hold keys, conferences, groups and crosspoint levels:
   "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
              "input_gain": "0", "output_gain": "-3.5"}],
   "streams": [{"main": "net.1.node.63.port.1072", "block": 8}]
-An IFB is named by its number and cannot be created; a leg is a port path or
+An IFB is named by its number and is created when absent; a leg is a port path or
 "" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
 A stream names its main port; "block": 8 links the seven ports after it,
 channel 2 to 8, inputs and outputs ("linked" names them instead,
@@ -4546,9 +4549,25 @@ requests, outputs in one. RRCS does not report a link: a port counts as
 done when it uses the wanted channel. The same links, and the creation of
 a port, also go through export, edit, import: see import.
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
-call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
-momentary or latching. A conference or a group is named by "id" or, to
-create it, by "name". With --check the exact requests are printed.
+call-to-conference, call-to-group, call-to-ifb, reply or listen, or any command
+type of the specification (beep-panel-cmd, route-cmd, send-string-cmd…) with its
+members in "params", e.g. {"function": "send-string-cmd", "params":
+{"SendString": "HELLO"}}; mode is auto,
+momentary or latching. A target conference, group or IFB is named by its ID
+or its name. A conference or a group is named by "id" or, to create it, by
+"name". With --check the exact requests are printed.
+
+Three more sections:
+  "members": {"conference.DHS CONF 1": {"net.1.node.93.port.20": "talk+listen"},
+              "group.DHS GROUP 1":     {"net.1.node.93.port.17": "on"}}
+     the member matrix: a cell is talk+listen, talk, listen or off for a
+     conference, on or off for a group; only the cells written are touched.
+     A port joins a conference through its "always" virtual function; a
+     4-wire split port talks by its input and listens by its output.
+  "cards":  [{"card": "net.1.node.93.card.3",
+              "madi": {"frame": 64, "channels": "01-08", "up": "optical", "down": "optical"}}]
+  "panels": [{"panel": "net.1.node.93.port.8", "settings": {"MinSpeakerVol": 0}}]
+     any setting the panel reports (get --path <panel>).
 
 Only what the file names is touched. Without --check this WRITES and needs
 --write-to HOST.
@@ -4558,7 +4577,7 @@ Only what the file names is touched. Without --check this WRITES and needs
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
-    	desired-state file, JSON (required, or --manifest)
+    	desired-state file, JSON (or --sheets, or --manifest)
   -listen string
     	for the levels of crosspoints: local [ip]:port RRCS sends them to. Not the port of watch, so both can run; but RRCS removes a level registration by address, so a file with levels ends the level events of a watch on the same machine until it is started again (default ":8196")
   -log string
@@ -4573,6 +4592,8 @@ Only what the file names is touched. Without --check this WRITES and needs
     	the desired inventory (the manifest extract wrote, edited): the type and the role of each port, brought to the system in the proven order — a PortType create for an absent port, the channel count of a main, the links; values stay with import
   -output string
     	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -sheets string
+    	folder of CSV sheets (cards, ports, conferences, groups, ifbs, members, keys), as rrcs sheets writes them; with --file, both are brought
   -site-limits string
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
@@ -4591,6 +4612,39 @@ Usage of rrcs coverage:
     	keep one group: call (no verb of its own yet) | unproven (never seen working on a real RRCS) | read | write | register | notify
   -output string
     	output: text | json (default "text")
+
+========== consumer/rrcs/sheets ==========
+$ dhs consumer rrcs sheets --help
+Usage: dhs consumer rrcs sheets <host>[:port] [--out DIR]
+
+Writes the system as CSV sheets, one per topic — cards, ports, conferences,
+groups, IFBs, the member matrix, the keys — the files ensure --sheets reads
+back. Edit a cell, run ensure: only that cell changes. It only reads.
+
+  -capture string
+    	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
+  -from string
+    	read a snapshot FILE written by walk instead of asking a gateway; no host argument then
+  -log string
+    	local log FILE in --log-format. Default "auto" = .cache/logs/rrcs/<host>/<verb>.log, one file per day; a path overrides it; "off" disables the local file (default "auto")
+  -log-format string
+    	log format: syslog (RFC 5424, default) | json | text — the log stream only, the terminal stays as it is (default "syslog")
+  -log-level string
+    	log level, as for every dhs connector: trace (the XML of every request and answer) | debug (one record per request and answer: method, direction, size) | info | warn | error | critical (default "info")
+  -log-retention int
+    	days of daily log files to keep; 0 = keep every day
+  -out string
+    	folder the CSV files are written to. "auto" = snapshots/rrcs/<host>/sheets/ (default "auto")
+  -output string
+    	output: text | json | csv (watch only: one record per value, in the columns of export) (default "text")
+  -site-limits string
+    	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
+  -syslog-addr string
+    	also forward the logs as RFC 5424 UDP datagrams to host:port
+  -timeout duration
+    	per-request timeout (default 10s)
+  -verbose
+    	debug log output (shortcut for --log-level debug)
 
 ========== consumer/rrcs/health ==========
 $ dhs consumer rrcs health --help
@@ -4727,7 +4781,7 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
   -verbose
     	debug log output (shortcut for --log-level debug)
   -volume string
-    	0 mute, 1..255 = (volume - 230) / 2 dB
+    	level: -10dB (half steps, -114.5dB to 12.5dB), mute, or raw 0..255 = (raw - 230) / 2 dB
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5129,6 +5183,8 @@ Usage: dhs consumer rrcs buffer-configuration-change <host>[:port] [flags]
 
 BufferConfigurationChange: buffer configuration changes for a later apply. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
 
+  -apply string
+    	yes = send the matching Apply… on the same connection before closing it; no = buffer only (RRCS drops it when this run ends) (default "yes")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
@@ -5160,6 +5216,8 @@ Usage: dhs consumer rrcs buffer-configuration-change-ex <host>[:port] [flags]
 
 BufferConfigurationChangeEx: buffer configuration changes, each handled on its own. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
 
+  -apply string
+    	yes = send the matching Apply… on the same connection before closing it; no = buffer only (RRCS drops it when this run ends) (default "yes")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
@@ -5659,7 +5717,7 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
   -verbose
     	debug log output (shortcut for --log-level debug)
   -volume string
-    	0 mute, 1..255 = (volume - 230) / 2 dB
+    	level: -10dB (half steps, -114.5dB to 12.5dB), mute, or raw 0..255 = (raw - 230) / 2 dB
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5823,8 +5881,6 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
-  -tcp-port string
-    	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
   -verbose
@@ -5889,8 +5945,6 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
-  -tcp-port string
-    	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
   -verbose
@@ -5955,8 +6009,6 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
-  -tcp-port string
-    	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
   -verbose

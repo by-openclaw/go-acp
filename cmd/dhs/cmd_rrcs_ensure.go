@@ -43,6 +43,12 @@ type rrcsDesired struct {
 	Ports []rrcsDesiredPort `json:"ports"`
 	// The streams of a card: a main port and the ports linked to it.
 	Streams []rrcsDesiredStream `json:"streams"`
+	// Members: the conference × port and group × port matrix
+	// (cmd_rrcs_ensure_members.go).
+	Members rrcsMemberMatrix `json:"members"`
+	// Cards and panels: their own settings (cmd_rrcs_ensure_cards.go).
+	Cards  []rrcsDesiredCard  `json:"cards"`
+	Panels []rrcsDesiredPanel `json:"panels"`
 }
 
 type rrcsDesiredXp struct {
@@ -125,7 +131,7 @@ and it may also hold keys, conferences, groups and crosspoint levels:
   "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
              "input_gain": "0", "output_gain": "-3.5"}],
   "streams": [{"main": "net.1.node.63.port.1072", "block": 8}]
-An IFB is named by its number and cannot be created; a leg is a port path or
+An IFB is named by its number and is created when absent; a leg is a port path or
 "" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
 A stream names its main port; "block": 8 links the seven ports after it,
 channel 2 to 8, inputs and outputs ("linked" names them instead,
@@ -136,9 +142,25 @@ requests, outputs in one. RRCS does not report a link: a port counts as
 done when it uses the wanted channel. The same links, and the creation of
 a port, also go through export, edit, import: see import.
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
-call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
-momentary or latching. A conference or a group is named by "id" or, to
-create it, by "name". With --check the exact requests are printed.
+call-to-conference, call-to-group, call-to-ifb, reply or listen, or any command
+type of the specification (beep-panel-cmd, route-cmd, send-string-cmd…) with its
+members in "params", e.g. {"function": "send-string-cmd", "params":
+{"SendString": "HELLO"}}; mode is auto,
+momentary or latching. A target conference, group or IFB is named by its ID
+or its name. A conference or a group is named by "id" or, to create it, by
+"name". With --check the exact requests are printed.
+
+Three more sections:
+  "members": {"conference.DHS CONF 1": {"net.1.node.93.port.20": "talk+listen"},
+              "group.DHS GROUP 1":     {"net.1.node.93.port.17": "on"}}
+     the member matrix: a cell is talk+listen, talk, listen or off for a
+     conference, on or off for a group; only the cells written are touched.
+     A port joins a conference through its "always" virtual function; a
+     4-wire split port talks by its input and listens by its output.
+  "cards":  [{"card": "net.1.node.93.card.3",
+              "madi": {"frame": 64, "channels": "01-08", "up": "optical", "down": "optical"}}]
+  "panels": [{"panel": "net.1.node.93.port.8", "settings": {"MinSpeakerVol": 0}}]
+     any setting the panel reports (get --path <panel>).
 
 Only what the file names is touched. Without --check this WRITES and needs
 --write-to HOST.
@@ -147,7 +169,8 @@ Only what the file names is touched. Without --check this WRITES and needs
 		fs.PrintDefaults()
 	}
 	cf := newRRCSFlags(fs)
-	file := fs.String("file", "", "desired-state file, JSON (required, or --manifest)")
+	file := fs.String("file", "", "desired-state file, JSON (or --sheets, or --manifest)")
+	sheetsDir := fs.String("sheets", "", "folder of CSV sheets (cards, ports, conferences, groups, ifbs, members, keys), as rrcs sheets writes them; with --file, both are brought")
 	manifestFile := fs.String("manifest", "", "the desired inventory (the manifest extract wrote, edited): the type and the role of each port, brought to the system in the proven order — a PortType create for an absent port, the channel count of a main, the links; values stay with import")
 	allowRetype := fs.Bool("allow-retype", false, "with --manifest: a port present with another type is deleted and created (RRCS has no edit of a type); its rows are saved to snapshots/rrcs/<host>/ first. Refused without this flag")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
@@ -168,18 +191,27 @@ Only what the file names is touched. Without --check this WRITES and needs
 		}
 		return rrcsEnsureManifest(ctx, cf, fs.Arg(0), *manifestFile, *writeTo, check, *allowRetype)
 	}
-	if *file == "" {
-		return rrcsValErr("ensure", "want --file DESIRED.json or --manifest MANIFEST.json")
-	}
-	raw, err := os.ReadFile(*file)
-	if err != nil {
-		return fmt.Errorf("rrcs ensure: %w", err)
+	if *file == "" && *sheetsDir == "" {
+		return rrcsValErr("ensure", "want --file DESIRED.json, --sheets DIR or --manifest MANIFEST.json")
 	}
 	var want rrcsDesired
-	dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&want); err != nil {
-		return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
+	if *file != "" {
+		raw, err := os.ReadFile(*file)
+		if err != nil {
+			return fmt.Errorf("rrcs ensure: %w", err)
+		}
+		dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&want); err != nil {
+			return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
+		}
+	}
+	if *sheetsDir != "" {
+		sheets, err := rrcsReadSheets(*sheetsDir)
+		if err != nil {
+			return rrcsValErr("ensure", "--sheets "+*sheetsDir+": "+err.Error())
+		}
+		rrcsMergeDesired(&want, sheets)
 	}
 
 	// The values, as the rows import takes.
@@ -309,6 +341,8 @@ Only what the file names is touched. Without --check this WRITES and needs
 	record(d, f)
 	record(rrcsEnsurePorts(ctx, cf, client, want.Ports, check))
 	record(rrcsEnsureStreams(ctx, cf, client, want.Streams, check))
+	record(rrcsEnsureCards(ctx, cf, client, want.Cards, check))
+	record(rrcsEnsurePanels(ctx, cf, client, want.Panels, check))
 
 	suffix := fmt.Sprintf("of %d values, %d crosspoints, %d keys, %d conferences, %d groups, %d ifbs, %d levels, %d ports and %d streams",
 		len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.IFBs), len(want.Levels), len(want.Ports), len(want.Streams))
