@@ -59,7 +59,7 @@ changes. A blank cell is left as it is.
 | Sheet | Columns | A cell |
 |---|---|---|
 | `cards.csv` | card, type, name, frame, channels, up, down | MADI: 56/64, 01-08…57-64, optical/electrical |
-| `ports.csv` | port, type, label, alias | the label and alias of each port |
+| `ports.csv` | port, type, label, alias, input_gain, output_gain | the label, alias and gains (dB in half steps, or `mute`) of each port |
 | `conferences.csv`, `groups.csv` | name, label | a new row creates it |
 | `ifbs.csv` | number, label, name, input, output, mix_minus, dim_level | a leg is a port path, `-` for none |
 | `members.csv` | port, label, conference.&lt;name&gt;…, group.&lt;name&gt;… | talk+listen, talk, listen, off; on/off for a group; `key` = joins through one of its keys |
@@ -77,6 +77,53 @@ rrcs_members:
   "conference.DHS CONF 1":
     net.1.node.93.port.20: "off"    # out of the persistent conference
 ```
+
+## What stays in Director
+
+Settings RRCS 9.0.RR1 does not carry (checked on the oracle, 2026-11-07:
+the spec has no property for them, the live port shows none, and an edit
+with any invented member answers "Success" and changes nothing):
+
+| Director item | Effect on RRCS | Where |
+|---|---|---|
+| Port → Gain → "Gain values set by" | "the configuration (with Director)" makes `SetInputGain` / `SetOutputGain` answer **No permission (21)**; "the Set Input/Output Gain function from a panel or by remote software (RRCS)" lets dhs set the gains | once per port, in Director |
+| Logic sources and destinations | RRCS lists them, switches a source (`set-logic-source-state`) and reports `LogicSourceChange`; it creates neither | Director → Logic tab |
+| GPIO objects on this frame | the CAT5 and AES67 cards answer "Gpio is not supported" | — |
+
+Director keeps its own copy of the configuration. Before **Send Changes**
+it must have read the configuration back from the Artist, or the send
+undoes what RRCS wrote since (the second display of the panel was blank
+in Director while RRCS listed keys 9–16).
+
+Director's "Add Function" menu and the command type RRCS takes for it:
+
+| Director | RRCS object type | `ensure` function |
+|---|---|---|
+| Call to Port | `call-to-port-cmd` | `call-to-port` |
+| Call to Conference | `call-to-conference` | `call-to-conference` |
+| Call to Group | `call-to-group` | `call-to-group` |
+| Call to IFB | `call-to-ifb` | `call-to-ifb` |
+| Listen to Port | `listen-to-port-cmd` | `listen` |
+| Reply | `reply-cmd` | `reply` |
+| Route Audio | `route-cmd` | the type, with `params` |
+| Switch GPIO Out | `switch-gpio-out-cmd` | the type, with `params` |
+| Select Audiopatch / Control Audiopatch | `select-audiopatch-cmd` / `control-audiopatch-cmd` | the type, with `params` |
+| Remote Key | `remote-key-cmd` | the type, with `params` |
+| Edit Conference / Edit IFB | `edit-conference-cmd` / `edit-ifb-cmd` | the type |
+| Dim Panel Speaker | `dim-panel-speaker-cmd` | the type, with `params` |
+| Dim XP Level | `dim-level-command` | the type, with `params` |
+| Beep Panel | `beep-panel-cmd` | the type, with `params` |
+| Clone Output Port | `clone-output-port-cmd` | the type, with `params` |
+| Telephone Dial Keypad / Display, Dial / Hang up | `telephone-dial-keypad-cmd`, `telephone-dial-hangup-cmd` | the type |
+| Logic | `logic-cmd` | the type, `params: {"LogicSource": <ID>}` |
+| Kill Partyline Mic | `kill-partyline-mic-cmd` | the type |
+| Auto Listen Off | `auto-listen-off-cmd` | the type |
+| Set Input/Output Gain | `set-input-output-gain-cmd` | the type |
+| Send String | `send-string-cmd` | the type, `params: {"SendString": "…"}` |
+| Hot mic | `monitor-port-cmd` (unconfirmed) | the type, with `params` |
+
+`sidetone-cmd` has no Director entry here and an RSP-1216HL refuses it
+("not supported on destination port").
 
 ## 0. What each verb costs RRCS
 

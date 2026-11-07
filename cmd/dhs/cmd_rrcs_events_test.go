@@ -96,11 +96,14 @@ func TestRRCSDecode(t *testing.T) {
 		{"client failed", rrcsEvent("ClientFailedCleared", i(1), i(60), i(4)), []string{"15:37:28.836  net.1.node.60.card.4 ClientFailed = false"}},
 		{"key pressed", rrcsEvent("PanelSpyKeyEvent", keyEvent), []string{
 			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = pressed  (PNL2)  key standard latched true; page 1: call-to-group group.200 (GROUP ALPHA)"}},
-		// RRCS 9.0.RR1 names the key KeyNo (oracle, 2026-11-07); a lever key
-		// reports its position.
-		{"key pressed, KeyNo", rrcsEvent("PanelSpyKeyEvent", st(mem("KeyAction", i(1)), mem("KeyNo", i(5)), mem("KeyType", i(4)),
+		// RRCS 9.0.RR1 names the key KeyNo and counts it from 0 (oracle,
+		// 2026-11-07: key 15 came as 14); a lever key reports its position.
+		{"key pressed, KeyNo", rrcsEvent("PanelSpyKeyEvent", st(mem("KeyAction", i(1)), mem("KeyNo", i(4)), mem("KeyType", i(4)),
 			mem("Node", i(61)), mem("Port", i(1026)), mem("SubPanel", i(0)), mem("IsKeyLatched", b(false)))), []string{
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = released  (PNL2)  key down position latched false (deviation: KeyNo, §9.9.4 names it Key); page 1: call-to-group group.200 (GROUP ALPHA)"}},
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = released  (PNL2)  key down position latched false (deviation: KeyNo from 0; §9.9.4 names it Key); page 1: call-to-group group.200 (GROUP ALPHA)"}},
+		{"rotary key event, KeyNo -1", rrcsEvent("PanelSpyKeyEvent", st(mem("KeyAction", i(0)), mem("KeyNo", i(-1)), mem("KeyType", i(2)),
+			mem("Node", i(61)), mem("Port", i(1026)), mem("SubPanel", i(0)), mem("IsKeyLatched", b(false)))), []string{
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.-1 KeyAction = pressed  (PNL2)  key rotary latched false (deviation: KeyNo from 0; §9.9.4 names it Key)"}},
 		{"function key", rrcsEvent("PanelSpyFuncKeyEvent", st(mem("FuncKeyAction", i(0)), mem("Node", i(61)), mem("Port", i(1026)),
 			mem("FuncKeyNo", i(1)), mem("FuncKeyStates", st(mem("Shift", b(false)))))), []string{
 			"15:37:28.836  oid=100 net.1.node.61.port.1026.funckey FuncKeyAction = 0  (PNL2)",
@@ -119,6 +122,9 @@ func TestRRCSDecode(t *testing.T) {
 		{"alive", rrcs.Event{Time: rrcsEvent("x").Time, Method: "GetAlive"}, []string{"15:37:28.836  gateway Alive = ping"}},
 		{"unknown method", rrcsEvent("SomethingNew", codec.String("hello")), []string{`15:37:28.836  event SomethingNew = ["hello"]`}},
 		{"crosspoints in another shape", rrcsEvent("CrosspointChange", i(1)), []string{"15:37:28.836  event CrosspointChange = [1]"}},
+		// After a node reboot RRCS sends count 0 and an empty struct
+		// (oracle, 2026-11-07): nothing to say, not an unknown shape.
+		{"no crosspoints after a reboot", rrcsEvent("CrosspointChange", i(0), st()), nil},
 		{"key event without its struct", rrcsEvent("PanelSpyKeyEvent"), []string{"15:37:28.836  event PanelSpyKeyEvent = []"}},
 	}
 	for _, tc := range tests {

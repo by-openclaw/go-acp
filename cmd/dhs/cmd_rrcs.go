@@ -627,6 +627,7 @@ func rrcsWatch(ctx context.Context, args []string) error {
 	// sends both members each time, so the one that did not move is not
 	// repeated on the terminal (the log and the capture keep everything).
 	levels := map[string]string{}
+	onlineShown := map[string]string{} // last Online value shown per port: RRCS says PortActive once per half of a split port
 	// csv: the columns of export, with the time and the event in front
 	// and a description at the end.
 	var csvOut *csv.Writer
@@ -716,6 +717,15 @@ func rrcsWatch(ctx context.Context, args []string) error {
 						continue
 					}
 					l.Detail += "  (said once; other panels with the same answer are counted at the end)"
+				}
+				if l.Label == "Online" && (e.Method == "PortActive" || e.Method == "PortInactive") {
+					// §9.7 names net, node, port and no direction: a split
+					// port's two halves give two identical events (oracle,
+					// 2026-11-07). A state already shown is not shown again.
+					if last, seen := onlineShown[l.Path]; seen && last == l.Value {
+						continue
+					}
+					onlineShown[l.Path] = l.Value
 				}
 				if e.Method == rrcs.MethodXpVolumeChange {
 					key := l.Path + "." + l.Label

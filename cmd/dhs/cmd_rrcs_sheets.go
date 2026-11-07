@@ -21,7 +21,7 @@ import (
 // to them. A blank cell leaves the system as it is.
 //
 //	cards.csv        card, type, name, frame, channels, up, down
-//	ports.csv        port, type, label, alias
+//	ports.csv        port, type, label, alias, input_gain, output_gain (dB or mute; blank = not read)
 //	conferences.csv  name, label
 //	groups.csv       name, label
 //	ifbs.csv         number, label, name, input, output, mix_minus, dim_level
@@ -31,7 +31,7 @@ import (
 //	keys.csv         panel, key, function, target, label, mode
 var rrcsSheetHeaders = map[string][]string{
 	"cards.csv":       {"card", "type", "name", "frame", "channels", "up", "down"},
-	"ports.csv":       {"port", "type", "label", "alias"},
+	"ports.csv":       {"port", "type", "label", "alias", "input_gain", "output_gain"},
 	"conferences.csv": {"name", "label"},
 	"groups.csv":      {"name", "label"},
 	"ifbs.csv":        {"number", "label", "name", "input", "output", "mix_minus", "dim_level"},
@@ -157,7 +157,7 @@ func rrcsSheetsOf(m *rrcsModel) map[string][][]string {
 		add("cards.csv", row...)
 	}
 	for _, p := range m.Ports {
-		add("ports.csv", p.Path, p.Type, p.Label, p.Alias)
+		add("ports.csv", p.Path, p.Type, p.Label, p.Alias, p.InputGain, p.OutputGain)
 	}
 	for _, o := range m.Objects["conference"] {
 		add("conferences.csv", o.LongName, o.Label)
@@ -393,8 +393,9 @@ func rrcsReadSheets(dir string) (*rrcsDesired, error) {
 		return nil, err
 	}
 	for _, r := range rows {
-		if r["label"]+r["alias"] != "" {
-			want.Ports = append(want.Ports, rrcsDesiredPort{Port: r["port"], Label: opt(r["label"]), Alias: opt(r["alias"])})
+		if r["label"]+r["alias"]+r["input_gain"]+r["output_gain"] != "" {
+			want.Ports = append(want.Ports, rrcsDesiredPort{Port: r["port"], Label: opt(r["label"]), Alias: opt(r["alias"]),
+				InputGain: r["input_gain"], OutputGain: r["output_gain"]})
 		}
 	}
 	for _, kind := range []string{"conferences.csv", "groups.csv"} {

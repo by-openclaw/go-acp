@@ -169,7 +169,9 @@ func Decode(m *Model, e Event) []ChangeLine {
 			l.OID, l.Name = oid, srcLabel+" > "+dstLabel
 			out = append(out, l)
 		}
-		if len(out) > 0 {
+		if len(out) > 0 || len(p[1].Members) == 0 {
+			// An empty change list (count 0) comes after a node reboot
+			// (oracle, 2026-11-07): nothing to print, not an unknown shape.
 			return out
 		}
 
@@ -284,12 +286,18 @@ func Decode(m *Model, e Event) []ChangeLine {
 		if action == "" {
 			action = "action " + strconv.Itoa(MemberInt(d, "KeyAction"))
 		}
-		// §9.9.4 names the key "Key"; RRCS 9.0.RR1 sends "KeyNo" (oracle,
-		// 2026-11-07): read either, and say which.
+		// §9.9.4 names the key "Key"; RRCS 9.0.RR1 sends "KeyNo" and counts
+		// it from 0 where the key paths (TCmdPosition KeyNumber) count from
+		// 1: key 15 of the oracle panel came as KeyNo 14 together with its
+		// SendString (oracle, 2026-11-07). A negative value is the primary
+		// rotary and stays as it is.
 		key, keyMember := MemberInt(d, "Key"), "Key"
 		if _, has := d.Field("Key"); !has {
 			if _, hasNo := d.Field("KeyNo"); hasNo {
 				key, keyMember = MemberInt(d, "KeyNo"), "KeyNo"
+				if key >= 0 {
+					key++
+				}
 			}
 		}
 		keyType := map[int]string{0: "standard", 1: "right position", 2: "rotary", 3: "up position", 4: "down position"}[MemberInt(d, "KeyType")]
@@ -300,7 +308,7 @@ func Decode(m *Model, e Event) []ChangeLine {
 		l.OID, l.Name = oid, label
 		l.Detail = fmt.Sprintf("key %s latched %v", keyType, FieldBool(d, "IsKeyLatched"))
 		if keyMember == "KeyNo" {
-			l.Detail += " (deviation: KeyNo, §9.9.4 names it Key)"
+			l.Detail += " (deviation: KeyNo from 0; §9.9.4 names it Key)"
 		}
 		// What the first page holds on that key, for a reader. The event
 		// does not say which page was shown.

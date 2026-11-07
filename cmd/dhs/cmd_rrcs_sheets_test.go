@@ -26,7 +26,31 @@ func TestRRCSSheetsOfTheOracle(t *testing.T) {
 		{Port: "net.1.node.93.port.8", Path: "net.1.node.93.port.8.key.0.1.9", Position: "key", CommandType: "edit-ifb-cmd"},
 	}
 	m.Cards = []*rrcs.Card{{Path: "net.1.node.93.card.3", Type: "MADI", Raw: map[string]any{"FrameLength": 64.0, "Channels": 1.0, "UpInterface": 1.0, "DownInterface": 2.0}}}
+	for _, p := range m.Ports {
+		switch p.Path {
+		case "net.1.node.93.port.17.in":
+			p.InputGain = "3.0"
+		case "net.1.node.93.port.17.out":
+			p.OutputGain = "mute"
+		}
+	}
 	sheets := rrcsSheetsOf(m)
+	if ports := strings.Join(sheets["ports.csv"][0], ","); ports != "port,type,label,alias,input_gain,output_gain" {
+		t.Errorf("ports header: %s", ports)
+	}
+	for _, row := range sheets["ports.csv"][1:] {
+		line := strings.Join(row, ",")
+		switch row[0] {
+		case "net.1.node.93.port.17.in":
+			if line != "net.1.node.93.port.17.in,Input (MADI),,,3.0," {
+				t.Errorf("gain row: %s", line)
+			}
+		case "net.1.node.93.port.17.out":
+			if line != "net.1.node.93.port.17.out,Output (MADI),,,,mute" {
+				t.Errorf("mute row: %s", line)
+			}
+		}
+	}
 	text := func(n string) string {
 		var b strings.Builder
 		for _, r := range sheets[n] {
@@ -57,7 +81,7 @@ func TestRRCSReadSheets(t *testing.T) {
 		}
 	}
 	write("cards.csv", "card,type,name,frame,channels,up,down\nnet.1.node.93.card.3,MADI,,64,01-08,optical,optical\nnet.1.node.93.card.2,CAT5,,,,,\n")
-	write("ports.csv", "\ufeffport,type,label,alias\nnet.1.node.93.port.16.in,MADI,I.3.1,\nnet.1.node.93.port.17.in,MADI,,\n")
+	write("ports.csv", "\ufeffport,type,label,alias,input_gain,output_gain\nnet.1.node.93.port.16.in,MADI,I.3.1,,,\nnet.1.node.93.port.17.in,MADI,,,-3.5,\nnet.1.node.93.port.18.in,MADI,,,,\n")
 	write("conferences.csv", "name,label\nDHS CONF 1,DHSCNF1\n,\n")
 	write("groups.csv", "name,label\nDHS GROUP 1,\n")
 	write("ifbs.csv", "number,label,name,input,output,mix_minus,dim_level\n1,L,,net.1.node.93.port.16.in,-,,4\n")
@@ -70,7 +94,7 @@ func TestRRCSReadSheets(t *testing.T) {
 	if len(want.Cards) != 1 || want.Cards[0].Madi.Channels != "01-08" || want.Cards[0].Madi.Frame != 64 {
 		t.Errorf("cards %+v", want.Cards)
 	}
-	if len(want.Ports) != 1 || *want.Ports[0].Label != "I.3.1" || want.Ports[0].Alias != nil {
+	if len(want.Ports) != 2 || *want.Ports[0].Label != "I.3.1" || want.Ports[0].Alias != nil || want.Ports[1].InputGain != "-3.5" || want.Ports[1].Label != nil {
 		t.Errorf("ports %+v", want.Ports)
 	}
 	if len(want.Conferences) != 1 || len(want.Groups) != 1 || want.Groups[0].Label != nil {
