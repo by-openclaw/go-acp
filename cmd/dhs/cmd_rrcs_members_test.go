@@ -176,3 +176,29 @@ func TestRRCSCardAndPanelHelpers(t *testing.T) {
 		t.Errorf("plain: %v", got)
 	}
 }
+
+func TestRRCSGenericCommand(t *testing.T) {
+	if !rrcsIsCommandType("beep-panel-cmd") || rrcsIsCommandType("panel-key") {
+		t.Error("command types")
+	}
+	params, err := rrcsGenericCommandParams("net.1.node.93.port.8.key.0.1.10", map[string]any{
+		"DestinationPortAddress": map[string]any{"IsInput": false, "Node": 93.0, "Port": 8.0},
+		"SendString":             "HELLO", "List": []any{1.0, true}})
+	if err != nil || len(params) != 4 || params[0].Name != "CommandPosition" || params[1].Name != "DestinationPortAddress" {
+		t.Fatalf("%v %v", params, err)
+	}
+	if rrcsMemberInt(params[1].Value, "Port") != 8 {
+		t.Errorf("address %s", rrcsCompact(params[1].Value))
+	}
+	for _, bad := range []map[string]any{{"X": 1.5}, {"X": nil}, {"X": map[string]any{"Y": 2.5}}, {"X": []any{2.5}}} {
+		if _, err := rrcsGenericCommandParams("net.1.node.93.port.8.key.0.1.10", bad); err == nil {
+			t.Errorf("%v taken", bad)
+		}
+	}
+	if _, err := rrcsGenericCommandParams("nope", nil); err == nil {
+		t.Error("bad position taken")
+	}
+	if p, err := rrcsCommandParams("beep-panel-cmd", "net.1.node.93.port.8.key.0.1.10", ""); err != nil || len(p) != 1 {
+		t.Errorf("place only: %v %v", p, err)
+	}
+}

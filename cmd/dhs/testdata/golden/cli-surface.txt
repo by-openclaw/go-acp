@@ -4549,7 +4549,10 @@ requests, outputs in one. RRCS does not report a link: a port counts as
 done when it uses the wanted channel. The same links, and the creation of
 a port, also go through export, edit, import: see import.
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
-call-to-conference, call-to-group, call-to-ifb, reply or listen; mode is auto,
+call-to-conference, call-to-group, call-to-ifb, reply or listen, or any command
+type of the specification (beep-panel-cmd, route-cmd, send-string-cmd…) with its
+members in "params", e.g. {"function": "send-string-cmd", "params":
+{"SendString": "HELLO"}}; mode is auto,
 momentary or latching. A target conference, group or IFB is named by its ID
 or its name. A conference or a group is named by "id" or, to create it, by
 "name". With --check the exact requests are printed.

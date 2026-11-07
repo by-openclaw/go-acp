@@ -45,6 +45,10 @@ type rrcsDesiredKey struct {
 	Label    *string `json:"label,omitempty"`
 	Mode     string  `json:"mode,omitempty"` // auto | momentary | latching
 	State    string  `json:"state,omitempty"`
+	// Params are the command's own members for a function the file names
+	// by its object type (beep-panel-cmd, route-cmd, send-string-cmd…,
+	// §8.10.4): sent as given beside CommandPosition.
+	Params map[string]any `json:"params,omitempty"`
 	// Additive is set by the members matrix: present adds this one
 	// command and keeps the others at the position (a port in two
 	// conferences); absent removes this one command only.
@@ -196,6 +200,11 @@ func rrcsCommandParams(objectType, position, target string) ([]codec.Member, err
 			codec.Member{Name: "Node", Value: codec.Int(int32(node))},
 			codec.Member{Name: "Port", Value: codec.Int(int32(port))})}}, nil
 	}
+	if rrcsIsCommandType(objectType) && target == "" {
+		// A command with no target of its own (beep, sidetone…): its place
+		// names it, for a create without params and for a delete.
+		return []codec.Member{at}, nil
+	}
 	return nil, fmt.Errorf("a %s cannot be placed or removed by ensure yet", objectType)
 }
 
@@ -230,6 +239,9 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 			continue
 		}
 		wantType := rrcsKeyFunctions[k.Function]
+		if wantType == "" && rrcsIsCommandType(k.Function) {
+			wantType = k.Function // any command of the specification, by its object type
+		}
 		absent := k.State == "absent"
 		if !absent && k.Function != "" && wantType == "" {
 			bad(field, "function %q: want call-to-port, call-to-conference, call-to-group, call-to-ifb or reply", k.Function)
@@ -274,7 +286,7 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 		if absent || wantType != "" {
 			kept := false
 			for _, c := range current {
-				if !absent && !kept && c.CommandType == wantType && (wantType == "reply-cmd" || c.Target == k.Target) {
+				if !absent && !kept && c.CommandType == wantType && (wantType == "reply-cmd" || c.Target == k.Target || (k.Target == "" && k.Params != nil)) {
 					kept = true
 					continue
 				}
@@ -288,7 +300,13 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 					changeType: "delete", objectType: c.CommandType, params: params})
 			}
 			if !absent && !kept {
-				params, err := rrcsCommandParams(wantType, pos, k.Target)
+				var params []codec.Member
+				var err error
+				if k.Params != nil {
+					params, err = rrcsGenericCommandParams(pos, k.Params)
+				} else {
+					params, err = rrcsCommandParams(wantType, pos, k.Target)
+				}
 				if err != nil {
 					bad(field, "%v", err)
 					continue
@@ -829,4 +847,79 @@ func rrcsCreatedInFile(want *rrcsDesired, kind, ref string) bool {
 		}
 	}
 	return false
+}
+
+// rrcsIsCommandType tells whether a word is a command object type of the
+// specification (§8.10.4): call-to-*, *-cmd, dim-level-command.
+func rrcsIsCommandType(word string) bool {
+	for _, t := range rrcs.CommandTypes() {
+		if t == word {
+			return true
+		}
+	}
+	return false
+}
+
+// rrcsGenericCommandParams places a command the planner has no shape for:
+// CommandPosition and the members the file gives, as given.
+func rrcsGenericCommandParams(position string, given map[string]any) ([]codec.Member, error) {
+	pos, ok := rrcsKeyPosition(position)
+	if !ok {
+		return nil, fmt.Errorf("%s is not a key or a virtual function", position)
+	}
+	names := make([]string, 0, len(given))
+	for n := range given {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	out := []codec.Member{{Name: "CommandPosition", Value: pos}}
+	for _, n := range names {
+		v, err := rrcsJSONValue(given[n])
+		if err != nil {
+			return nil, fmt.Errorf("params.%s: %w", n, err)
+		}
+		out = append(out, codec.Member{Name: n, Value: v})
+	}
+	return out, nil
+}
+
+// rrcsJSONValue turns a value of the file into an XML-RPC value.
+func rrcsJSONValue(v any) (codec.Value, error) {
+	switch t := v.(type) {
+	case bool:
+		return codec.Bool(t), nil
+	case float64:
+		if t != float64(int32(t)) {
+			return codec.Value{}, fmt.Errorf("%v is not a whole number", t)
+		}
+		return codec.Int(int32(t)), nil
+	case string:
+		return codec.String(t), nil
+	case map[string]any:
+		names := make([]string, 0, len(t))
+		for n := range t {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		var members []codec.Member
+		for _, n := range names {
+			mv, err := rrcsJSONValue(t[n])
+			if err != nil {
+				return codec.Value{}, err
+			}
+			members = append(members, codec.Member{Name: n, Value: mv})
+		}
+		return codec.Struct(members...), nil
+	case []any:
+		var items []codec.Value
+		for _, e := range t {
+			iv, err := rrcsJSONValue(e)
+			if err != nil {
+				return codec.Value{}, err
+			}
+			items = append(items, iv)
+		}
+		return codec.Array(items...), nil
+	}
+	return codec.Value{}, fmt.Errorf("%v: want a number, true/false, text, object or list", v)
 }
