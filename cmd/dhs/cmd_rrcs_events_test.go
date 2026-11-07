@@ -95,7 +95,12 @@ func TestRRCSDecode(t *testing.T) {
 		{"node controller reboot", rrcsEvent("NodeControllerReboot", i(1), i(2)), []string{"15:37:28.836  net.1.node.2 NodeControllerReboot = true"}},
 		{"client failed", rrcsEvent("ClientFailedCleared", i(1), i(60), i(4)), []string{"15:37:28.836  net.1.node.60.card.4 ClientFailed = false"}},
 		{"key pressed", rrcsEvent("PanelSpyKeyEvent", keyEvent), []string{
-			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = pressed  (PNL2)  key type 0 latched true; page 1: call-to-group group.200 (GROUP ALPHA)"}},
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = pressed  (PNL2)  key standard latched true; page 1: call-to-group group.200 (GROUP ALPHA)"}},
+		// RRCS 9.0.RR1 names the key KeyNo (oracle, 2026-11-07); a lever key
+		// reports its position.
+		{"key pressed, KeyNo", rrcsEvent("PanelSpyKeyEvent", st(mem("KeyAction", i(1)), mem("KeyNo", i(5)), mem("KeyType", i(4)),
+			mem("Node", i(61)), mem("Port", i(1026)), mem("SubPanel", i(0)), mem("IsKeyLatched", b(false)))), []string{
+			"15:37:28.836  oid=100 net.1.node.61.port.1026.keyevent.0.5 KeyAction = released  (PNL2)  key down position latched false (deviation: KeyNo, §9.9.4 names it Key); page 1: call-to-group group.200 (GROUP ALPHA)"}},
 		{"function key", rrcsEvent("PanelSpyFuncKeyEvent", st(mem("FuncKeyAction", i(0)), mem("Node", i(61)), mem("Port", i(1026)),
 			mem("FuncKeyNo", i(1)), mem("FuncKeyStates", st(mem("Shift", b(false)))))), []string{
 			"15:37:28.836  oid=100 net.1.node.61.port.1026.funckey FuncKeyAction = 0  (PNL2)",
