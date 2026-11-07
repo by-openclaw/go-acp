@@ -68,9 +68,9 @@
         # (Ansible does not template the keys of a dict: write the paths out.)
         rrcs_members:
           "conference.DHS CONF 1":
-            net.1.node.93.port.20: "off"            # MADI 3.5 out of the persistent conference
+            net.1.node.93.port.20: listen           # MADI 3.5 hears CONF 1: talk on key 4 → ATX-01 ch 5 (operator, 2026-11-07)
           "conference.DHS CONF 2":
-            net.1.node.93.port.20: talk+listen      # … and into the second one
+            net.1.node.93.port.20: talk+listen      # … and is a full member of the second one
           "group.DHS GROUP 1":
             net.1.node.93.port.8: "on"              # YOUSSEF
             net.1.node.93.port.17: "on"             # MADI 3.2

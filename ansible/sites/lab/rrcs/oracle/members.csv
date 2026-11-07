@@ -1,4 +1,4 @@
 port,label,conference.DHS CONF 1,conference.DHS CONF 2,conference.DYNACONF,group.DHS GROUP 1
 net.1.node.93.port.17,O.3.2,,,,on
-net.1.node.93.port.20,I.3.5,,talk+listen,,
+net.1.node.93.port.20,O.3.5,listen,talk+listen,,
 net.1.node.93.port.8,YOUSSEF,key,,,on
