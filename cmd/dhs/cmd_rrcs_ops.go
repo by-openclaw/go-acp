@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -119,7 +120,7 @@ func rrcsRunOp(ctx context.Context, op *rrcsOp, args []string) error {
 	reply, err := client.Call(ctx, op.Method, values...)
 	if err != nil {
 		cf.say("rrcs %s: %v", verb, err)
-		return fmt.Errorf("rrcs %s: %w", verb, err)
+		return fmt.Errorf("rrcs %s: %w%s", verb, err, rrcsCodeHint(op.Method, err))
 	}
 	if cf.output == "json" {
 		fmt.Println(rrcsCompact(reply.Value))
@@ -177,4 +178,21 @@ func rrcsBufferable(method string, raw []byte) error {
 		return fmt.Errorf("change %d: %s cannot be buffered (§8.10.2); RRCS would accept it and drop it — send it with configuration-change instead", i+1, c.ObjectType)
 	}
 	return nil
+}
+
+// rrcsCodeHint names the cause behind an error code where the oracle
+// showed one the code alone does not say.
+func rrcsCodeHint(method string, err error) string {
+	var ce *codec.CodeError
+	if !errors.As(err, &ce) {
+		return ""
+	}
+	switch {
+	case ce.Code == codec.CodeNoPermission && (method == "SetInputGain" || method == "SetOutputGain"):
+		// Oracle, 2026-11-07: the port's Director setting "Gain values set
+		// by" was "the configuration (with Director)"; RRCS carries no
+		// property for it.
+		return " — the port is set to take its gains from the Director configuration; in Director, port → Gain → \"Gain values set by: the Set Input/Output Gain function from a panel or by remote software (RRCS)\", then this works"
+	}
+	return ""
 }

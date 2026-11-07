@@ -47,9 +47,9 @@ var rrcsCatalog = []rrcsMethod{
 	{"GetPortAlias", "8.3", "read", "snapshot", "yes"},
 	{"SetPortLabel", "8.4", "write", "set-port-label", "yes"},
 	{"GetPortLabel", "8.4", "read", "snapshot", "yes"},
-	{"SetInputGain", "8.5", "write", "set-input-gain", "no"},
+	{"SetInputGain", "8.5", "write", "set-input-gain", "yes, once the port's Director setting 'Gain values set by' is 'function / RRCS' (else code 21)"},
 	{"GetInputGain", "8.5", "read", "snapshot", "yes"},
-	{"SetOutputGain", "8.5", "write", "set-output-gain", "no"},
+	{"SetOutputGain", "8.5", "write", "set-output-gain", "yes, same condition as SetInputGain"},
 	{"GetOutputGain", "8.5", "read", "snapshot", "yes"},
 	{"GetLevelMeterValues", "8.5", "read", "snapshot", "yes"},
 	// §8.6 GPIOs
@@ -59,7 +59,7 @@ var rrcsCatalog = []rrcsMethod{
 	{"GetAllGpIns", "8.6", "read", "snapshot", "yes, empty list only"},
 	{"GetAllGpOuts", "8.6", "read", "snapshot", "yes, empty list only"},
 	// §8.7 Logic sources
-	{"SetLogicSourceState", "8.7", "write", "set-logic-source-state", "no"},
+	{"SetLogicSourceState", "8.7", "write", "set-logic-source-state", "yes"},
 	{"GetAllLogicSources", "8.7", "read", "snapshot", "yes"},
 	{"GetAllLogicSources_v2", "8.7", "read", "walk, list logic", "yes"},
 	// §8.8 Status
@@ -168,7 +168,7 @@ var rrcsCatalog = []rrcsMethod{
 	{"SendStringOff", "9.1", "notify", "watch", "no"},
 	{"GpInputChange", "9.2", "notify", "watch", "no"},
 	{"GpOutputChange", "9.2", "notify", "watch", "no"},
-	{"LogicSourceChange", "9.3", "notify", "watch", "no"},
+	{"LogicSourceChange", "9.3", "notify", "watch", "yes"},
 	{"XpVolumeChange", "9.4", "notify", "watch --volume", "yes"},
 	{"ConfigurationChange (notification)", "9.5", "notify", "watch", "yes"},
 	{"CrosspointChange", "9.6", "notify", "watch", "yes"},

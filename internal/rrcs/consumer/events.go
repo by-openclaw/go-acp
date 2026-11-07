@@ -169,7 +169,9 @@ func Decode(m *Model, e Event) []ChangeLine {
 			l.OID, l.Name = oid, srcLabel+" > "+dstLabel
 			out = append(out, l)
 		}
-		if len(out) > 0 {
+		if len(out) > 0 || len(p[1].Members) == 0 {
+			// An empty change list (count 0) comes after a node reboot
+			// (oracle, 2026-11-07): nothing to print, not an unknown shape.
 			return out
 		}
 

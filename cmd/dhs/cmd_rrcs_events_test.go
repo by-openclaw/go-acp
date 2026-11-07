@@ -119,6 +119,9 @@ func TestRRCSDecode(t *testing.T) {
 		{"alive", rrcs.Event{Time: rrcsEvent("x").Time, Method: "GetAlive"}, []string{"15:37:28.836  gateway Alive = ping"}},
 		{"unknown method", rrcsEvent("SomethingNew", codec.String("hello")), []string{`15:37:28.836  event SomethingNew = ["hello"]`}},
 		{"crosspoints in another shape", rrcsEvent("CrosspointChange", i(1)), []string{"15:37:28.836  event CrosspointChange = [1]"}},
+		// After a node reboot RRCS sends count 0 and an empty struct
+		// (oracle, 2026-11-07): nothing to say, not an unknown shape.
+		{"no crosspoints after a reboot", rrcsEvent("CrosspointChange", i(0), st()), nil},
 		{"key event without its struct", rrcsEvent("PanelSpyKeyEvent"), []string{"15:37:28.836  event PanelSpyKeyEvent = []"}},
 	}
 	for _, tc := range tests {

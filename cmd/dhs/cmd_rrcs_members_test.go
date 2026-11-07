@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sort"
 	"strings"
 	"testing"
@@ -200,5 +201,24 @@ func TestRRCSGenericCommand(t *testing.T) {
 	}
 	if p, err := rrcsCommandParams("beep-panel-cmd", "net.1.node.93.port.8.key.0.1.10", ""); err != nil || len(p) != 1 {
 		t.Errorf("place only: %v %v", p, err)
+	}
+}
+
+func TestRRCSCodeHint(t *testing.T) {
+	denied := &codec.CodeError{Code: codec.CodeNoPermission}
+	if h := rrcsCodeHint("SetInputGain", denied); !strings.Contains(h, "Gain values set by") {
+		t.Errorf("SetInputGain code 21: %q", h)
+	}
+	if h := rrcsCodeHint("SetOutputGain", denied); h == "" {
+		t.Error("SetOutputGain code 21: no hint")
+	}
+	if h := rrcsCodeHint("SetXp", denied); h != "" {
+		t.Errorf("SetXp code 21: %q", h)
+	}
+	if h := rrcsCodeHint("SetInputGain", &codec.CodeError{Code: codec.CodeGPIONumberInvalid}); h != "" {
+		t.Errorf("other code: %q", h)
+	}
+	if h := rrcsCodeHint("SetInputGain", errors.New("plain")); h != "" {
+		t.Errorf("plain error: %q", h)
 	}
 }
