@@ -1,0 +1,50 @@
+---
+- name: Current Go on the host
+  ansible.builtin.command: "{{ dhs_go_linux_root }}/bin/go version"
+  register: dhs_go_cur
+  changed_when: false
+  failed_when: false
+
+- name: "Install Go {{ dhs_go_version }}"
+  when: ("go" + dhs_go_version + " ") not in (dhs_go_cur.stdout | default(''))
+  vars:
+    dhs_go_asset: "go{{ dhs_go_version }}.linux-{{ dhs_go_goarch[ansible_architecture] }}.tar.gz"
+  block:
+    - name: Download the archive (sha256 verified)
+      ansible.builtin.get_url:
+        url: "{{ dhs_go_dl_base }}/{{ dhs_go_asset }}"
+        dest: "/tmp/{{ dhs_go_asset }}"
+        checksum: "sha256:{{ dhs_go_sha256[dhs_go_asset] }}"
+        mode: "0644"
+
+    - name: Remove the previous toolchain (Go must not be unpacked over another)
+      ansible.builtin.file:
+        path: "{{ dhs_go_linux_root }}"
+        state: absent
+
+    - name: Unpack to {{ dhs_go_linux_root }}
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ dhs_go_asset }}"
+        dest: "{{ dhs_go_linux_root | dirname }}"
+        remote_src: true
+
+    - name: Remove the archive
+      ansible.builtin.file:
+        path: "/tmp/{{ dhs_go_asset }}"
+        state: absent
+
+- name: Link go + gofmt into /usr/local/bin (on PATH for every shell)
+  ansible.builtin.file:
+    src: "{{ dhs_go_linux_root }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ dhs_go_linux_links }}"
+
+- name: Verify go on the plain PATH
+  ansible.builtin.command: go version
+  environment:
+    PATH: /usr/local/bin:/usr/bin:/bin
+  register: dhs_go_new
+  changed_when: false
+  failed_when: ("go" + dhs_go_version + " ") not in dhs_go_new.stdout

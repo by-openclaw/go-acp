@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: dhs_golang
+  author: by-rune
+  description: >-
+    Install the pinned Go toolchain (the version go.mod / CI use) from go.dev,
+    sha256-verified. Linux: /usr/local/go with go + gofmt linked into
+    /usr/local/bin, so non-login shells (ansible, ssh cmd) find it. Windows:
+    C:\Program Files\Go\bin on the machine PATH. Idempotent: run-twice = 0 changes.
+  license: see repository
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: [all]
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+    - name: Windows
+      versions: [all]
+dependencies: []

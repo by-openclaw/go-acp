@@ -1,0 +1,21 @@
+---
+# Go toolchain on every fleet host, so builds and `go test` run on the fleet
+# (never on the desk) and `go` is on the PATH of every shell, Ansible's too.
+# Same version CI uses: setup-go reads go.mod's `go` line. Bump both together.
+dhs_go_version: "1.23.0"
+dhs_go_dl_base: "https://go.dev/dl"
+
+dhs_go_linux_root: /usr/local/go
+dhs_go_linux_links: [go, gofmt]          # /usr/local/bin/<name> -> /usr/local/go/bin/<name>
+dhs_go_goarch:
+  x86_64: amd64
+  aarch64: arm64
+
+dhs_go_windows_root: 'C:\Program Files\Go'
+
+# Official sha256 per archive, from https://go.dev/dl/?mode=json&include=all
+# (pinned here, not fetched at run time). Add the new version's sums on a bump.
+dhs_go_sha256:
+  go1.23.0.linux-amd64.tar.gz: 905a297f19ead44780548933e0ff1a1b86e8327bb459e92f9c0012569f76f5e3
+  go1.23.0.linux-arm64.tar.gz: 62788056693009bcf7020eedc778cdd1781941c6145eab7688bd087bce0f8659
+  go1.23.0.windows-amd64.zip: d4be481ef73079ee0ad46081d278923aa3fd78db1b3cf147172592f73e14c1ac

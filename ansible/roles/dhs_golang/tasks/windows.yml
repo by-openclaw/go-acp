@@ -1,0 +1,49 @@
+---
+- name: Current Go on the host
+  ansible.windows.win_command:
+    argv:
+      - '{{ dhs_go_windows_root }}\bin\go.exe'
+      - version
+  register: dhs_go_cur
+  changed_when: false
+  failed_when: false
+
+- name: "Install Go {{ dhs_go_version }}"
+  when: ("go" + dhs_go_version + " ") not in (dhs_go_cur.stdout | default(''))
+  vars:
+    dhs_go_asset: "go{{ dhs_go_version }}.windows-amd64.zip"
+    dhs_go_tmp: 'C:\Windows\Temp\{{ dhs_go_asset }}'
+  block:
+    - name: Download the archive (sha256 verified)
+      ansible.windows.win_get_url:
+        url: "{{ dhs_go_dl_base }}/{{ dhs_go_asset }}"
+        dest: "{{ dhs_go_tmp }}"
+        checksum: "{{ dhs_go_sha256[dhs_go_asset] }}"
+        checksum_algorithm: sha256
+
+    - name: Remove the previous toolchain
+      ansible.windows.win_file:
+        path: "{{ dhs_go_windows_root }}"
+        state: absent
+
+    - name: Unpack (the zip holds a top-level go\ folder)
+      community.windows.win_unzip:
+        src: "{{ dhs_go_tmp }}"
+        dest: "{{ dhs_go_windows_root | win_dirname }}"
+        delete_archive: true
+
+- name: Go on the machine PATH
+  ansible.windows.win_path:
+    elements:
+      - '{{ dhs_go_windows_root }}\bin'
+    scope: machine
+    state: present
+
+- name: Verify go version
+  ansible.windows.win_command:
+    argv:
+      - '{{ dhs_go_windows_root }}\bin\go.exe'
+      - version
+  register: dhs_go_new
+  changed_when: false
+  failed_when: ("go" + dhs_go_version + " ") not in dhs_go_new.stdout

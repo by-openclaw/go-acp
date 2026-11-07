@@ -18,6 +18,8 @@
     # apply live; a VM delta is reported, never power-cycled.
     - dhs_guestsize
     - dhs_host
+    # Go toolchain (CI's version) so builds and tests run on the fleet.
+    - dhs_golang
     - dhs_access
     - dhs_hostname
     - dhs_mdns
