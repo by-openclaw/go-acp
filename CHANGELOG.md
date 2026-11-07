@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.58.1](https://github.com/by-openclaw/go-acp/compare/v0.58.0...v0.58.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* **rrcs:** gains in the sheets, the cause behind code 21, quieter watch after a reboot ([#1619](https://github.com/by-openclaw/go-acp/issues/1619)) ([3d1ef87](https://github.com/by-openclaw/go-acp/commit/3d1ef87470e67d90e75bd6ec175409dd063114ff))
+
 ## [0.58.0](https://github.com/by-openclaw/go-acp/compare/v0.57.0...v0.58.0) (2026-11-07)
 
 
