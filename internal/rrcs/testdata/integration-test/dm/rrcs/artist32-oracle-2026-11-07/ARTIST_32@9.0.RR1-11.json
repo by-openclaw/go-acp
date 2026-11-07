@@ -1,0 +1,3119 @@
+{
+  "model": "ARTIST_32",
+  "protocol": "rrcs",
+  "root": {
+    "access": "read",
+    "children": [
+      {
+        "access": "read",
+        "identifier": "LongName",
+        "isOnline": true,
+        "number": 1,
+        "oid": "1.1",
+        "path": "ARTIST_32.LongName",
+        "type": "string",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "Noa",
+        "isOnline": true,
+        "number": 2,
+        "oid": "1.2",
+        "path": "ARTIST_32.Noa",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "NodeAddress",
+        "isOnline": true,
+        "number": 3,
+        "oid": "1.3",
+        "path": "ARTIST_32.NodeAddress",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "NodeType",
+        "isOnline": true,
+        "number": 4,
+        "oid": "1.4",
+        "path": "ARTIST_32.NodeType",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "NodeTypeString",
+        "isOnline": true,
+        "number": 5,
+        "oid": "1.5",
+        "path": "ARTIST_32.NodeTypeString",
+        "type": "string",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "ObjectID",
+        "isOnline": true,
+        "number": 6,
+        "oid": "1.6",
+        "path": "ARTIST_32.ObjectID",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "Soa",
+        "isOnline": true,
+        "number": 7,
+        "oid": "1.7",
+        "path": "ARTIST_32.Soa",
+        "type": "integer",
+        "value": null
+      }
+    ],
+    "identifier": "ARTIST_32",
+    "isOnline": true,
+    "number": 1,
+    "oid": "1",
+    "path": "ARTIST_32"
+  },
+  "sw_rev": "9.0.RR1-11",
+  "templates": [
+    {
+      "description": null,
+      "identifier": "auto-listen-off-cmd",
+      "number": 1,
+      "oid": "9.1",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.5.1",
+            "path": "auto-listen-off-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.5.2",
+            "path": "auto-listen-off-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.5.3",
+            "path": "auto-listen-off-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "auto-listen-off-cmd",
+        "isOnline": true,
+        "number": 5,
+        "oid": "9.5",
+        "path": "auto-listen-off-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "beep-panel-cmd",
+      "number": 2,
+      "oid": "9.2",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.6.1",
+            "path": "beep-panel-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.6.2",
+            "path": "beep-panel-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.6.3",
+            "path": "beep-panel-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.6.4",
+            "path": "beep-panel-cmd.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.6.5.1",
+                "path": "beep-panel-cmd.DestinationPortAddress.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.6.5.2",
+                "path": "beep-panel-cmd.DestinationPortAddress.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.6.5.3",
+                "path": "beep-panel-cmd.DestinationPortAddress.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.6.5.4",
+                "path": "beep-panel-cmd.DestinationPortAddress.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "DestinationPortAddress",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.6.5",
+            "path": "beep-panel-cmd.DestinationPortAddress"
+          }
+        ],
+        "identifier": "beep-panel-cmd",
+        "isOnline": true,
+        "number": 6,
+        "oid": "9.6",
+        "path": "beep-panel-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "call-to-conference",
+      "number": 3,
+      "oid": "9.3",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowChangingDestConf",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.7.1",
+            "path": "call-to-conference.AllowChangingDestConf",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowSelectingConf",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.7.2",
+            "path": "call-to-conference.AllowSelectingConf",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "AudioPriority",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.7.3",
+            "path": "call-to-conference.AudioPriority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.7.4",
+            "path": "call-to-conference.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Conference",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.7.5",
+            "path": "call-to-conference.Conference",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ConferenceName",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.7.6",
+            "path": "call-to-conference.ConferenceName",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.7.7",
+            "path": "call-to-conference.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "Listen",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.7.8",
+            "path": "call-to-conference.Listen",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.7.9",
+            "path": "call-to-conference.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "Talk",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.7.10",
+            "path": "call-to-conference.Talk",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 11,
+            "oid": "9.7.11",
+            "path": "call-to-conference.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "UseSecondChannel",
+            "isOnline": true,
+            "number": 12,
+            "oid": "9.7.12",
+            "path": "call-to-conference.UseSecondChannel",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "call-to-conference",
+        "isOnline": true,
+        "number": 7,
+        "oid": "9.7",
+        "path": "call-to-conference"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "call-to-group",
+      "number": 4,
+      "oid": "9.4",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "AudioPriority",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.8.1",
+            "path": "call-to-group.AudioPriority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.8.2",
+            "path": "call-to-group.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.8.3",
+            "path": "call-to-group.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DisableDestinVolumeAdjust",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.8.4",
+            "path": "call-to-group.DisableDestinVolumeAdjust",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Group",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.8.5",
+            "path": "call-to-group.Group",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "GroupName",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.8.6",
+            "path": "call-to-group.GroupName",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.8.7",
+            "path": "call-to-group.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "ShowIncomingMarker",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.8.8",
+            "path": "call-to-group.ShowIncomingMarker",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.8.9",
+            "path": "call-to-group.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "UseSecondChannel",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.8.10",
+            "path": "call-to-group.UseSecondChannel",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "call-to-group",
+        "isOnline": true,
+        "number": 8,
+        "oid": "9.8",
+        "path": "call-to-group"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "call-to-ifb",
+      "number": 5,
+      "oid": "9.5",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "BeepDestOnCall",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.9.1",
+            "path": "call-to-ifb.BeepDestOnCall",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.9.2",
+            "path": "call-to-ifb.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.9.3",
+            "path": "call-to-ifb.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "DisableCrosspointVolume",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.9.4",
+            "path": "call-to-ifb.DisableCrosspointVolume",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "IFBObjectID",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.9.5",
+            "path": "call-to-ifb.IFBObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "IfbName",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.9.6",
+            "path": "call-to-ifb.IfbName",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "enumMap": [
+              {
+                "key": "Switchable",
+                "value": 0
+              },
+              {
+                "key": "Always On",
+                "value": 1
+              },
+              {
+                "key": "Always Off",
+                "value": 2
+              }
+            ],
+            "identifier": "Monitoring",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.9.7",
+            "path": "call-to-ifb.Monitoring",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.9.8",
+            "path": "call-to-ifb.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.9.9",
+            "path": "call-to-ifb.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "UseSecondChannel",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.9.10",
+            "path": "call-to-ifb.UseSecondChannel",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "call-to-ifb",
+        "isOnline": true,
+        "number": 9,
+        "oid": "9.9",
+        "path": "call-to-ifb"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "call-to-port-cmd",
+      "number": 6,
+      "oid": "9.6",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowDialpad",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.10.1",
+            "path": "call-to-port-cmd.AllowDialpad",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowFixedNumber",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.10.2",
+            "path": "call-to-port-cmd.AllowFixedNumber",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowPhonebook",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.10.3",
+            "path": "call-to-port-cmd.AllowPhonebook",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "AllowSetInOutGain",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.10.4",
+            "path": "call-to-port-cmd.AllowSetInOutGain",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowTelephoneCall",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.10.5",
+            "path": "call-to-port-cmd.AllowTelephoneCall",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AutolistenFromDest",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.10.6",
+            "path": "call-to-port-cmd.AutolistenFromDest",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "BeepDestOnCall",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.10.7",
+            "path": "call-to-port-cmd.BeepDestOnCall",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.10.8",
+            "path": "call-to-port-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.10.9",
+            "path": "call-to-port-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DestinationUsesSecondChannel",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.10.10",
+            "path": "call-to-port-cmd.DestinationUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DisableCrosspointVolume",
+            "isOnline": true,
+            "number": 11,
+            "oid": "9.10.11",
+            "path": "call-to-port-cmd.DisableCrosspointVolume",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DuplexCall",
+            "isOnline": true,
+            "number": 12,
+            "oid": "9.10.12",
+            "path": "call-to-port-cmd.DuplexCall",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "FixedNumber",
+            "isOnline": true,
+            "number": 13,
+            "oid": "9.10.13",
+            "path": "call-to-port-cmd.FixedNumber",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "Isolate",
+            "isOnline": true,
+            "number": 14,
+            "oid": "9.10.14",
+            "path": "call-to-port-cmd.Isolate",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "IsolateSelf",
+            "isOnline": true,
+            "number": 15,
+            "oid": "9.10.15",
+            "path": "call-to-port-cmd.IsolateSelf",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "enumMap": [
+              {
+                "key": "Switchable",
+                "value": 0
+              },
+              {
+                "key": "Always On",
+                "value": 1
+              },
+              {
+                "key": "Always Off",
+                "value": 2
+              }
+            ],
+            "identifier": "Monitoring",
+            "isOnline": true,
+            "number": 16,
+            "oid": "9.10.16",
+            "path": "call-to-port-cmd.Monitoring",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 17,
+            "oid": "9.10.17",
+            "path": "call-to-port-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "Priority",
+            "isOnline": true,
+            "number": 18,
+            "oid": "9.10.18",
+            "path": "call-to-port-cmd.Priority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "SourceUsesSecondChannel",
+            "isOnline": true,
+            "number": 19,
+            "oid": "9.10.19",
+            "path": "call-to-port-cmd.SourceUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 20,
+            "oid": "9.10.20",
+            "path": "call-to-port-cmd.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "TrunkcallPriority",
+            "isOnline": true,
+            "number": 21,
+            "oid": "9.10.21",
+            "path": "call-to-port-cmd.TrunkcallPriority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.10.22.1",
+                "path": "call-to-port-cmd.DestinationPortAddress.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.10.22.2",
+                "path": "call-to-port-cmd.DestinationPortAddress.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.10.22.3",
+                "path": "call-to-port-cmd.DestinationPortAddress.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.10.22.4",
+                "path": "call-to-port-cmd.DestinationPortAddress.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "DestinationPortAddress",
+            "isOnline": true,
+            "number": 22,
+            "oid": "9.10.22",
+            "path": "call-to-port-cmd.DestinationPortAddress"
+          }
+        ],
+        "identifier": "call-to-port-cmd",
+        "isOnline": true,
+        "number": 10,
+        "oid": "9.10",
+        "path": "call-to-port-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "clone-output-port-cmd",
+      "number": 7,
+      "oid": "9.7",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "ClonedOutputSecondChannel",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.11.1",
+            "path": "clone-output-port-cmd.ClonedOutputSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.11.2",
+            "path": "clone-output-port-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "OutputToCloneSecondChannel",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.11.3",
+            "path": "clone-output-port-cmd.OutputToCloneSecondChannel",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "clone-output-port-cmd",
+        "isOnline": true,
+        "number": 11,
+        "oid": "9.11",
+        "path": "clone-output-port-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "conference",
+      "number": 8,
+      "oid": "9.8",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "description": "max_len 8",
+            "identifier": "Alias",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.1.1",
+            "path": "conference.Alias",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "IsTrunkEnabled",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.1.2",
+            "path": "conference.IsTrunkEnabled",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 8",
+            "identifier": "Label",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.1.3",
+            "path": "conference.Label",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 32",
+            "identifier": "LongName",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.1.4",
+            "path": "conference.LongName",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.1.5",
+            "path": "conference.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Owner",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.1.6",
+            "path": "conference.Owner",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "readWrite",
+                "identifier": "port",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.1.7.1",
+                "path": "conference.member.port",
+                "type": "string",
+                "value": null
+              }
+            ],
+            "description": "repeated: member.N = the path of a member port, with its talk/listen flags",
+            "identifier": "member",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.1.7",
+            "path": "conference.member"
+          }
+        ],
+        "identifier": "conference",
+        "isOnline": true,
+        "number": 1,
+        "oid": "9.1",
+        "path": "conference"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "control-audiopatch-cmd",
+      "number": 9,
+      "oid": "9.9",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "AudiopatchElement",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.12.1",
+            "path": "control-audiopatch-cmd.AudiopatchElement",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.12.2",
+            "path": "control-audiopatch-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "control-audiopatch-cmd",
+        "isOnline": true,
+        "number": 12,
+        "oid": "9.12",
+        "path": "control-audiopatch-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "dim-level-command",
+      "number": 10,
+      "oid": "9.10",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DestinationUsesSecondChannel",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.13.1",
+            "path": "dim-level-command.DestinationUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "DimValue",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.13.2",
+            "path": "dim-level-command.DimValue",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.13.3",
+            "path": "dim-level-command.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "SourceUsesSecondChannel",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.13.4",
+            "path": "dim-level-command.SourceUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "dim-level-command",
+        "isOnline": true,
+        "number": 13,
+        "oid": "9.13",
+        "path": "dim-level-command"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "dim-panel-speaker-cmd",
+      "number": 11,
+      "oid": "9.11",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.14.1",
+            "path": "dim-panel-speaker-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.14.2",
+            "path": "dim-panel-speaker-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "identifier": "DimSpeakerBy",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.14.3",
+            "path": "dim-panel-speaker-cmd.DimSpeakerBy",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.14.4",
+            "path": "dim-panel-speaker-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.14.5",
+            "path": "dim-panel-speaker-cmd.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.14.6.1",
+                "path": "dim-panel-speaker-cmd.DestinationPortAddress.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.14.6.2",
+                "path": "dim-panel-speaker-cmd.DestinationPortAddress.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.14.6.3",
+                "path": "dim-panel-speaker-cmd.DestinationPortAddress.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.14.6.4",
+                "path": "dim-panel-speaker-cmd.DestinationPortAddress.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "DestinationPortAddress",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.14.6",
+            "path": "dim-panel-speaker-cmd.DestinationPortAddress"
+          }
+        ],
+        "identifier": "dim-panel-speaker-cmd",
+        "isOnline": true,
+        "number": 14,
+        "oid": "9.14",
+        "path": "dim-panel-speaker-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "edit-conference-cmd",
+      "number": 12,
+      "oid": "9.12",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.15.1",
+            "path": "edit-conference-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "edit-conference-cmd",
+        "isOnline": true,
+        "number": 15,
+        "oid": "9.15",
+        "path": "edit-conference-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "edit-ifb-cmd",
+      "number": 13,
+      "oid": "9.13",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.16.1",
+            "path": "edit-ifb-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "edit-ifb-cmd",
+        "isOnline": true,
+        "number": 16,
+        "oid": "9.16",
+        "path": "edit-ifb-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "group",
+      "number": 14,
+      "oid": "9.14",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "IsTrunkEnabled",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.2.1",
+            "path": "group.IsTrunkEnabled",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 8",
+            "identifier": "Label",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.2.2",
+            "path": "group.Label",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 32",
+            "identifier": "LongName",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.2.3",
+            "path": "group.LongName",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.2.4",
+            "path": "group.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "readWrite",
+                "identifier": "port",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.2.5.1",
+                "path": "group.member.port",
+                "type": "string",
+                "value": null
+              }
+            ],
+            "description": "repeated: member.N = the path of a member port, with its talk/listen flags",
+            "identifier": "member",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.2.5",
+            "path": "group.member"
+          }
+        ],
+        "identifier": "group",
+        "isOnline": true,
+        "number": 2,
+        "oid": "9.2",
+        "path": "group"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "ifb",
+      "number": 15,
+      "oid": "9.15",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "enumMap": [
+              {
+                "key": "0 dB",
+                "value": 0
+              },
+              {
+                "key": "-3 dB",
+                "value": 1
+              },
+              {
+                "key": "-6 dB",
+                "value": 2
+              },
+              {
+                "key": "-9 dB",
+                "value": 3
+              },
+              {
+                "key": "-12 dB",
+                "value": 4
+              },
+              {
+                "key": "-18 dB",
+                "value": 5
+              },
+              {
+                "key": "-24 dB",
+                "value": 6
+              },
+              {
+                "key": "mute",
+                "value": 7
+              }
+            ],
+            "identifier": "DimLevel",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.3.1",
+            "path": "ifb.DimLevel",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "IsTrunkEnabled",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.3.2",
+            "path": "ifb.IsTrunkEnabled",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 8",
+            "identifier": "Label",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.3.3",
+            "path": "ifb.Label",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 32",
+            "identifier": "LongName",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.3.4",
+            "path": "ifb.LongName",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "Number",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.3.5",
+            "path": "ifb.Number",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.3.6",
+            "path": "ifb.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Owner",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.3.7",
+            "path": "ifb.Owner",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.3.8.1",
+                "path": "ifb.Input.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.3.8.2",
+                "path": "ifb.Input.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.3.8.3",
+                "path": "ifb.Input.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.3.8.4",
+                "path": "ifb.Input.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "Input",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.3.8",
+            "path": "ifb.Input"
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.3.9.1",
+                "path": "ifb.MixMinus.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.3.9.2",
+                "path": "ifb.MixMinus.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.3.9.3",
+                "path": "ifb.MixMinus.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.3.9.4",
+                "path": "ifb.MixMinus.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "MixMinus",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.3.9",
+            "path": "ifb.MixMinus"
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.3.10.1",
+                "path": "ifb.Output.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.3.10.2",
+                "path": "ifb.Output.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.3.10.3",
+                "path": "ifb.Output.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.3.10.4",
+                "path": "ifb.Output.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "Output",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.3.10",
+            "path": "ifb.Output"
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "readWrite",
+                "identifier": "port",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.3.11.1",
+                "path": "ifb.member.port",
+                "type": "string",
+                "value": null
+              }
+            ],
+            "description": "repeated: member.N = the path of a member port, with its talk/listen flags",
+            "identifier": "member",
+            "isOnline": true,
+            "number": 11,
+            "oid": "9.3.11",
+            "path": "ifb.member"
+          }
+        ],
+        "identifier": "ifb",
+        "isOnline": true,
+        "number": 3,
+        "oid": "9.3",
+        "path": "ifb"
+      }
+    },
+    {
+      "description": "a key of a panel; cmd is one of the command templates, by CommandType",
+      "identifier": "key",
+      "number": 16,
+      "oid": "9.16",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": 1,
+            "enumMap": [
+              {
+                "key": "No Unmute when activated, no mute when",
+                "value": 0
+              },
+              {
+                "key": "Unmute when activated, no mute when deactivated",
+                "value": 1
+              },
+              {
+                "key": "Unmute when activated, mute again when",
+                "value": 2
+              }
+            ],
+            "identifier": "ActionByKeyPressed",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.4.1",
+            "path": "key.ActionByKeyPressed",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "AutoLabelFlag",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.4.2",
+            "path": "key.AutoLabelFlag",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "AutoSubtitle",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.4.3",
+            "path": "key.AutoSubtitle",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "ClipLabelTo6Chars",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.4.4",
+            "path": "key.ClipLabelTo6Chars",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "Dim",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.4.5",
+            "path": "key.Dim",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "enumeration": "16=<none>",
+            "identifier": "GroupColor",
+            "isOnline": true,
+            "maximum": 16,
+            "minimum": 0,
+            "number": 6,
+            "oid": "9.4.6",
+            "path": "key.GroupColor",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "Icon",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.4.7",
+            "path": "key.Icon",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 2,
+            "enumMap": [
+              {
+                "key": "Auto",
+                "value": 1
+              },
+              {
+                "key": "Momentary(PTT)",
+                "value": 2
+              },
+              {
+                "key": "Latching",
+                "value": 3
+              }
+            ],
+            "identifier": "KeyMode",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.4.8",
+            "path": "key.KeyMode",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "max_len 8",
+            "identifier": "LabelValue",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.4.9",
+            "path": "key.LabelValue",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "enumMap": [
+              {
+                "key": "Net Default",
+                "value": 0
+              },
+              {
+                "key": "Permanent",
+                "value": 1
+              }
+            ],
+            "identifier": "LatchingTimeOut",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.4.10",
+            "path": "key.LatchingTimeOut",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "enumMap": [
+              {
+                "key": "initial off",
+                "value": 0
+              },
+              {
+                "key": "initial on",
+                "value": 1
+              }
+            ],
+            "identifier": "MonitoringState",
+            "isOnline": true,
+            "number": 11,
+            "oid": "9.4.11",
+            "path": "key.MonitoringState",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 12,
+            "oid": "9.4.12",
+            "path": "key.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "enumMap": [
+              {
+                "key": "<none>",
+                "value": 0
+              },
+              {
+                "key": "Group 1",
+                "value": 1
+              },
+              {
+                "key": "Group 2",
+                "value": 2
+              },
+              {
+                "key": "Group 3",
+                "value": 3
+              },
+              {
+                "key": "Group 4",
+                "value": 4
+              }
+            ],
+            "identifier": "RadioButton",
+            "isOnline": true,
+            "number": 13,
+            "oid": "9.4.13",
+            "path": "key.RadioButton",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "RestartLatchingTimer",
+            "isOnline": true,
+            "number": 14,
+            "oid": "9.4.14",
+            "path": "key.RestartLatchingTimer",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "RestoreVolumeLevel",
+            "isOnline": true,
+            "number": 15,
+            "oid": "9.4.15",
+            "path": "key.RestoreVolumeLevel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "identifier": "ShowSubtitle",
+            "isOnline": true,
+            "number": 16,
+            "oid": "9.4.16",
+            "path": "key.ShowSubtitle",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "empty",
+            "identifier": "Subtitle",
+            "isOnline": true,
+            "number": 17,
+            "oid": "9.4.17",
+            "path": "key.Subtitle",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "UseScrollListEntryKeyMode",
+            "isOnline": true,
+            "number": 18,
+            "oid": "9.4.18",
+            "path": "key.UseScrollListEntryKeyMode",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "readWrite",
+                "identifier": "CommandType",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.4.19.1",
+                "path": "key.cmd.CommandType",
+                "type": "string",
+                "value": null
+              }
+            ],
+            "description": "the command of the key: one of the command templates, named by CommandType",
+            "identifier": "cmd",
+            "isOnline": true,
+            "number": 19,
+            "oid": "9.4.19",
+            "path": "key.cmd"
+          }
+        ],
+        "identifier": "key",
+        "isOnline": true,
+        "number": 4,
+        "oid": "9.4",
+        "path": "key"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "kill-partyline-mic-cmd",
+      "number": 17,
+      "oid": "9.17",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.17.1",
+            "path": "kill-partyline-mic-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.17.2",
+            "path": "kill-partyline-mic-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.17.3",
+            "path": "kill-partyline-mic-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "kill-partyline-mic-cmd",
+        "isOnline": true,
+        "number": 17,
+        "oid": "9.17",
+        "path": "kill-partyline-mic-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "listen-to-port-cmd",
+      "number": 18,
+      "oid": "9.18",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "AllowSetInOutGain",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.18.1",
+            "path": "listen-to-port-cmd.AllowSetInOutGain",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.18.2",
+            "path": "listen-to-port-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.18.3",
+            "path": "listen-to-port-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DisableCrosspointVolume",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.18.4",
+            "path": "listen-to-port-cmd.DisableCrosspointVolume",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "LocalUsesSecondChannel",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.18.5",
+            "path": "listen-to-port-cmd.LocalUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.18.6",
+            "path": "listen-to-port-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "Priority",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.18.7",
+            "path": "listen-to-port-cmd.Priority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "SourceUsesSecondChannel",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.18.8",
+            "path": "listen-to-port-cmd.SourceUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.18.9",
+            "path": "listen-to-port-cmd.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "TrunkcallPriority",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.18.10",
+            "path": "listen-to-port-cmd.TrunkcallPriority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.18.11.1",
+                "path": "listen-to-port-cmd.SourcePortAddress.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.18.11.2",
+                "path": "listen-to-port-cmd.SourcePortAddress.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.18.11.3",
+                "path": "listen-to-port-cmd.SourcePortAddress.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.18.11.4",
+                "path": "listen-to-port-cmd.SourcePortAddress.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "SourcePortAddress",
+            "isOnline": true,
+            "number": 11,
+            "oid": "9.18.11",
+            "path": "listen-to-port-cmd.SourcePortAddress"
+          }
+        ],
+        "identifier": "listen-to-port-cmd",
+        "isOnline": true,
+        "number": 18,
+        "oid": "9.18",
+        "path": "listen-to-port-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "logic-cmd",
+      "number": 19,
+      "oid": "9.19",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.19.1",
+            "path": "logic-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "LogicSource",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.19.2",
+            "path": "logic-cmd.LogicSource",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "logic-cmd",
+        "isOnline": true,
+        "number": 19,
+        "oid": "9.19",
+        "path": "logic-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "monitor-port-cmd",
+      "number": 20,
+      "oid": "9.20",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DestinationUsesSecondChannel",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.20.1",
+            "path": "monitor-port-cmd.DestinationUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.20.2",
+            "path": "monitor-port-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "SourceUsesSecondChannel",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.20.3",
+            "path": "monitor-port-cmd.SourceUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "TrunkingNetAddr",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.20.4",
+            "path": "monitor-port-cmd.TrunkingNetAddr",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "TrunkingPortAddr",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.20.5",
+            "path": "monitor-port-cmd.TrunkingPortAddr",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "monitor-port-cmd",
+        "isOnline": true,
+        "number": 20,
+        "oid": "9.20",
+        "path": "monitor-port-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "remote-key-cmd",
+      "number": 21,
+      "oid": "9.21",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "ExpansionPanel",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.21.1",
+            "path": "remote-key-cmd.ExpansionPanel",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.21.2",
+            "path": "remote-key-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "KeyNumber",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.21.3",
+            "path": "remote-key-cmd.KeyNumber",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "enumeration": "1=shift page|2=virtual key|1=shift page|2=virtual key",
+            "identifier": "KeyPage",
+            "isOnline": true,
+            "maximum": 2,
+            "minimum": 1,
+            "number": 4,
+            "oid": "9.21.4",
+            "path": "remote-key-cmd.KeyPage",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "LockKey",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.21.5",
+            "path": "remote-key-cmd.LockKey",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "MarkerFlag",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.21.6",
+            "path": "remote-key-cmd.MarkerFlag",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 0,
+            "identifier": "MarkerValue",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.21.7",
+            "path": "remote-key-cmd.MarkerValue",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "PressKey",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.21.8",
+            "path": "remote-key-cmd.PressKey",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "PressKeySecondary",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.21.9",
+            "path": "remote-key-cmd.PressKeySecondary",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "TextFlag",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.21.10",
+            "path": "remote-key-cmd.TextFlag",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "TextValue",
+            "isOnline": true,
+            "number": 11,
+            "oid": "9.21.11",
+            "path": "remote-key-cmd.TextValue",
+            "type": "string",
+            "value": null
+          }
+        ],
+        "identifier": "remote-key-cmd",
+        "isOnline": true,
+        "number": 21,
+        "oid": "9.21",
+        "path": "remote-key-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "reply-cmd",
+      "number": 22,
+      "oid": "9.22",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.22.1",
+            "path": "reply-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.22.2",
+            "path": "reply-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DuplexEnabledForCall2Port",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.22.3",
+            "path": "reply-cmd.DuplexEnabledForCall2Port",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "EnableForCallsFromConf",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.22.4",
+            "path": "reply-cmd.EnableForCallsFromConf",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.22.5",
+            "path": "reply-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "enumMap": [
+              {
+                "key": "Below Standard",
+                "value": 0
+              },
+              {
+                "key": "Standard",
+                "value": 1
+              },
+              {
+                "key": "High",
+                "value": 2
+              },
+              {
+                "key": "Paging",
+                "value": 3
+              },
+              {
+                "key": "Emergency",
+                "value": 4
+              }
+            ],
+            "identifier": "Priority",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.22.6",
+            "path": "reply-cmd.Priority",
+            "type": "enum",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "ScrollEnabled",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.22.7",
+            "path": "reply-cmd.ScrollEnabled",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "reply-cmd",
+        "isOnline": true,
+        "number": 22,
+        "oid": "9.22",
+        "path": "reply-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "route-cmd",
+      "number": 23,
+      "oid": "9.23",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.23.1",
+            "path": "route-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.23.2",
+            "path": "route-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "DestinationUsesSecondChannel",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.23.3",
+            "path": "route-cmd.DestinationUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "description": "observed: not in the specification's tables",
+            "identifier": "DisableCrossPointVolAdjust",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.23.4",
+            "path": "route-cmd.DisableCrossPointVolAdjust",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 5,
+            "oid": "9.23.5",
+            "path": "route-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": 1,
+            "identifier": "Priority",
+            "isOnline": true,
+            "number": 6,
+            "oid": "9.23.6",
+            "path": "route-cmd.Priority",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "SourceUsesSecondChannel",
+            "isOnline": true,
+            "number": 7,
+            "oid": "9.23.7",
+            "path": "route-cmd.SourceUsesSecondChannel",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Target",
+            "isOnline": true,
+            "number": 8,
+            "oid": "9.23.8",
+            "path": "route-cmd.Target",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.23.9.1",
+                "path": "route-cmd.DestinationPortAddress.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.23.9.2",
+                "path": "route-cmd.DestinationPortAddress.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.23.9.3",
+                "path": "route-cmd.DestinationPortAddress.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.23.9.4",
+                "path": "route-cmd.DestinationPortAddress.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "DestinationPortAddress",
+            "isOnline": true,
+            "number": 9,
+            "oid": "9.23.9",
+            "path": "route-cmd.DestinationPortAddress"
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IsInput",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.23.10.1",
+                "path": "route-cmd.SourcePortAddress.IsInput",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.23.10.2",
+                "path": "route-cmd.SourcePortAddress.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.23.10.3",
+                "path": "route-cmd.SourcePortAddress.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.23.10.4",
+                "path": "route-cmd.SourcePortAddress.Port",
+                "type": "integer",
+                "value": null
+              }
+            ],
+            "identifier": "SourcePortAddress",
+            "isOnline": true,
+            "number": 10,
+            "oid": "9.23.10",
+            "path": "route-cmd.SourcePortAddress"
+          }
+        ],
+        "identifier": "route-cmd",
+        "isOnline": true,
+        "number": 23,
+        "oid": "9.23",
+        "path": "route-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "select-audiopatch-cmd",
+      "number": 24,
+      "oid": "9.24",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "Audiopatch",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.24.1",
+            "path": "select-audiopatch-cmd.Audiopatch",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.24.2",
+            "path": "select-audiopatch-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "select-audiopatch-cmd",
+        "isOnline": true,
+        "number": 24,
+        "oid": "9.24",
+        "path": "select-audiopatch-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "send-string-cmd",
+      "number": 25,
+      "oid": "9.25",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "identifier": "CommandType",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.25.1",
+            "path": "send-string-cmd.CommandType",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Description",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.25.2",
+            "path": "send-string-cmd.Description",
+            "type": "string",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "ObjectID",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.25.3",
+            "path": "send-string-cmd.ObjectID",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "SendString",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.25.4",
+            "path": "send-string-cmd.SendString",
+            "type": "string",
+            "value": null
+          }
+        ],
+        "identifier": "send-string-cmd",
+        "isOnline": true,
+        "number": 25,
+        "oid": "9.25",
+        "path": "send-string-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "set-input-output-gain-cmd",
+      "number": 26,
+      "oid": "9.26",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.26.1",
+            "path": "set-input-output-gain-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "IsInput",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.26.2",
+            "path": "set-input-output-gain-cmd.IsInput",
+            "type": "boolean",
+            "value": null
+          }
+        ],
+        "identifier": "set-input-output-gain-cmd",
+        "isOnline": true,
+        "number": 26,
+        "oid": "9.26",
+        "path": "set-input-output-gain-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "sidetone-cmd",
+      "number": 27,
+      "oid": "9.27",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "EnableForHeadsetMode",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.27.1",
+            "path": "sidetone-cmd.EnableForHeadsetMode",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "false",
+            "identifier": "EnableForSpeakerMode",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.27.2",
+            "path": "sidetone-cmd.EnableForSpeakerMode",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.27.3",
+            "path": "sidetone-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "default": -6,
+            "identifier": "NormSidetoneLevel",
+            "isOnline": true,
+            "number": 4,
+            "oid": "9.27.4",
+            "path": "sidetone-cmd.NormSidetoneLevel",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "sidetone-cmd",
+        "isOnline": true,
+        "number": 27,
+        "oid": "9.27",
+        "path": "sidetone-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "switch-gpio-out-cmd",
+      "number": 28,
+      "oid": "9.28",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.28.1",
+            "path": "switch-gpio-out-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "GPIONumber",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.28.2",
+            "path": "switch-gpio-out-cmd.GPIONumber",
+            "type": "integer",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Slot",
+            "isOnline": true,
+            "number": 3,
+            "oid": "9.28.3",
+            "path": "switch-gpio-out-cmd.Slot",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "switch-gpio-out-cmd",
+        "isOnline": true,
+        "number": 28,
+        "oid": "9.28",
+        "path": "switch-gpio-out-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "telephone-dial-hangup-cmd",
+      "number": 29,
+      "oid": "9.29",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.29.1",
+            "path": "telephone-dial-hangup-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "Function",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.29.2",
+            "path": "telephone-dial-hangup-cmd.Function",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "telephone-dial-hangup-cmd",
+        "isOnline": true,
+        "number": 29,
+        "oid": "9.29",
+        "path": "telephone-dial-hangup-cmd"
+      }
+    },
+    {
+      "description": null,
+      "identifier": "telephone-dial-keypad-cmd",
+      "number": 30,
+      "oid": "9.30",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "default": "true",
+            "identifier": "ForceFail",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.30.1",
+            "path": "telephone-dial-keypad-cmd.ForceFail",
+            "type": "boolean",
+            "value": null
+          },
+          {
+            "access": "read",
+            "identifier": "KeyFunction",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.30.2",
+            "path": "telephone-dial-keypad-cmd.KeyFunction",
+            "type": "integer",
+            "value": null
+          }
+        ],
+        "identifier": "telephone-dial-keypad-cmd",
+        "isOnline": true,
+        "number": 30,
+        "oid": "9.30",
+        "path": "telephone-dial-keypad-cmd"
+      }
+    }
+  ]
+}

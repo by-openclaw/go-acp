@@ -82,3 +82,21 @@ func TestVolumeRaw(t *testing.T) {
 		}
 	}
 }
+
+func TestCardOfPortOnAFrameWhoseCardsShareItsNode(t *testing.T) {
+	m := &Model{Cards: []*Card{{Node: 93, Bay: 1, Type: "AES67"}, {Node: 93, Bay: 2, Type: "CAT5"}, {Node: 93, Bay: 3, Type: "MADI"}}}
+	for port, want := range map[int]string{0: "AES67", 7: "AES67", 8: "CAT5", 16: "MADI", 23: "MADI", 24: ""} {
+		got := ""
+		if c := m.CardOfPort(nil, &Port{Node: 93, Port: port}); c != nil {
+			got = c.Type
+		}
+		if got != want {
+			t.Errorf("port %d: %q, want %q", port, got, want)
+		}
+	}
+	// An Artist-1024: the card is the one of the port's own node.
+	sic := &Card{Node: 60, Bay: 4, Type: "AES67"}
+	if c := m.CardOfPort(map[int]*Card{61: sic}, &Port{Node: 61, Port: 1030}); c != sic {
+		t.Errorf("node card: %+v", c)
+	}
+}

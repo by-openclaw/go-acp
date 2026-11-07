@@ -1,0 +1,996 @@
+{
+  "model": "MADI",
+  "protocol": "rrcs",
+  "root": {
+    "access": "read",
+    "children": [
+      {
+        "access": "read",
+        "identifier": "Bay",
+        "isOnline": true,
+        "number": 1,
+        "oid": "1.1",
+        "path": "MADI.Bay",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "Channels",
+        "isOnline": true,
+        "number": 2,
+        "oid": "1.2",
+        "path": "MADI.Channels",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "ClientCardType",
+        "isOnline": true,
+        "number": 3,
+        "oid": "1.3",
+        "path": "MADI.ClientCardType",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "ClientCardTypeString",
+        "isOnline": true,
+        "number": 4,
+        "oid": "1.4",
+        "path": "MADI.ClientCardTypeString",
+        "type": "string",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "DownInterface",
+        "isOnline": true,
+        "number": 5,
+        "oid": "1.5",
+        "path": "MADI.DownInterface",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "FrameLength",
+        "isOnline": true,
+        "number": 6,
+        "oid": "1.6",
+        "path": "MADI.FrameLength",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "Node",
+        "isOnline": true,
+        "number": 7,
+        "oid": "1.7",
+        "path": "MADI.Node",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "ObjectID",
+        "isOnline": true,
+        "number": 8,
+        "oid": "1.8",
+        "path": "MADI.ObjectID",
+        "type": "integer",
+        "value": null
+      },
+      {
+        "access": "read",
+        "identifier": "UpInterface",
+        "isOnline": true,
+        "number": 9,
+        "oid": "1.9",
+        "path": "MADI.UpInterface",
+        "type": "integer",
+        "value": null
+      }
+    ],
+    "identifier": "MADI",
+    "isOnline": true,
+    "number": 1,
+    "oid": "1",
+    "path": "MADI"
+  },
+  "sw_rev": "9.0.RR1-11",
+  "templates": [
+    {
+      "description": null,
+      "identifier": "FOUR_WIRE_SPLIT",
+      "number": 1,
+      "oid": "9.1",
+      "template": {
+        "access": "read",
+        "children": [
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "description": "max_len 8",
+                "identifier": "Alias",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.1.1.1",
+                "path": "FOUR_WIRE_SPLIT.in.Alias",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "IndicateBusyOnCallSend",
+                "isOnline": true,
+                "number": 2,
+                "oid": "9.1.1.2",
+                "path": "FOUR_WIRE_SPLIT.in.IndicateBusyOnCallSend",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Input",
+                "isOnline": true,
+                "number": 3,
+                "oid": "9.1.1.3",
+                "path": "FOUR_WIRE_SPLIT.in.Input",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "IsTrunkEnabled",
+                "isOnline": true,
+                "number": 4,
+                "oid": "9.1.1.4",
+                "path": "FOUR_WIRE_SPLIT.in.IsTrunkEnabled",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "IsTrunkLineEnabled",
+                "isOnline": true,
+                "number": 5,
+                "oid": "9.1.1.5",
+                "path": "FOUR_WIRE_SPLIT.in.IsTrunkLineEnabled",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "KeyCount",
+                "isOnline": true,
+                "number": 6,
+                "oid": "9.1.1.6",
+                "path": "FOUR_WIRE_SPLIT.in.KeyCount",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "description": "max_len 8",
+                "identifier": "Label",
+                "isOnline": true,
+                "number": 7,
+                "oid": "9.1.1.7",
+                "path": "FOUR_WIRE_SPLIT.in.Label",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "description": "max_len 32",
+                "identifier": "LongName",
+                "isOnline": true,
+                "number": 8,
+                "oid": "9.1.1.8",
+                "path": "FOUR_WIRE_SPLIT.in.LongName",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Name",
+                "isOnline": true,
+                "number": 9,
+                "oid": "9.1.1.9",
+                "path": "FOUR_WIRE_SPLIT.in.Name",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 10,
+                "oid": "9.1.1.10",
+                "path": "FOUR_WIRE_SPLIT.in.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 11,
+                "oid": "9.1.1.11",
+                "path": "FOUR_WIRE_SPLIT.in.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "ObjectID",
+                "isOnline": true,
+                "number": 12,
+                "oid": "9.1.1.12",
+                "path": "FOUR_WIRE_SPLIT.in.ObjectID",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Output",
+                "isOnline": true,
+                "number": 13,
+                "oid": "9.1.1.13",
+                "path": "FOUR_WIRE_SPLIT.in.Output",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "PageCount",
+                "isOnline": true,
+                "number": 14,
+                "oid": "9.1.1.14",
+                "path": "FOUR_WIRE_SPLIT.in.PageCount",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 15,
+                "oid": "9.1.1.15",
+                "path": "FOUR_WIRE_SPLIT.in.Port",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "PortExType",
+                "isOnline": true,
+                "number": 16,
+                "oid": "9.1.1.16",
+                "path": "FOUR_WIRE_SPLIT.in.PortExType",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "PortType",
+                "isOnline": true,
+                "number": 17,
+                "oid": "9.1.1.17",
+                "path": "FOUR_WIRE_SPLIT.in.PortType",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "ShowOnReply",
+                "isOnline": true,
+                "number": 18,
+                "oid": "9.1.1.18",
+                "path": "FOUR_WIRE_SPLIT.in.ShowOnReply",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "enumMap": [
+                  {
+                    "key": "no delay",
+                    "value": -1
+                  },
+                  {
+                    "key": "50 ms",
+                    "value": 0
+                  },
+                  {
+                    "key": "100 ms",
+                    "value": 1
+                  },
+                  {
+                    "key": "200 ms",
+                    "value": 2
+                  },
+                  {
+                    "key": "400 ms",
+                    "value": 3
+                  },
+                  {
+                    "key": "800 ms",
+                    "value": 4
+                  },
+                  {
+                    "key": "1600 ms",
+                    "value": 5
+                  },
+                  {
+                    "key": "3200 ms",
+                    "value": 6
+                  },
+                  {
+                    "key": "6400 ms",
+                    "value": 7
+                  }
+                ],
+                "identifier": "VoxHoldTime",
+                "isOnline": true,
+                "number": 19,
+                "oid": "9.1.1.19",
+                "path": "FOUR_WIRE_SPLIT.in.VoxHoldTime",
+                "type": "enum",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "VoxOffTh",
+                "isOnline": true,
+                "number": 20,
+                "oid": "9.1.1.20",
+                "path": "FOUR_WIRE_SPLIT.in.VoxOffTh",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "enumeration": "0=12 dBu|1=10 dBu|23=-34 dBu|24=-36 dBu|25=permanent",
+                "identifier": "VoxOnTh",
+                "isOnline": true,
+                "maximum": 25,
+                "minimum": 0,
+                "number": 21,
+                "oid": "9.1.1.21",
+                "path": "FOUR_WIRE_SPLIT.in.VoxOnTh",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "children": [
+                  {
+                    "access": "readWrite",
+                    "enumeration": "16=L16|24=L24",
+                    "identifier": "BitDepth",
+                    "isOnline": true,
+                    "maximum": 24,
+                    "minimum": 16,
+                    "number": 1,
+                    "oid": "9.1.1.22.1",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.BitDepth",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Channels",
+                    "isOnline": true,
+                    "maximum": 16,
+                    "minimum": 1,
+                    "number": 2,
+                    "oid": "9.1.1.22.2",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.Channels",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Multicast",
+                    "isOnline": true,
+                    "number": 3,
+                    "oid": "9.1.1.22.3",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.Multicast",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Multicast2",
+                    "isOnline": true,
+                    "number": 4,
+                    "oid": "9.1.1.22.4",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.Multicast2",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "MulticastPort",
+                    "isOnline": true,
+                    "number": 5,
+                    "oid": "9.1.1.22.5",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.MulticastPort",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "MulticastPort2",
+                    "isOnline": true,
+                    "number": 6,
+                    "oid": "9.1.1.22.6",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.MulticastPort2",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "enumeration": "125|250|333|1000|1333",
+                    "identifier": "PacketTime",
+                    "isOnline": true,
+                    "number": 7,
+                    "oid": "9.1.1.22.7",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.PacketTime",
+                    "type": "integer",
+                    "unit": "us",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "PayloadType",
+                    "isOnline": true,
+                    "maximum": 127,
+                    "minimum": 96,
+                    "number": 8,
+                    "oid": "9.1.1.22.8",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.PayloadType",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "read",
+                    "enumMap": [
+                      {
+                        "key": "Synton",
+                        "value": 0
+                      },
+                      {
+                        "key": "Synchron",
+                        "value": 1
+                      }
+                    ],
+                    "identifier": "PlayMode",
+                    "isOnline": true,
+                    "number": 9,
+                    "oid": "9.1.1.22.9",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.PlayMode",
+                    "type": "enum",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "enumMap": [
+                      {
+                        "key": "Manual",
+                        "value": 2
+                      },
+                      {
+                        "key": "RTSP",
+                        "value": 3
+                      },
+                      {
+                        "key": "NMOS",
+                        "value": 5
+                      }
+                    ],
+                    "identifier": "Protocol",
+                    "isOnline": true,
+                    "number": 10,
+                    "oid": "9.1.1.22.10",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.Protocol",
+                    "type": "enum",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "RTSPUri",
+                    "isOnline": true,
+                    "number": 11,
+                    "oid": "9.1.1.22.11",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.RTSPUri",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "RTSPUri2",
+                    "isOnline": true,
+                    "number": 12,
+                    "oid": "9.1.1.22.12",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.RTSPUri2",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "read",
+                    "default": 3,
+                    "identifier": "ReceiveBuffer",
+                    "isOnline": true,
+                    "number": 13,
+                    "oid": "9.1.1.22.13",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.ReceiveBuffer",
+                    "type": "integer",
+                    "unit": "packets",
+                    "value": null
+                  },
+                  {
+                    "access": "read",
+                    "identifier": "SSRC",
+                    "isOnline": true,
+                    "number": 14,
+                    "oid": "9.1.1.22.14",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.SSRC",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Selection",
+                    "isOnline": true,
+                    "number": 15,
+                    "oid": "9.1.1.22.15",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.Selection",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "SourceIp",
+                    "isOnline": true,
+                    "number": 16,
+                    "oid": "9.1.1.22.16",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.SourceIp",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "SourceIp2",
+                    "isOnline": true,
+                    "number": 17,
+                    "oid": "9.1.1.22.17",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.SourceIp2",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "read",
+                    "identifier": "TimeStampOffset",
+                    "isOnline": true,
+                    "number": 18,
+                    "oid": "9.1.1.22.18",
+                    "path": "FOUR_WIRE_SPLIT.in.PortAes67Input.TimeStampOffset",
+                    "type": "integer",
+                    "value": null
+                  }
+                ],
+                "identifier": "PortAes67Input",
+                "isOnline": true,
+                "number": 22,
+                "oid": "9.1.1.22",
+                "path": "FOUR_WIRE_SPLIT.in.PortAes67Input"
+              }
+            ],
+            "identifier": "in",
+            "isOnline": true,
+            "number": 1,
+            "oid": "9.1.1",
+            "path": "FOUR_WIRE_SPLIT.in"
+          },
+          {
+            "access": "read",
+            "children": [
+              {
+                "access": "read",
+                "identifier": "IndicateBusyOnCallRecv",
+                "isOnline": true,
+                "number": 1,
+                "oid": "9.1.2.1",
+                "path": "FOUR_WIRE_SPLIT.out.IndicateBusyOnCallRecv",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "enumeration": "0=6 dB|1=3 dB|6=-12 dB|7=-18 dB|8=-24 dB|9=mute",
+                "identifier": "InitialConferenceVol",
+                "isOnline": true,
+                "maximum": 9,
+                "minimum": 0,
+                "number": 2,
+                "oid": "9.1.2.2",
+                "path": "FOUR_WIRE_SPLIT.out.InitialConferenceVol",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "enumeration": "0=6 dB|1=3 dB|6=-12 dB|7=-18 dB|8=-24 dB|9=mute",
+                "identifier": "InitialIfbVol",
+                "isOnline": true,
+                "maximum": 9,
+                "minimum": 0,
+                "number": 3,
+                "oid": "9.1.2.3",
+                "path": "FOUR_WIRE_SPLIT.out.InitialIfbVol",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "enumeration": "0=6 dB|1=3 dB|6=-12 dB|7=-18 dB|8=-24 dB|9=mute",
+                "identifier": "InitialSingleVol",
+                "isOnline": true,
+                "maximum": 9,
+                "minimum": 0,
+                "number": 4,
+                "oid": "9.1.2.4",
+                "path": "FOUR_WIRE_SPLIT.out.InitialSingleVol",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Input",
+                "isOnline": true,
+                "number": 5,
+                "oid": "9.1.2.5",
+                "path": "FOUR_WIRE_SPLIT.out.Input",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "IsTrunkEnabled",
+                "isOnline": true,
+                "number": 6,
+                "oid": "9.1.2.6",
+                "path": "FOUR_WIRE_SPLIT.out.IsTrunkEnabled",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "IsTrunkLineEnabled",
+                "isOnline": true,
+                "number": 7,
+                "oid": "9.1.2.7",
+                "path": "FOUR_WIRE_SPLIT.out.IsTrunkLineEnabled",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "KeyCount",
+                "isOnline": true,
+                "number": 8,
+                "oid": "9.1.2.8",
+                "path": "FOUR_WIRE_SPLIT.out.KeyCount",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "KeypadShortcut",
+                "isOnline": true,
+                "number": 9,
+                "oid": "9.1.2.9",
+                "path": "FOUR_WIRE_SPLIT.out.KeypadShortcut",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "description": "max_len 8",
+                "identifier": "Label",
+                "isOnline": true,
+                "number": 10,
+                "oid": "9.1.2.10",
+                "path": "FOUR_WIRE_SPLIT.out.Label",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "description": "max_len 32",
+                "identifier": "LongName",
+                "isOnline": true,
+                "number": 11,
+                "oid": "9.1.2.11",
+                "path": "FOUR_WIRE_SPLIT.out.LongName",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Name",
+                "isOnline": true,
+                "number": 12,
+                "oid": "9.1.2.12",
+                "path": "FOUR_WIRE_SPLIT.out.Name",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Net",
+                "isOnline": true,
+                "number": 13,
+                "oid": "9.1.2.13",
+                "path": "FOUR_WIRE_SPLIT.out.Net",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Node",
+                "isOnline": true,
+                "number": 14,
+                "oid": "9.1.2.14",
+                "path": "FOUR_WIRE_SPLIT.out.Node",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "ObjectID",
+                "isOnline": true,
+                "number": 15,
+                "oid": "9.1.2.15",
+                "path": "FOUR_WIRE_SPLIT.out.ObjectID",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Output",
+                "isOnline": true,
+                "number": 16,
+                "oid": "9.1.2.16",
+                "path": "FOUR_WIRE_SPLIT.out.Output",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "PageCount",
+                "isOnline": true,
+                "number": 17,
+                "oid": "9.1.2.17",
+                "path": "FOUR_WIRE_SPLIT.out.PageCount",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "Port",
+                "isOnline": true,
+                "number": 18,
+                "oid": "9.1.2.18",
+                "path": "FOUR_WIRE_SPLIT.out.Port",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "PortExType",
+                "isOnline": true,
+                "number": 19,
+                "oid": "9.1.2.19",
+                "path": "FOUR_WIRE_SPLIT.out.PortExType",
+                "type": "integer",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "PortType",
+                "isOnline": true,
+                "number": 20,
+                "oid": "9.1.2.20",
+                "path": "FOUR_WIRE_SPLIT.out.PortType",
+                "type": "string",
+                "value": null
+              },
+              {
+                "access": "read",
+                "identifier": "ShowOnReply",
+                "isOnline": true,
+                "number": 21,
+                "oid": "9.1.2.21",
+                "path": "FOUR_WIRE_SPLIT.out.ShowOnReply",
+                "type": "boolean",
+                "value": null
+              },
+              {
+                "access": "read",
+                "children": [
+                  {
+                    "access": "readWrite",
+                    "enumeration": "16=L16|24=L24",
+                    "identifier": "BitDepth",
+                    "isOnline": true,
+                    "maximum": 24,
+                    "minimum": 16,
+                    "number": 1,
+                    "oid": "9.1.2.22.1",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.BitDepth",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Channels",
+                    "isOnline": true,
+                    "maximum": 16,
+                    "minimum": 1,
+                    "number": 2,
+                    "oid": "9.1.2.22.2",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.Channels",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Multicast",
+                    "isOnline": true,
+                    "number": 3,
+                    "oid": "9.1.2.22.3",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.Multicast",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Multicast2",
+                    "isOnline": true,
+                    "number": 4,
+                    "oid": "9.1.2.22.4",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.Multicast2",
+                    "type": "string",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "MulticastPort",
+                    "isOnline": true,
+                    "number": 5,
+                    "oid": "9.1.2.22.5",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.MulticastPort",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "MulticastPort2",
+                    "isOnline": true,
+                    "number": 6,
+                    "oid": "9.1.2.22.6",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.MulticastPort2",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "enumeration": "125|250|333|1000|1333",
+                    "identifier": "PacketTime",
+                    "isOnline": true,
+                    "number": 7,
+                    "oid": "9.1.2.22.7",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.PacketTime",
+                    "type": "integer",
+                    "unit": "us",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "PayloadType",
+                    "isOnline": true,
+                    "maximum": 127,
+                    "minimum": 96,
+                    "number": 8,
+                    "oid": "9.1.2.22.8",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.PayloadType",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "enumMap": [
+                      {
+                        "key": "Manual",
+                        "value": 2
+                      },
+                      {
+                        "key": "RTSP",
+                        "value": 3
+                      },
+                      {
+                        "key": "NMOS",
+                        "value": 5
+                      }
+                    ],
+                    "identifier": "Protocol",
+                    "isOnline": true,
+                    "number": 9,
+                    "oid": "9.1.2.22.9",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.Protocol",
+                    "type": "enum",
+                    "value": null
+                  },
+                  {
+                    "access": "read",
+                    "identifier": "SSRC",
+                    "isOnline": true,
+                    "number": 10,
+                    "oid": "9.1.2.22.10",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.SSRC",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "readWrite",
+                    "identifier": "Selection",
+                    "isOnline": true,
+                    "number": 11,
+                    "oid": "9.1.2.22.11",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.Selection",
+                    "type": "integer",
+                    "value": null
+                  },
+                  {
+                    "access": "read",
+                    "identifier": "TimeStampOffset",
+                    "isOnline": true,
+                    "number": 12,
+                    "oid": "9.1.2.22.12",
+                    "path": "FOUR_WIRE_SPLIT.out.PortAes67Output.TimeStampOffset",
+                    "type": "integer",
+                    "value": null
+                  }
+                ],
+                "identifier": "PortAes67Output",
+                "isOnline": true,
+                "number": 22,
+                "oid": "9.1.2.22",
+                "path": "FOUR_WIRE_SPLIT.out.PortAes67Output"
+              }
+            ],
+            "identifier": "out",
+            "isOnline": true,
+            "number": 2,
+            "oid": "9.1.2",
+            "path": "FOUR_WIRE_SPLIT.out"
+          }
+        ],
+        "identifier": "FOUR_WIRE_SPLIT",
+        "isOnline": true,
+        "number": 1,
+        "oid": "9.1",
+        "path": "FOUR_WIRE_SPLIT"
+      }
+    }
+  ]
+}

@@ -113,6 +113,8 @@ type DMSet struct {
 	Types []TypeStat
 	// typeOfCard says which card model holds the template of a type.
 	typeOfCard map[string]*DMFile
+	// cardHas says which card models hold which port type: model|type.
+	cardHas map[string]bool
 }
 
 // BuildDMs makes the models of a system from its model and the version
@@ -126,7 +128,7 @@ func BuildDMs(m *Model, version string, exTypes map[int]string) (*DMSet, error) 
 		return nil, fmt.Errorf("rrcs: the version of the gateway is not known")
 	}
 	target := hostOnly(m.Target)
-	set := &DMSet{Version: version, typeOfCard: map[string]*DMFile{}}
+	set := &DMSet{Version: version, typeOfCard: map[string]*DMFile{}, cardHas: map[string]bool{}}
 
 	// The node: its own properties as the root, the system's types as
 	// templates.
@@ -198,6 +200,18 @@ func BuildDMs(m *Model, version string, exTypes map[int]string) (*DMSet, error) 
 		if owner == nil && len(set.Cards) > 0 {
 			owner = set.Cards[0]
 		}
+		// The other card types that carry the type get the template too.
+		for _, other := range t.cards {
+			if o := cards[other]; o != nil && o != owner {
+				list := cardTemplates[o.Model]
+				n := len(list) + 1
+				oid := "9." + strconv.Itoa(n)
+				list = append(list, &canonical.TemplateEntry{Number: n, OID: oid, Identifier: t.node.ident, Template: t.node.build(n, t.node.ident, oid)})
+				cardTemplates[o.Model] = list
+				o.Types = append(o.Types, t.stat)
+				set.cardHas[o.Model+"|"+t.node.ident] = true
+			}
+		}
 		if owner == nil {
 			// A system without client cards: the port types sit with
 			// the node.
@@ -215,6 +229,7 @@ func BuildDMs(m *Model, version string, exTypes map[int]string) (*DMSet, error) 
 			cardTemplates[owner.Model] = list
 			owner.Types = append(owner.Types, t.stat)
 			set.typeOfCard[t.node.ident] = owner
+			set.cardHas[owner.Model+"|"+t.node.ident] = true
 		}
 		set.Types = append(set.Types, t.stat)
 	}
@@ -554,6 +569,10 @@ type namedTemplate struct {
 	desc string
 	stat TypeStat
 	card string
+	// cards is every card type that carries a port of this type: the
+	// template goes into each of their models (a 4-wire split on an AES67
+	// card and on a MADI card, oracle 2026-11-07).
+	cards []string
 }
 
 // commandTemplates is one shape per command type: those of the
@@ -625,6 +644,7 @@ type portType struct {
 	stat    TypeStat
 	noted   map[string]bool
 	card    string
+	cardSet map[string]bool
 	keys    bool
 	vfunc   bool
 }
@@ -649,8 +669,14 @@ func portTemplates(target string, m *Model, exTypes map[int]string, cardOfNode m
 			types[name] = t
 			order = append(order, name)
 		}
-		if c := cardOfNode[p.Node]; c != nil && t.card == "" {
-			t.card = c.Type
+		if c := m.CardOfPort(cardOfNode, p); c != nil {
+			if t.card == "" {
+				t.card = c.Type
+			}
+			if t.cardSet == nil {
+				t.cardSet = map[string]bool{}
+			}
+			t.cardSet[c.Type] = true
 		}
 		t.strings[p.Type] = true
 		t.ports[[2]int{p.Node, p.Port}] = true
@@ -717,7 +743,12 @@ func portTemplates(target string, m *Model, exTypes map[int]string, cardOfNode m
 		sort.Strings(t.stat.Strings)
 		t.stat.Count = len(t.ports)
 		t.stat.Props = root.count()
-		out = append(out, namedTemplate{node: root, stat: t.stat, card: t.card})
+		cardList := make([]string, 0, len(t.cardSet))
+		for c := range t.cardSet {
+			cardList = append(cardList, c)
+		}
+		sort.Strings(cardList)
+		out = append(out, namedTemplate{node: root, stat: t.stat, card: t.card, cards: cardList})
 	}
 	return out
 }
@@ -838,7 +869,7 @@ func Manifest(m *Model, host string, port int, set *DMSet) *manifest.Manifest {
 					typeName = TypeName(exType, p.Type, exTypes)
 				}
 				bay := 0
-				if c := cardOfNode[p.Node]; c != nil {
+				if c := m.CardOfPort(cardOfNode, p); c != nil {
 					bay = c.Bay
 				}
 				addr := map[string]any{"bay": bay, "node": p.Node, "port": p.Port, "template": typeName}
@@ -848,6 +879,13 @@ func Manifest(m *Model, host string, port int, set *DMSet) *manifest.Manifest {
 				dm := set.Node.Identity
 				if owner := set.typeOfCard[typeName]; owner != nil {
 					dm = owner.Identity
+				}
+				if c := m.CardOfPort(cardOfNode, p); c != nil {
+					for _, cm := range set.Cards {
+						if cm.Model == c.Type && set.cardHas[cm.Model+"|"+typeName] {
+							dm = cm.Identity
+						}
+					}
 				}
 				e = &entry{addr: addr, dm: dm}
 				entries[k] = e

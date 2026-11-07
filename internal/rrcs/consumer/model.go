@@ -683,3 +683,20 @@ func (m *Model) SpyRef(node, port int) (string, int, string) {
 	}
 	return m.PortRef(1, node, port, false)
 }
+
+// CardOfPort is the client card a port sits on. On an Artist-1024 each
+// card carries its ports under a node of its own (CardOfNode). On a frame
+// whose cards share the frame's node (Artist 32, 64, 128) the port number
+// tells the slot: Port = (slot - 1) × 8 + position - 1 (§6.5), so slot =
+// Port / 8 + 1 (oracle, 2026-11-07: ports 16-23 on the MADI card of bay 3).
+func (m *Model) CardOfPort(cardOfNode map[int]*Card, p *Port) *Card {
+	if c := cardOfNode[p.Node]; c != nil {
+		return c
+	}
+	for _, c := range m.Cards {
+		if c.Node == p.Node && c.Bay == p.Port/8+1 {
+			return c
+		}
+	}
+	return nil
+}
