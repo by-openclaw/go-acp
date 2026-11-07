@@ -228,8 +228,10 @@ func TestRRCSEnsureIFB(t *testing.T) {
 		t.Errorf("the input did not change and was sent: %s", rrcsCompact(sp))
 	}
 	out, changes, err := rrcsCfgRun(t, `{"ifbs": [{"number": 99, "label": "X"}]}`, "--check")
-	if err == nil || len(changes) != 0 || !strings.Contains(out, "cannot be created") {
-		t.Errorf("unknown IFB: %v\n%s", err, out)
+	// An absent number is created (RRCS 9.0.RR1, oracle 2026-11-07):
+	// --check names the create and sends nothing.
+	if err != nil || len(changes) != 0 || !strings.Contains(out, "ifb 99") {
+		t.Errorf("absent IFB: %v\n%s", err, out)
 	}
 }
 

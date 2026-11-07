@@ -125,7 +125,7 @@ and it may also hold keys, conferences, groups and crosspoint levels:
   "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
              "input_gain": "0", "output_gain": "-3.5"}],
   "streams": [{"main": "net.1.node.63.port.1072", "block": 8}]
-An IFB is named by its number and cannot be created; a leg is a port path or
+An IFB is named by its number and is created when absent; a leg is a port path or
 "" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
 A stream names its main port; "block": 8 links the seven ports after it,
 channel 2 to 8, inputs and outputs ("linked" names them instead,

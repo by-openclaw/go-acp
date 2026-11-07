@@ -36,6 +36,7 @@ type Param struct {
 	// Kind says how the flag becomes parameters:
 	//
 	//	int, bool, text   one parameter
+	//	volume            dB, mute or raw → one int (§8.2 scale)
 	//	netnodeport       a port path → Net, Node, Port
 	//	nodeport          a port path → Node, Port
 	//	isinput           no flag: IsInput of the port path given before
@@ -63,8 +64,15 @@ var (
 	pPort2    = Param{"port-path", "nodeport", "port path, as list ports prints it"}
 	pIsInput  = Param{"", "isinput", ""}
 	pPoolPort = pInt("pool-port", "pool port; -1 for a port without pool ports")
+	// pVolume is a crosspoint level: dB (-10dB, -114.5dB .. 12.5dB, half
+	// steps), mute, or the raw value 0..255 the wire carries.
+	pVolume   = Param{"volume", "volume", "level: -10dB (half steps, -114.5dB to 12.5dB), mute, or raw 0..255 = (raw - 230) / 2 dB"}
 	pReceiver = []Param{pText("ip", "address of the receiver of the notifications"), pInt("tcp-port", "TCP port of the receiver")}
-	pKey8     = []Param{pKey, pVirtual}
+	// An unregistration names the receiver by its address alone: RRCS
+	// 9.0.RR1 answers "requires 2 input parameters (3 received)" to the
+	// address and port (oracle, 2026-11-07).
+	pReceiverIP = []Param{pText("ip", "address of the receiver of the notifications")}
+	pKey8       = []Param{pKey, pVirtual}
 )
 
 func params(groups ...any) []Param {
@@ -87,7 +95,7 @@ var Ops = []Op{
 	{"SetXpPrio", false, "make a crosspoint with a priority", params(pXp, pInt("priority", "priority"))},
 	{"SetXpDestructive", false, "make a crosspoint and remove the routes it displaces", params(pXp, pInt("priority", "audio priority"))},
 	{"SetXpVolume", false, "set the level of a crosspoint", params(pXp, pBool("single", "set the single volume"), pBool("conference", "set the conference volume"),
-		pInt("volume", "0 mute, 1..255 = (volume - 230) / 2 dB"))},
+		pVolume)},
 	// §8.3 – §8.5 Alias, label, gain
 	{"SetPortAlias", false, "set the alias of a port", params(pPort3, pText("alias", "alias"), pIsInput)},
 	{"SetPortLabel", false, "set the 8-character label of a port", params(pPort2, pText("label", "label, 8 characters at most"), pIsInput)},
@@ -121,20 +129,24 @@ var Ops = []Op{
 	{"SetKeyLabelAndMarker", false, "set a key label and marker", params(pKey8, pText("label", "label, 8 characters"), pInt("marker", "index of the marker in the configuration"))},
 	{"SetKeyMarker", false, "set a key marker", params(pKey8, pInt("marker", "index of the marker in the configuration"))},
 	// §8.13 Port cloning
-	{"StartPortCloning", false, "clone the output of a port to a monitoring port", params(Param{"monitor", "portaddr", "port to monitor"}, Param{"clone", "portaddr", "port that receives the clone"})},
-	{"StopPortCloning", false, "stop a port clone", params(Param{"monitor", "portaddr", "port to monitor"}, Param{"clone", "portaddr", "port that receives the clone"})},
+	// RRCS 9.0.RR1 takes each port flat, Node, Port, IsInput: seven
+	// parameters with the key. Two TPortAddress structs, as §8.13 prints
+	// them, are refused "requires at least 7 input parameters (3
+	// received)" (oracle, 2026-11-07).
+	{"StartPortCloning", false, "clone the output of a port to a monitoring port", params(Param{"monitor", "nodeport", "port to monitor"}, pIsInput, Param{"clone", "nodeport", "port that receives the clone"}, pIsInput)},
+	{"StopPortCloning", false, "stop a port clone", params(Param{"monitor", "nodeport", "port to monitor"}, pIsInput, Param{"clone", "nodeport", "port that receives the clone"}, pIsInput)},
 	// §8.14 IFB volume
-	{"SetIFBVolumeMixMinus", false, "set the mix-minus level of an IFB", params(pPort2, pIsInput, pInt("ifb", "IFB number"), pInt("volume", "0 mute, 1..255 = (volume - 230) / 2 dB"))},
+	{"SetIFBVolumeMixMinus", false, "set the mix-minus level of an IFB", params(pPort2, pIsInput, pInt("ifb", "IFB number"), pVolume)},
 	{"RemoveIFBVolumeMixMinus", false, "return the mix-minus level of an IFB to unity", params(pPort2, pIsInput, pInt("ifb", "IFB number"))},
 	// §8.15 Registrations of the older kind
 	{"XpVolumeChangeRegistryReset", false, "replace the crosspoints whose level is followed", params(pReceiver, Param{"xp", "xplist", "SRC>DST as two port paths; repeat"})},
 	{"XpVolumeChangeRegistryRemove", false, "stop following the level of crosspoints", params(pReceiver, Param{"xp", "xplist", "SRC>DST as two port paths; repeat"})},
 	{"RegisterForEvents", false, "register a receiver for the general events", params(pReceiver)},
-	{"UnregisterForEvents", false, "remove a receiver of the general events", params(pReceiver)},
+	{"UnregisterForEvents", false, "remove a receiver of the general events", params(pReceiverIP)},
 	{"RegisterForGpInputChange", false, "register a receiver for GP input changes", params(pReceiver)},
-	{"UnregisterForGpInputChange", false, "remove a receiver of GP input changes", params(pReceiver)},
+	{"UnregisterForGpInputChange", false, "remove a receiver of GP input changes", params(pReceiverIP)},
 	{"RegisterForGpOutputChange", false, "register a receiver for GP output changes", params(pReceiver)},
-	{"UnregisterForGpOutputChange", false, "remove a receiver of GP output changes", params(pReceiver)},
+	{"UnregisterForGpOutputChange", false, "remove a receiver of GP output changes", params(pReceiverIP)},
 	// §8.16 Trunking
 	{"SetTrunkingNetAddr", false, "set the trunking net address of the ring", params(pInt("addr", "trunking net address"))},
 	{"SetLTC", false, "move the local trunk controller to a node", params(pInt("node", "node"))},
@@ -325,6 +337,16 @@ func (op *Op) Values(args map[string]string, xps []string) ([]codec.Value, error
 				return nil, fmt.Errorf("--%s %q is not a whole number", p.Flag, v)
 			}
 			values = append(values, codec.Int(int32(n)))
+		case "volume":
+			v, err := need(p.Flag)
+			if err != nil {
+				return nil, err
+			}
+			raw, verr := VolumeRaw(v)
+			if verr != nil {
+				return nil, fmt.Errorf("--%s: %w", p.Flag, verr)
+			}
+			values = append(values, codec.Int(int32(raw)))
 		case "bool":
 			v, err := need(p.Flag)
 			if err != nil {
@@ -447,4 +469,30 @@ func (c *Client) Do(ctx context.Context, method string, args map[string]string, 
 		return Reply{}, fmt.Errorf("rrcs: %s: %w", method, err)
 	}
 	return c.Call(ctx, method, values...)
+}
+
+// VolumeRaw reads a crosspoint level: "mute", dB with the unit ("-10dB",
+// half steps from -114.5 to 12.5), or the raw wire value 0..255, where
+// 0 is mute and 1..255 is (raw - 230) / 2 dB (§8.2).
+func VolumeRaw(text string) (int, error) {
+	t := strings.TrimSpace(text)
+	if strings.EqualFold(t, "mute") {
+		return 0, nil
+	}
+	if num, isDB := strings.CutSuffix(strings.ToLower(t), "db"); isDB {
+		db, err := strconv.ParseFloat(strings.TrimSpace(num), 64)
+		if err != nil || math.IsNaN(db) {
+			return 0, fmt.Errorf("%q: want dB such as -10dB", text)
+		}
+		raw := 230 + db*2
+		if raw != math.Trunc(raw) || raw < 1 || raw > 255 {
+			return 0, fmt.Errorf("%q: want half steps from -114.5dB to 12.5dB", text)
+		}
+		return int(raw), nil
+	}
+	n, err := strconv.Atoi(t)
+	if err != nil || n < 0 || n > 255 {
+		return 0, fmt.Errorf("%q: want -10dB, mute, or raw 0..255", text)
+	}
+	return n, nil
 }

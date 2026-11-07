@@ -459,7 +459,7 @@ The file has more sections; each is optional:
 | `keys` | panel and `EXPANSION.PAGE.KEY` (0.1.14), as `list keys` prints | function (call-to-port, call-to-conference, call-to-group, call-to-ifb, reply), target, label, mode (auto, momentary, latching); `"state": "absent"` empties the key |
 | `conferences` | `id`, or `name` to create | label, name; create; delete |
 | `groups` | `id`, or `name` to create | label, name, the whole member list; create; delete |
-| `ifbs` | `number` | label, name, input, output, mix minus (`""` = none), dim level; never created |
+| `ifbs` | `number` | label, name, input, output, mix minus (`""` = none), dim level; create (an absent number) |
 | `levels` | source and destination | single level in dB, or `mute` |
 | `ports` | port path | label, alias, input and output gain in dB, or `mute` |
 

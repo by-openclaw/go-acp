@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -42,6 +43,15 @@ func rrcsRunOp(ctx context.Context, op *rrcsOp, args []string) error {
 	fs := flag.NewFlagSet("rrcs "+verb, flag.ContinueOnError)
 	cf := newRRCSFlags(fs)
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
+	// RRCS deletes what a client buffered when that client's connection
+	// closes (RRCS 9.0.RR1 log, oracle 2026-11-07: "Deleting 1 buffered
+	// configuration changes: No connection to client"). A buffer and its
+	// apply therefore go in one run, on one connection.
+	buffered := strings.HasPrefix(op.Method, "BufferConfigurationChange")
+	apply := new(string)
+	if buffered {
+		apply = fs.String("apply", "yes", "yes = send the matching Apply… on the same connection before closing it; no = buffer only (RRCS drops it when this run ends)")
+	}
 	texts := map[string]*string{}
 	var xps rrcsProps
 	for _, p := range op.Params {
@@ -85,6 +95,11 @@ func rrcsRunOp(ctx context.Context, op *rrcsOp, args []string) error {
 			return fmt.Errorf("rrcs %s: %w", verb, rerr)
 		}
 		named[p.Flag] = string(raw)
+		if buffered {
+			if err := rrcsBufferable(op.Method, raw); err != nil {
+				return rrcsValErr(verb, err.Error())
+			}
+		}
 	}
 	values, err := op.Values(named, xps)
 	if err != nil {
@@ -110,10 +125,56 @@ func rrcsRunOp(ctx context.Context, op *rrcsOp, args []string) error {
 		fmt.Println(rrcsCompact(reply.Value))
 		return nil
 	}
+	if buffered && strings.EqualFold(*apply, "yes") {
+		applyMethod := strings.Replace(op.Method, "Buffer", "Apply", 1)
+		cf.say("rrcs %s: %s on the same connection", verb, applyMethod)
+		if _, aerr := client.Call(ctx, applyMethod); aerr != nil {
+			return fmt.Errorf("rrcs %s: %s: %w", verb, applyMethod, aerr)
+		}
+		fmt.Printf("%s + %s: accepted by RRCS (error code 0)\n", op.Method, applyMethod)
+		return nil
+	}
 	if !op.Read && len(reply.Payload().Items) == 0 {
 		fmt.Printf("%s: accepted by RRCS (error code 0)\n", op.Method)
 		return nil
 	}
 	fmt.Println(rrcsCompact(reply.Payload()))
+	return nil
+}
+
+// rrcsBufferTypes are the object types §8.10.2 lists for
+// BufferConfigurationChange; the Ex form adds portex, monitor-port-cmd
+// and device (§ change history, 8.5 and later). Any other type is
+// accepted by RRCS and then dropped without a word: a conference edit
+// buffered and applied on the oracle (2026-11-07) answered success and
+// changed nothing.
+var rrcsBufferTypes = map[string]bool{
+	"port": true, "group": true, "call-to-port-cmd": true, "route-cmd": true,
+	"remote-key-cmd": true, "reply-cmd": true, "edit-ifb-cmd": true,
+	"dim-panel-speaker-cmd": true, "auto-listen-off-cmd": true,
+	"set-input-output-gain-cmd": true, "sidetone-cmd": true, "send-string-cmd": true,
+	"command-container": true, "client-card": true, "panel-key": true,
+	"virtual-key": true, "device": true,
+}
+
+var rrcsBufferTypesEx = map[string]bool{"portex": true, "monitor-port-cmd": true}
+
+// rrcsBufferable refuses a buffered change of a type the buffer does not
+// take, before anything is sent.
+func rrcsBufferable(method string, raw []byte) error {
+	var changes []struct {
+		ObjectType string `json:"ObjectType"`
+	}
+	if err := json.Unmarshal(raw, &changes); err != nil {
+		return fmt.Errorf("--file: want one JSON array of changes: %v", err)
+	}
+	ex := strings.HasSuffix(method, "Ex")
+	for i, c := range changes {
+		t := strings.ToLower(c.ObjectType)
+		if rrcsBufferTypes[t] || (ex && rrcsBufferTypesEx[t]) {
+			continue
+		}
+		return fmt.Errorf("change %d: %s cannot be buffered (§8.10.2); RRCS would accept it and drop it — send it with configuration-change instead", i+1, c.ObjectType)
+	}
 	return nil
 }

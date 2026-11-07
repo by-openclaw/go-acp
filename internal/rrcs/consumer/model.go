@@ -447,6 +447,11 @@ func (m *Model) buildKeys(commands []any) {
 					k.Target, k.TargetName = "group."+strconv.Itoa(jInt(cmd, "Group")), jStr(cmd, "GroupName")
 				case cmd["Conference"] != nil:
 					k.Target, k.TargetName = "conference."+strconv.Itoa(jInt(cmd, "Conference")), jStr(cmd, "ConferenceName")
+				case cmd["IFBObjectID"] != nil:
+					// A call to an IFB of this system names it by object ID
+					// (§8.10.4.10); RRCS 9.0.RR1 leaves IfbName empty
+					// (oracle, 2026-11-07).
+					k.Target, k.TargetName = "ifb."+strconv.Itoa(jInt(cmd, "IFBObjectID")), jStr(cmd, "IfbName")
 				case cmd["TrunkingNetAddr"] != nil:
 					k.Target = fmt.Sprintf("trunk.%d.%d", jInt(cmd, "TrunkingNetAddr"), jInt(cmd, "TrunkingPortAddr"))
 				}

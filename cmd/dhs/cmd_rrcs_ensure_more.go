@@ -22,8 +22,9 @@ import (
 //	"ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
 //	           "input_gain": "0", "output_gain": "-3.5"}]
 //
-// An IFB is named by its number; it cannot be created or deleted through
-// RRCS (§8.10.1). A port of an IFB is a path, or "" for none.
+// An IFB is named by its number; an absent number is created (RRCS 9.0.RR1
+// takes ChangeType create with IFBNumber). A port of an IFB is a path, or
+// "" for none.
 
 // rrcsDesiredIFB is one IFB.
 type rrcsDesiredIFB struct {
@@ -56,7 +57,20 @@ func rrcsPlanIFBs(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, problem
 			}
 		}
 		if have == nil {
-			problems = append(problems, rrcsEnsureFailure{Field: field, Reason: "no IFB with this number; an IFB cannot be created through RRCS"})
+			// RRCS 9.0.RR1 creates an IFB from its number (oracle,
+			// 2026-11-07: ChangeType create, ObjectType ifb, IFBNumber;
+			// without the number it answers "Missing struct member
+			// 'IFBNumber'"). Its legs and dim level follow on the next
+			// pass, once the IFB is read back.
+			params := []codec.Member{{Name: "IFBNumber", Value: codec.Int(int32(w.Number))}}
+			if w.Label != nil {
+				params = append(params, codec.Member{Name: "Label", Value: codec.String(*w.Label)})
+			}
+			if w.Name != nil {
+				params = append(params, codec.Member{Name: "LongName", Value: codec.String(*w.Name)})
+			}
+			steps = append(steps, rrcsCfgStep{field: field, from: "", to: "ifb " + strconv.Itoa(w.Number),
+				changeType: "create", objectType: "ifb", params: params})
 			continue
 		}
 		edit := []codec.Member{}

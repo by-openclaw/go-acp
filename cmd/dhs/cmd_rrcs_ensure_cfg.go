@@ -192,6 +192,7 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 	bad := func(field, format string, a ...any) {
 		problems = append(problems, rrcsEnsureFailure{Field: field, Reason: fmt.Sprintf(format, a...)})
 	}
+	rrcsResolveTalkPaths(m, want)
 	for _, k := range want.Keys {
 		pos := k.Panel + ".key." + k.Key
 		if strings.HasPrefix(k.Key, "vfunc.") {
@@ -696,4 +697,38 @@ func rrcsEnsureLevels(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, l
 		}
 	}
 	return diff, failures, nil
+}
+
+// rrcsResolveTalkPaths names a port the way RRCS reports it. A port whose
+// input and output are two objects (a FOUR_WIRE_SPLIT: port.N.in and
+// port.N.out) is called and joins a group by its output: a key target or
+// a group member written as the bare port.N becomes port.N.out, the path
+// the model reads back. Without it the comparison never meets the read
+// back and every run deletes and creates the key again (oracle,
+// 2026-11-07, MADI 3.2 as FOUR_WIRE_SPLIT). A panel, one object for both
+// directions, keeps its path.
+func rrcsResolveTalkPaths(m *rrcsModel, want *rrcsDesired) {
+	resolve := func(path string) string {
+		if strings.HasSuffix(path, ".in") || strings.HasSuffix(path, ".out") {
+			return path
+		}
+		node, port, _, ok := rrcsPortOfPath(path)
+		if !ok {
+			return path
+		}
+		if p := m.Find(node, port, false); p != nil && p.Output && !p.Input && strings.HasPrefix(p.Path, path+".") {
+			return p.Path
+		}
+		return path
+	}
+	for i := range want.Keys {
+		if want.Keys[i].Function == "call-to-port" && want.Keys[i].Target != "" {
+			want.Keys[i].Target = resolve(want.Keys[i].Target)
+		}
+	}
+	for i := range want.Groups {
+		for j, mb := range want.Groups[i].Members {
+			want.Groups[i].Members[j] = resolve(mb)
+		}
+	}
 }

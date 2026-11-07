@@ -4535,7 +4535,7 @@ and it may also hold keys, conferences, groups and crosspoint levels:
   "ports": [{"port": "net.1.node.61.port.1040", "label": "CODIP01A", "alias": "CODEC 1",
              "input_gain": "0", "output_gain": "-3.5"}],
   "streams": [{"main": "net.1.node.63.port.1072", "block": 8}]
-An IFB is named by its number and cannot be created; a leg is a port path or
+An IFB is named by its number and is created when absent; a leg is a port path or
 "" for none. A gain is dB in steps of 0.5 from -18 to 18, or "mute".
 A stream names its main port; "block": 8 links the seven ports after it,
 channel 2 to 8, inputs and outputs ("linked" names them instead,
@@ -4727,7 +4727,7 @@ SetXpVolume: set the level of a crosspoint. It WRITES: it needs --write-to HOST,
   -verbose
     	debug log output (shortcut for --log-level debug)
   -volume string
-    	0 mute, 1..255 = (volume - 230) / 2 dB
+    	level: -10dB (half steps, -114.5dB to 12.5dB), mute, or raw 0..255 = (raw - 230) / 2 dB
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5129,6 +5129,8 @@ Usage: dhs consumer rrcs buffer-configuration-change <host>[:port] [flags]
 
 BufferConfigurationChange: buffer configuration changes for a later apply. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
 
+  -apply string
+    	yes = send the matching Apply… on the same connection before closing it; no = buffer only (RRCS drops it when this run ends) (default "yes")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
@@ -5160,6 +5162,8 @@ Usage: dhs consumer rrcs buffer-configuration-change-ex <host>[:port] [flags]
 
 BufferConfigurationChangeEx: buffer configuration changes, each handled on its own. It WRITES: it needs --write-to HOST, and has not passed on a real RRCS.
 
+  -apply string
+    	yes = send the matching Apply… on the same connection before closing it; no = buffer only (RRCS drops it when this run ends) (default "yes")
   -capture string
     	record every XML document sent and received to this JSONL wire-trace (it holds the configuration names in clear). Literal "auto" = captures/rrcs/<host>/<verb>-<utcstamp>.jsonl (ADR-0028)
   -file string
@@ -5659,7 +5663,7 @@ SetIFBVolumeMixMinus: set the mix-minus level of an IFB. It WRITES: it needs --w
   -verbose
     	debug log output (shortcut for --log-level debug)
   -volume string
-    	0 mute, 1..255 = (volume - 230) / 2 dB
+    	level: -10dB (half steps, -114.5dB to 12.5dB), mute, or raw 0..255 = (raw - 230) / 2 dB
   -write-to string
     	required to write: repeat the host here, exactly as given. A write is refused without it. On 2026-10-06 a ConfigurationChangeEx edit of an AES67 stream made a production RRCS 9.0 drop the connection and stop answering; configuration writes now use ConfigurationChange and are unproven until one passes on a real RRCS
 
@@ -5823,8 +5827,6 @@ UnregisterForEvents: remove a receiver of the general events. It WRITES: it need
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
-  -tcp-port string
-    	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
   -verbose
@@ -5889,8 +5891,6 @@ UnregisterForGpInputChange: remove a receiver of GP input changes. It WRITES: it
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
-  -tcp-port string
-    	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
   -verbose
@@ -5955,8 +5955,6 @@ UnregisterForGpOutputChange: remove a receiver of GP output changes. It WRITES: 
     	the plant's limits, narrower than the factory's (ADR-0036, ADR-0037 P7): a CSV with the header path,min,max,allowed. Default: snapshots/<proto>/<host>/site-limits.csv when that file exists; a path names another file; "off" applies none
   -syslog-addr string
     	also forward the logs as RFC 5424 UDP datagrams to host:port
-  -tcp-port string
-    	TCP port of the receiver
   -timeout duration
     	per-request timeout (default 10s)
   -verbose

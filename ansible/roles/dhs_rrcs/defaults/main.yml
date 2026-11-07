@@ -61,7 +61,7 @@ rrcs_conferences: []
 #   - {name: "Group NOC", label: NOC, members: [net.1.node.61.port.1024, net.1.node.61.port.1026]}
 rrcs_groups: []
 
-# IFBs, by number (an IFB cannot be created through RRCS). A leg is a port
+# IFBs, by number (an absent number is created). A leg is a port
 # path, or "" for none. dim_level: 0 = 0 dB ... 6 = -24 dB, 7 = mute.
 #   - {number: 7, label: SPORT, input: net.1.node.61.port.1040, mix_minus: "", dim_level: 4}
 rrcs_ifbs: []
