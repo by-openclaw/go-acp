@@ -412,3 +412,43 @@ documenting the hermeticity rules its numbers depend on — the registry
 one in particular: LAN-mode tool for the mDNS tests, a pre-created
 persistent subscription per minor, and no live devices churning the
 store during scoring.
+
+## 8. Events and tally from a device (IS-07)
+
+A camera, a router or a panel that speaks IS-07 publishes its tally as
+events. The device describes everything itself; nothing is configured
+on the dhs side. Three reads, in this order.
+
+| # | Layer | What the device tells you | Verb |
+|---|---|---|---|
+| 1 | IS-04 Node API | its Devices with a control `urn:x-nmos:control:events/v1.0` (the Events API URL); its Sources of format `urn:x-nmos:format:data` with an `event_type` (`boolean` for a tally lamp, or `enum`, `number`, `string`, `object`); its Senders with transport `urn:x-nmos:transport:websocket` or `urn:x-nmos:transport:mqtt` | `dhs consumer nmos walk --node http://<device>:<port> -l` |
+| 2 | IS-07 Events API (REST) | per source: `…/sources/<id>/type` is the type definition (an `enum` lists its values and labels, a `number` its range and unit), `…/sources/<id>/state` the current message | no dhs verb yet (planned: `events describe`); read with any HTTP client |
+| 3 | IS-07 WebSocket | every change, as a JSON message: `identity {source_id, flow_id}`, `event_type`, `timing {creation, origin, action}`, `payload {value}`; the first message after subscribing is the current state | `dhs consumer nmos events watch --url ws://<device>:<port>/x-nmos/events/v1.0/ws --sources <id>[,<id>…]` |
+
+```
+# 1. what the device has — keep the JSON, it is the device's own description
+dhs consumer nmos walk --node http://10.6.255.120:80 -l
+dhs consumer nmos walk --node http://10.6.255.120:80 --json > camera-node.json
+#    look for: "controls" with urn:x-nmos:control:events/v1.0  → the Events API URL
+#              "event_type" on the data Sources                → the tally sources and their type
+#              "transport": "urn:x-nmos:transport:websocket"   → the Senders to subscribe to
+
+# 3. subscribe, then flip the tally on the device: each change is one JSON line
+dhs consumer nmos events watch --url ws://10.6.255.120:80/x-nmos/events/v1.0/ws \
+    --sources 1f1e1d1c-1b1a-4019-8817-161514131211 --heartbeat 5s
+```
+
+Where the WebSocket URL comes from: the Sender's IS-05 active transport
+parameters carry `connection_uri` (and `ext_is_07_source_id`,
+`ext_is_07_rest_api_url`); most nodes also answer at the Events API URL
+followed by `/ws`, the form shown above. If `watch` cannot connect, read
+the Sender's IS-05 `active` and use its `connection_uri`.
+
+Proven: on the nmos-cpp node (v0.40.2) a subscription delivered the
+Source's state of the type its Events API reports. Not yet captured: a
+real camera; the Grass Valley LDK of the lab is next, and its run will be
+added here with the messages it sent.
+
+The registry has no part in this: events go from the device to the
+subscriber directly. A registry only lists the pointers of layer 1, so a
+controller can find them with the Query API instead of the Node API.
