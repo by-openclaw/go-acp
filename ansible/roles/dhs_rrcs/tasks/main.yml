@@ -52,7 +52,7 @@
   ansible.builtin.command:
     argv: >-
       {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
-          '--check', '--output', 'json'] + rrcs_extra_argv }}
+          '--check', '--output', 'json'] + rrcs_sheets_argv + rrcs_extra_argv }}
   register: rrcs_check
   changed_when: false
 
@@ -67,7 +67,7 @@
       ansible.builtin.command:
         argv: >-
           {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
-              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_extra_argv }}
+              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_sheets_argv + rrcs_extra_argv }}
       register: rrcs_apply
       changed_when: (rrcs_apply.stdout | from_json).changed | bool
 
@@ -75,7 +75,7 @@
       ansible.builtin.command:
         argv: >-
           {{ [dhs_bin, 'consumer', 'rrcs', 'ensure', rrcs_host, '--file', rrcs_desired_file,
-              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_extra_argv }}
+              '--write-to', rrcs_write_to, '--output', 'json'] + rrcs_sheets_argv + rrcs_extra_argv }}
       register: rrcs_again
       changed_when: false
       when: rrcs_assert_idempotent

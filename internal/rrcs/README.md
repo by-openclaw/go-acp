@@ -49,6 +49,27 @@ One desired-state file, sections in this order; `playbooks/rrcs-oracle-provision
 A member is added or removed by changing one cell and running the play
 again: only the cells written are touched.
 
+### The same in CSV — sheets
+
+`dhs consumer rrcs sheets <host>` writes the system as it is into one CSV
+per topic; `ensure --sheets DIR` (Ansible: `rrcs_sheets`) brings the
+system to them. Export, edit a cell in a spreadsheet, run: only that cell
+changes. A blank cell is left as it is.
+
+| Sheet | Columns | A cell |
+|---|---|---|
+| `cards.csv` | card, type, name, frame, channels, up, down | MADI: 56/64, 01-08…57-64, optical/electrical |
+| `ports.csv` | port, type, label, alias | the label and alias of each port |
+| `conferences.csv`, `groups.csv` | name, label | a new row creates it |
+| `ifbs.csv` | number, label, name, input, output, mix_minus, dim_level | a leg is a port path, `-` for none |
+| `members.csv` | port, label, conference.&lt;name&gt;…, group.&lt;name&gt;… | talk+listen, talk, listen, off; on/off for a group; `key` = joins through one of its keys |
+| `keys.csv` | panel, key, function, target, label, mode | call-to-port, call-to-conference, call-to-group, call-to-ifb, reply, listen, off |
+
+`playbooks/rrcs-oracle-sheets.yml` provisions the oracle from the sheets in
+`ansible/sites/lab/rrcs/oracle/` (oracle, 2026-11-07: export → ensure =
+0 changes; one cell `listen` added MADI 3.6 to a conference, `off` took it
+out, each run-twice = 0).
+
 ```yaml
 rrcs_members:
   "conference.DHS CONF 2":          # created in rrcs_conferences if absent

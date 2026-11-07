@@ -166,7 +166,8 @@ Only what the file names is touched. Without --check this WRITES and needs
 		fs.PrintDefaults()
 	}
 	cf := newRRCSFlags(fs)
-	file := fs.String("file", "", "desired-state file, JSON (required, or --manifest)")
+	file := fs.String("file", "", "desired-state file, JSON (or --sheets, or --manifest)")
+	sheetsDir := fs.String("sheets", "", "folder of CSV sheets (cards, ports, conferences, groups, ifbs, members, keys), as rrcs sheets writes them; with --file, both are brought")
 	manifestFile := fs.String("manifest", "", "the desired inventory (the manifest extract wrote, edited): the type and the role of each port, brought to the system in the proven order — a PortType create for an absent port, the channel count of a main, the links; values stay with import")
 	allowRetype := fs.Bool("allow-retype", false, "with --manifest: a port present with another type is deleted and created (RRCS has no edit of a type); its rows are saved to snapshots/rrcs/<host>/ first. Refused without this flag")
 	writeTo := fs.String("write-to", "", rrcsWriteToHelp)
@@ -187,18 +188,27 @@ Only what the file names is touched. Without --check this WRITES and needs
 		}
 		return rrcsEnsureManifest(ctx, cf, fs.Arg(0), *manifestFile, *writeTo, check, *allowRetype)
 	}
-	if *file == "" {
-		return rrcsValErr("ensure", "want --file DESIRED.json or --manifest MANIFEST.json")
-	}
-	raw, err := os.ReadFile(*file)
-	if err != nil {
-		return fmt.Errorf("rrcs ensure: %w", err)
+	if *file == "" && *sheetsDir == "" {
+		return rrcsValErr("ensure", "want --file DESIRED.json, --sheets DIR or --manifest MANIFEST.json")
 	}
 	var want rrcsDesired
-	dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&want); err != nil {
-		return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
+	if *file != "" {
+		raw, err := os.ReadFile(*file)
+		if err != nil {
+			return fmt.Errorf("rrcs ensure: %w", err)
+		}
+		dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&want); err != nil {
+			return rrcsValErr("ensure", "--file "+*file+": "+err.Error())
+		}
+	}
+	if *sheetsDir != "" {
+		sheets, err := rrcsReadSheets(*sheetsDir)
+		if err != nil {
+			return rrcsValErr("ensure", "--sheets "+*sheetsDir+": "+err.Error())
+		}
+		rrcsMergeDesired(&want, sheets)
 	}
 
 	// The values, as the rows import takes.

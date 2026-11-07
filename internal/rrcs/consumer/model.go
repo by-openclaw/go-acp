@@ -357,7 +357,11 @@ func (m *Model) buildObjects(lists map[string]any, net int) {
 			if jBool(mm, "Listen") {
 				flags = append(flags, "listen")
 			}
-			path, label := m.ref(net, jInt(mm, "Node"), jInt(mm, "Port"), false)
+			// A 4-wire split port is a member twice: its input talks, its
+			// output listens (oracle, 2026-11-07). A talk-only entry is the
+			// input half.
+			talkOnly := jBool(mm, "Talk") && !jBool(mm, "Listen")
+			path, label := m.ref(net, jInt(mm, "Node"), jInt(mm, "Port"), talkOnly)
 			o.Members = append(o.Members, MemberRef{Port: path, Label: label, Flags: strings.Join(flags, "+")})
 		}
 	}

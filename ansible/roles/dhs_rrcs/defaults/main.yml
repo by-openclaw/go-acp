@@ -120,3 +120,10 @@ rrcs_panels: []
 # Port types: a manifest file (the one extract writes, edited) brought to
 # the system before the rest. Empty: not touched.
 rrcs_manifest: ""
+
+# Sheets: a folder of CSV files (cards, ports, conferences, groups, ifbs,
+# members, keys) as `dhs consumer rrcs sheets <host>` writes them. Edit a
+# cell, run the play: only that cell changes. A blank cell is untouched.
+# Brought together with the variables above.
+rrcs_sheets: ""
+rrcs_sheets_argv: "{{ ['--sheets', rrcs_sheets] if rrcs_sheets | length > 0 else [] }}"
