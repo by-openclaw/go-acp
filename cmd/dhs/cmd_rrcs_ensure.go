@@ -43,6 +43,12 @@ type rrcsDesired struct {
 	Ports []rrcsDesiredPort `json:"ports"`
 	// The streams of a card: a main port and the ports linked to it.
 	Streams []rrcsDesiredStream `json:"streams"`
+	// Members: the conference × port and group × port matrix
+	// (cmd_rrcs_ensure_members.go).
+	Members rrcsMemberMatrix `json:"members"`
+	// Cards and panels: their own settings (cmd_rrcs_ensure_cards.go).
+	Cards  []rrcsDesiredCard  `json:"cards"`
+	Panels []rrcsDesiredPanel `json:"panels"`
 }
 
 type rrcsDesiredXp struct {
@@ -136,9 +142,22 @@ requests, outputs in one. RRCS does not report a link: a port counts as
 done when it uses the wanted channel. The same links, and the creation of
 a port, also go through export, edit, import: see import.
 A key is EXPANSION.PAGE.KEY as list keys prints it; function is call-to-port,
-call-to-conference, call-to-group, call-to-ifb or reply; mode is auto,
-momentary or latching. A conference or a group is named by "id" or, to
-create it, by "name". With --check the exact requests are printed.
+call-to-conference, call-to-group, call-to-ifb, reply or listen; mode is auto,
+momentary or latching. A target conference, group or IFB is named by its ID
+or its name. A conference or a group is named by "id" or, to create it, by
+"name". With --check the exact requests are printed.
+
+Three more sections:
+  "members": {"conference.DHS CONF 1": {"net.1.node.93.port.20": "talk+listen"},
+              "group.DHS GROUP 1":     {"net.1.node.93.port.17": "on"}}
+     the member matrix: a cell is talk+listen, talk, listen or off for a
+     conference, on or off for a group; only the cells written are touched.
+     A port joins a conference through its "always" virtual function; a
+     4-wire split port talks by its input and listens by its output.
+  "cards":  [{"card": "net.1.node.93.card.3",
+              "madi": {"frame": 64, "channels": "01-08", "up": "optical", "down": "optical"}}]
+  "panels": [{"panel": "net.1.node.93.port.8", "settings": {"MinSpeakerVol": 0}}]
+     any setting the panel reports (get --path <panel>).
 
 Only what the file names is touched. Without --check this WRITES and needs
 --write-to HOST.
@@ -309,6 +328,8 @@ Only what the file names is touched. Without --check this WRITES and needs
 	record(d, f)
 	record(rrcsEnsurePorts(ctx, cf, client, want.Ports, check))
 	record(rrcsEnsureStreams(ctx, cf, client, want.Streams, check))
+	record(rrcsEnsureCards(ctx, cf, client, want.Cards, check))
+	record(rrcsEnsurePanels(ctx, cf, client, want.Panels, check))
 
 	suffix := fmt.Sprintf("of %d values, %d crosspoints, %d keys, %d conferences, %d groups, %d ifbs, %d levels, %d ports and %d streams",
 		len(rows), len(xps), len(want.Keys), len(want.Conferences), len(want.Groups), len(want.IFBs), len(want.Levels), len(want.Ports), len(want.Streams))

@@ -16,6 +16,47 @@ what it does, the command to copy, what to collect.
   `net.1.node.61.port.1026`, `…port.7.out`, `…port.1026.key.0.1.5`,
   `net.1.node.60.card.1`, `group.665663144`.
 
+## Words of the intercom
+
+| Word | What it is |
+|---|---|
+| Port | One audio connection of the intercom: a panel, a 4-wire, a MADI or AES67 channel. It has an input (towards the matrix) and an output (from the matrix). A 4-wire split port is two objects, `port.N.in` and `port.N.out`. |
+| Panel | A desk or rack unit with keys, a microphone and a speaker. A port with keys. |
+| Key | A button of a panel. What it does is its command: call a port, a conference, a group or an IFB; reply; listen. |
+| Virtual function | A command place on a port without keys — `always`, `vox`, `on-call`. `always` keeps a 4-wire in a conference. |
+| Crosspoint | A fixed route: the input of one port heard at the output of another. |
+| Conference | A party line: every member hears the others. |
+| Member | A port in a conference (with talk and/or listen) or in a group. |
+| Group | A list of ports called together: one key talks to all of them. |
+| IFB | Interruptible fold-back, the presenter's earpiece: programme (input) to the output, cut by a talk key. Mix-minus is the one source left out. |
+| Card | A board of the frame (MADI, AES67, CAT5) that carries the ports and has its own settings. |
+
+## Provisioning — the workflow, from Ansible
+
+One desired-state file, sections in this order; `playbooks/rrcs-oracle-provision.yml` is the worked example (oracle, 2026-11-07: run 1 changed, run 2 changed=0).
+
+| # | Step | Section / variable | What RRCS gets |
+|---|---|---|---|
+| 1 | Port types (MADI 3.1–3.8 as 4-wire split…) | `rrcs_manifest` | PortType create / retype |
+| 2 | Card settings (MADI frame, channel block, optical/electrical) | `rrcs_cards` | client-card edit (writes count from 0, reads from 1) |
+| 3 | Labels, aliases, gains | `rrcs_ports` | SetPortLabel, SetPortAlias, gains |
+| 4 | Conferences, groups, IFBs | `rrcs_conferences`, `rrcs_groups`, `rrcs_ifbs` | create / edit |
+| 5 | Members, on demand | `rrcs_members` | conference: call-to-conference on the `always` virtual function (input = talk, output = listen); group: its member list |
+| 6 | Panel keys | `rrcs_keys` | key command + label + mode |
+| 7 | Panel settings | `rrcs_panels` | portex edit |
+| 8 | Crosspoints and levels | `rrcs_crosspoints`, `rrcs_levels` | SetXp, KillXp, SetXpVolume |
+
+A member is added or removed by changing one cell and running the play
+again: only the cells written are touched.
+
+```yaml
+rrcs_members:
+  "conference.DHS CONF 2":          # created in rrcs_conferences if absent
+    net.1.node.93.port.20: talk+listen
+  "conference.DHS CONF 1":
+    net.1.node.93.port.20: "off"    # out of the persistent conference
+```
+
 ## 0. What each verb costs RRCS
 
 Every verb except `watch` opens one connection, sends its requests, reads

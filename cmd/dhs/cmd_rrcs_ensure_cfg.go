@@ -45,6 +45,10 @@ type rrcsDesiredKey struct {
 	Label    *string `json:"label,omitempty"`
 	Mode     string  `json:"mode,omitempty"` // auto | momentary | latching
 	State    string  `json:"state,omitempty"`
+	// Additive is set by the members matrix: present adds this one
+	// command and keeps the others at the position (a port in two
+	// conferences); absent removes this one command only.
+	Additive bool `json:"-"`
 }
 
 // rrcsDesiredObject is a conference or a group, named by its object ID or,
@@ -90,6 +94,7 @@ var rrcsKeyFunctions = map[string]string{
 	"call-to-group":      "call-to-group",
 	"call-to-ifb":        "call-to-ifb",
 	"reply":              "reply-cmd",
+	"listen":             "listen-to-port-cmd",
 }
 
 // rrcsKeyModes are the values an edit takes (§8.10.4.33). A read gives
@@ -180,6 +185,16 @@ func rrcsCommandParams(objectType, position, target string) ([]codec.Member, err
 		return []codec.Member{{Name: "IFBObjectID", Value: codec.Int(n)}, at}, err
 	case "reply-cmd":
 		return []codec.Member{at}, nil
+	case "listen-to-port-cmd":
+		// §8.10.4.13: the source is the input of a port.
+		node, port, _, ok := rrcsPortOfPath(target)
+		if !ok {
+			return nil, fmt.Errorf("target %q: want a port path", target)
+		}
+		return []codec.Member{at, {Name: "SourcePortAddress", Value: codec.Struct(
+			codec.Member{Name: "IsInput", Value: codec.Bool(true)},
+			codec.Member{Name: "Node", Value: codec.Int(int32(node))},
+			codec.Member{Name: "Port", Value: codec.Int(int32(port))})}}, nil
 	}
 	return nil, fmt.Errorf("a %s cannot be placed or removed by ensure yet", objectType)
 }
@@ -193,7 +208,13 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 		problems = append(problems, rrcsEnsureFailure{Field: field, Reason: fmt.Sprintf(format, a...)})
 	}
 	rrcsResolveTalkPaths(m, want)
+	want = rrcsWithMembers(m, want, bad)
 	for _, k := range want.Keys {
+		if kind, ref, named := strings.Cut(k.Target, "."); named && (kind == "conference" || kind == "group" || kind == "ifb") {
+			if _, err := strconv.Atoi(ref); err != nil && rrcsCreatedInFile(want, kind, ref) {
+				continue // created by this run: the key follows on the next pass
+			}
+		}
 		pos := k.Panel + ".key." + k.Key
 		if strings.HasPrefix(k.Key, "vfunc.") {
 			pos = k.Panel + "." + k.Key
@@ -221,6 +242,34 @@ func rrcsPlanConfig(m *rrcsModel, want *rrcsDesired) (steps []rrcsCfgStep, probl
 			if c.Path == pos || strings.HasPrefix(c.Path, pos+".") {
 				current = append(current, c)
 			}
+		}
+		if k.Additive {
+			has := false
+			for _, c := range current {
+				if c.CommandType != wantType || c.Target != k.Target {
+					continue
+				}
+				has = true
+				if absent {
+					params, err := rrcsCommandParams(c.CommandType, pos, c.Target)
+					if err != nil {
+						bad(field, "%v", err)
+						continue
+					}
+					steps = append(steps, rrcsCfgStep{field: field, from: c.CommandType + " " + c.Target, to: "",
+						changeType: "delete", objectType: c.CommandType, params: params})
+				}
+			}
+			if !absent && !has {
+				params, err := rrcsCommandParams(wantType, pos, k.Target)
+				if err != nil {
+					bad(field, "%v", err)
+					continue
+				}
+				steps = append(steps, rrcsCfgStep{field: field, from: "", to: wantType + " " + k.Target,
+					changeType: "create", objectType: wantType, params: params})
+			}
+			continue
 		}
 		if absent || wantType != "" {
 			kept := false
@@ -436,17 +485,23 @@ func rrcsReadForConfig(ctx context.Context, client *rrcs.Client, want *rrcsDesir
 		}
 		labels = labels || k.Label != nil || k.Mode != "" || k.State == "absent"
 	}
+	for _, port := range rrcsMemberPorts(want.Members) {
+		if n, p, _, ok := rrcsPortOfPath(port); ok {
+			panels[[2]int{n, p}] = true
+		}
+	}
+	members := len(want.Members) > 0
 	// Only the lists the file's sections are compared with: the ports
 	// for the keys and for the members of a group, and the list of each
 	// kind of object the file names.
 	only := []string{}
-	if len(want.Keys) > 0 || len(want.Groups) > 0 {
+	if len(want.Keys) > 0 || len(want.Groups) > 0 || members {
 		only = append(only, "GetAllPorts")
 	}
-	if len(want.Conferences) > 0 {
+	if len(want.Conferences) > 0 || members {
 		only = append(only, "GetAllConferences")
 	}
-	if len(want.Groups) > 0 {
+	if len(want.Groups) > 0 || members {
 		only = append(only, "GetAllGroups")
 	}
 	if len(want.IFBs) > 0 {
@@ -468,7 +523,7 @@ func rrcsReadForConfig(ctx context.Context, client *rrcs.Client, want *rrcsDesir
 // created) is sent then; what is left after that was accepted and not
 // taken.
 func rrcsEnsureConfig(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, want *rrcsDesired, check bool) (diff []rrcsDiffEntry, failures []rrcsEnsureFailure, err error) {
-	if len(want.Keys)+len(want.Conferences)+len(want.Groups)+len(want.IFBs) == 0 {
+	if len(want.Keys)+len(want.Conferences)+len(want.Groups)+len(want.IFBs)+len(want.Members) == 0 {
 		return nil, nil, nil
 	}
 	seen := map[string]bool{}
@@ -708,27 +763,70 @@ func rrcsEnsureLevels(ctx context.Context, cf *rrcsFlags, client *rrcs.Client, l
 // 2026-11-07, MADI 3.2 as FOUR_WIRE_SPLIT). A panel, one object for both
 // directions, keeps its path.
 func rrcsResolveTalkPaths(m *rrcsModel, want *rrcsDesired) {
-	resolve := func(path string) string {
-		if strings.HasSuffix(path, ".in") || strings.HasSuffix(path, ".out") {
-			return path
-		}
-		node, port, _, ok := rrcsPortOfPath(path)
-		if !ok {
-			return path
-		}
-		if p := m.Find(node, port, false); p != nil && p.Output && !p.Input && strings.HasPrefix(p.Path, path+".") {
-			return p.Path
-		}
-		return path
-	}
 	for i := range want.Keys {
-		if want.Keys[i].Function == "call-to-port" && want.Keys[i].Target != "" {
-			want.Keys[i].Target = resolve(want.Keys[i].Target)
+		// conference.<name>, group.<name>, ifb.<label or name>: the object
+		// ID the command carries, once the object is there.
+		if kind, ref, named := strings.Cut(want.Keys[i].Target, "."); named && (kind == "conference" || kind == "group" || kind == "ifb") {
+			if _, err := strconv.Atoi(ref); err != nil {
+				if id := rrcsFindObject(m, kind, ref); id != 0 {
+					want.Keys[i].Target = kind + "." + strconv.Itoa(id)
+				}
+			}
+		}
+		switch {
+		case want.Keys[i].Target == "":
+		case want.Keys[i].Function == "call-to-port":
+			want.Keys[i].Target = rrcsTalkPath(m, want.Keys[i].Target)
+		case want.Keys[i].Function == "listen":
+			want.Keys[i].Target = rrcsHalfPath(m, want.Keys[i].Target, true)
 		}
 	}
 	for i := range want.Groups {
 		for j, mb := range want.Groups[i].Members {
-			want.Groups[i].Members[j] = resolve(mb)
+			want.Groups[i].Members[j] = rrcsTalkPath(m, mb)
 		}
 	}
+}
+
+// rrcsTalkPath is the path of the half a port is called and grouped by:
+// its output.
+func rrcsTalkPath(m *rrcsModel, path string) string { return rrcsHalfPath(m, path, false) }
+
+// rrcsHalfPath names one half of a FOUR_WIRE_SPLIT port given bare; any
+// other path comes back as it is.
+func rrcsHalfPath(m *rrcsModel, path string, input bool) string {
+	if strings.HasSuffix(path, ".in") || strings.HasSuffix(path, ".out") {
+		return path
+	}
+	node, port, _, ok := rrcsPortOfPath(path)
+	if !ok {
+		return path
+	}
+	if p := m.Find(node, port, input); p != nil && p.Input == input && p.Output != input && strings.HasPrefix(p.Path, path+".") {
+		return p.Path
+	}
+	return path
+}
+
+// rrcsCreatedInFile tells whether the file creates the object it names.
+func rrcsCreatedInFile(want *rrcsDesired, kind, ref string) bool {
+	switch kind {
+	case "conference", "group":
+		list := want.Conferences
+		if kind == "group" {
+			list = want.Groups
+		}
+		for _, o := range list {
+			if o.ID == 0 && o.Name == ref {
+				return true
+			}
+		}
+	case "ifb":
+		for _, f := range want.IFBs {
+			if (f.Label != nil && *f.Label == ref) || (f.Name != nil && *f.Name == ref) {
+				return true
+			}
+		}
+	}
+	return false
 }

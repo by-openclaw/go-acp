@@ -447,6 +447,10 @@ func (m *Model) buildKeys(commands []any) {
 					k.Target, k.TargetName = "group."+strconv.Itoa(jInt(cmd, "Group")), jStr(cmd, "GroupName")
 				case cmd["Conference"] != nil:
 					k.Target, k.TargetName = "conference."+strconv.Itoa(jInt(cmd, "Conference")), jStr(cmd, "ConferenceName")
+				case cmd["SourcePortAddress"] != nil:
+					// A listen key names the input it listens to (§8.10.4.13).
+					a := jMap(cmd["SourcePortAddress"])
+					k.Target, k.TargetName = m.ref(jInt(a, "Net"), jInt(a, "Node"), jInt(a, "Port"), true)
 				case cmd["IFBObjectID"] != nil:
 					// A call to an IFB of this system names it by object ID
 					// (§8.10.4.10); RRCS 9.0.RR1 leaves IfbName empty

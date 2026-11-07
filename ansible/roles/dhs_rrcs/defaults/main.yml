@@ -95,3 +95,28 @@ rrcs_assert_idempotent: true
 # channel. The channel count of the main output is not set (docs/adr/0035).
 #   - {main: net.1.node.63.port.1072, block: 8}
 rrcs_streams: []
+
+# Members: the conference × port and group × port matrix. A column is
+# conference.<ID or long name> or group.<ID or long name>; a cell is
+# talk+listen, talk, listen or off for a conference, on or off for a
+# group. Only the cells written are touched.
+#   rrcs_members:
+#     "conference.DHS CONF 1":
+#       net.1.node.93.port.8: talk+listen
+#       net.1.node.93.port.20: off
+rrcs_members: {}
+
+# Client cards: name, and for a MADI card frame (56|64), channels
+# (01-08 … 57-64), up and down interface (optical|electrical).
+#   rrcs_cards:
+#     - {card: net.1.node.93.card.3, madi: {frame: 64, channels: "01-08", up: optical, down: optical}}
+rrcs_cards: []
+
+# Panels: any setting the panel reports (dhs consumer rrcs get --path <panel>).
+#   rrcs_panels:
+#     - {panel: net.1.node.93.port.8, settings: {MinSpeakerVol: 0, SpeakerDimLevel: 5}}
+rrcs_panels: []
+
+# Port types: a manifest file (the one extract writes, edited) brought to
+# the system before the rest. Empty: not touched.
+rrcs_manifest: ""
