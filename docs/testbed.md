@@ -42,7 +42,8 @@ ADR-0025 requires — a connector is not DONE against our own provider.
 | **Snell IQ 3U modular frame** `IQH3UM4-S` "FRAME_12 EMB" | `10.6.255.113` | RollCall `:2050` (16-bit generation) | `snell-rollcall` |
 | **Tandberg TT1260** (IRD) | `10.6.255.110` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
 | **Tandberg RX1290** (IRD) | `10.6.255.111` | SNMP v1 `:161` · HTTP `:80` | `snmp` ✅ polled live |
-| **ATEME Kyrion DR5000** (IRD) | `10.6.255.114` | SNMP v2c + v1 `:161` · HTTP `:80` (Flex UI) | `snmp` ✅ polled + controlled live |
+| **ATEME Kyrion DR5000** (IRD) | `10.6.255.116` (was `.114` until 2026-11-07) | SNMP v2c + v1 `:161` · HTTP `:80` (Flex UI) | `snmp` ✅ polled + controlled live |
+| **Riedel intercom controller 1 / 2** (RRCS oracle) | `10.6.255.114` · `10.6.255.115` (reserved) | RRCS via the gateway on the Windows workstation · Director pulls/pushes config | `rrcs` |
 | **Snell RollCall frame** (IQH3UM4-S, "FRAME 12") | `10.6.255.113` | SNMP v1 **and** v2c `:161` · 8 trap destinations `:162` | `snmp` ✅ polled live |
 | **EVS Cerebrum** | `10.6.250.5` | Cerebrum NB `:40009` · SNMP agent `:1161` · SNMP manager `:161` + trap receiver `:162` · syslog | `cerebrum-nb`, and the SNMP peer for `internal/snmp` when it is written |
 
@@ -91,7 +92,7 @@ services this one Neuron offers cannot yet be driven at a real device — see
 
 ### ATEME Kyrion DR5000 — the IRD that ships its own MIB
 
-`10.6.255.114`, serial 1410-00596, `sysObjectID 1.3.6.1.4.1.27338.5.2.2`
+`10.6.255.116` (moved from `.114` on 2026-11-07 over SNMP, `dr5000NetworkConnectionAddress.1`, to free `.114`/`.115` for the Riedel controllers), serial 1410-00596, `sysObjectID 1.3.6.1.4.1.27338.5.2.2`
 (ATEME, IANA enterprise 27338). SNMP on 161, read community `public`,
 write community `private` (a write on `public` answers `noAccess`,
 which is the agent behaving correctly).
@@ -107,8 +108,8 @@ already uses — `info` reports the version it settled on.
 the copy always matches the firmware in front of you:
 
 ```
-http://10.6.255.114/ATEME-DR5000-MIB.smi
-http://10.6.255.114/ATEME-DR5000-MIB-Changelog.txt
+http://10.6.255.116/ATEME-DR5000-MIB.smi
+http://10.6.255.116/ATEME-DR5000-MIB-Changelog.txt
 ```
 
 Both are committed to `by-protocol/mib` under `ateme/ird/DR5000/`. The paths

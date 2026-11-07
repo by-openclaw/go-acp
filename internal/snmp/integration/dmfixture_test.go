@@ -47,7 +47,7 @@ import (
 //
 // Regenerate after a firmware change:
 //
-//	SNMP_TEST_HOST=10.6.255.114 SNMP_WRITE_FIXTURE=1 \
+//	SNMP_TEST_HOST=10.6.255.116 SNMP_WRITE_FIXTURE=1 \
 //	  go test -tags integration ./internal/snmp/integration/ -run WriteTheCommittedDM -v
 
 // fixtureRowCap is how many objects any one group contributes. 32 keeps

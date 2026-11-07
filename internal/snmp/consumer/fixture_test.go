@@ -27,7 +27,7 @@ import (
 //
 // Re-capture with:
 //
-//	SNMP_COMMUNITY=public dhs consumer snmp walk 10.6.255.114 --slot 0
+//	SNMP_COMMUNITY=public dhs consumer snmp walk 10.6.255.116 --slot 0
 //	cp .cache/dm/snmp/DR5000@1.3.1.1.json \
 //	   internal/snmp/testdata/integration-test/dm/snmp/
 //

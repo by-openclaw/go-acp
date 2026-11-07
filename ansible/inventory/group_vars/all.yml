@@ -41,7 +41,7 @@ dhs_alarm_devices:
     port: 9111
     what: Riedel FusioN6 — SFP optics, PTP lock, media link
   - name: dr5000
-    host: 10.6.255.114
+    host: 10.6.255.116
     proto: snmp
     slot: 0
     # An agent answers one object per round trip and this one publishes

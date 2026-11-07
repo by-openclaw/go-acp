@@ -660,10 +660,10 @@ EXAMPLES
   # history and visible in ps to everyone on the host.
   export SNMP_V3_USER=operator SNMP_V3_AUTH=sha256 SNMP_V3_PRIV=aes
   export SNMP_V3_AUTH_PASS=... SNMP_V3_PRIV_PASS=...
-  dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.114
+  dhs consumer snmp get --version 3 --oid sysDescr.0 10.6.255.116
 
   # the neutral verbs take the same credential and prefer v3 with it
-  dhs consumer snmp info 10.6.255.114`)
+  dhs consumer snmp info 10.6.255.116`)
 }
 
 func printSNMPProducerHelp() {
