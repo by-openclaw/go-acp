@@ -7,6 +7,13 @@ tags the version, regenerates this file, and publishes the cross-compiled
 binaries + SHA256SUMS via CI. Version source of truth: git tags (`-ldflags`
 injects `git describe --tags` into the binary — no hardcoded version strings).
 
+## [0.58.0](https://github.com/by-openclaw/go-acp/compare/v0.57.0...v0.58.0) (2026-11-07)
+
+
+### Features
+
+* **fleet:** dhs_golang — Go toolchain on every fleet host, on every shell's PATH ([#1613](https://github.com/by-openclaw/go-acp/issues/1613)) ([568521e](https://github.com/by-openclaw/go-acp/commit/568521edfa00d6d4c6ed79de0bee1fee8fa6937c))
+
 ## [0.57.0](https://github.com/by-openclaw/go-acp/compare/v0.56.0...v0.57.0) (2026-11-06)
 
 
